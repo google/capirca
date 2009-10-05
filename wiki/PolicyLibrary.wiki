@@ -1,0 +1,57 @@
+#summary Policy Library Usage
+
+= Introduction =
+
+The policy library is intended for parsing the generic high-level policy files and returning a policy object for acl rendering.  The policy library depends on a naming library object to be able to interpret network and service tokens.
+
+
+= Basic Usage =
+
+*Create a Policy Definition*
+
+_policy definitions must end in '.pol'_
+{{{
+cat > /path/to/my/policy.pol
+
+header {
+  comment:: "My simple access policy."
+  target:: juniper our-edge-filter
+}
+
+term reject-internal {
+  source-address:: INTERNAL
+  action:: deny
+}
+
+term accept-web {
+  destination-address:: WEBSERVERS
+  protocol:: tcp
+  destination-port:: HTTP
+  action:: accept
+}
+
+term accept-mail {
+  destination-address:: MAILSERVER
+  destination-port:: MAIL
+  protocol:: tcp
+  action:: accept
+}
+
+term reject-everything {
+  action:: reject
+}
+
+^D
+}}}
+
+*Create a Policy Object*
+
+The steps are:
+  # Create a [http://code.google.com/p/capirca/wiki/NamingLibrary?ts=1254764924&updated=NamingLibrary naming object]
+  # Read the policy definition data in
+  # Generate the policy object 
+{{{
+defs = naming.Naming('/path/to/my/definitions/')
+data = open('/path/to/my/policy.pol').read()
+pol = policy.ParsePolicy(data, defs, optimize=True)
+}}}
