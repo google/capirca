@@ -11,32 +11,33 @@ the libraries and files needed to begin using capirca.
 ==Install Ipaddr.py==
 *Download http://code.google.com/p/ipaddr-py/
 
-*Copy to python installation ./lib directory
+**Copy to python installation ./lib directory
 
 ==Install Ply==
 *Download http://www.dabeaz.com/ply/
 
-*In ply-3.3 directory, copy ./ply subdirectory to python lib
+**In ply-3.3 directory, copy ./ply subdirectory to python lib
 
 ==Install Capirca libraries==
 *Download http://code.google.com/p/capirca
 
-*Copy to python installation ./lib directory
+**Copy to python installation ./lib directory
 
-*Create a naming object
+==Generate Naming, Policy, and Platform Generator Output==
+*Import naming library and create naming object
 
+  from capirca import naming
   defs = naming.Naming(‘../acl/def’)
 
-*Read in the policy data
+*Import policy library, read in the policy data, and create a policy object
 
+  from capirca import policy
   conf = open(‘../acl/prod/pol/global.pol’).read()
-
-*Create a policy object
-
   pol = policy.ParsePolicy(conf, defs, optimize=True)
 
-*Output a policy in the desired format
+*Import a Generator library and output a policy in the desired format
 
+  from capirca import juniper
   for header in pol.headers:
     if ‘juniper’ in header.platforms:
       jcl = True …
