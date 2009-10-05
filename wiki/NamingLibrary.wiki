@@ -1,4 +1,4 @@
-#summary Naming Library Methods
+#summary Naming Library Usage
 = Introduction =
 
 Overview of the naming library methods
