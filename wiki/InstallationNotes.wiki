@@ -25,18 +25,18 @@ the libraries and files needed to begin using capirca.
 
 ==Generate Naming, Policy, and Platform Generator Output==
 *Import naming library and create naming object
-
+{{{
   from capirca import naming
   defs = naming.Naming(‘../acl/def’)
-
+}}}
 *Import policy library, read in the policy data, and create a policy object
-
+{{{
   from capirca import policy
   conf = open(‘../acl/prod/pol/global.pol’).read()
   pol = policy.ParsePolicy(conf, defs, optimize=True)
-
+}}}
 *Import a Generator library and output a policy in the desired format
-
+{{{
   from capirca import juniper
   for header in pol.headers:
     if ‘juniper’ in header.platforms:
@@ -45,3 +45,4 @@ the libraries and files needed to begin using capirca.
     output = juniper.Juniper(pol)
 
     print output
+}}}
