@@ -35,4 +35,4 @@ setup(name='capirca',
           'Topic :: System :: Networking',
           'Topic :: Security'],
       py_modules=['naming', 'policy', 'nacaddr', 'cisco', 'juniper',
-                  'iptables', 'policyreader'])
+                  'iptables', 'policyreader', 'aclcheck'])

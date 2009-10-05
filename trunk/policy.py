@@ -11,8 +11,8 @@ __author__ = 'pmoody@google.com'
 
 import sys
 
-import nacaddr
-import naming
+from capirca import nacaddr
+from capirca import naming
 
 from ply import lex   # Available at http://www.dabeaz.com/ply
 from ply import yacc  # Copy ply subdirectory of ply-3.3 to python lib

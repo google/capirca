@@ -9,7 +9,7 @@ __author__ = 'watson@google.com (Tony Watson)'
 
 import logging
 import nacaddr
-import policy
+from capirca import policy
 
 
 class Term(object):
