@@ -10,7 +10,7 @@ __author__ = 'pmoody@google.com (Peter Moody)'
 import socket
 import logging
 import ipaddr
-import nacaddr
+from capirca import nacaddr
 
 
 _ACTION_TABLE = {

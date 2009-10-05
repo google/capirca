@@ -37,7 +37,7 @@ __author__ = 'watson@google.com (Tony Watson)'
 
 import glob
 
-import nacaddr
+from capirca import nacaddr
 
 
 class Error(Exception):

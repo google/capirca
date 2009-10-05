@@ -10,8 +10,8 @@ __author__ = 'pmoody@google.com (Peter Moody)'
 
 import logging
 
-import policy
-import nacaddr
+from capirca import policy
+from capirca import nacaddr
 
 
 # generic error class

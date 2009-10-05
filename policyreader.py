@@ -15,7 +15,7 @@ TODO: This library is currently incomplete, and does not allow access to
 
 __author__ = 'watson@google.com (Tony Watson)'
 
-import naming
+from capirca import naming
 
 
 class FileOpenError(Exception):
