@@ -27,7 +27,7 @@ the libraries and files needed to begin using capirca.
 *Import naming library and create naming object
 {{{
   from capirca import naming
-  defs = naming.Naming(‘../acl/def’)
+  defs = naming.Naming(‘../acl/def/’)
 }}}
 *Import policy library, read in the policy data, and create a policy object
 {{{
