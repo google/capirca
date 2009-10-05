@@ -1,0 +1,46 @@
+#summary Installation Notes.
+
+= Introduction =
+
+This page is intended to provide the necessary information needed to install
+the libraries and files needed to begin using capirca.
+
+
+= Details =
+
+==Install Ipaddr.py==
+*Download http://code.google.com/p/ipaddr-py/
+
+*Copy to python installation ./lib directory
+
+==Install Ply==
+*Download http://www.dabeaz.com/ply/
+
+*In ply-3.3 directory, copy ./ply subdirectory to python lib
+
+==Install Capirca libraries==
+*Download http://code.google.com/p/capirca
+
+*Copy to python installation ./lib directory
+
+*Create a naming object
+
+  defs = naming.Naming(‘../acl/def’)
+
+*Read in the policy data
+
+  conf = open(‘../acl/prod/pol/global.pol’).read()
+
+*Create a policy object
+
+  pol = policy.ParsePolicy(conf, defs, optimize=True)
+
+*Output a policy in the desired format
+
+  for header in pol.headers:
+    if ‘juniper’ in header.platforms:
+      jcl = True …
+  if jcl:
+    output = juniper.Juniper(pol)
+
+    print output
