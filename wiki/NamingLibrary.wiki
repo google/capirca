@@ -6,13 +6,13 @@ Overview of the naming library methods
 = Basic Usage =
 
 *Create a directory to hold the definitions files*
-
+{{{
 mkdir /path/to/definitions/directory
-
+}}}
 *Create network definitions files*
 
-_italic_(network defintions files must end in '.net')_italic_
-
+_(network defintions files must end in '.net')_
+{{{
 cat > /path/to/definitions/directory/NETWORKS.net
 
 INTERNAL = 10.0.0.0/8     # RFC1918
@@ -23,11 +23,11 @@ WEBSERVERS = 200.3.2.1/32 # webserver-1
 MAILSERVER = 200.3.2.5/32 # mailserver-1
 
 ^D
-
+}}}
 *Create service definitions files*
 
-_italic_(service defintions files must end in '.svc')_italic_
-
+_(service defintions files must end in '.svc')_
+{{{
 cat > /path/to/definitions/directory/SERVICES.svc
 
 HTTP = 80/tcp  # web traffic
@@ -37,21 +37,21 @@ DNS = 53/tcp
       53/udp
 
 ^D
-
+}}}
 *Create a naming object*
-
+{{{
 from capirca import naming
 
 defs = naming.Naming('/path/to/definitions/directory')
-
+}}}
 *Access Definitions From the Naming Object*
-
+{{{
 defs.GetNet('INTERNAL')
 
 defs.GetService('MAIL')
 
 defs.GetServiceByProto('DNS','udp')
-
+}}}
 
 
 
