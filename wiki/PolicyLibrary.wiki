@@ -50,8 +50,13 @@ The steps are:
   # Create a [http://code.google.com/p/capirca/wiki/NamingLibrary?ts=1254764924&updated=NamingLibrary naming object]
   # Read the policy definition data in
   # Generate the policy object 
+
 {{{
 defs = naming.Naming('/path/to/my/definitions/')
 data = open('/path/to/my/policy.pol').read()
 pol = policy.ParsePolicy(data, defs, optimize=True)
 }}}
+
+The policy object is now available for use.
+
+Typically, this policy object will next be passed to one of the output generators for rendering an access control filter.
