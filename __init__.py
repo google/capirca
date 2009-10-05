@@ -8,6 +8,12 @@
 # for various platforms that share common network and service
 # definitions.
 #
+# from capirca import naming
+# from capirca import policy
+# from capirca import cisco
+# from capirca import juniper
+# from capirca import iptables
+#
 #
 
 __version__ = '1.0.0'
