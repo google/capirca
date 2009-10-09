@@ -1,0 +1,77 @@
+#summary AclCheck Library
+
+= Introduction =
+
+Library to allow simple and easy checks on how a particular network session will react when it passes through a policy file.
+
+= Goals =
+
+  * Create an ACL verification library that permits easy integration into future tools
+  * Create ability to ensure critical services are not blocked when ACL changes occur resulting in service outages
+  * Allow secops engineers and customers to easily verify how specific connections may be handled by network filters
+  * Include command-line functionality for standalone usage
+
+= Usage = 
+The AclCheck code is designed to be used as a library, but also provides command-line functionality.
+
+{{{
+./aclcheck.py:
+  --definitions_directory: Directory where the definitions can be found.
+    (default: '/home/network/acl/def')
+  -d,--destination: Desintation IP address.
+  --destination_port: Destination port number.
+  -p,--policy_file: The NAC policy file to check.
+  --protocol: Protocol (tcp, udp, icmp, etc).
+  -s,--source: Source IP address.
+  --source_port: Source port number.
+}}}
+
+*Commandline example:*
+{{{
+ ./aclcheck.py --source_port 4096 --destination_port 80 -s 64.142.101.1 -d 209.85.129.0/24 --protocol tcp -p /home/network/acl/pol/edge_filter.pol 
+}}}
+
+*Library Usage:*
+The AclCheck library must be initialized with the following arguments:
+  * policy filename (filename, text-blob of a policy, or policy object)
+  * source address (ip address)
+  * destination address (ip address)
+  * source port (numeric port)
+  * destination port (numeric port)
+  * protocol (tcp, udp, icmp, etc.)
+
+The initialization process immediately processes the information to generate a list of possible matches.
+These matches are objects of type aclcheck.Match
+
+A list of aclcheck.Match objects can be retrieved by calling the Matches() method.  The Match objects have the following properties:
+  * filter (the specific filter within the policy that this match occured)
+  * term (the specific term within the filter that this match occured)
+  * action (the action specified by the matched term)
+  * possibles (a list of characteristics that may cause this term to match or not match, such as fragmentation or tcp flags.
+
+*Library Usage Example:*
+{{{
+from google3.ops.security.lib import aclcheck
+
+pol = '/home/network/acl/pol/edge_filter.pol'
+src = '64.142.101.126'
+dst = '209.85.129.0/24'
+sport = '4096'
+dport = '80'
+proto = 'tcp'
+
+check = aclcheck.AclCheck(pol, src, dst, sport, dport, proto)
+
+print str(check)
+
+for match in check.Matches():
+  print match.filter
+  print match.term
+  print match.action
+  for next in match.possibles:
+    print next
+}}}
+
+= Future Development =
+
+AclCheck was written to provide a common library for the development of network access control assurance and investigative tools.  The AclCheck class supports taking a policy argument that consists of either a filename, text-blob, or a policy object.  If a policy object is passed to AclCheck, the definitions_directory argument is ignored and may be set to 'None'.  By passing an already existing policy object to AclCheck, the run-time is greatly reduced for making multiple calls compared to re-reading the policy and definitions for individual checks.  
