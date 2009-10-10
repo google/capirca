@@ -44,19 +44,82 @@ term reject-everything {
 ^D
 }}}
 
-*Create a Policy Object*
+
+= Using Policy Objects in Generators =
+
+The following section is intended to help developers who would like to create new output generators, or to modify existing generators.  
+
+== Policy Object ==
+
+A policy object is collection of sections, such as header and terms, as well as their associated properties.  Each section includes a variety of properties such as source/destination addresses, protocols, ports, actions, etc.
+
+The policy.py module generates policy objects from policy files.
+
+_ParsePolicy( policy-string ):_  A policy object can be created by passing a string containing a policy to the ParsePolicy() class.
+
+=== Creating a Policy Object ===
 
 The steps are:
   # Create a [http://code.google.com/p/capirca/wiki/NamingLibrary?ts=1254764924&updated=NamingLibrary naming object]
   # Read the policy definition data in
   # Generate the policy object 
-
 {{{
-defs = naming.Naming('/path/to/my/definitions/')
-data = open('/path/to/my/policy.pol').read()
-pol = policy.ParsePolicy(data, defs, optimize=True)
+from capirca import naming
+from capirca import policy
+definitions = naming.Naming('/path/to/definitions/')
+policy_text = open('sample.pol').read()
+policy_object = policy.ParsePolicy(policy_text)
 }}}
 
 The policy object is now available for use.
 
 Typically, this policy object will next be passed to one of the output generators for rendering an access control filter.
+
+{{{
+from capirca import juniper
+print juniper.Juniper(policy_object)
+}}}
+
+== Headers ==
+for header, terms in policy.filters:
+    header.target
+    header.target.filter_name
+
+== Terms ===
+{{{
+for header, terms in policy.filters:
+    terms[x].action[]
+
+    # addresses - lists of nacaddr objects
+    terms[x].address[]
+    terms[x].destination_address[]
+    terms[x].destination_address_exclude[]
+    terms[x].source_address[]
+    terms[x].source_address_exclude[]
+    terms[x].destination-prefix
+    terms[x].source-prefix
+
+    # ports - list of tuples.  e.g. [(80, 80), (1024, 65535)]
+    terms[x].port[]
+    terms[x].destination_port[]
+    terms[x].source_port[]
+
+    # list of strings
+    terms[x].comment[]
+    terms[x].protocol[]
+    terms[x].protocol_except[]
+    terms[x].option[]
+    terms[x].verbatim[x].value[]
+
+    # string
+    terms[x].name    
+    terms[x].counter
+    terms[x].packet_length
+    terms[x].policer
+    terms[x].precedence
+    terms[x].qos
+    terms[x].routing_instance
+
+
+    terms[x].
+}}}
