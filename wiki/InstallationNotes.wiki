@@ -5,8 +5,9 @@
 This page is intended to provide the necessary information needed to install
 the libraries and files needed to begin using capirca.
 
-This page is change rapidly as the code is migrated from Google to open source and
-the new structure of the code and usage is finalized.
+This page will hopefully change rapidly as the code is migrated from its Google roots and to open source, and while the new structure of the code and usage is finalized.  Unfortunately, this page may be frequently out of date for short periods, but we will strive to keep it current.
+
+In its current form, this page is intended to provide a quick-start guide.  See the other wiki pages for more details.
 
 = Details =
 
