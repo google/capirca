@@ -21,18 +21,18 @@ the libraries and files needed to begin using capirca.
 ==Install Capirca libraries==
 *Download http://code.google.com/p/capirca
 
-**Copy to python installation ./lib directory
+**Copy the ./lib directory to your python install library
 
 ==Generate Naming, Policy, and Platform Generator Output==
 *Import naming library and create naming object
 {{{
   from capirca import naming
-  defs = naming.Naming(‘../acl/def/’)
+  defs = naming.Naming(‘./def/’)
 }}}
 *Import policy library, read in the policy data, and create a policy object
 {{{
   from capirca import policy
-  conf = open(‘../acl/prod/pol/global.pol’).read()
+  conf = open(‘./policy/sample.pol’).read()
   pol = policy.ParsePolicy(conf, defs, optimize=True)
 }}}
 *Import a Generator library and output a policy in the desired format
