@@ -36,6 +36,7 @@ import iptables
 #
 
 def usage():
+  """Display usage information."""
   print '%s' % sys.argv[0]
   print 'Optional Arguments:'
   print '-s [path]: policy source directory'
@@ -43,6 +44,10 @@ def usage():
   print '-n [path]: naming definitions directory'
   print '-o       : disable optimizations'
   print '-h       : help, display this message'
+
+def getfiles(dir):
+  """Return a list of files in the specified directory."""
+  pass
 
 def main(_):
   try:
@@ -74,6 +79,10 @@ def main(_):
   print 'Out: %s ' % output
   print 'Def: %s ' % defs
   print 'Opt: %s ' % optimize
+
+  def = naming.Naming(defs)
+  pols = getfiles(polsrc)
+
 
 
 if __name__ == "__main__":
