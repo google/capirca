@@ -5,6 +5,8 @@
 This page is intended to provide the necessary information needed to install
 the libraries and files needed to begin using capirca.
 
+This page is change rapidly as the code is migrated from Google to open source and
+the new structure of the code and usage is finalized.
 
 = Details =
 
@@ -24,18 +26,18 @@ the libraries and files needed to begin using capirca.
 **Copy the ./lib directory to your python install library
 
 ==Generate Naming, Policy, and Platform Generator Output==
-*Import naming library and create naming object
+*Import naming library and create [NamingLibrary naming object from definitions files]
 {{{
   from capirca import naming
   defs = naming.Naming(‘./def/’)
 }}}
-*Import policy library, read in the policy data, and create a policy object
+*Import policy library, read in the [PolicyFormat policy data], and create a policy object
 {{{
   from capirca import policy
   conf = open(‘./policy/sample.pol’).read()
   pol = policy.ParsePolicy(conf, defs, optimize=True)
 }}}
-*Import a Generator library and output a policy in the desired format
+*Import a generator library and output a policy in the desired format
 {{{
   from capirca import juniper
   for header in pol.headers:
