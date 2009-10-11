@@ -1,4 +1,4 @@
-#!/usr/bin/python2.4
+#!/usr/bin/python
 #
 # Copyright 2009 Google Inc.
 #
@@ -16,7 +16,7 @@
 #
 
 
-"""A subclass of the google3.pyglib.net ipaddr library."""
+"""A subclass of the ipaddr library that includes comments for ipaddr objects."""
 
 __author__ = 'watson@google.com (Tony Watson)'
 
