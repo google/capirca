@@ -1,0 +1,77 @@
+#
+# Sample naming defintions for network objects
+#
+RFC1918 = 10.0.0.0/8      # non-public
+          172.16.0.0/12   # non-public
+          192.168.0.0/16  # non-public
+
+INTERNAL = RFC1918
+
+LOOPBACK = 127.0.0.1/32  # loopback
+           ::1/128       # ipv6 loopback
+
+RESERVED = 0.0.0.0/8           # reserved
+           127.0.0.0/8         # reserved
+           169.254.0.0/16      # reserved
+           192.0.2.0/24        # reserved
+           224.0.0.0/4         # reserved
+           240.0.0.0/4         # reserved
+           255.255.255.255/32  # reserved
+           0000::/8            # reserved by IETF
+           0100::/8            # reserved by IETF
+           0200::/7            # reserved by IETF
+           0400::/6            # reserved by IETF
+           0800::/5            # reserved by IETF
+           1000::/4            # reserved by IETF
+           4000::/3            # reserved by IETF
+           6000::/3            # reserved by IETF
+           8000::/3            # reserved by IETF
+           A000::/3            # reserved by IETF
+           C000::/3            # reserved by IETF
+           E000::/4            # reserved by IETF
+           F000::/5            # reserved by IETF
+           F800::/6            # reserved by IETF
+           FC00::/7            # unique local unicast
+           FE00::/9            # reserved by IETF
+           FE80::/10           # link local unicast
+           FEC0::/10           # site-local
+           FF00::/8            # multicast
+
+BOGON = 1.0.0.0/8      # unallocated
+        5.0.0.0/8      # unallocated
+        14.0.0.0/8     # unallocated
+        23.0.0.0/8     # unallocated
+        27.0.0.0/8     # unallocated
+        31.0.0.0/8     # unallocated
+        36.0.0.0/8     # unallocated
+        37.0.0.0/8     # unallocated
+        39.0.0.0/8     # unallocated
+        42.0.0.0/8     # unallocated
+        42.0.0.0/8     # unallocated
+        49.0.0.0/8     # unallocated
+        50.0.0.0/8     # unallocated
+        100.0.0.0/8    # unallocated
+        101.0.0.0/8    # unallocated
+        102.0.0.0/8    # unallocated
+        103.0.0.0/8    # unallocated
+        104.0.0.0/8    # unallocated
+        105.0.0.0/8    # unallocated
+        106.0.0.0/8    # unallocated
+        107.0.0.0/8    # unallocated
+        176.0.0.0/8    # unallocated
+        177.0.0.0/8    # unallocated
+        179.0.0.0/8    # unallocated
+        181.0.0.0/8    # unallocated
+        185.0.0.0/8    # unallocated
+        223.0.0.0/8    # unallocated
+        3FFE::/16      # 6bone
+        5F00::/8       # 6bone
+        2001:DB8::/32  # IPv6 documentation prefix
+
+RFC_3330 = 169.254.0.0/16  # special use IPv4 addresses - netdeploy
+
+LINKLOCAL = FE80::/10  # IPv6 link-local
+
+
+
+

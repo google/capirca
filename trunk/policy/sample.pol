@@ -1,0 +1,73 @@
+#
+# This is an example policy for capirca
+#
+header {
+  comment:: "this is a sample edge input filter"
+  target:: juniper edge-inbound
+  target:: cisco edge-inbound
+  target:: iptables INPUT
+}
+
+term drop-from-bogons {
+  source-address: BOGON
+  action:: drop
+}
+
+term drop-from-reserved {
+  source-address:: RESERVED
+  action:: drop
+}
+
+term drop-to-rfc1918 {
+  destination-address:: RFC1918
+  action:: drop
+}
+
+term permit-mail-services {
+  destination-address:: MAIL_SERVERS
+  protocol:: tcp
+  destination-port:: MAIL_SERVICES
+  action:: accept
+}
+
+term permit-web-services {
+  destination-address:: WEB_SERVERS
+  protocol:: tcp
+  destination-port:: WEB_SERVICES
+  action:: accept
+}
+
+term permit-tcp-established {
+  destination-address:: MAIL_SERVERS WEB_SERVERS PUBLIC_NAT
+  protocol:: tcp
+  option:: tcp-established
+  action:: accept
+}
+
+term permit-udp-established {
+  destination-address:: MAIL_SERVERS WEB_SERVERS PUBLIC_NAT
+  protocol:: udp
+  option:: established
+  action:: accept
+}
+
+term default-deny {
+  action:: drop
+}
+
+header {
+  comment:: "this is a sample output filter"
+  target:: juniper edge-outbound
+  target:: cisco edge-outbound
+  target:: iptables OUTPUT
+}
+
+term drop-to-bad-destinations {
+  destination-address:: RFC1918 BOGONS RESERVED
+  action:: drop
+}
+
+term default-accept {
+  action:: accept
+}
+
