@@ -73,5 +73,14 @@ RFC_3330 = 169.254.0.0/16  # special use IPv4 addresses - netdeploy
 LINKLOCAL = FE80::/10  # IPv6 link-local
 
 
+# The following are sample entires intended for us in the included
+# sample policy file.  These should be removed.
 
+WEB_SERVERS = 200.1.1.1/32  # web server 1
+              200.1.1.2/32  # web server 2
+
+MAIL_SERVERS = 200.1.1.4/32 # mail server 1
+               200.1.1.5/32 # mail server 2
+
+PUBLIC_NAT = 200.1.1.3/32   # company NAT address
 
