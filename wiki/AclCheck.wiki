@@ -33,7 +33,7 @@ The AclCheck code is designed to be used as a library, but also provides command
 
 *Library Usage:*
 The AclCheck library must be initialized with the following arguments:
-  * policy filename (filename, text-blob of a policy, or policy object)
+  * [PolicyFormat policy filename] (filename, text-blob of a policy, or policy object)
   * source address (ip address)
   * destination address (ip address)
   * source port (numeric port)
@@ -74,4 +74,4 @@ for match in check.Matches():
 
 = Future Development =
 
-AclCheck was written to provide a common library for the development of network access control assurance and investigative tools.  The AclCheck class supports taking a policy argument that consists of either a filename, text-blob, or a policy object.  If a policy object is passed to AclCheck, the definitions_directory argument is ignored and may be set to 'None'.  By passing an already existing policy object to AclCheck, the run-time is greatly reduced for making multiple calls compared to re-reading the policy and definitions for individual checks.  
+AclCheck was written to provide a common library for the development of network access control assurance and investigative tools.  The AclCheck class supports taking a policy argument that consists of either a filename, text-blob, or a policy object.  If a policy object is passed to AclCheck, the [NamingLibrary naming] definitions_directory argument is ignored and may be set to 'None'.  By passing an already existing policy object to AclCheck, the run-time is greatly reduced for making multiple calls compared to re-reading the policy and definitions for individual checks.  
