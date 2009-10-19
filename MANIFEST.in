@@ -1,0 +1,4 @@
+include COPYING
+include policy/sample.pol
+include def/NETWORK.net
+include def/SERVICES.svc
