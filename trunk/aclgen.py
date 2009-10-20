@@ -50,6 +50,7 @@ def output_policies():
   for output_file in output_policy_dict:
     output = open(output_file, 'w')
     if output:
+      print 'writing %s' % output_file
       output.write(output_policy_dict[output_file])
 
 def main():
@@ -70,20 +71,18 @@ def main():
 
   for header in pol.headers:
     if 'juniper' in header.platforms:
-      print 'rendering juniper'
       render_policy(juniper.Juniper(pol), options.policy,
                     options.output_directory)
 
     if 'itpables' in header.platforms:
-      print 'rendering iptables'
       render_policy(iptables.Iptables(pol), options.policy,
                     options.output_directory)
 
     if 'cisco' in header.platforms:
-      print 'rendering cisco'
       render_policy(cisco.Cisco(pol), options.policy,
                     options.output_directory)
-    output_policies()
+
+  output_policies()
 
 if __name__ == '__main__':
   main()
