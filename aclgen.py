@@ -45,8 +45,10 @@ def main(options):
   if not defs:
     print 'problem loading definitions'
     return
-  
-  # now, let's open our policy file
+
+  # TODO(pmoody), --pol and --poldir are mutually exclusive, check if we've
+  # been given both and error if so. if we have a poldir, loop through the
+  # directory, looking for policy files to render.
   if not options.policy:
     return
   pol = policy.ParsePolicy(open(options.policy).read(), defs)
