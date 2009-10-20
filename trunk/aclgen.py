@@ -74,7 +74,7 @@ def main():
       render_policy(juniper.Juniper(pol), options.policy,
                     options.output_directory)
 
-    if 'itpables' in header.platforms:
+    if 'iptables' in header.platforms:
       render_policy(iptables.Iptables(pol), options.policy,
                     options.output_directory)
 
