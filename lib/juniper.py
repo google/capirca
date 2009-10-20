@@ -21,8 +21,8 @@ __author__ = 'pmoody@google.com (Peter Moody)'
 
 import logging
 
-from capirca import policy
-from capirca import nacaddr
+import policy
+import nacaddr
 
 
 # generic error class
@@ -273,7 +273,7 @@ class Term(object):
       # source port
       if self.term.source_port:
         ret_str.append(indent(8) + 'source-port ' +
-            self._group(self.term.source_port))
+                       self._group(self.term.source_port))
 
       # destination port
       if self.term.destination_port:
@@ -471,7 +471,7 @@ class Term(object):
         string: either the lower()'ed string or the ports, hyphenated
                 if they're a range, or by itself if it's not.
       """
-      if type(el) is str:
+      if isinstance(el, str):
         return el.lower()
       # type is a tuple below here
       elif el[0] == el[1]:
@@ -495,6 +495,8 @@ class Juniper(object):
   Args:
     pol: policy.Policy object
   """
+
+  suffix = '.jcl'
 
   def __init__(self, pol):
     # should we really have been called?

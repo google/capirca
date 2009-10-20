@@ -51,7 +51,7 @@ __author__ = 'watson@google.com (Tony Watson)'
 
 import glob
 
-from capirca import nacaddr
+import nacaddr
 
 
 class Error(Exception):
@@ -427,3 +427,4 @@ class Naming(object):
             self.unit.items.append(value_piece + ' # ' + comment)
           else:
             self.unit.items.append(value_piece)
+

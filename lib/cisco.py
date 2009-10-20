@@ -21,8 +21,9 @@ __author__ = 'pmoody@google.com (Peter Moody)'
 
 import socket
 import logging
-import ipaddr
-from capirca import nacaddr
+
+from third_party import ipaddr
+import nacaddr
 
 
 _ACTION_TABLE = {
@@ -244,8 +245,8 @@ class ObjectGroupTerm(object):
     self.filter_name = filter_name
 
   def __str__(self):
-    source_address = {}
-    destination_address = {}
+    source_address_dict = {}
+    destination_address_dict = {}
 
     ret_str = ['\n']
     ret_str.append('remark %s' % self.term.name)
@@ -263,33 +264,37 @@ class ObjectGroupTerm(object):
 
 
     # protocol
-    if not self.term.protocol:
-      self.term.protocol = ['ip']
+    protocol = self.term.protocol
+    if not protocol:
+      protocol = ['ip']
     else:
       # fix the protocol, b/1746531
-      self.term.protocol = map(lambda x: FixupProtocol(x), self.term.protocol)
+      protocol = map(lambda x: FixupProtocol(x), self.term.protocol)
 
     # addresses
-    if not self.term.source_address:
-      self.term.source_address = [nacaddr.IPv4('0.0.0.0/0', token='ANY')]
-    source_address[self.term.source_address[0].parent_token] = True
+    source_address = self.term.source_address
+    if source_address:
+      source_address = [nacaddr.IPv4('0.0.0.0/0', token='ANY')]
+    source_address_dict[source_address[0].parent_token] = True
 
-    if not self.term.destination_address:
-      self.term.destination_address = [nacaddr.IPv4('0.0.0.0/0', token='ANY')]
-    destination_address[self.term.destination_address[0].parent_token] = True
-
+    destination_address = self.term.destination_address
+    if not destination_address:
+      destination_address = [nacaddr.IPv4('0.0.0.0/0', token='ANY')]
+    destination_address_dict[destination_address[0].parent_token] = True
 
     # ports
-    if not self.term.source_port:
-      self.term.source_port = [()]
-    if not self.term.destination_port:
-      self.term.destination_port = [()]
+    source_port = [()]
+    destination_port = [()]
+    if self.term.source_port:
+      source_port = self.term.source_port
+    if self.term.destination_port:
+      destination_port = self.term.destination_port
 
-    for saddr in source_address:
-      for daddr in destination_address:
-        for sport in self.term.source_port:
-          for dport in self.term.destination_port:
-            for proto in self.term.protocol:
+    for saddr in source_address_dict:
+      for daddr in destination_address_dict:
+        for sport in source_port:
+          for dport in destination_port:
+            for proto in protocol:
               ret_str.append(
                   self._TermletToStr(_ACTION_TABLE.get(str(
                   self.term.action[0])), proto, saddr, sport, daddr, dport))
@@ -341,11 +346,12 @@ class Term(object):
         return '\n'.join(ret_str)
 
     # protocol
-    if not self.term.protocol:
-      self.term.protocol = ['ip']
+    protocol = self.term.protocol
+    if not protocol:
+      protocol = ['ip']
     else:
       # fix the protocol, b/1746531
-      self.term.protocol = map(lambda x: FixupProtocol(x), self.term.protocol)
+      protocol = map(lambda x: FixupProtocol(x), self.term.protocol)
 
     # source address
     if self.term.source_address:
@@ -378,7 +384,6 @@ class Term(object):
     extra_options = []
     for opt in [str(x) for x in self.term.option]:
       if opt.find('tcp-established') == 0 and 6 in self.term.protocol:
-
         extra_options.append('established')
         self.term.option.remove('tcp-established')
       elif opt.find('established') == 0:
@@ -387,10 +392,12 @@ class Term(object):
     self.options.extend(extra_options)
 
     # ports
-    if not self.term.source_port:
-      self.term.source_port = [()]
-    if not self.term.destination_port:
-      self.term.destination_port = [()]
+    source_port = [()]
+    destination_port = [()]
+    if self.term.source_port:
+      source_port = self.term.source_port
+    if self.term.destination_port:
+      destination_port = self.term.destination_port
 
     # logging
     if self.term.logging:
@@ -398,14 +405,14 @@ class Term(object):
 
     for saddr in source_address:
       for daddr in destination_address:
-        for sport in self.term.source_port:
-          for dport in self.term.destination_port:
-            for proto in self.term.protocol:
+        for sport in source_port:
+          for dport in destination_port:
+            for proto in protocol:
 
               # This is a temporary fix until inet6 support is added
               # We simply ignore creating output for inet6 src or dst addresses
-              if ((type(saddr) is nacaddr.IPv6) or
-                  (type(daddr) is nacaddr.IPv6)):
+              if (isinstance(saddr, nacaddr.IPv6) or
+                  isinstance(daddr, nacaddr.IPv6)):
                 logging.debug('Ignoring unsupported IPv6 address in "%s"',
                               self.term.name)
               else:
@@ -473,6 +480,8 @@ class Term(object):
 class Cisco(object):
   """A cisco policy object."""
 
+  suffix = '.acl'
+  
   def __init__(self, pol):
     for header in pol.headers:
       if 'cisco' not in header.platforms:
