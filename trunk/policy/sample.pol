@@ -47,7 +47,7 @@ term permit-tcp-established {
 term permit-udp-established {
   destination-address:: MAIL_SERVERS WEB_SERVERS PUBLIC_NAT
   protocol:: udp
-  option:: established
+  source-port:: HIGH_PORTS
   action:: accept
 }
 
