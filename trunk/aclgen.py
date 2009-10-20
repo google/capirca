@@ -24,7 +24,6 @@ def render_policy(pol, input_file, output_directory):
                             output_directory)
   f = '%s%s' % (os.path.basename(input_file).split('.')[0], pol.suffix)
   output_file = os.path.join(output_dir, f)
-  print output_file
 
   if output_file in output_policy_dict:
     output_policy_dict[output_file] += str(pol)
