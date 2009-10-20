@@ -20,7 +20,7 @@
 
 __author__ = 'watson@google.com (Tony Watson)'
 
-import ipaddr  # Available at http://code.google.com/p/ipaddr-py
+from third_party import ipaddr  # Available at http://code.google.com/p/ipaddr-py
 
 def IP(ipaddress, comment='', token=''):
   """Take an ip string and return an object of the correct type.
@@ -253,3 +253,4 @@ class PrefixlenDiffInvalidError(ipaddr.PrefixlenDiffInvalidError):
 
 if __name__ == '__main__':
   pass
+

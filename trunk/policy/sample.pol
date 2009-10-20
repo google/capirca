@@ -8,19 +8,19 @@ header {
   target:: iptables INPUT
 }
 
-term drop-from-bogons {
-  source-address: BOGON
-  action:: drop
+term deny-from-bogons {
+  source-address:: BOGON
+  action:: deny
 }
 
-term drop-from-reserved {
+term deny-from-reserved {
   source-address:: RESERVED
-  action:: drop
+  action:: deny
 }
 
-term drop-to-rfc1918 {
+term deny-to-rfc1918 {
   destination-address:: RFC1918
-  action:: drop
+  action:: deny
 }
 
 term permit-mail-services {
@@ -52,7 +52,7 @@ term permit-udp-established {
 }
 
 term default-deny {
-  action:: drop
+  action:: deny
 }
 
 header {
@@ -62,12 +62,11 @@ header {
   target:: iptables OUTPUT
 }
 
-term drop-to-bad-destinations {
-  destination-address:: RFC1918 BOGONS RESERVED
-  action:: drop
+term deny-to-bad-destinations {
+  destination-address:: RFC1918 BOGON RESERVED
+  action:: deny
 }
 
 term default-accept {
   action:: accept
 }
-

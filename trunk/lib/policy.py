@@ -19,15 +19,13 @@
 """Parses the generic policy files and return a policy object for acl rendering.
 """
 
-__author__ = 'pmoody@google.com'
-
 import sys
 
-from capirca import nacaddr
-from capirca import naming
+import nacaddr
+import naming
 
-from ply import lex   # Available at http://www.dabeaz.com/ply
-from ply import yacc  # Copy ply subdirectory of ply-3.3 to python lib
+from third_party.ply import lex
+from third_party.ply import yacc
 
 
 DEFINITIONS = None

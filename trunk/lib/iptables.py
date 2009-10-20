@@ -22,7 +22,7 @@ __author__ = 'watson@google.com (Tony Watson)'
 
 import logging
 import nacaddr
-from capirca import policy
+import policy
 
 
 class Term(object):
@@ -235,6 +235,8 @@ class Term(object):
 class Iptables(object):
   """Generates filters and terms from provided policy object."""
 
+  suffix = '.ipt'
+
   def __init__(self, pol):
     for header in pol.headers:
       if 'iptables' not in header.platforms:
@@ -320,3 +322,4 @@ class TcpEstablishedError(Error):
 
 class UnsupportedDefaultAction(Error):
   """Raised when a filter has an impermissible default action specified."""
+
