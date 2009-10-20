@@ -11,22 +11,14 @@ In its current form, this page is intended to provide a quick-start guide.  See 
 
 = Details =
 
-==Install Ipaddr.py==
-*Download http://code.google.com/p/ipaddr-py/
+==Quick Start==
+In the install directory, simply run:
+{{{
+python aclgen.py -d def -p policies/sample.pol -o filters
+}}}
+This should generate sample output filters for cisco, juniper and iptables from the provided sample.pol policy file and the predefined network and service definitions.
 
-**Copy to python installation ./lib directory
-
-==Install Ply==
-*Download http://www.dabeaz.com/ply/
-
-**In ply-3.3 directory, copy ./ply subdirectory to python lib
-
-==Install Capirca libraries==
-*Download http://code.google.com/p/capirca
-
-**Copy the ./lib directory to your python install library
-
-==Generate Naming, Policy, and Platform Generator Output==
+==Manually Generating Naming, Policy, and Platform Generator Output==
 *Import naming library and create [NamingLibrary naming object from definitions files]
 {{{
   from capirca import naming
