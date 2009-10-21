@@ -97,7 +97,9 @@ class Term(object):
 
     # protocol
     if not self.term.protocol:
-      self.term.protocol = [policy.VarType(policy.VarType.PROTOCOL, 'all')]
+      term_protocol = [policy.VarType(policy.VarType.PROTOCOL, 'all')]
+    else:
+      term_protocol = self.term.protocol
 
     # source address
     term_saddr = self.term.source_address
@@ -120,18 +122,22 @@ class Term(object):
     # because we are looping through ports, we must have something in each
     # so we define as null if empty and later replace with ''.
     if not self.term.source_port:
-      self.term.source_port = ['NULL']
+      term_source_port = ['NULL']
+    else:
+      term_source_port = self.term.source_port
     if not self.term.destination_port:
-      self.term.destination_port = ['NULL']
+      term_destination_port = ['NULL']
+    else:
+      term_destination_port = self.term.destination_port
 
     # options
     tcp_flags = []
     for next in [str(x) for x in self.term.option]:
-      if (next.find('established') == 0 and self.term.protocol == ['tcp']
+      if (next.find('established') == 0 and term_protocol == ['tcp']
           and 'ESTABLISHED' not in [x.strip() for x in self.options]):
         self.options.append('-m state --state ESTABLISHED,RELATED')
       if next.find('tcp-established') == 0:
-        if self.term.protocol == ['tcp']:
+        if term_protocol == ['tcp']:
           # only allow tcp-established if proto is explicitly 'tcp' only
           self.options.append('-m state --state ESTABLISHED,RELATED')
         else:
@@ -144,11 +150,11 @@ class Term(object):
 
     for saddr in term_saddr:
       for daddr in term_daddr:
-        for sport in self.term.source_port:
+        for sport in term_source_port:
           if sport == 'NULL': sport = ''
-          for dport in self.term.destination_port:
+          for dport in term_destination_port:
             if dport == 'NULL': dport = ''
-            for protocol in self.term.protocol:
+            for protocol in term_protocol:
               ret_str.append(self._FormatPart(
                   self.af,
                   str(protocol),
