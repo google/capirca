@@ -71,16 +71,20 @@ def main():
 
   for header in pol.headers:
     if 'juniper' in header.platforms:
-      render_policy(juniper.Juniper(pol), options.policy,
-                    options.output_directory)
-
-    if 'iptables' in header.platforms:
-      render_policy(iptables.Iptables(pol), options.policy,
-                    options.output_directory)
-
+      jcl = True
     if 'cisco' in header.platforms:
-      render_policy(cisco.Cisco(pol), options.policy,
-                    options.output_directory)
+      acl = True
+    if 'iptables' in header.platforms:
+      ipt = True
+  if jcl:
+    render_policy(juniper.Juniper(pol), options.policy,
+                  options.output_directory)
+  if acl:
+    render_policy(iptables.Iptables(pol), options.policy,
+                  options.output_directory)
+  if ipt:
+    render_policy(cisco.Cisco(pol), options.policy,
+                  options.output_directory)
 
   output_policies()
 
