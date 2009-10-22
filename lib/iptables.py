@@ -38,9 +38,7 @@ class Term(object):
     if len(self.term.name) > 24:
       raise TermNameTooLong(
           'Term %s is too long, limit is 24 characters.' %  self.term.name)
-    else:
-      # Preappend I_ or O_ to indicate directionality in term name
-      self.term_name = self.filter[:1] + '_' + self.term.name
+    
     self._ACTION_TABLE = {
       'accept': '-j ACCEPT',
       'deny': '-j DROP',
@@ -84,12 +82,10 @@ class Term(object):
       return '\n'.join(ret_str)
 
     # Create a new term
-    ret_str.append('-N ' + self.term_name)  # New term
-    # Add this term to the filters jump table
-    ret_str.append('-A ' + self.filter + ' -j ' + self.term_name)
+    ret_str.append('-N ' + self.term.name)  # New term
     for line in self.term.comment:
-      ret_str.append('-A ' + self.term_name + ' -m comment --comment "' +
-                     str(line) + '"')  # Term comments
+      ret_str.append('-A %s -m comment --comment "%s' %
+                     (self.term.name, str(line)))  # Term comments
 
     # if terms does not specify action, use filter default action
     if not self.term.action:
@@ -166,9 +162,10 @@ class Term(object):
                   tcp_flags,
                   self._ACTION_TABLE.get(str(self.term.action[0]))
                   ))
-
+    # Add this term to the filters jump table
+    ret_str.append('-A ' + self.filter + ' -j ' + self.term.name)
     return '\n'.join(str(v) for v in ret_str if v is not '')
-
+  
   def _FormatPart(self, af, protocol, saddr, sport, daddr, dport, options,
                   tcp_flags, action):
     """Compose one iteration of the term parts into a string.
@@ -196,7 +193,7 @@ class Term(object):
       return ''
     if (af == 'inet6') and (saddr.version != 6):
       return ''
-    filter_top = '-A ' + self.term_name
+    filter_top = '-A ' + self.term.name
     # fix addresses
     if saddr == self._all_ips:
       src = ''
