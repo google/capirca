@@ -54,6 +54,9 @@ def output_policies():
       output.write(output_policy_dict[output_file])
 
 def main():
+  jcl = False
+  acl = False
+  ipt = False
   # first, load our naming
   if not options.definitions:
     parser.error('no definitions supplied')
