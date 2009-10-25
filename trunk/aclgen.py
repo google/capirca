@@ -5,8 +5,10 @@
 # juniper firewall filters.
 
 # system imports
+import dircache
 from optparse import OptionParser
 import os
+import stat
 
 # compiler imports
 from lib import naming
@@ -17,6 +19,7 @@ from lib import cisco
 from lib import iptables
 from lib import juniper
 
+# TODO(pmoody): get rid of this global variable.
 output_policy_dict = {}
 
 parser = OptionParser()
@@ -30,14 +33,15 @@ parser.add_option('-p', '--pol',
                   dest='policy',
                   help='policy file')
 parser.add_option('', '--poldir',
-                  dest='policies',
+                  dest='policy_directory',
                   help='policy directory')
-(options, args) = parser.parse_args()
+(FLAGS, args) = parser.parse_args()
 
 
 def render_policy(pol, input_file, output_directory):
-  output_dir = os.path.join(os.path.dirname(os.path.dirname(input_file)),
-                            output_directory)
+  """Store the string representation of the rendered policy."""
+  input_file = input_file.lstrip('./')
+  output_dir = '/'.join([output_directory] + input_file.split('/')[1:-1])
   fname = '%s%s' % (os.path.basename(input_file).split('.')[0], pol.suffix)
   output_file = os.path.join(output_dir, fname)
 
@@ -47,49 +51,73 @@ def render_policy(pol, input_file, output_directory):
     output_policy_dict[output_file] = str(pol)
 
 def output_policies():
+  """Actually write the policies to disk overwriting existing files..
+
+    If the output directory doesn't exist, create it.
+  """
   for output_file in output_policy_dict:
+    if not os.path.isdir(os.path.dirname(output_file)):
+      os.mkdir(os.path.dirname(output_file))
     output = open(output_file, 'w')
     if output:
       print 'writing %s' % output_file
       output.write(output_policy_dict[output_file])
 
-def main():
+def load_policies(base_dir):
+  """Recurssively load the polices in a given directory."""
+  policies = []
+  for dirfile in dircache.listdir(base_dir):
+    fname = os.path.join(base_dir, dirfile)
+    if os.path.isdir(fname):
+      policies.extend(load_policies(fname))
+    elif fname.endswith('.pol'):
+      policies.append(fname)
+  return policies
+
+def parse_policies(policies, defs):
+  """Parse and store the rendered policies."""
   jcl = False
   acl = False
   ipt = False
+  for pol in policies:
+    p = policy.ParsePolicy(open(pol).read(), defs)
+    for header in p.headers:
+      if 'juniper' in header.platforms:
+        jcl = True
+      if 'cisco' in header.platforms:
+        acl = True
+      if 'itpables' in header.platforms:
+        ipt = True
+
+  if jcl:
+    render_policy(juniper.Juniper(p), pol, FLAGS.output_directory)
+  if acl:
+    render_policy(cisco.Cisco(p), pol, FLAGS.output_directory)
+  if ipt:
+    render_policy(iptables.Iptables(p), pol, FLAGS.output_directory)
+
+    
+def main():
+  """the main entry point."""
   # first, load our naming
-  if not options.definitions:
+  if not FLAGS.definitions:
     parser.error('no definitions supplied')
-  defs = naming.Naming(options.definitions)
+  defs = naming.Naming(FLAGS.definitions)
   if not defs:
     print 'problem loading definitions'
     return
 
-  # TODO(pmoody), --pol and --poldir are mutually exclusive, check if we've
-  # been given both and error if so. if we have a poldir, loop through the
-  # directory, looking for policy files to render.
-  if not options.policy:
-    parser.error('no policy supplied')
-  pol = policy.ParsePolicy(open(options.policy).read(), defs)
+  policies_to_render = []
+  if FLAGS.policy_directory:
+    if FLAGS.policy:
+      raise ValueError('policy and policy_directory are mutually exclusive')
+    policies_to_render = load_policies(FLAGS.policy_directory)
+  elif FLAGS.policy:
+    policies_to_render.append(FLAGS.policy)
 
-  for header in pol.headers:
-    if 'juniper' in header.platforms:
-      jcl = True
-    if 'cisco' in header.platforms:
-      acl = True
-    if 'iptables' in header.platforms:
-      ipt = True
-  if jcl:
-    render_policy(juniper.Juniper(pol), options.policy,
-                  options.output_directory)
-  if acl:
-    render_policy(iptables.Iptables(pol), options.policy,
-                  options.output_directory)
-  if ipt:
-    render_policy(cisco.Cisco(pol), options.policy,
-                  options.output_directory)
-
+  parse_policies(policies_to_render, defs)
   output_policies()
 
 if __name__ == '__main__':
   main()
+
