@@ -109,6 +109,29 @@ accept
 
 }}}
 
+When exact matches are desired (e.g. not tcp-established, action "next", etc.), you can access the ExactMatches() method:
+{{{
+for match in check.ExactMatches():
+  print match.filter
+  print match.term
+  print match.action
+  for next in match.possibles:
+    print next
+  print '---'
+}}}
+which would render...
+{{{
+edge-inbound
+default-deny
+deny
+---
+edge-outbound
+default-accept
+accept
+---
+}}}
+
+Notice that ExactMatches() method output differs from Matches() in that the term "permit-tcp-established" no longer appears, since the terms has the "optional" argument requiring the session be an established TCP session.  
 
 = Future Development =
 
