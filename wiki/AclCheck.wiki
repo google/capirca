@@ -5,11 +5,27 @@
 Library to allow simple and easy checks on how a particular network session will react when it passes through a policy file.
 
 = Goals =
-
   * Create an ACL verification library that permits easy integration into future tools
   * Create ability to ensure critical services are not blocked when ACL changes occur resulting in service outages
   * Allow secops engineers and customers to easily verify how specific connections may be handled by network filters
   * Include command-line functionality for standalone usage
+
+= AclCheck Methods = 
+An AclCheck object has the following methods available:
+
+  * *Matches():* Return a list of aclcheck.Match objects.
+  * *ExactMatches():* Do not return matches that are conditional, such as requiring an established TCP connection, or would continue on to the next term with an action of 'next'.
+  * *ActionMatch(action='foo'):*  Only return matches where the action taken would be one of the following: _'accept', 'deny', 'reject', 'next', 'reject-with-tcp-rst'_.
+  * *DescribeMatches():* Returns a text blob describing the matches that would occur.
+
+== Match Object Methods ==
+Most AclCheck methods return "match" objects which have the following properties:
+  * *action:* The action that will be taken in this matching term
+  * *filter:* The name of the filter containing this term
+  * *possibles:* A list of strings containing reasons why this may or may not match
+  * *qos:* The quality of service level applied to this term
+  * *term:* The name of the matching term
+
 
 = Usage = 
 The AclCheck code is designed to be used as a library, but also provides command-line functionality.
