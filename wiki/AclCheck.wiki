@@ -51,26 +51,64 @@ A list of aclcheck.Match objects can be retrieved by calling the Matches() metho
 
 *Library Usage Example:*
 {{{
-from google3.ops.security.lib import aclcheck
+from lib import naming
+from lib import policy
+from lib import aclcheck
 
-pol = '/home/network/acl/pol/edge_filter.pol'
+defs = naming.Naming('./def')
+pol = policy.ParsePolicy(open('./policies/sample.pol').read(), defs)
 src = '64.142.101.126'
-dst = '209.85.129.0/24'
+dst = '200.1.1.1'
 sport = '4096'
-dport = '80'
+dport = '25'
 proto = 'tcp'
 
 check = aclcheck.AclCheck(pol, src, dst, sport, dport, proto)
 
 print str(check)
+}}}
+would render...
+{{{
+  filter: edge-inbound
+          term: permit-tcp-established (possible match)
+                accept if ['tcp-est']
+          term: default-deny
+                deny
+  filter: edge-outbound
+          term: default-accept
+                accept
+}}}
 
+
+Alternatively, the individual details of each match can be used as follows:
+{{{
 for match in check.Matches():
   print match.filter
   print match.term
   print match.action
   for next in match.possibles:
     print next
+  print '---'
 }}}
+
+would render...
+{{{
+edge-inbound
+permit-tcp-established
+accept
+tcp-est
+---
+edge-inbound
+default-deny
+deny
+---
+edge-outbound
+default-accept
+accept
+---
+
+}}}
+
 
 = Future Development =
 
