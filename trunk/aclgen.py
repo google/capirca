@@ -1,6 +1,20 @@
 #!/usr/bin/env python
 #
-# this is the beginnings of the tool which will render policy
+# Copyright 2009 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# This is an sample tool which will render policy
 # files into usable iptables tables, cisco access lists or
 # juniper firewall filters.
 
@@ -25,16 +39,20 @@ output_policy_dict = {}
 parser = OptionParser()
 parser.add_option('-d', '--def',
                   dest='definitions',
-                  help='defintions directory')
+                  help='defintions directory',
+                  default='./def')
 parser.add_option('-o', '--output_directory',
                   dest='output_directory',
-                  default='filter', help='output directory')
+                  default='filter',
+                  help='output directory',
+                  default='./filters')
 parser.add_option('-p', '--pol',
                   dest='policy',
                   help='policy file')
 parser.add_option('', '--poldir',
                   dest='policy_directory',
-                  help='policy directory')
+                  help='policy directory',
+                  default='./policies')
 (FLAGS, args) = parser.parse_args()
 
 
@@ -86,7 +104,7 @@ def parse_policies(policies, defs):
         jcl = True
       if 'cisco' in header.platforms:
         acl = True
-      if 'itpables' in header.platforms:
+      if 'iptables' in header.platforms:
         ipt = True
 
   if jcl:
