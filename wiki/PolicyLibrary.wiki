@@ -66,9 +66,9 @@ The steps are:
 {{{
 from capirca import naming
 from capirca import policy
-definitions = naming.Naming('/path/to/definitions/')
-policy_text = open('sample.pol').read()
-policy_object = policy.ParsePolicy(policy_text)
+definitions = naming.Naming('./def/')  
+policy_text = open('./policies/sample.pol').read()
+policy_object = policy.ParsePolicy(policy_text, definitions)
 }}}
 
 The policy object is now available for use.
