@@ -16,18 +16,14 @@
 #
 
 
-"""Check where hosts, ports and protocols are matched in a NAC policy.
-
-   Design document:
-     https://docs.google.com/a/google.com/Doc?docid=cc9mgcsg_85db9cmhfr&hl=en
-"""
+"""Check where hosts, ports and protocols are matched in a capirca policy."""
 
 __author__ = 'watson@google.com (Tony Watson)'
 
 import sys
-from capirca import nacaddr
-from capirca import policy
-from capirca import port
+import nacaddr
+import policy
+import port
 
 
 class Error(Exception):
