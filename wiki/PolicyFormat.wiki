@@ -173,7 +173,7 @@ Below is an example policy file for a Juniper target platform.  It contains two 
 
 {{{
 header {
-  comment:: "edge input filter for some network."
+  comment:: "edge input filter for sample network."
   target:: juniper edge-inbound
 }
 term discard-spoofs {
@@ -208,7 +208,7 @@ term default-deny {
 }
 
 header {
-  comment:: "edge output filter for some network."
+  comment:: "edge output filter for sample network."
   target:: juniper edge-outbound
 }
 term drop-internal-sourced-outbound {
