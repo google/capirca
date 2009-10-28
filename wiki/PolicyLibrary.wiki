@@ -6,43 +6,11 @@ The policy library is intended for parsing the generic high-level policy files a
 
 
 = Basic Usage =
+A policy object is created based on a policy text file.
 
-*Create a Policy Definition*
+For information on how to define policy text files, please read the [PolicyFormat Policy Format] documentation.
 
-_policy definitions must end in '.pol'_
-{{{
-cat > /path/to/my/policy.pol
-
-header {
-  comment:: "My simple access policy."
-  target:: juniper our-edge-filter
-}
-
-term reject-internal {
-  source-address:: INTERNAL
-  action:: deny
-}
-
-term accept-web {
-  destination-address:: WEBSERVERS
-  protocol:: tcp
-  destination-port:: HTTP
-  action:: accept
-}
-
-term accept-mail {
-  destination-address:: MAILSERVER
-  destination-port:: MAIL
-  protocol:: tcp
-  action:: accept
-}
-
-term reject-everything {
-  action:: reject
-}
-
-^D
-}}}
+For testing, you can use the provided [http://code.google.com/p/capirca/source/browse/trunk/policies/sample.pol _sample.pol_] policy contained in the policies directory.
 
 
 = Using Policy Objects in Generators =
