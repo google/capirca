@@ -183,7 +183,7 @@ term discard-spoofs {
 term permit-ipsec-access {
   source-address:: REMOTE_OFFICES
   destination-address:: VPN_HUB
-  protocol: 50
+  protocol:: 50
   action:: accept
 }
 term permit-ike-access {
