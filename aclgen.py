@@ -43,7 +43,6 @@ parser.add_option('-d', '--def',
                   default='./def')
 parser.add_option('-o', '--output_directory',
                   dest='output_directory',
-                  default='filter',
                   help='output directory',
                   default='./filters')
 parser.add_option('-p', '--pol',
