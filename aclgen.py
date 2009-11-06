@@ -88,9 +88,7 @@ def load_policies(base_dir):
     if os.path.isdir(fname):
       policies.extend(load_policies(fname))
     elif fname.endswith('.pol'):
-      print 'found policy %s' % fname
       policies.append(fname)
-  print policies
   return policies
 
 def parse_policies(policies, defs):
