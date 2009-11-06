@@ -88,7 +88,9 @@ def load_policies(base_dir):
     if os.path.isdir(fname):
       policies.extend(load_policies(fname))
     elif fname.endswith('.pol'):
+      print 'found policy %s' % fname
       policies.append(fname)
+  print policies
   return policies
 
 def parse_policies(policies, defs):
@@ -106,12 +108,12 @@ def parse_policies(policies, defs):
       if 'iptables' in header.platforms:
         ipt = True
 
-  if jcl:
-    render_policy(juniper.Juniper(p), pol, FLAGS.output_directory)
-  if acl:
-    render_policy(cisco.Cisco(p), pol, FLAGS.output_directory)
-  if ipt:
-    render_policy(iptables.Iptables(p), pol, FLAGS.output_directory)
+    if jcl:
+      render_policy(juniper.Juniper(p), pol, FLAGS.output_directory)
+    if acl:
+      render_policy(cisco.Cisco(p), pol, FLAGS.output_directory)
+    if ipt:
+      render_policy(iptables.Iptables(p), pol, FLAGS.output_directory)
 
     
 def main():
@@ -126,7 +128,7 @@ def main():
 
   policies_to_render = []
   if FLAGS.policy_directory:
-    if FLAGS.policy:
+    if FLAGS.policy and FLAGS.policy_directory != './policies':
       raise ValueError('policy and policy_directory are mutually exclusive')
     policies_to_render = load_policies(FLAGS.policy_directory)
   elif FLAGS.policy:
