@@ -31,6 +31,7 @@ setup(name='capirca',
           'Topic :: Software Development :: Libraries',
           'Topic :: Security'],
       py_modules=['aclgen', 'lib.cisco', 'lib.iptables', 'lib.juniper',
-                  'lib.nacaddr', 'lib.policy', 'third_party.ipaddr',
-                  'third_party.ply.lex', 'third_party.ply.yacc'])
+                  'lib.nacaddr', 'lib.policy', 'lib.naming',
+                  'third_party.ipaddr','third_party.ply.lex',
+                  'third_party.ply.yacc'])
      
