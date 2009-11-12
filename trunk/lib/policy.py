@@ -29,7 +29,7 @@ from third_party.ply import yacc
 
 
 DEFINITIONS = None
-DEFAULT_DEFINITIONS = '/home/build/ops/network/acl/def'
+DEFAULT_DEFINITIONS = './def'
 _ACTIONS = set(('accept', 'deny', 'reject', 'next', 'reject-with-tcp-rst'))
 _LOGGING = set(('true', 'True', 'syslog', 'local'))
 _OPTIMIZE = True
