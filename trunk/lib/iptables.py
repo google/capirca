@@ -92,7 +92,7 @@ class Term(object):
 
     # Create a new term
     ret_str.append('-N %s' % self.term.name)  # New term
-    comments = WrapWords(self.term.comment, 30)
+    comments = WrapWords(self.term.comment, 40)
     # append comments to output
     if comments and comments[0] != '':
       for line in comments:
