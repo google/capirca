@@ -20,7 +20,6 @@
 
 __author__ = 'watson@google.com (Tony Watson)'
 
-import logging
 import nacaddr
 import policy
 
@@ -29,6 +28,16 @@ class Term(object):
   """Generate Iptables policy terms."""
 
   def __init__(self, term, filter_name, filter_action, af = 'inet'):
+    """
+    Setup a new term.
+
+    Args:
+      term: A policy.Term object to represent in iptables.
+      filter_name: The name of the filter chan to attach the term to.
+      filter_action: The default action of the filter.
+      af: Which address family ('inet' or 'inet6') to apply the term to.
+      truncate: Whether to truncate names to meet iptables limits.
+    """
     self.term = term  # term object
     self.filter = filter_name  # actual name of filter
     self.default_action = filter_action
@@ -82,10 +91,13 @@ class Term(object):
       return '\n'.join(ret_str)
 
     # Create a new term
-    ret_str.append('-N ' + self.term.name)  # New term
-    for line in self.term.comment:
-      ret_str.append('-A %s -m comment --comment "%s' %
-                     (self.term.name, str(line)))  # Term comments
+    ret_str.append('-N %s' % self.term.name)  # New term
+    comments = WrapWords(self.term.comment, 30)
+    # append comments to output
+    if comments and comments[0] != '':
+      for line in comments:
+        ret_str.append('-A %s -m comment --comment "%s"' %
+                       (self.term.name, str(line)))  # Term comments
 
     # if terms does not specify action, use filter default action
     if not self.term.action:
@@ -163,7 +175,7 @@ class Term(object):
                   self._ACTION_TABLE.get(str(self.term.action[0]))
                   ))
     # Add this term to the filters jump table
-    ret_str.append('-A ' + self.filter + ' -j ' + self.term.name)
+    ret_str.append('-A %s -j %s' % (self.filter, self.term.name))
     return '\n'.join(str(v) for v in ret_str if v is not '')
   
   def _FormatPart(self, af, protocol, saddr, sport, daddr, dport, options,
@@ -267,10 +279,12 @@ class Iptables(object):
       if (len(filter_options) > 0) and (filter_options[-1] in good_afs):
         filter_type = filter_options[-1]
       # Add comments for this filter
-      target.append('# Speedway Iptables ' + header.FilterName('iptables') +
-                    ' Policy')
-      for line in header.comment:
-        target.append('# ' + str(line))
+      target.append('# Speedway Iptables %s Policy' %
+                    header.FilterName('iptables'))
+      comments = WrapWords(header.comment, 70)
+      if comments and comments[0] != '':
+        for line in comments:
+          target.append('# %s' % line)
       target.append('#')
       # add the p4 tags
       p4_id = '$I' + 'd:$'
@@ -293,13 +307,49 @@ class Iptables(object):
       # setup the default filter states.
       # if default action policy not specified, do nothing.
       if default_action:
-        target.append('-P ' + filter_name + ' ' + default_action)
+        target.append('-P %s %s' % (filter_name, default_action))
 
       # add the terms
       for term in terms:
         target.append(str(Term(term, filter_name, default_action, filter_type)))
       target.append('\n')
     return '\n'.join(target)
+
+
+def WrapWords(textlist, size):
+  """Convert a list of strings into a new list of specified width.
+
+  Args:
+    textlist: a list of text strings
+    size: width of reformated strings
+  Returns:
+    text_new: converted list
+  """
+  text_new = []
+  for line in textlist:
+    if len(line) <= size:
+      text_new.append(line)
+    else:  # reformat and split lines longer than $size
+      words = line.replace('\n', ' \n ').split(' ')
+      # ^ make sure newlines split out as 'words' ^
+      line = ''
+      current_size = 0
+      for nextword in words:
+        if nextword == '\n':
+          text_new.append(line)
+          line = ''
+          current_size = 0
+        else:
+          current_size += len(nextword)
+          if current_size <= size:
+            line += '%s ' % nextword
+          else:
+            text_new.append(line[:-1])
+            current_size = len(nextword)
+            line = '%s ' % nextword
+      text_new.append(line[:-1])
+
+  return text_new
 
 
 # generic error class
