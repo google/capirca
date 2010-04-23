@@ -39,17 +39,17 @@ def IP(ipaddress, comment='', token=''):
   Notes:
     this is sort of a poor-mans factory method.
   """
-  a = ipaddr.IP(ipaddress)
+  a = ipaddr.IPNetwork(ipaddress)
   if a.version == 4:
     return IPv4(ipaddress, comment, token)
   elif a.version == 6:
     return IPv6(ipaddress, comment, token)
 
-class IPv4(ipaddr.IPv4):
+class IPv4(ipaddr.IPv4Network):
   """This subclass allows us to keep text comments related to each object."""
 
   def __init__(self, ip_string, comment='', token=''):
-    ipaddr.IPv4.__init__(self, ip_string)
+    ipaddr.IPv4Network.__init__(self, ip_string)
     self.text = comment
     self.token = token
     self.parent_token = token
@@ -67,7 +67,7 @@ class IPv4(ipaddr.IPv4):
     else:
       self.text = comment
 
-  def Supernet(self, prefixlen_diff=1):
+  def supernet(self, prefixlen_diff=1):
     """Override ipaddr.IPv4 supernet so we can maintain comments.
 
     See ipaddr.IPv4.Supernet for complete documentation.
@@ -78,25 +78,27 @@ class IPv4(ipaddr.IPv4):
       raise PrefixlenDiffInvalidError(
           'current prefixlen is %d, cannot have a prefixlen_diff of %d' % (
               self.prefixlen, prefixlen_diff))
-    ret_addr = IPv4(self.ip_ext + '/' + str(self.prefixlen - prefixlen_diff),
-                    token=self.token)
-    ret_addr.text = self.text
+    ret_addr = IPv4(ipaddr.IPv4Network.supernet(self, prefixlen_diff),
+                    comment=self.text, token=self.token)
     return ret_addr
 
+  # Backwards compatibility name from v1.
+  Supernet = supernet
 
-class IPv6(ipaddr.IPv6):
+
+class IPv6(ipaddr.IPv6Network):
   """This subclass allows us to keep text comments related to each object."""
 
   def __init__(self, ip_string, comment='', token=''):
-    ipaddr.IPv6.__init__(self, ip_string)
+    ipaddr.IPv6Network.__init__(self, ip_string)
     self.text = comment
     self.token = token
     self.parent_token = token
 
-  def Supernet(self, prefixlen_diff=1):
-    """Override ipaddr.IPv4 supernet so we can maintain comments.
+  def supernet(self, prefixlen_diff=1):
+    """Override ipaddr.IPv6Network supernet so we can maintain comments.
 
-    See ipaddr.IPv4.Supernet for complete documentation.
+    See ipaddr.IPv6Network.Supernet for complete documentation.
     """
     if self.prefixlen == 0:
       return self
@@ -104,10 +106,12 @@ class IPv6(ipaddr.IPv6):
       raise PrefixlenDiffInvalidError(
           'current prefixlen is %d, cannot have a prefixlen_diff of %d' % (
               self.prefixlen, prefixlen_diff))
-    ret_addr = IPv6(self.ip_ext + '/' + str(self.prefixlen - prefixlen_diff),
-                    token=self.token)
-    ret_addr.text = self.text
+    ret_addr = IPv6(ipaddr.IPv6Network.supernet(self, prefixlen_diff),
+                    comment=self.text, token=self.token)
     return ret_addr
+
+  # Backwards compatibility name from v1.
+  Supernet = supernet
 
   def AddComment(self, comment=''):
     """Append comment to self.text, comma seperated.
@@ -128,15 +132,15 @@ def _CollapseAddrListRecursive(addresses):
 
    Example:
 
-   ip1 = ipaddr.IPv4('1.1.0.0/24')
-   ip2 = ipaddr.IPv4('1.1.1.0/24')
-   ip3 = ipaddr.IPv4('1.1.2.0/24')
-   ip4 = ipaddr.IPv4('1.1.3.0/24')
-   ip5 = ipaddr.IPv4('1.1.4.0/24')
-   ip6 = ipaddr.IPv4('1.1.0.1/22')
+   ip1 = ipaddr.IPv4Network('1.1.0.0/24')
+   ip2 = ipaddr.IPv4Network('1.1.1.0/24')
+   ip3 = ipaddr.IPv4Network('1.1.2.0/24')
+   ip4 = ipaddr.IPv4Network('1.1.3.0/24')
+   ip5 = ipaddr.IPv4Network('1.1.4.0/24')
+   ip6 = ipaddr.IPv4Network('1.1.0.1/22')
 
    _CollapseAddrRecursive([ip1, ip2, ip3, ip4, ip5, ip6]) ->
-   [IPv4('1.1.0.0/22'), IPv4('1.1.4.0/24')]
+   [IPv4Network('1.1.0.0/22'), IPv4Network('1.1.4.0/24')]
 
    Note, this shouldn't be called directly, but is called via
    CollapseAddr([])
@@ -176,21 +180,21 @@ def CollapseAddrList(addresses):
 
   Example:  CollapseAddr(
     [IPv4('1.1.0.0/24'), IPv4('1.1.1.0/24')]) -> [IPv4('1.1.0.0/23')]
-    Note: this works just as well with Ipv6 addresses too.
+    Note: this works just as well with IPv6 addresses too.
 
   Args:
-     addresses: list of ipaddr.IP objects
+     addresses: list of ipaddr.IPNetwork objects
 
   Returns:
-    list of ipaddr.IP objects
+    list of ipaddr.IPNetwork objects
   """
-  return _CollapseAddrListRecursive(sorted(addresses,
-                                           cmp=ipaddr.BaseIP.CompareNetworks))
+  return _CollapseAddrListRecursive(
+      sorted(addresses, key=ipaddr._BaseNet._get_networks_key))
 
 
 def SortAddrList(addresses):
   """Return a sorted list of nacaddr objects."""
-  return sorted(addresses, cmp=ipaddr.BaseIP.CompareNetworks)
+  return sorted(addresses, cmp=ipaddr._BaseNet._get_networks_key)
 
 
 def RemoveAddressFromList(superset, exclude):
@@ -206,10 +210,10 @@ def RemoveAddressFromList(superset, exclude):
   ret_array = []
   for addr in superset:
     if exclude == addr:
-      # this is a bug in ipaddr. IP('1.1.1.1').AddressExclude(IP('1.1.1.1'))
-      # raises an error.
+      # this is a bug in ipaddr v1. IP('1.1.1.1').AddressExclude(IP('1.1.1.1'))
+      # raises an error.  Not tested in v2 yet.
       pass
-    elif exclude in addr:
+    elif exclude.version == addr.version and exclude in addr:
       ret_array.extend([IP(x) for x in addr.AddressExclude(exclude)])
     else:
       ret_array.append(addr)
@@ -239,18 +243,9 @@ def AddressListExclude(superset, excludes):
 ExcludeAddrs = AddressListExclude
 
 
-class IPAddressExclusionError(ipaddr.IPAddressExclusionError):
-  """Subclassed from ipaddr."""
-
-
-class IPTypeError(ipaddr.IPTypeError):
-  """Subclassed from ipaddr."""
-
-
-class PrefixlenDiffInvalidError(ipaddr.PrefixlenDiffInvalidError):
-  """Subclassed from ipaddr."""
+class PrefixlenDiffInvalidError(ipaddr.NetmaskValueError):
+  """Holdover from ipaddr v1."""
 
 
 if __name__ == '__main__':
   pass
-

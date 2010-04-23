@@ -78,6 +78,10 @@ class UndefinedAddressError(Error):
   """Raised if an address is referenced but not defined."""
 
 
+class UndefinedServiceError(Error):
+  """Raised if a service is referenced but not defined."""
+
+
 class _ItemUnit(object):
   """This class is a container for an index key and a list of associated values.
 
@@ -170,6 +174,9 @@ class Naming(object):
 
     Returns:
       rval2: a list of tokens that contain query or parents of query
+
+    Raises:
+      UndefinedServiceError: If the service name isn't defined.
     """
     rval = []
     rval2 = []
@@ -177,6 +184,8 @@ class Naming(object):
       for item in self.services[token].items:
         if item == query:
           rval.append(token)
+    if not rval:
+      raise UndefinedServiceError('No such service, %s' % query)
     for next in rval:
       done = False
       for token in self.services:
@@ -198,6 +207,9 @@ class Naming(object):
 
     Returns:
       A list of service values such as ['80/tcp', '443/tcp', '161/udp', ...]
+
+    Raises:
+      UndefinedServiceError: If the service name isn't defined.
     """
     expandset = set()
     already_done = set()
@@ -206,7 +218,7 @@ class Naming(object):
     data = query.split('#')     # Get the token keyword and remove any comment
     service_name = data[0].split()[0]  # strip and cast from list to string
     if service_name not in self.services:
-      return []
+      raise UndefinedServiceError('No such service, %s' % query)
 
     already_done.add(service_name)
 
@@ -236,6 +248,9 @@ class Naming(object):
 
     Returns:
       A list of service values of type 'proto', such as ['80', '443', ...]
+
+    Raises:
+      UndefinedServiceError: If the service name isn't defined.
     """
     services_set = set()
     proto = proto.upper()
@@ -244,7 +259,7 @@ class Naming(object):
     data = query.split('#')     # Get the token keyword and remove any comment
     servicename = data[0].split()[0]  # strip and cast from list to string
     if servicename not in self.services:
-      return []
+      raise UndefinedServiceError('No such service %s' % servicename)
 
     for service in self.GetService(servicename):
       if service and '/' in service:
@@ -302,7 +317,7 @@ class Naming(object):
         # we want to make sure that we're storing the network addresses
         # ie, FOO = 192.168.1.1/24 should actually return 192.168.1.0/24
         if addr.ip != addr.network:
-          addr = nacaddr.IP(addr.network_ext + '/' + str(addr.prefixlen))
+          addr = nacaddr.IP('%s/%d' % (addr.network, addr.prefixlen))
 
         addr.text = comment.lstrip()
         addr.token = token
