@@ -2,13 +2,18 @@
 # This is an example policy for capirca
 #
 header {
-  comment:: "this is a sample edge input filter"
+  comment:: "this is a sample edge input filter with a very very very long and
+        multi-line comment that"
+  comment:: "also has multiple entries."
   target:: juniper edge-inbound
-  target:: cisco edge-inbound
+  target:: cisco edge-inbound mixed
   target:: iptables INPUT
 }
 
 term deny-from-bogons {
+  comment:: "this is a sample edge input filter with a very very very long and
+        multi-line comment that"
+  comment:: "also has multiple entries."
   source-address:: BOGON
   action:: deny
 }
@@ -58,7 +63,7 @@ term default-deny {
 header {
   comment:: "this is a sample output filter"
   target:: juniper edge-outbound
-  target:: cisco edge-outbound
+  target:: cisco edge-outbound mixed
   target:: iptables OUTPUT
 }
 

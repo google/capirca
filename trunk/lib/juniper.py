@@ -38,6 +38,9 @@ class JuniperTermPortProtocolError(Error): pass
 class TcpEstablishedWithNonTcp(Error): pass
 
 
+class JuniperDuplicateTermError(Error): pass
+
+
 class Term(object):
   """Representation of an individual Juniper term.
 
@@ -273,7 +276,7 @@ class Term(object):
       # source port
       if self.term.source_port:
         ret_str.append(indent(8) + 'source-port ' +
-                       self._group(self.term.source_port))
+            self._group(self.term.source_port))
 
       # destination port
       if self.term.destination_port:
@@ -496,7 +499,7 @@ class Juniper(object):
     pol: policy.Policy object
   """
 
-  suffix = '.jcl'
+  _SUFFIX = '.jcl'
 
   def __init__(self, pol):
     # should we really have been called?
@@ -556,9 +559,15 @@ class Juniper(object):
       if interface_specific:
         target.append(' ' * 12 + 'interface-specific;')
 
-      # add the terms
+      # add the terms, raise an error if there is a repeat term name.
+      term_names = set()
       for term in terms:
-        target.append(str(Term(term, filter_type)))
+        if not term.name in term_names:
+          term_names.add(term.name)
+          target.append(str(Term(term, filter_type)))
+        else:
+          raise JuniperDuplicateTermError('You have a duplicate term: %s' %
+                                          term.name)
 
       target.append(' ' * 8 + '}')  # filter { ... }
       target.append(' ' * 4 + '}')  # family inet { ... }

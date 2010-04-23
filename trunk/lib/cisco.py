@@ -38,7 +38,7 @@ _ACTION_TABLE = {
 def FixupProtocol(proto):
   """Numeric representation of the protocol.
 
-  Arg:
+  Args:
     proto: the protocol, eg, 'tcp', 'ip'
 
   Returns:
@@ -130,12 +130,12 @@ class TermStandard(object):
         if addr.prefixlen == 32:
           ret_str.append('access-list %s %s %s' % (self.filter_name,
                                                    action,
-                                                   addr.ip_ext))
+                                                   addr.ip))
         else:
           ret_str.append('access-list %s %s %s %s' % (self.filter_name,
                                                       action,
-                                                      addr.network_ext,
-                                                      addr.hostmask_ext))
+                                                      addr.network,
+                                                      addr.hostmask))
 
     return '\n'.join(ret_str)
 
@@ -191,21 +191,21 @@ class ObjectGroup(object):
       # source address
       saddrs = term.GetAddressOfVersion('source_address', 4)
       # check to see if we've already seen this address.
-      if not saddrs[0].parent_token in addresses:
+      if saddrs and not saddrs[0].parent_token in addresses:
         addresses[saddrs[0].parent_token] = True
         ret_str.append('object-group ip address %s' % saddrs[0].parent_token)
         for addr in saddrs:
-          ret_str.append(' %s %s' % (addr.ip_ext, addr.netmask_ext))
+          ret_str.append(' %s %s' % (addr.ip, addr.netmask))
         ret_str.append('exit\n')
 
       # destination address
       daddrs = term.GetAddressOfVersion('destination_address', 4)
       # check to see if we've already seen this address
-      if not daddrs[0].parent_token in addresses:
+      if daddrs and not daddrs[0].parent_token in addresses:
         addresses[daddrs[0].parent_token] = True
         ret_str.append('object-group ip address %s' % daddrs[0].parent_token)
         for addr in term.GetAddressOfVersion('destination_address', 4):
-          ret_str.append(' %s %s' % (addr.ip_ext, addr.netmask_ext))
+          ret_str.append(' %s %s' % (addr.ip, addr.netmask))
         ret_str.append('exit\n')
 
       # source port
@@ -262,7 +262,6 @@ class ObjectGroupTerm(object):
           ret_str.append(str(next.value[1]))
         return '\n'.join(ret_str)
 
-
     # protocol
     protocol = self.term.protocol
     if not protocol:
@@ -273,15 +272,14 @@ class ObjectGroupTerm(object):
 
     # addresses
     source_address = self.term.source_address
-    if source_address:
+    if not self.term.source_address:
       source_address = [nacaddr.IPv4('0.0.0.0/0', token='ANY')]
     source_address_dict[source_address[0].parent_token] = True
 
     destination_address = self.term.destination_address
-    if not destination_address:
+    if not self.term.destination_address:
       destination_address = [nacaddr.IPv4('0.0.0.0/0', token='ANY')]
     destination_address_dict[destination_address[0].parent_token] = True
-
     # ports
     source_port = [()]
     destination_port = [()]
@@ -290,14 +288,14 @@ class ObjectGroupTerm(object):
     if self.term.destination_port:
       destination_port = self.term.destination_port
 
-    for saddr in source_address_dict:
-      for daddr in destination_address_dict:
+    for saddr in source_address:
+      for daddr in destination_address:
         for sport in source_port:
           for dport in destination_port:
             for proto in protocol:
               ret_str.append(
                   self._TermletToStr(_ACTION_TABLE.get(str(
-                  self.term.action[0])), proto, saddr, sport, daddr, dport))
+                      self.term.action[0])), proto, saddr, sport, daddr, dport))
 
     return '\n'.join(ret_str)
 
@@ -325,9 +323,13 @@ class ObjectGroupTerm(object):
 class Term(object):
   """A single ACL Term."""
 
-  def __init__(self, term):
+  def __init__(self, term, af=4):
     self.term = term
     self.options = []
+    if af == 6:
+      self.af = 6
+    else:
+      self.af = 4  # make 4, unless explicitly 6
 
   def __str__(self):
     ret_str = ['\n']
@@ -346,18 +348,17 @@ class Term(object):
         return '\n'.join(ret_str)
 
     # protocol
-    protocol = self.term.protocol
-    if not protocol:
+    if not self.term.protocol:
       protocol = ['ip']
     else:
-      # fix the protocol, b/1746531
+      # fix the protocol
       protocol = map(lambda x: FixupProtocol(x), self.term.protocol)
 
     # source address
     if self.term.source_address:
-      source_address = self.term.GetAddressOfVersion('source_address', 4)
+      source_address = self.term.GetAddressOfVersion('source_address', self.af)
       source_address_exclude = self.term.GetAddressOfVersion(
-          'source_address_exclude', 4)
+          'source_address_exclude', self.af)
       if source_address_exclude:
         source_address = nacaddr.ExcludeAddrs(
             source_address,
@@ -369,9 +370,9 @@ class Term(object):
     # destination address
     if self.term.destination_address:
       destination_address = self.term.GetAddressOfVersion(
-          'destination_address', 4)
+          'destination_address', self.af)
       destination_address_exclude = self.term.GetAddressOfVersion(
-          'destination_address_exclude', 4)
+          'destination_address_exclude', self.af)
       if destination_address_exclude:
         destination_address = nacaddr.ExcludeAddrs(
             destination_address,
@@ -383,12 +384,11 @@ class Term(object):
     # options
     extra_options = []
     for opt in [str(x) for x in self.term.option]:
-      if opt.find('tcp-established') == 0 and 6 in self.term.protocol:
+      if opt.find('tcp-established') == 0 and 6 in protocol:
         extra_options.append('established')
-        self.term.option.remove('tcp-established')
-      elif opt.find('established') == 0:
-        # already taken care of in policy
-        self.term.option.remove('established')
+      elif opt.find('established') == 0 and 6 in protocol:
+        # only needed for TCP, for other protocols policy.py handles high-ports
+        extra_options.append('established')
     self.options.extend(extra_options)
 
     # ports
@@ -408,14 +408,17 @@ class Term(object):
         for sport in source_port:
           for dport in destination_port:
             for proto in protocol:
-
-              # This is a temporary fix until inet6 support is added
-              # We simply ignore creating output for inet6 src or dst addresses
-              if (isinstance(saddr, nacaddr.IPv6) or
-                  isinstance(daddr, nacaddr.IPv6)):
-                logging.debug('Ignoring unsupported IPv6 address in "%s"',
-                              self.term.name)
-              else:
+              # only output address family appropriate IP addresses
+              do_output = False
+              if self.af == 4:
+                if (((type(saddr) is nacaddr.IPv4) or (saddr == 'any')) and
+                    ((type(daddr) is nacaddr.IPv4) or (daddr == 'any'))):
+                  do_output = True
+              if self.af == 6:
+                if (((type(saddr) is nacaddr.IPv6) or (saddr == 'any')) and
+                    ((type(daddr) is nacaddr.IPv6) or (daddr == 'any'))):
+                  do_output = True
+              if do_output:
                 ret_str.append(self._TermletToStr(
                     _ACTION_TABLE.get(str(self.term.action[0])),
                     proto,
@@ -442,18 +445,28 @@ class Term(object):
     Returns:
       string of the cisco acl line, suitable for printing.
     """
-
-    if type(saddr) is nacaddr.IPv4 or type(saddr) is ipaddr.IPv4:
+    # inet4
+    if type(saddr) is nacaddr.IPv4 or type(saddr) is ipaddr.IPv4Network:
       if saddr.numhosts > 1:
-        saddr = saddr.ip_ext + ' ' + saddr.hostmask_ext
+        saddr = '%s %s' % (saddr.ip, saddr.hostmask)
       else:
-        saddr = 'host ' + saddr.ip_ext
-
-    if type(daddr) is nacaddr.IPv4 or type(daddr) is ipaddr.IPv4:
+        saddr = 'host %s' % (saddr.ip)
+    if type(daddr) is nacaddr.IPv4 or type(daddr) is ipaddr.IPv4Network:
       if daddr.numhosts > 1:
-        daddr = daddr.ip_ext + ' ' + daddr.hostmask_ext
+        daddr = '%s %s' % (daddr.ip, daddr.hostmask)
       else:
-        daddr = 'host ' + daddr.ip_ext
+        daddr = 'host %s' % (daddr.ip)
+    # inet6
+    if type(saddr) is nacaddr.IPv6 or type(saddr) is ipaddr.IPv6Network:
+      if saddr.numhosts > 1:
+        saddr = '%s/%s' % (saddr.ip, saddr.prefixlen)
+      else:
+        saddr = 'host %s' % (saddr.ip)
+    if type(daddr) is nacaddr.IPv6 or type(daddr) is ipaddr.IPv6Network:
+      if daddr.numhosts > 1:
+        daddr = '%s/%s' % (daddr.ip, daddr.prefixlen)
+      else:
+        daddr = 'host %s' % (daddr.ip)
 
     # fix ports
     if not sport:
@@ -480,8 +493,8 @@ class Term(object):
 class Cisco(object):
   """A cisco policy object."""
 
-  suffix = '.acl'
-  
+  _SUFFIX = '.acl'
+
   def __init__(self, pol):
     for header in pol.headers:
       if 'cisco' not in header.platforms:
@@ -495,13 +508,15 @@ class Cisco(object):
     target = []
     obj_target = ObjectGroup()
 
-    good_filters = ['extended', 'standard', 'object-group']
+    # a mixed filter outputs both ipv4 and ipv6 acls in the same output file
+    good_filters = ['extended', 'standard', 'object-group', 'inet6',
+                    'mixed']
 
     # add the p4 tags
     p4_id = '%s%s' % ('$I', 'd:$')
     p4_date = '%s%s' % ('$Da', 'te:$')
-    target_header.append('remark %s' % p4_id)
-    target_header.append('remark %s' % p4_date)
+    target_header.append('! %s' % p4_id)
+    target_header.append('! %s' % p4_date)
 
     for header, terms in self.policy.filters:
       filter_options = header.FilterOptions('cisco')
@@ -517,55 +532,66 @@ class Cisco(object):
         raise UnsupportedCiscoAccessListError(
             'only access list types %s are supported' % str(good_filters))
 
-      # if extended, validate filter name
-      if filter_type is 'extended':
-        if filter_name.isdigit():
-          if 1 <= int(filter_name) <= 99:
-            raise UnsupportedCiscoAccessListError(
-                'access-lists between 1-99 are reservered for standard ACLs')
+      filter_list = [filter_type]
+      if filter_type == 'mixed':
+        #(loop through and generate output for inet then inet6 in sequence)
+        filter_list = ['extended', 'inet6']
+      for filter_type in filter_list:
+        # if extended, validate filter name
+        if filter_type is 'extended':
+          if filter_name.isdigit():
+            if 1 <= int(filter_name) <= 99:
+              raise UnsupportedCiscoAccessListError(
+                  'access-lists between 1-99 are reservered for standard ACLs')
 
-        # setup the access list names
-        target.append('no ip access-list extended %s' % filter_name)
-        target.append('ip access-list extended %s' % filter_name)
+          # setup the access list names
+          target.append('no ip access-list extended %s' % filter_name)
+          target.append('ip access-list extended %s' % filter_name)
 
-      # add a header comment if one exists
-      for comment in header.comment:
-        for line in comment.split('\n'):
-          target.append('remark %s' % line)
-
-      # if standard, validate filter name
-      if filter_type == 'standard':
-        if not filter_name.isdigit():
-          raise UnsupportedCiscoAccessListError(
-              'standard access lists must be numbered between 1 - 99')
-        if filter_name.isdigit():
-          if not 1 <= int(filter_name) <= 99:
+        # if standard, validate filter name
+        if filter_type == 'standard':
+          if not filter_name.isdigit():
             raise UnsupportedCiscoAccessListError(
                 'standard access lists must be numbered between 1 - 99')
-        # setup the access list names
-        target.append('no ip access-list %s' % filter_name)
+          if filter_name.isdigit():
+            if not 1 <= int(filter_name) <= 99:
+              raise UnsupportedCiscoAccessListError(
+                  'standard access lists must be numbered between 1 - 99')
+          # setup the access list names
+          target.append('no ip access-list %s' % filter_name)
 
-      if filter_type == 'object-group':
-        obj_target.AddName(filter_name)
-        target.append('no ip access-list extended %s' % filter_name)
-        target.append('ip access-list extended %s' % filter_name)
+        if filter_type == 'object-group':
+          obj_target.AddName(filter_name)
+          target.append('no ip access-list extended %s' % filter_name)
+          target.append('ip access-list extended %s' % filter_name)
 
-      # now add the terms
-      for term in terms:
-        if filter_type == 'standard':
-          target.append(str(TermStandard(term, filter_name)))
-        elif filter_type == 'extended':
-          target.append(str(Term(term)))
-        elif filter_type == 'object-group':
-          obj_target.AddTerm(term)
-          target.append(str(ObjectGroupTerm(term, filter_name)))
+        if filter_type == 'inet6':
+          target.append('no ipv6 access-list %s' % filter_name)
+          target.append('ipv6 access-list %s' % filter_name)
 
-      target.append('\n')
+        # add a header comment if one exists
+        for comment in header.comment:
+          for line in comment.split('\n'):
+            target.append('remark %s' % line)
 
-    if obj_target.valid:
-      target = [str(obj_target)] + target
+        # now add the terms
+        for term in terms:
+          if filter_type == 'standard':
+            target.append(str(TermStandard(term, filter_name)))
+          elif filter_type == 'extended':
+            target.append(str(Term(term)))
+          elif filter_type == 'object-group':
+            obj_target.AddTerm(term)
+            target.append(str(ObjectGroupTerm(term, filter_name)))
+          elif filter_type == 'inet6':
+            target.append(str(Term(term, 6)))
 
-    # ensure that the header is always first
-    target = target_header + target
+        target.append('\n')
 
-    return '\n'.join(target)
+      if obj_target.valid:
+        target = [str(obj_target)] + target
+
+      # ensure that the header is always first
+      target = target_header + target
+
+      return '\n'.join(target)

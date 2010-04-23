@@ -104,10 +104,9 @@ class Term(object):
       self.term.action[0].value = self.default_action
 
     # protocol
-    if not self.term.protocol:
-      term_protocol = [policy.VarType(policy.VarType.PROTOCOL, 'all')]
-    else:
-      term_protocol = self.term.protocol
+    protocol = [policy.VarType(policy.VarType.PROTOCOL, 'all')]
+    if self.term.protocol:
+      protocol = self.term.protocol
 
     # source address
     term_saddr = self.term.source_address
@@ -129,23 +128,21 @@ class Term(object):
     # ports
     # because we are looping through ports, we must have something in each
     # so we define as null if empty and later replace with ''.
-    if not self.term.source_port:
-      term_source_port = ['NULL']
-    else:
-      term_source_port = self.term.source_port
-    if not self.term.destination_port:
-      term_destination_port = ['NULL']
-    else:
-      term_destination_port = self.term.destination_port
+    source_port = ['NULL']
+    destination_port = ['NULL']
+    if self.term.source_port:
+      source_port = self.term.source_port
+    if self.term.destination_port:
+      destination_port = self.term.destination_port
 
     # options
     tcp_flags = []
     for next in [str(x) for x in self.term.option]:
-      if (next.find('established') == 0 and term_protocol == ['tcp']
+      if (next.find('established') == 0 and protocol == ['tcp']
           and 'ESTABLISHED' not in [x.strip() for x in self.options]):
         self.options.append('-m state --state ESTABLISHED,RELATED')
       if next.find('tcp-established') == 0:
-        if term_protocol == ['tcp']:
+        if protocol == ['tcp']:
           # only allow tcp-established if proto is explicitly 'tcp' only
           self.options.append('-m state --state ESTABLISHED,RELATED')
         else:
@@ -158,14 +155,14 @@ class Term(object):
 
     for saddr in term_saddr:
       for daddr in term_daddr:
-        for sport in term_source_port:
+        for sport in source_port:
           if sport == 'NULL': sport = ''
-          for dport in term_destination_port:
+          for dport in destination_port:
             if dport == 'NULL': dport = ''
-            for protocol in term_protocol:
+            for proto in protocol:
               ret_str.append(self._FormatPart(
                   self.af,
-                  str(protocol),
+                  str(proto),
                   saddr,
                   sport,
                   daddr,
@@ -205,17 +202,17 @@ class Term(object):
       return ''
     if (af == 'inet6') and (saddr.version != 6):
       return ''
-    filter_top = '-A ' + self.term.name
+    filter_top = '-A %s' % (self.term.name)
     # fix addresses
     if saddr == self._all_ips:
       src = ''
     else:
-      src = '-s ' + saddr.ip_ext + '/' + str(saddr.prefixlen)
+      src = '-s %s/%s' % (saddr.ip, str(saddr.prefixlen))
 
     if daddr == self._all_ips:
       dst = ''
     else:
-      dst = '-d ' + daddr.ip_ext + '/' + str(daddr.prefixlen)
+      dst = '-d %s/%s' % (daddr.ip, str(daddr.prefixlen))
 
     # fix ports
     if sport:
@@ -237,20 +234,20 @@ class Term(object):
     if not tcp_flags:
       flags = ''
     else:
-      flags = '--tcp-flags ' + ','.join(tcp_flags) + ' ' + ','.join(tcp_flags)
+      flags = '--tcp-flags %s %s' % (','.join(tcp_flags), ','.join(tcp_flags))
 
-    rval = filter_top
+    rval = [filter_top]
     tmp_ops = ' '.join(options)
     for value in proto, flags, sport, dport, src, dst, tmp_ops, action:
       if value:
-        rval = rval + ' ' + str(value)
-    return rval
+        rval.append(str(value))
+    return ' '.join(rval)
 
 
 class Iptables(object):
   """Generates filters and terms from provided policy object."""
 
-  suffix = '.ipt'
+  _SUFFIX = '.ipt'
 
   def __init__(self, pol):
     for header in pol.headers:
@@ -275,17 +272,25 @@ class Iptables(object):
             % filter_name)
       # Check for matching af
       filter_options = header.FilterOptions('iptables')
-      filter_type = 'inet'
-      if (len(filter_options) > 0) and (filter_options[-1] in good_afs):
-        filter_type = filter_options[-1]
+      filter_type = None
+      for address_family in good_afs:
+        if address_family in filter_options:
+          if filter_type != None:
+            raise UnsupportedFilter(
+                'May only specify one of %s in filter options: %s'
+                % (good_afs, filter_options))
+          filter_type = address_family
+      if filter_type is None:
+        filter_type = 'inet'
       # Add comments for this filter
       target.append('# Speedway Iptables %s Policy' %
                     header.FilterName('iptables'))
+      # reformat long text comments, if needed
       comments = WrapWords(header.comment, 70)
       if comments and comments[0] != '':
         for line in comments:
           target.append('# %s' % line)
-      target.append('#')
+        target.append('#')
       # add the p4 tags
       p4_id = '$I' + 'd:$'
       p4_date = '$Da' + 'te:$'
