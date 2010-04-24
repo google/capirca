@@ -196,10 +196,12 @@ class Silverpeak(object):
   # You can define multiple "starts", "ends" or "contains" terms.
   # The following are just examples - commonly used when a policy
   # is used to generate output for multiple platforms.
-  exception_term_rule = {'klaatu': 'starts',
-                         'barada': 'contains',
-                         'nikto': 'ends'
-                        }
+  exception_term_rule = {}
+  # Sample usage:
+  #exception_term_rule = {'klaatu': 'starts',
+  #                       'barada': 'contains',
+  #                       'nikto': 'ends'
+  #                      }
 
   def __init__(self, pol):
     for header in pol.headers:
