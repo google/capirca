@@ -32,6 +32,7 @@ from lib import policy
 from lib import cisco
 from lib import iptables
 from lib import juniper
+from lib import silverpeak
 
 # TODO(pmoody): get rid of this global variable.
 output_policy_dict = {}
@@ -55,17 +56,17 @@ parser.add_option('', '--poldir',
 (FLAGS, args) = parser.parse_args()
 
 
-def render_policy(pol, input_file, output_directory):
+def render_policy(pol_txt, input_file, output_directory, pol_suffix):
   """Store the string representation of the rendered policy."""
   input_file = input_file.lstrip('./')
   output_dir = '/'.join([output_directory] + input_file.split('/')[1:-1])
-  fname = '%s%s' % (os.path.basename(input_file).split('.')[0], pol._SUFFIX)
+  fname = '%s%s' % (os.path.basename(input_file).split('.')[0], pol_suffix)
   output_file = os.path.join(output_dir, fname)
 
   if output_file in output_policy_dict:
-    output_policy_dict[output_file] += str(pol)
+    output_policy_dict[output_file] += pol_txt
   else:
-    output_policy_dict[output_file] = str(pol)
+    output_policy_dict[output_file] = pol_txt
 
 def output_policies():
   """Actually write the policies to disk overwriting existing files..
@@ -96,6 +97,7 @@ def parse_policies(policies, defs):
   jcl = False
   acl = False
   ipt = False
+  spk = False
   for pol in policies:
     p = policy.ParsePolicy(open(pol).read(), defs)
     for header in p.headers:
@@ -105,13 +107,30 @@ def parse_policies(policies, defs):
         acl = True
       if 'iptables' in header.platforms:
         ipt = True
+      if 'silverpeak' in header.platforms:
+        spk = True
 
     if jcl:
-      render_policy(juniper.Juniper(p), pol, FLAGS.output_directory)
+      j_obj = juniper.Juniper(p)
+      render_policy(str(j_obj), pol, FLAGS.output_directory, j_obj._SUFFIX)
     if acl:
-      render_policy(cisco.Cisco(p), pol, FLAGS.output_directory)
+      c_obj = cisco.Cisco(p)
+      render_policy(str(c_obj), pol, FLAGS.output_directory, c_obj._SUFFIX)
     if ipt:
-      render_policy(iptables.Iptables(p), pol, FLAGS.output_directory)
+      i_obj = iptables.Iptables(p)
+      render_policy(str(i_obj), pol, FLAGS.output_directory, i_obj._SUFFIX)
+    if spk:
+      # Silverpeak module has two output files, .spk and .conf
+      # create output for both, then render both output files
+      silverpeak_obj = silverpeak.Silverpeak(p)
+      silverpeak_acl_text = silverpeak_obj.GenerateACLString()
+      silverpeak_conf_text = silverpeak_obj.GenerateConfString()
+      # acl output (.spk)
+      render_policy(silverpeak_acl_text, pol, FLAGS.output_directory,
+                    silverpeak_obj._SUFFIX)
+      # conf output (.conf)
+      render_policy(silverpeak_conf_text, pol, FLAGS.output_directory, 
+                    silverpeak_obj._CONF_SUFFIX)
 
     
 def main():

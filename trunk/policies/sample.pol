@@ -8,6 +8,7 @@ header {
   target:: juniper edge-inbound
   target:: cisco edge-inbound mixed
   target:: iptables INPUT
+  target:: silverpeak wireless_filter_in
 }
 
 term deny-from-bogons {
@@ -65,6 +66,7 @@ header {
   target:: juniper edge-outbound
   target:: cisco edge-outbound mixed
   target:: iptables OUTPUT
+  target:: silverpeak wireless_filter_out
 }
 
 term deny-to-bad-destinations {
