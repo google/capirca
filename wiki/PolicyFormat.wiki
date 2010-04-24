@@ -196,7 +196,7 @@ term permit-ike-access {
 term permit-public-web-access {
   destination-address:: WEB_SERVERS
   destination-port:: HTTP HTTPS HTTP_8080
-  protocol:: TCP
+  protocol:: tcp
   action:: accept
 }
 term permit-tcp-replies {
