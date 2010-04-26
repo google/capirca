@@ -19,7 +19,7 @@ from distutils.core import setup
 setup(name='capirca',
       maintainer='Google',
       maintainer_email='capirca-dev@googlegroups.com',
-      version=1.0,
+      version='1.0',
       url='http://code.google.com/p/capirca',
       license='Apache License, Version 2.0',
       classifiers=[
