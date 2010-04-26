@@ -94,11 +94,11 @@ def load_policies(base_dir):
 
 def parse_policies(policies, defs):
   """Parse and store the rendered policies."""
-  jcl = False
-  acl = False
-  ipt = False
-  spk = False
   for pol in policies:
+    jcl = False
+    acl = False
+    ipt = False
+    spk = False
     p = policy.ParsePolicy(open(pol).read(), defs)
     for header in p.headers:
       if 'juniper' in header.platforms:
