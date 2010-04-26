@@ -60,7 +60,7 @@ def render_policy(pol_txt, input_file, output_directory, pol_suffix):
   """Store the string representation of the rendered policy."""
   input_file = input_file.lstrip('./')
   output_dir = '/'.join([output_directory] + input_file.split('/')[1:-1])
-  fname = '%s%s' % (os.path.basename(input_file).split('.')[0], pol_suffix)
+  fname = '%s%s' % (".".join(os.path.basename(input_file).split('.')[0:-1]), pol_suffix)
   output_file = os.path.join(output_dir, fname)
 
   if output_file in output_policy_dict:
