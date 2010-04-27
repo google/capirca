@@ -96,6 +96,8 @@ class Term(object):
     # append comments to output
     if comments and comments[0] != '':
       for line in comments:
+        if line == '':
+          continue  # iptables-restore does not like 0-length comments.
         ret_str.append('-A %s -m comment --comment "%s"' %
                        (self.term.name, str(line)))  # Term comments
 
