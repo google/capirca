@@ -146,13 +146,105 @@ Tokens / keywords that may be supported.
  * other?
 === Policy Object ===
 
+A policy object is collection of sections, such as header and terms, as well as their associated properties.  Each section includes a variety of properties such as source/destination addresses, protocols, ports, actions, etc.
+
+The policy.py module generates policy objects from policy files.
+
 ==== ParsePolicy ====
+
+A policy object can be created by passing a string containing a policy to the ParsePolicy() class.
+
+{{{
+  policy = policy.ParsePolicy(policy_text)
+}}}
 
 ==== Headers ====
 
+{{{
+  for header, terms in policy.filters:
+      header.target
+      header.target.filter_name
+}}}
+
 ==== Terms ====
 
+{{{
+  for header, terms in policy.filters:
+    terms[x].action[]
+
+    # addresses - lists of google3.ops.security.lib.nacaddr objects
+    terms[x].address[]
+    terms[x].destination_address[]
+    terms[x].destination_address_exclude[]
+    terms[x].source_address[]
+    terms[x].source_address_exclude[]
+
+    # ports - list of tuples.
+    terms[x].port[]
+    terms[x].destination_port[]
+    terms[x].source_port[]
+
+    # list of strings
+    terms[x].comment[]
+    terms[x].protocol[]
+    terms[x].option[]
+    terms[x].verbatim[x].value
+
+    # string
+    terms[x].counter
+    terms[x].name
+
+}}}
 ==== Example =====
+
+a contrived example follows:
+{{{
+  header { 
+    comment:: "this is an example filter"
+    target:: junniper example-filter
+    target:: cisco example-filter inet
+  }
+
+
+  term term-1 {
+    source-address:: PRODUCTION_NETWORKS
+    destination-address:: PRODUCTION_NETWORKS
+    protocol:: tcp
+    action:: accept
+  }
+}}}
+
+this would output a juniper filter of:
+{{{
+family inet {
+    replace: 
+    filter example-filter {
+        interface-specific;
+        term term-1 {
+            from { 
+                source-address {
+                    10.0.0.0/8;
+                }
+                destination-address {
+                    10.0.0.0/8;
+                }
+                protocol tcp;
+            }
+            then {
+                accept;
+            }
+        }
+    }
+}
+}}}
+    
+and a cisco filter of:
+{{{
+no ip access-list extended example-filter
+ip access-list extended example-filter
+
+permit tcp 10.0.0.0 0.255.255.255 10.0.0.0 0.255.255.255
+}}}
 
 ==== IPv6 ====
 
