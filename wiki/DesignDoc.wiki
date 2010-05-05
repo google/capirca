@@ -1,0 +1,68 @@
+#summary Capirca Design Document.
+
+= Capirca Design Doc =
+
+Status: Final<br>
+Author: Tony Watson<br>
+Created: Nov 2, 2007<br>
+Last Updated: May 5, 2010<br>
+
+== Objective ==
+
+Define a common meta-language to describe security policies, and a standardized interconnect between meta-language and actual policy rules.  The meta-language should be flexible enough to support most common network access control (NAC) devices, but simple enough to be clear and easy to understand.  The interconnect should provide a common understanding of how and where the meta-language and actual policy rules are stored.
+
+== Goals ==
+
+  * Provide a standard meta-language to describe NAC policies
+  * Avoid the proliferation of differing ACL meta-language formats
+  * Provide a common framework for maintaining both meta-language policies and the actual applied NAC policy
+  * Provide a foundation for expanding automation of NAC processes
+  * Eliminate confusion and guesswork when implementing a new output format generator
+
+
+== Background ==
+
+Currently, the security group utilizes a variety of tools to automate the generation of ACL, F10, JCL, and Iptables policies.  Historically, many automation tools have been built using Ruby around the naming.rb library.  As these tools have been developed they have usually had unique limitations or requirements that resulted in slightly differing input and output formats.  The problem is not serious today, but must be resolved soon in order to avoid serious headaches in the future.
+
+== Problems ==
+
+A standardized model is needed to bring existing tools into a happy co-existence, as well as to prevent continued deviations in future tools.  The following is a list of some of the existing concerns:
+
+ * JCL meta-policy is embedded within comments inside the actual JCL policy files.  The resulting output simply replaces in-line terms and replaces the original input file with the generated output file.  Meta-policies are maintained in comments immediately after the policies own 'term' statement and any non-replaced lines in the policy are appended verbatim to the output.
+ * Speedway uses separate meta-policy and generated iptables policy files.  Meta-policies are parsed and the output sent to the policy module files in another directory.  Speedway meta-policy defines new policies using the 'policy' keyword and all other content in the meta is appended verbatim to the output.
+ * F10 meta-policy uses separate meta-policy and generated ACL policy files.  Meta-policies are parsed and the output sent to the policy module files in the same directory.  F10 generator meta-policy defines new policies using the 'term' keyword and all non-term content is ignored.
+
+|| Generator Type || Meta-Policy Definition Location || New Policy Keyword || File Naming Standards || Comments and Non-Meta-Policy Lines ||
+|| Juniper || inline || uses existing policy 'term' statement || inline with .jcl files || non-replaced term lines are appended verbatim to output ||
+|| Speedway || separate files, different directories || policy xyz { || meta-policy filename mirrors generated policy in different directories || non meta-policy lines are appended verbatim to output ||
+|| Cisco || separate files, same directory || term xyz { || meta-policy and generated policy have .pol and .acl extension in same directory || non meta-policy lines are ignored ||
+|| others ... || || || || ||
+
+
+
+
+== Meta-Policy Integration ==
+
+== Policy Description Language Definition ==
+
+=== Header Description Format ===
+
+=== Term Definition Format ===
+
+=== Policy Object ===
+
+==== ParsePolicy ====
+
+==== Headers ====
+
+==== Terms ====
+
+==== Example =====
+
+==== IPv6 ====
+
+=== Definitions ===
+Add your content here.  Format your content with:
+  * Text in *bold* or _italic_
+  * Headings, paragraphs, and lists
+  * Automatic links to other wiki pages
