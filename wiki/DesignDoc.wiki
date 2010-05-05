@@ -248,8 +248,58 @@ permit tcp 10.0.0.0 0.255.255.255 10.0.0.0 0.255.255.255
 
 ==== IPv6 ====
 
+
+IPv6 support has been added to the policy language.  Currently only the juniper target will render ipv6 filters.  the syntax for an ipv6 filter is exactly the same as ipv4 filters except for the inet6 keyword on the target line.  making an ipv6 filter is as easy as
+
+{{{
+  header {
+    target:: juniper some-v6-filter inet6
+  }
+}}}
+
+Be sure that the addresses you reference in your subsequent terms have ipv6 definitions.  ie, if you have
+
+{{{
+  term my-v6-term {
+    source-address:: PRODUCTION_NETWORK
+    destination-address:: CORPORATE_NETWORK
+    protocol:: tcp
+    action:: accept
+  }
+}}}
+
+and PRODUCTION_NETWORK or CORPORATE_NETWORK are only defined with ipv4 addresses, this will error out. 
+
+
 === Definitions ===
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+
+The following are words that we have defined for the purposes of NAC discourse and this project. Some of these words may be defined somewhat differently than you are used to.
+
+Generator:  A program that utilizes the data contained in a Policy to create an output rulebase suitable for applying to a specific target platform.  Generators will be specific for each target platform, such as juniper, cisco, f10, iptables, etc.
+
+Global Directive:  Keywords contained outside of a term or comment within a policy, that define a default value for a particular term property.  Global directives can be overwritten within an individual term by specific redefinition within the term.  Global directives are limited to only those keywords allowed within a term definition.
+
+NAC: Network Access Control. Concerning issues related to security at layer 3 and 4 in the OSI model.
+
+Flow: A network flow, given as a tuple of the following form:  (src(s), dst(s), src-port(s), dst-port(s), protocol)
+
+Service: A set of tuples of the form ((server/network), port, protocol, [application] ) that share a common logical function.
+
+Term: A flow to/from a service, the action applied to this flow, and where this action is enforced (e.g., what PEP(s)).  A term is expressed in the form of a tuple:
+(src(s), dst(s), src-port(s), dst-port(s), protocol, action = {permit/drop/deny, etc.}, modifier(s) = {QOS, negation, counters, etc.}, PEP(s) )
+
+Policy: A policy is the set of all terms which apply to a particular service.
+
+Rule: A rule is the device-specific implementation of a term.
+
+Rulebase: A rulebase is the set of all rules on a device.
+
+Logical Rule: The set of all device-specific implementations of a term.
+
+Logical Rulebase: The set of all device-specific implementations of terms pertaining to a particular policy.
+
+Narrative: The narrative is the English language description of a given service's policy, along with the justification for these policies and meta-information about the service. (Who is authorized to make changes, what the procedure is for making changes, etc.). One requirement is that the English language description is sufficiently unique that we have a mapping between section of narrative -> terms of policy -> rules of rulebase.
+
+PEP: Policy enforcement point.  A PEP is any location on the network where the terms of a policy can be enforced as rules.
+
+LPEP: Logical PEP.  The set of all devices and/or interfaces that enforce a logical security boundary.
