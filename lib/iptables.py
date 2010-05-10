@@ -140,8 +140,8 @@ class Term(object):
     # options
     tcp_flags = []
     for next in [str(x) for x in self.term.option]:
-      if (next.find('established') == 0 and protocol == ['tcp']
-          and 'ESTABLISHED' not in [x.strip() for x in self.options]):
+      if (next.find('established') == 0 and 
+          'ESTABLISHED' not in [x.strip() for x in self.options]):
         self.options.append('-m state --state ESTABLISHED,RELATED')
       if next.find('tcp-established') == 0:
         if protocol == ['tcp']:
@@ -377,7 +377,10 @@ class NoIptablesPolicyError(Error):
 
 
 class TcpEstablishedError(Error):
-  """Raised when a term has tcp-established option but not proto tcp only."""
+  """Raised when a term has tcp-established but not proto tcp only."""
+
+class EstablishedError(Error):
+  """Raised when a term has established but not tcp or udp only."""
 
 
 class UnsupportedDefaultAction(Error):

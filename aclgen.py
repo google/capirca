@@ -22,6 +22,7 @@
 import dircache
 from optparse import OptionParser
 import os
+import copy
 import stat
 
 # compiler imports
@@ -102,27 +103,27 @@ def parse_policies(policies, defs):
     p = policy.ParsePolicy(open(pol).read(), defs)
     for header in p.headers:
       if 'juniper' in header.platforms:
-        jcl = True
+        jcl = copy.deepcopy(p)
       if 'cisco' in header.platforms:
-        acl = True
+        acl = copy.deepcopy(p)
       if 'iptables' in header.platforms:
-        ipt = True
+        ipt = copy.deepcopy(p)
       if 'silverpeak' in header.platforms:
-        spk = True
+        spk = copy.deepcopy(p)
 
     if jcl:
-      j_obj = juniper.Juniper(p)
+      j_obj = juniper.Juniper(jcl)
       render_policy(str(j_obj), pol, FLAGS.output_directory, j_obj._SUFFIX)
     if acl:
-      c_obj = cisco.Cisco(p)
+      c_obj = cisco.Cisco(acl)
       render_policy(str(c_obj), pol, FLAGS.output_directory, c_obj._SUFFIX)
     if ipt:
-      i_obj = iptables.Iptables(p)
+      i_obj = iptables.Iptables(ipt)
       render_policy(str(i_obj), pol, FLAGS.output_directory, i_obj._SUFFIX)
     if spk:
       # Silverpeak module has two output files, .spk and .conf
       # create output for both, then render both output files
-      silverpeak_obj = silverpeak.Silverpeak(p)
+      silverpeak_obj = silverpeak.Silverpeak(spk)
       silverpeak_acl_text = silverpeak_obj.GenerateACLString()
       silverpeak_conf_text = silverpeak_obj.GenerateConfString()
       # acl output (.spk)

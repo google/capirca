@@ -481,8 +481,6 @@ class Term(object):
           self.protocol_except.append(x.value)
         # do we have a list of options?
         elif x.var_type is VarType.OPTION:
-          if str(x).find('established') == 0:
-            self.destination_port.append('HIGH_PORTS')
           self.option.append(x.value)
         elif x.var_type is VarType.SPFX:
           self.source_prefix.append(x.value)
