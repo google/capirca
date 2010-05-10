@@ -209,6 +209,12 @@ class Silverpeak(object):
         raise NoSilverpeakPolicyError(" '%s' is not a silverpeak target" %
                                       header.target)
     self.policy = pol
+    # established option implies high ports for stateless filters 
+    for headers, terms in self.policy.filters:
+      for term in terms:
+        for opt in [str(x) for x in term.option]:
+          if (opt.find('established') == 0):
+            term.destination_port.append((1024, 65535))
 
   def __str__(self):
     """Method same as other modules for render_policy in aclgen.py if need."""
