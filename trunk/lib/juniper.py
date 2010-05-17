@@ -38,6 +38,9 @@ class JuniperTermPortProtocolError(Error): pass
 class TcpEstablishedWithNonTcp(Error): pass
 
 
+class EstablishedError(Error): pass
+
+
 class JuniperDuplicateTermError(Error): pass
 
 
@@ -510,12 +513,6 @@ class Juniper(object):
         raise NoJuniperPolicyError("'%s' is not a juniper target" %
                                    header.target)
     self.policy = pol
-    # established option implies high ports for stateless filters
-    for headers, terms in self.policy.filters:
-      for term in terms:
-        for opt in [str(x) for x in term.option]:
-          if (opt.find('established') == 0):
-            term.destination_port.append((1024,65535))
 
   def __str__(self):
     target = []
@@ -568,6 +565,20 @@ class Juniper(object):
       # add the terms, raise an error if there is a repeat term name.
       term_names = set()
       for term in terms:
+        # established option implies high ports for stateless filters 
+        for opt in [str(x) for x in term.option]:
+          if (opt.find('established') == 0):
+            for proto in term.protocol:
+              # established option only makes sense with tcp or udp
+              if proto not in ['tcp', 'udp']:
+                raise EstablishedError('%s (%s) %s %s' % (
+                    'using established option with inappropriate protocol',
+                    proto, 'in term', term.name))
+              # add in high ports, then collapse list to eliminate overlaps
+              term.destination_port.append((1024, 65535))
+              term.destination_port = term._CollapsePortList(
+                  term.destination_port)
+
         if not term.name in term_names:
           term_names.add(term.name)
           target.append(str(Term(term, filter_type)))
