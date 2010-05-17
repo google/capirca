@@ -209,12 +209,6 @@ class Silverpeak(object):
         raise NoSilverpeakPolicyError(" '%s' is not a silverpeak target" %
                                       header.target)
     self.policy = pol
-    # established option implies high ports for stateless filters 
-    for headers, terms in self.policy.filters:
-      for term in terms:
-        for opt in [str(x) for x in term.option]:
-          if (opt.find('established') == 0):
-            term.destination_port.append((1024, 65535))
 
   def __str__(self):
     """Method same as other modules for render_policy in aclgen.py if need."""
@@ -248,6 +242,7 @@ class Silverpeak(object):
     unit_list = []
     for header, terms in self.policy.filters:
       for term in terms:
+        self.FixupEstablished(term)
         # for term belongs to term exception, skip to next term.
         if self._CheckExceptionTerm(term.name, self.exception_term_rule):
           continue
@@ -278,6 +273,7 @@ class Silverpeak(object):
     unit_list = []
     for header, terms in self.policy.filters:
       for term in terms:
+        self.FixupEstablished(term)
         if self._CheckExceptionTerm(term.name, self.exception_term_rule):
           continue
         unit_list = Term(term).GenerateUnitList()
@@ -294,6 +290,20 @@ class Silverpeak(object):
             target = []
     return target_string
 
+  def FixupEstablished(self, term):
+    # established option implies high ports for stateless filters
+    for opt in [str(x) for x in term.option]:
+      if (opt.find('established') == 0):
+        for proto in term.protocol:
+          if proto not in ['tcp', 'udp']:
+            raise EstablishedError('%s (%s) %s %s' % (
+                'using established option with inappropriate protocol',
+                proto, 'in term', term.name))
+        # add in high ports, then collapse list to eliminate overlaps
+        term.destination_port.append((1024, 65535))
+        term.destination_port = term._CollapsePortList(
+            term.destination_port)
+    return
 
 def main():
   pass

@@ -75,6 +75,11 @@ class NoCiscoPolicyError(Error):
   pass
 
 
+class EstablishedError(Error):
+  """Raised when established option used with inappropriate protocol."""
+  pass
+
+
 class TermStandard(object):
   """A single standard ACL Term."""
 
@@ -502,12 +507,6 @@ class Cisco(object):
             header.target))
 
     self.policy = pol
-    # established option implies high ports for stateless filters
-    for headers, terms in self.policy.filters:
-      for term in terms:
-        for opt in [str(x) for x in term.option]:
-          if (opt.find('established') == 0):
-            term.destination_port.append((1024,65535))
 
   def __str__(self):
     target_header = []
@@ -582,6 +581,20 @@ class Cisco(object):
 
         # now add the terms
         for term in terms:
+          # append high-ports when established option used.
+          for opt in [str(x) for x in term.option]:
+            if (opt.find('established') == 0):
+              # established option only makes sense with tcp or udp
+              for proto in term.protocol:
+                if proto not in ['tcp', 'udp']:
+                  raise EstablishedError('%s (%s) %s %s' % (
+                      'using established option with inappropriate protocol',
+                      proto, 'in term', term.name))
+              # add in high ports, then collapse list to eliminate overlaps
+              term.destination_port.append((1024, 65535))
+              term.destination_port = term._CollapsePortList(
+                  term.destination_port)
+          # render terms based on filter type
           if filter_type == 'standard':
             target.append(str(TermStandard(term, filter_name)))
           elif filter_type == 'extended':

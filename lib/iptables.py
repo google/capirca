@@ -318,6 +318,20 @@ class Iptables(object):
 
       # add the terms
       for term in terms:
+        # established option implies high ports for tcp/udp
+        for opt in [str(x) for x in term.option]:
+          if (opt.find('established') == 0):
+            _add_ports = True
+            for proto in term.protocol:
+              if proto not in ['tcp', 'udp']:
+                _add_ports = False
+              # only add high-ports for TCP or UDP protocols
+              if _add_ports == True:
+                # add in high ports, then collapse list to eliminate overlaps
+                term.destination_port.append((1024, 65535))
+                term.destination_port = term._CollapsePortList(
+                    term.destination_port)
+
         target.append(str(Term(term, filter_name, default_action, filter_type)))
       target.append('\n')
     return '\n'.join(target)
@@ -378,9 +392,6 @@ class NoIptablesPolicyError(Error):
 
 class TcpEstablishedError(Error):
   """Raised when a term has tcp-established but not proto tcp only."""
-
-class EstablishedError(Error):
-  """Raised when a term has established but not tcp or udp only."""
 
 
 class UnsupportedDefaultAction(Error):
