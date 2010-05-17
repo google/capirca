@@ -85,7 +85,7 @@ The header section is used to specify options that apply to all terms blocks wit
 The arguments for each platform are passed directly to the output generator as a list, and vary depending on the needs of the generator.  Below is a list of currently supported generators and their argument lists.  Arguments in []'s are required, arguments in {}'s are optional.
 
 {{{
-  target:: cisco [named-access-list] {extended|standard|object-group}
+  target:: cisco [named-access-list] {extended|standard|object-group|inet6|mixed}
   target:: juniper [filter-name] {inet | inet6 | bridge}[1]
   target:: iptables [INPUT | OUTPUT | FORWARD] {ACCEPT | DROP}[2]
 }}}
