@@ -142,7 +142,8 @@ Tokens / keywords that may be supported.
  * A header must contain at least one target:: section, which specifies the platform or platforms for which the following terms will be rendered
  * A header section may span multiple lines.
  * A header may contain a comment section, denoted as comment:: "[text]"
- * The option 'established' shall imply adding high-ports to the term, and tcp-flag checking on TCP only terms.
+ * The option 'established' shall imply adding high-ports to terms with TCP or UDP only protocols, tcp-flag checking on TCP only terms, and may imply stateful checking for generators that support it.
+ * The option 'tcp-established' shall imply tcp-flag checking for terms where only the TCP protocol is specified.  It may imply stateful checking for generators that support it.
  * other?
 === Policy Object ===
 
@@ -207,8 +208,8 @@ a contrived example follows:
 
 
   term term-1 {
-    source-address:: PRODUCTION_NETWORKS
-    destination-address:: PRODUCTION_NETWORKS
+    source-address:: BIG_NETWORK
+    destination-address:: BIG_NETWORK
     protocol:: tcp
     action:: accept
   }
@@ -249,7 +250,7 @@ permit tcp 10.0.0.0 0.255.255.255 10.0.0.0 0.255.255.255
 ==== IPv6 ====
 
 
-IPv6 support has been added to the policy language.  Currently only the juniper target will render ipv6 filters.  the syntax for an ipv6 filter is exactly the same as ipv4 filters except for the inet6 keyword on the target line.  making an ipv6 filter is as easy as
+IPv6 support has been added to the policy language.  Currently only Cisco, Juniper and Iptables can render ipv6 filters.  The syntax for an ipv6 filter is exactly the same as ipv4 filters except for the inet6 keyword on the target line.  Making an ipv6 filter is as easy as
 
 {{{
   header {
@@ -268,7 +269,7 @@ Be sure that the addresses you reference in your subsequent terms have ipv6 defi
   }
 }}}
 
-and PRODUCTION_NETWORK or CORPORATE_NETWORK are only defined with ipv4 addresses, this will error out. 
+When PRODUCTION_NETWORK or CORPORATE_NETWORK tokens are only defined with ipv4 addresses, this will error out.  Tokens can include both IPv4 and IPv6 addresses, and rendering IPv6 output will include only IPv6 addresses associated with a given token.
 
 
 === Definitions ===
