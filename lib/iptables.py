@@ -266,6 +266,7 @@ class Iptables(object):
     good_filters = ['INPUT', 'OUTPUT', 'FORWARD']
     good_afs = ['inet', 'inet6']
 
+    target.append('*filter')
     for header, terms in self.policy.filters:
       filter_name = header.FilterName('iptables')
       if filter_name not in good_filters:
@@ -314,7 +315,7 @@ class Iptables(object):
       # setup the default filter states.
       # if default action policy not specified, do nothing.
       if default_action:
-        target.append('-P %s %s' % (filter_name, default_action))
+        target.append(':%s %s' % (filter_name, default_action))
 
       # add the terms
       for term in terms:
@@ -333,6 +334,8 @@ class Iptables(object):
 
         target.append(str(Term(term, filter_name, default_action, filter_type)))
       target.append('\n')
+    target.pop()  # remove extra \n
+    target.append('COMMIT\n')
     return '\n'.join(target)
 
 
