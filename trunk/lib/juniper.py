@@ -576,8 +576,7 @@ class Juniper(object):
                     proto, 'in term', term.name))
               # add in high ports, then collapse list to eliminate overlaps
               term.destination_port.append((1024, 65535))
-              term.destination_port = term._CollapsePortList(
-                  term.destination_port)
+        term.destination_port = term._CollapsePortList(term.destination_port)
 
         if not term.name in term_names:
           term_names.add(term.name)
