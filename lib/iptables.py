@@ -329,8 +329,7 @@ class Iptables(object):
               if _add_ports == True:
                 # add in high ports, then collapse list to eliminate overlaps
                 term.destination_port.append((1024, 65535))
-                term.destination_port = term._CollapsePortList(
-                    term.destination_port)
+        term.destination_port = term._CollapsePortList(term.destination_port)
 
         target.append(str(Term(term, filter_name, default_action, filter_type)))
       target.append('\n')
@@ -396,4 +395,3 @@ class TcpEstablishedError(Error):
 
 class UnsupportedDefaultAction(Error):
   """Raised when a filter has an impermissible default action specified."""
-
