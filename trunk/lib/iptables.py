@@ -230,6 +230,8 @@ class Term(object):
         dport = '--dport %d' % (dport[0])
 
     proto = self._PROTO_TABLE.get(str(protocol))
+    if protocol and not proto:  # Don't drop protocol if we don't recognize it
+      proto = '-p %s' % str(protocol)
 
     if not options:
       option = ['']
