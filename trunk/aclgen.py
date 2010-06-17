@@ -42,7 +42,7 @@ _parser.add_option('-d', '--def', dest='definitions',
 _parser.add_option('-o', dest='output_directory', help='output directory',
                    default='./filters')
 _parser.add_option('', '--poldir', dest='policy_directory',
-                   help='policy directory (incompatible with -p',
+                   help='policy directory (incompatible with -p)',
                    default='./policies')
 _parser.add_option('-p', '--pol', help='policy file (incompatible with poldir)',
                    dest='policy')
