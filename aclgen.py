@@ -1,160 +1,123 @@
 #!/usr/bin/env python
-#
-# Copyright 2009 Google Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-# This is an sample tool which will render policy
-# files into usable iptables tables, cisco access lists or
-# juniper firewall filters.
 
 # system imports
+import copy
 import dircache
 from optparse import OptionParser
 import os
-import copy
 import stat
 
 # compiler imports
 from lib import naming
 from lib import policy
 
-# renderer imports
+# renderers
 from lib import cisco
 from lib import iptables
 from lib import juniper
 from lib import silverpeak
 
-# TODO(pmoody): get rid of this global variable.
-output_policy_dict = {}
-
-parser = OptionParser()
-parser.add_option('-d', '--def',
-                  dest='definitions',
-                  help='defintions directory',
-                  default='./def')
-parser.add_option('-o', '--output_directory',
-                  dest='output_directory',
-                  help='output directory',
-                  default='./filters')
-parser.add_option('-p', '--pol',
-                  dest='policy',
-                  help='policy file')
-parser.add_option('', '--poldir',
-                  dest='policy_directory',
-                  help='policy directory',
-                  default='./policies')
-(FLAGS, args) = parser.parse_args()
+_parser = OptionParser()
+_parser.add_option('-d', '--def', dest='definitions',
+                   help='definitions directory', default='./def')
+_parser.add_option('-o', dest='output_directory', help='output directory',
+                   default='./filters')
+_parser.add_option('', '--poldir', dest='policy_directory',
+                   help='policy directory (incompatible with -p',
+                   default='./policies')
+_parser.add_option('-p', '--pol', help='policy file (incompatible with poldir)',
+                   dest='policy')
+(FLAGS, args) = _parser.parse_args()
 
 
-def render_policy(pol_txt, input_file, output_directory, pol_suffix):
-  """Store the string representation of the rendered policy."""
-  input_file = input_file.lstrip('./')
-  output_dir = '/'.join([output_directory] + input_file.split('/')[1:-1])
-  fname = '%s%s' % (".".join(os.path.basename(input_file).split('.')[0:-1]), pol_suffix)
-  output_file = os.path.join(output_dir, fname)
-
-  if output_file in output_policy_dict:
-    output_policy_dict[output_file] += pol_txt
-  else:
-    output_policy_dict[output_file] = pol_txt
-
-def output_policies():
-  """Actually write the policies to disk overwriting existing files..
-
-    If the output directory doesn't exist, create it.
-  """
-  for output_file in output_policy_dict:
-    if not os.path.isdir(os.path.dirname(output_file)):
-      os.mkdir(os.path.dirname(output_file))
-    output = open(output_file, 'w')
-    if output:
-      print 'writing %s' % output_file
-      output.write(output_policy_dict[output_file])
-
-def load_policies(base_dir):
-  """Recurssively load the polices in a given directory."""
-  policies = []
+def load_and_render(base_dir, defs):
+  rendered = 0
   for dirfile in dircache.listdir(base_dir):
     fname = os.path.join(base_dir, dirfile)
     if os.path.isdir(fname):
-      policies.extend(load_policies(fname))
+      rendered += load_and_render(fname, defs)
     elif fname.endswith('.pol'):
-      policies.append(fname)
-  return policies
+      rendered += render_filters(fname, policy.ParsePolicy(open(fname).read(),
+                                                           defs))
+  return rendered
 
-def parse_policies(policies, defs):
-  """Parse and store the rendered policies."""
-  for pol in policies:
-    jcl = False
-    acl = False
-    ipt = False
-    spk = False
-    p = policy.ParsePolicy(open(pol).read(), defs)
-    for header in p.headers:
-      if 'juniper' in header.platforms:
-        jcl = copy.deepcopy(p)
-      if 'cisco' in header.platforms:
-        acl = copy.deepcopy(p)
-      if 'iptables' in header.platforms:
-        ipt = copy.deepcopy(p)
-      if 'silverpeak' in header.platforms:
-        spk = copy.deepcopy(p)
+def filter_name(source, suffix):
+  if not FLAGS.output_directory:
+    print 'poop'
+  source = source.lstrip('./')
+  o_dir = '/'.join([FLAGS.output_directory] + source.split('/')[1:-1])
+  fname = '%s%s' % (".".join(os.path.basename(source).split('.')[0:-1]),
+                    suffix)
+  return os.path.join(o_dir, fname)
 
-    if jcl:
-      j_obj = juniper.Juniper(jcl)
-      render_policy(str(j_obj), pol, FLAGS.output_directory, j_obj._SUFFIX)
-    if acl:
-      c_obj = cisco.Cisco(acl)
-      render_policy(str(c_obj), pol, FLAGS.output_directory, c_obj._SUFFIX)
-    if ipt:
-      i_obj = iptables.Iptables(ipt)
-      render_policy(str(i_obj), pol, FLAGS.output_directory, i_obj._SUFFIX)
-    if spk:
-      # Silverpeak module has two output files, .spk and .conf
-      # create output for both, then render both output files
-      silverpeak_obj = silverpeak.Silverpeak(spk)
-      silverpeak_acl_text = silverpeak_obj.GenerateACLString()
-      silverpeak_conf_text = silverpeak_obj.GenerateConfString()
-      # acl output (.spk)
-      render_policy(silverpeak_acl_text, pol, FLAGS.output_directory,
-                    silverpeak_obj._SUFFIX)
-      # conf output (.conf)
-      render_policy(silverpeak_conf_text, pol, FLAGS.output_directory, 
-                    silverpeak_obj._CONF_SUFFIX)
+def do_output_filter(filter_text, filter_file):
+  if not os.path.isdir(os.path.dirname(filter_file)):
+    os.mkdir(os.path.dirname(output_file))
+  output = open(filter_file, 'w')
+  if output:
+    print 'writing %s' % filter_file
+    output.write(filter_text)
 
+
+def render_filters(source_file, policy):
+  count = 0
+  [(jcl, acl, ipt, spk)] = [(False, False, False, False)]
+
+  for header in policy.headers:
+    if 'juniper' in header.platforms:
+      jcl = copy.deepcopy(policy)
+    if 'cisco' in header.platforms:
+      acl = copy.deepcopy(policy)
+    if 'iptables' in header.platforms:
+      ipt = copy.deepcopy(policy)
+    if 'silverpeak' in header.platforms:
+      spk = copy.deepcopy(policy)
+  if jcl:
+    fw = juniper.Juniper(jcl)
+    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+    count += 1
+  if acl:
+    fw = cisco.Cisco(acl)
+    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+    count += 1
+  if ipt:
+    fw = iptables.Iptables(ipt)
+    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+    count += 1
+  if spk:
+    spk_obj = silverpeak.Silverpeak(spk)
+    do_output_filter(spk_obj.GenerateACLString(),
+                     filter_name(source_file, spk_obj._SUFFIX))
+    do_output_filter(spk_obj.GenerateConfString(),
+                     filter_name(source_file, spk_obj._CONF_SUFFIX))
+    count += 1
     
+  return count
+
 def main():
-  """the main entry point."""
-  # first, load our naming
   if not FLAGS.definitions:
-    parser.error('no definitions supplied')
+    _parser.error('no definitions suppolied')
   defs = naming.Naming(FLAGS.definitions)
   if not defs:
-    print 'problem loading definitions'
+    print 'problem loading defintions'
     return
 
-  policies_to_render = []
+  count = 0
   if FLAGS.policy_directory:
-    if FLAGS.policy and FLAGS.policy_directory != './policies':
-      raise ValueError('policy and policy_directory are mutually exclusive')
-    policies_to_render = load_policies(FLAGS.policy_directory)
+    count = load_and_render(FLAGS.policy_directory, defs)    
+
   elif FLAGS.policy:
-    policies_to_render.append(FLAGS.policy)
+    count = render_filters(policy.ParsePolicy(FLAGS.policy).read(), defs)
 
-  parse_policies(policies_to_render, defs)
-  output_policies()
+  print '%d filters rendered' % count
 
+  
 if __name__ == '__main__':
-  main()
+  # some sanity checking
+  if FLAGS.policy_directory and FLAGS.policy:
+    raise ValueError('policy and policy_directory are mutually exclusive')
+  if not (FLAGS.policy_directory or FLAGS.policy):
+    raise ValueError('must provide policy or policy_directive')
 
+  # run run run run run away
+  main()
