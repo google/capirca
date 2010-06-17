@@ -96,10 +96,10 @@ def render_filters(source_file, policy):
 
 def main():
   if not FLAGS.definitions:
-    _parser.error('no definitions suppolied')
+    _parser.error('no definitions supplied')
   defs = naming.Naming(FLAGS.definitions)
   if not defs:
-    print 'problem loading defintions'
+    print 'problem loading definitions'
     return
 
   count = 0
