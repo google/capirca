@@ -61,8 +61,6 @@ def load_and_render(base_dir, defs):
   return rendered
 
 def filter_name(source, suffix):
-  if not FLAGS.output_directory:
-    print 'poop'
   source = source.lstrip('./')
   o_dir = '/'.join([FLAGS.output_directory] + source.split('/')[1:-1])
   fname = '%s%s' % (".".join(os.path.basename(source).split('.')[0:-1]),
