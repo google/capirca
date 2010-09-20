@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright 2009 Google Inc.
+# Copyright 2010 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,42 +20,48 @@
 
 __author__ = 'watson@google.com (Tony Watson)'
 
+import logging
 import nacaddr
-import policy
+import re
 
 
 class Term(object):
   """Generate Iptables policy terms."""
 
-  def __init__(self, term, filter_name, filter_action, af = 'inet'):
-    """
-    Setup a new term.
-
-    Args:
-      term: A policy.Term object to represent in iptables.
-      filter_name: The name of the filter chan to attach the term to.
-      filter_action: The default action of the filter.
-      af: Which address family ('inet' or 'inet6') to apply the term to.
-      truncate: Whether to truncate names to meet iptables limits.
-    """
-    self.term = term  # term object
-    self.filter = filter_name  # actual name of filter
-    self.default_action = filter_action
-    self.options = []
-    self.af = af
-    # Iptables enforces 30 char limit, but weirdness happens after 28 or 29
-    if len(self.term.name) > 24:
-      raise TermNameTooLong(
-          'Term %s is too long, limit is 24 characters.' %  self.term.name)
-    
-    self._ACTION_TABLE = {
+  # Validate that term does not contain any fields we do not
+  # support.  This prevents us from thinking that our output is
+  # correct in cases where we've omitted fields from term.
+  _ALLOWED_KEYWORDS = set([
+      # Basic operations
+      'comment', 'action', 'verbatim', 'name',
+      # IPtables only supports simple filtering (deliberately ignored)
+      'loss_priority', 'precedence', 'policer', 'qos', 'routing_instance',
+      'logging', 'counter', 'traffic_type',
+      # Supported address limits
+      'source_address', 'source_address_exclude',
+      'destination_address', 'destination_address_exclude',
+      # Other packet filtering
+      'option', 'protocol', 'icmp_type',
+      'source_port', 'destination_port', 'packet_length',
+      # Unsupported address limits: may produce UnsupportedFilter exceptions
+      # omitted with 'accept'/'next', error elsewise
+      'source_prefix', 'destination_prefix',
+      # Supported only for specific values (i.e. "1-6" for fragment_offset)
+      'fragment_offset',
+      # entirely unsupported - address and port imply something in
+      # cisco which they do not imply in iptables. protocol_except
+      # would require restructuring the generation loop to emit
+      # returns + catch-all.
+      'address', 'port', 'ether_type', 'protocol_except', 'translated',
+      ])
+  _ACTION_TABLE = {
       'accept': '-j ACCEPT',
       'deny': '-j DROP',
       'reject': '-j REJECT --reject-with icmp-host-prohibited',
       'reject-with-tcp-rst': '-j REJECT --reject-with tcp-reset',
       'next': '-j RETURN'
       }
-    self._PROTO_TABLE = {
+  _PROTO_TABLE = {
       'icmp': '-p icmp',
       'tcp': '-p tcp',
       'udp': '-p udp',
@@ -64,7 +70,7 @@ class Term(object):
       'ah': '-p ah',
       'gre': '-p gre',
       }
-    self._FLAGS_TABLE = {
+  _TCP_FLAGS_TABLE = {
       'syn': 'SYN',
       'ack': 'ACK',
       'fin': 'FIN',
@@ -74,6 +80,53 @@ class Term(object):
       'all': 'ALL',
       'none': 'NONE',
       }
+  _KNOWN_OPTIONS_MATCHERS = {
+      # '! -f' also matches non-fragmented packets.
+      'first-fragment': '-m u32 --u32 4&0x3FFF=0x2000',
+      'initial': '--syn',
+      'tcp-initial': '--syn',
+      'sample': '',
+      }
+  # TODO(argent): automate the translation from policy-ese to
+  # 'iptables -p icmp -h' names.
+  _ICMP_POLICY_TO_NAMES = {'info-reply': '16',
+                           'info-request': '15',
+                           'mask-request': 'address-mask-request',
+                           'mask-reply': 'address-mask-reply',
+                           'router-solicit': 'router-solicitation',
+                           'timestamp': 'timestamp-request',
+                           'unreachable': 'destination-unreachable',
+                          }
+
+  def __init__(self, term, filter_name, trackstate, filter_action, af='inet',
+               truncate=True):
+    """Setup a new term.
+
+    Args:
+      term: A policy.Term object to represent in iptables.
+      filter_name: The name of the filter chan to attach the term to.
+      trackstate: Specifies if conntrack should be used for new connections
+      filter_action: The default action of the filter.
+      af: Which address family ('inet' or 'inet6') to apply the term to.
+      truncate: Whether to truncate names to meet iptables limits.
+
+    Raises:
+      UnsupportedFilter: Filter is not supported.
+    """
+    self.trackstate = trackstate
+    self.term = term  # term object
+    self.filter = filter_name  # actual name of filter
+    self.default_action = filter_action
+    self.options = []
+    self.af = af
+    for element in self.term.__dict__:
+      if element not in self._ALLOWED_KEYWORDS:
+        raise UnsupportedFilter('%s%s%s %s %s' % ('\n"', element, '" in term',
+                                                  self.term.name,
+                                                  'unsupported by iptables.'))
+    # Iptables enforces 30 char limit, but weirdness happens after 28 or 29
+    self.term_name = '%s_%s' % (
+        self.filter[:1], self._CheckTermLength(self.term.name, 24, truncate))
     self._all_ips = nacaddr.IPv4('0.0.0.0/0')
     if af == 'inet6':
       self._all_ips = nacaddr.IPv6('::/0')
@@ -90,25 +143,61 @@ class Term(object):
           ret_str.append(str(next.value[1]))
       return '\n'.join(ret_str)
 
+    # We don't support these keywords for filtering, so unless users
+    # put in a "verbatim:: iptables" statement, any output we emitted
+    # would misleadingly suggest that we applied their filters.
+    # Instead, we fail loudly.
+    if self.term.ether_type:
+      raise UnsupportedFilter('\n%s %s %s' % (
+          'ether_type unsupported by iptables',
+          '\nError in term', self.term.name))
+    if self.term.address:
+      raise UnsupportedFilter('\n%s %s %s' % (
+          'address unsupported by iptables - specify source or dest',
+          '\nError in term:', self.term.name))
+    if self.term.port:
+      raise UnsupportedFilter('\n%s %s %s' % (
+          'port unsupported by iptables - specify source or dest',
+          '\nError in term:', self.term.name))
+
     # Create a new term
-    ret_str.append('-N %s' % self.term.name)  # New term
+    ret_str.append('-N %s' % self.term_name)  # New term
+
+    # reformat long comments, if needed
     comments = WrapWords(self.term.comment, 40)
     # append comments to output
-    if comments and comments[0] != '':
+    if comments and comments[0]:
       for line in comments:
-        if line == '':
+        if not line:
           continue  # iptables-restore does not like 0-length comments.
+        # term comments
         ret_str.append('-A %s -m comment --comment "%s"' %
-                       (self.term.name, str(line)))  # Term comments
+                       (self.term_name, str(line)))
 
     # if terms does not specify action, use filter default action
     if not self.term.action:
       self.term.action[0].value = self.default_action
 
+    # Unsupported configuration; in the case of 'accept' or 'next', we
+    # skip the rule.  In other cases, we blow up (raise an exception)
+    # to ensure that this is not considered valid configuration.
+    if self.term.source_prefix or self.term.destination_prefix:
+      if str(self.term.action[0]) not in set(['accept', 'next']):
+        raise UnsupportedFilter('%s %s %s %s %s %s' % (
+            '\nTerm', self.term.name, 'has action', str(self.term.action[0]),
+            'with source_prefix or destination_prefix,',
+            ' which is unsupported in iptables output.'))
+      return ('# skipped %s due to source or destination prefix rule' %
+              self.term.name)
+
     # protocol
-    protocol = [policy.VarType(policy.VarType.PROTOCOL, 'all')]
+    protocol = ['all']
     if self.term.protocol:
       protocol = self.term.protocol
+    if self.term.protocol_except:
+      raise UnsupportedFilter('%s %s %s' % (
+          '\n', self.term.name,
+          'protocol_except logic not currently supported.'))
 
     # source address
     term_saddr = self.term.source_address
@@ -128,57 +217,104 @@ class Term(object):
           self.term.destination_address_exclude)
 
     # ports
-    # because we are looping through ports, we must have something in each
-    # so we define as null if empty and later replace with ''.
-    source_port = ['NULL']
-    destination_port = ['NULL']
+    source_port = []
+    destination_port = []
     if self.term.source_port:
       source_port = self.term.source_port
     if self.term.destination_port:
       destination_port = self.term.destination_port
+    # because we are looping through ports, we must have something in each
+    # so we replace an empty list with a list containing an empty string
+    source_port = source_port or ['']
+    destination_port = destination_port or ['']
+
+    # icmp types
+    icmp_types = []
+    for icmp in self.term.icmp_type:
+      if protocol != ['icmp']:
+        raise UnsupportedFilter('%s %s %s %s' % (
+            '\nMay not specify icmp_type for protocol',
+            protocol, '\nError in term:', self.term.name))
+      # Translate if needed, or pass verbatim otherwise.
+      icmp_types.append(self._ICMP_POLICY_TO_NAMES.get(icmp, icmp))
+    if not icmp_types:
+      icmp_types = [None]
 
     # options
     tcp_flags = []
     for next in [str(x) for x in self.term.option]:
-      if (next.find('established') == 0 and 
-          'ESTABLISHED' not in [x.strip() for x in self.options]):
-        self.options.append('-m state --state ESTABLISHED,RELATED')
+      #
+      # Sanity checking and high-ports are added as appropriate in
+      # pre-processing that is done in __str__ within class Iptables.
+      # Option established will add destination port high-ports if protocol
+      # contains only tcp, udp or both.  This is done earlier in class Iptables.
+      #
+      if self.trackstate:
+        if (next.find('established') == 0
+            and 'ESTABLISHED' not in [x.strip() for x in self.options]):
+          self.options.append('-m state --state ESTABLISHED,RELATED')
+      else:
+        # nostate:
+        # Using "--state ESTABLISHED" permits TCP connections that appear
+        # to be ongoing sessions (e.g. SYN not set).  This doesn't require
+        # new sessions to be added to conntrack with "-m state --state NEW"
+        # This only works for TCP, since it can examine tcp-flags for state.
+        #
+        if (next.find('established') == 0 and protocol == ['tcp']
+            and 'ESTABLISHED' not in [x.strip() for x in self.options]):
+          self.options.append('-m state --state ESTABLISHED,RELATED')
+      #
+      # does the same as established but does not append high-ports to
+      # destination ports
       if next.find('tcp-established') == 0:
+        # only allow tcp-established if proto is explicitly 'tcp' only
         if protocol == ['tcp']:
-          # only allow tcp-established if proto is explicitly 'tcp' only
           self.options.append('-m state --state ESTABLISHED,RELATED')
         else:
-          raise TcpEstablishedError(
-              'option tcp-established can only be applied for proto tcp.')
+          raise TcpEstablishedError('%s %s %s' % (
+              '\noption tcp-established can only be applied for proto tcp.',
+              '\nError in term:', self.term.name))
+
       # Iterate through flags table, and create list of tcp-flags to append
-      for next_flag in self._FLAGS_TABLE:
+      for next_flag in self._TCP_FLAGS_TABLE:
         if next.find(next_flag) == 0:
-          tcp_flags.append(self._FLAGS_TABLE.get(next_flag))
+          tcp_flags.append(self._TCP_FLAGS_TABLE.get(next_flag))
+      if next in self._KNOWN_OPTIONS_MATCHERS:
+        self.options.append(self._KNOWN_OPTIONS_MATCHERS[next])
+    if self.term.packet_length:
+      # Policy format is "#-#", but iptables format is "#:#"
+      self.options.append('-m length --length %s' %
+                          self.term.packet_length.replace('-', ':'))
+    if self.term.fragment_offset:
+      self.options.append('-m u32 --u32 4&0x1FFF=%s' %
+                          self.term.fragment_offset.replace('-', ':'))
 
     for saddr in term_saddr:
       for daddr in term_daddr:
         for sport in source_port:
-          if sport == 'NULL': sport = ''
           for dport in destination_port:
-            if dport == 'NULL': dport = ''
-            for proto in protocol:
-              ret_str.append(self._FormatPart(
-                  self.af,
-                  str(proto),
-                  saddr,
-                  sport,
-                  daddr,
-                  dport,
-                  self.options,
-                  tcp_flags,
-                  self._ACTION_TABLE.get(str(self.term.action[0]))
-                  ))
+            for icmp in icmp_types:
+              for proto in protocol:
+                ret_str.append(self._FormatPart(
+                    self.af,
+                    str(proto),
+                    saddr,
+                    sport,
+                    daddr,
+                    dport,
+                    self.options,
+                    tcp_flags,
+                    icmp,
+                    self._ACTION_TABLE.get(str(self.term.action[0]))
+                    ))
+
     # Add this term to the filters jump table
-    ret_str.append('-A %s -j %s' % (self.filter, self.term.name))
+    ret_str.append('-A %s -j %s' % (self.filter, self.term_name))
+
     return '\n'.join(str(v) for v in ret_str if v is not '')
-  
+
   def _FormatPart(self, af, protocol, saddr, sport, daddr, dport, options,
-                  tcp_flags, action):
+                  tcp_flags, icmp_type, action):
     """Compose one iteration of the term parts into a string.
 
     Args:
@@ -190,9 +326,9 @@ class Term(object):
       dport: Destination port number
       options: Optional arguments to append to our rule
       tcp_flags: Which tcp_flag arguments, if any, should be appended
+      icmp_type: What icmp protocol to allow, if any
       action: What should happen if this rule matches
-
-    Returns;
+    Returns:
       rval:  A single iptables argument line
     """
     src = ''
@@ -204,17 +340,17 @@ class Term(object):
       return ''
     if (af == 'inet6') and (saddr.version != 6):
       return ''
-    filter_top = '-A %s' % (self.term.name)
+    filter_top = '-A ' + self.term_name
     # fix addresses
     if saddr == self._all_ips:
       src = ''
     else:
-      src = '-s %s/%s' % (saddr.ip, str(saddr.prefixlen))
+      src = '-s %s/%d' % (saddr.ip, saddr.prefixlen)
 
     if daddr == self._all_ips:
       dst = ''
     else:
-      dst = '-d %s/%s' % (daddr.ip, str(daddr.prefixlen))
+      dst = '-d %s/%d' % (daddr.ip, daddr.prefixlen)
 
     # fix ports
     if sport:
@@ -229,23 +365,93 @@ class Term(object):
       elif dport:
         dport = '--dport %d' % (dport[0])
 
+    if not options:
+      options = []
+
     proto = self._PROTO_TABLE.get(str(protocol))
     if protocol and not proto:  # Don't drop protocol if we don't recognize it
       proto = '-p %s' % str(protocol)
+    # set conntrack state to NEW, unless policy requested "nostate"
+    if self.trackstate:
+      already_stateful = False
+      # we will add new stateful arguments only if none already exist, such
+      # as from "option:: established"
+      for option in options:
+        if 'state' in option:
+          already_stateful = True
+      if not already_stateful:
+        if 'ACCEPT' in action:
+          # We have to permit established/related since a policy may not
+          # have an existing blank permit for established/related, which
+          # may be more efficient, but slightly less secure.
+          options.append('-m state --state NEW,ESTABLISHED,RELATED')
 
-    if not options:
-      option = ['']
     if not tcp_flags:
       flags = ''
     else:
       flags = '--tcp-flags %s %s' % (','.join(tcp_flags), ','.join(tcp_flags))
 
+    if not icmp_type:
+      icmp = ''
+    else:
+      icmp = '--icmp-type %s' % icmp_type
+
     rval = [filter_top]
-    tmp_ops = ' '.join(options)
-    for value in proto, flags, sport, dport, src, dst, tmp_ops, action:
+    for value in (proto, flags, sport, dport, icmp, src, dst, ' '.join(options),
+                  action):
       if value:
         rval.append(str(value))
     return ' '.join(rval)
+
+  def _CheckTermLength(self, term_name, term_max_len, abbreviate):
+    """Return a name based on term_name which is shorter than term_max_len.
+
+    Args:
+      term_name: A name to abbreviate if necessary.
+      term_max_len: An int representing the maximum acceptable length.
+      abbreviate: whether to allow abbreviations to shorten the length
+    Returns:
+      A string based on term_name, abbreviated as necessary to fit term_max_len.
+    Raises:
+      TermNameTooLong: the term_name cannot be abbreviated below term_max_len.
+    """
+    # We use uppercase for abbreviations to distinguish from lowercase
+    # names.  Ordered list of abbreviations, we try the ones in the
+    # top of the list before the ones later in the list.  Prefer clear
+    # or very-space-saving abbreviations by putting them early in the
+    # list.  Abbreviations may be regular expressions or fixed terms;
+    # prefer fixed terms unless there's a clear benefit to regular
+    # expressions.
+    abbreviation_table = [
+        ('experiment', 'EXP'),
+        ('customer', 'CUST'),
+        ('global', 'GBL'),
+        ('google', 'GOOG'),
+        ('service', 'SVC'),
+        ('router', 'RTR'),
+        ('internal', 'INT'),
+        ('transit', 'TRNS'),
+        ('established', 'EST'),
+        ('unreachable', 'UNR'),
+        ('fragment', 'FRAG'),
+        ('accept', 'ACC'),
+        ('discard', 'DISC'),
+        ('reject', 'REJ'),
+        ('replies', 'RPL'),
+        ('request', 'REQ'),
+        ]
+    new_term = term_name
+    if abbreviate:
+      for word, abbrev in abbreviation_table:
+        if len(new_term) <= term_max_len:
+          return new_term
+        new_term = re.sub(word, abbrev, new_term)
+    if len(new_term) <= term_max_len:
+      return new_term
+    raise TermNameTooLong('%s %s %s %s%s %d %s' % (
+        '\nTerm', new_term, '(originally', term_name,
+        ') is too long. Limit is 24 characters (vs', len(new_term),
+        ') and no abbreviations remain.'))
 
 
 class Iptables(object):
@@ -254,91 +460,126 @@ class Iptables(object):
   _SUFFIX = '.ipt'
 
   def __init__(self, pol):
+    has_iptables = False
     for header in pol.headers:
-      if 'iptables' not in header.platforms:
-        raise NoIptablesPolicyError('no iptables policy found in %s' % (
-            header.target))
-
+      if 'iptables' in header.platforms:
+        has_iptables = True
+    if not has_iptables:
+      raise NoIptablesPolicyError('%s %s' % (
+          '\nNo iptables policy found in', header.target))
     self.policy = pol
 
   def __str__(self):
     target = []
-    default_action = ''
-    good_default_actions = ['', 'ACCEPT', 'DROP']
+    default_action = 'DROP'
+    good_default_actions = ['ACCEPT', 'DROP']
     good_filters = ['INPUT', 'OUTPUT', 'FORWARD']
     good_afs = ['inet', 'inet6']
+    good_options = ['nostate', 'truncatenames']
+    trackstate = True
+    filter_type = None
 
     target.append('*filter')
     for header, terms in self.policy.filters:
-      filter_name = header.FilterName('iptables')
-      if filter_name not in good_filters:
-        raise UnsupportedFilter(
-            'Only INPUT, OUTPUT, and FORWARD filters allowed; %s used.'
-            % filter_name)
-      # Check for matching af
-      filter_options = header.FilterOptions('iptables')
-      filter_type = None
-      for address_family in good_afs:
-        if address_family in filter_options:
-          if filter_type != None:
-            raise UnsupportedFilter(
-                'May only specify one of %s in filter options: %s'
-                % (good_afs, filter_options))
-          filter_type = address_family
-      if filter_type is None:
-        filter_type = 'inet'
-      # Add comments for this filter
-      target.append('# Speedway Iptables %s Policy' %
-                    header.FilterName('iptables'))
-      # reformat long text comments, if needed
-      comments = WrapWords(header.comment, 70)
-      if comments and comments[0] != '':
-        for line in comments:
-          target.append('# %s' % line)
-        target.append('#')
-      # add the p4 tags
-      p4_id = '$I' + 'd:$'
-      p4_date = '$Da' + 'te:$'
-      target.append('# %s' % p4_id)
-      target.append('# %s' % p4_date)
-      target.append('# ' + filter_type)
+      if 'iptables' in header.platforms:
+        filter_name = header.FilterName('iptables')
+        if filter_name not in good_filters:
+          logging.warn('%s %s %s %s' % (
+              'Filter is generating a non-standard chain that will not ',
+              'apply to traffic unless linked from INPUT, OUTPUT or ',
+              'FORWARD filters. New chain name is: ', filter_name))
+        filter_options = header.FilterOptions('iptables')[1:]
+        # ensure all options after the filter name are expected
+        for opt in filter_options:
+          if opt not in good_default_actions + good_afs + good_options:
+            raise UnsupportedTargetOption('%s %s' % (
+                '\nUnsupported option found in iptables target definition:',
+                opt))
 
-      if filter_name == 'FORWARD':
-        default_action = 'DROP'
-      # does this policy override the default filter actions?
-      for next in header.target:
-        if next.platform == 'iptables':
-          if (len(next.options) > 1) and (next.options[1] not in good_afs):
-            default_action = next.options[1]
-      if default_action not in good_default_actions:
-        raise UnsupportedDefaultAction(
-            'Only ACCEPT or DROP default filter action allowed; %s used.'
-            % default_action)
-      # setup the default filter states.
-      # if default action policy not specified, do nothing.
-      if default_action:
-        target.append(':%s %s' % (filter_name, default_action))
+        # disable stateful?
+        if 'nostate' in filter_options:
+          trackstate = False
 
-      # add the terms
-      for term in terms:
-        # established option implies high ports for tcp/udp
-        for opt in [str(x) for x in term.option]:
-          if (opt.find('established') == 0):
-            _add_ports = True
-            for proto in term.protocol:
-              if proto not in ['tcp', 'udp']:
-                _add_ports = False
-              # only add high-ports for TCP or UDP protocols
-              if _add_ports == True:
+        # Check for matching af
+        for address_family in good_afs:
+          if address_family in filter_options:
+            # should not specify more than one AF in options
+            if filter_type is not None:
+              raise UnsupportedFilter('%s %s %s %s' % (
+                  '\nMay only specify one of', good_afs, 'in filter options:',
+                  filter_options))
+            filter_type = address_family
+        if filter_type is None:
+          filter_type = 'inet'
+
+        # does this policy override the default filter actions?
+        for next in header.target:
+          if next.platform == 'iptables':
+            if len(next.options) > 1:
+              for arg in next.options:
+                if arg in good_default_actions:
+                  default_action = arg
+        if default_action not in good_default_actions:
+          raise UnsupportedDefaultAction('%s %s %s' % (
+              '\nOnly ACCEPT or DROP default filter action allowed;',
+              default_action, 'used.'))
+
+        # Add comments for this filter
+        target.append('# Speedway Iptables %s Policy' %
+                      header.FilterName('iptables'))
+        # reformat long text comments, if needed
+        comments = WrapWords(header.comment, 70)
+        if comments and comments[0]:
+          for line in comments:
+            target.append('# %s' % line)
+          target.append('#')
+        # add the p4 tags
+        p4_id = '$I' + 'd:$'
+        p4_date = '$Da' + 'te:$'
+        target.append('# %s' % p4_id)
+        target.append('# %s' % p4_date)
+        target.append('# ' + filter_type)
+
+        # setup the default filter states.
+        # if default action policy not specified, do nothing.
+        if default_action:
+          target.append(':%s %s' % (filter_name, default_action))
+
+        # add the terms
+        for term in terms:
+          # established option implies high ports for tcp/udp
+          for opt in [str(x) for x in term.option]:
+            if opt.find('established') == 0:
+              # if we don't specify a protocol apply to all protocols
+              if not term.protocol: term.protocol = ['all']
+              add_ports = True
+              for proto in term.protocol:
+                if proto not in ['tcp', 'udp']:
+                  add_ports = False
+                  #
+                  # if we don't limit to just TCP and/or UDP, using
+                  # 'option:: established' in a term could end up inadvertently
+                  # becoming overly permissive.
+                  #
+                  if not trackstate:
+                    raise EstablishedError('%s %s' % (
+                        '\nYou have specified "option:: established" for'
+                        'non-TCP/UDP protocols while specifying a stateless'
+                        '(nostate) filter. This is only acceptable in stateful'
+                        ' filters.\nError in term', term.name))
+              # only add high-ports for TCP and/or UDP protocols
+              if add_ports:
                 # add in high ports, then collapse list to eliminate overlaps
                 term.destination_port.append((1024, 65535))
-        term.destination_port = term._CollapsePortList(term.destination_port)
+          term.destination_port = term._CollapsePortList(term.destination_port)
 
-        target.append(str(Term(term, filter_name, default_action, filter_type)))
-      target.append('\n')
-    target.pop()  # remove extra \n
-    target.append('COMMIT\n')
-    return '\n'.join(target)
+          target.append(str(Term(term, filter_name, trackstate, default_action,
+                                 filter_type, 'truncatenames' in filter_options)
+                           ))
+        target.append('\n')
+      target.pop()  # remove extra \n
+      target.append('COMMIT\n')
+      return '\n'.join(target)
 
 
 def WrapWords(textlist, size):
@@ -395,8 +636,16 @@ class NoIptablesPolicyError(Error):
 
 
 class TcpEstablishedError(Error):
-  """Raised when a term has tcp-established but not proto tcp only."""
+  """Raised when a term has tcp-established option but not proto tcp only."""
+
+
+class EstablishedError(Error):
+  """Raised when a term has established option with inappropriate protocol."""
 
 
 class UnsupportedDefaultAction(Error):
+  """Raised when a filter has an impermissible default action specified."""
+
+
+class UnsupportedTargetOption(Error):
   """Raised when a filter has an impermissible default action specified."""
