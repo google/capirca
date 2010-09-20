@@ -7,7 +7,7 @@ header {
   comment:: "also has multiple entries."
   target:: juniper edge-inbound
   target:: cisco edge-inbound mixed
-  target:: iptables INPUT
+  target:: iptables INPUT DROP nostate truncatenames
   target:: silverpeak wireless_filter_in
 }
 
