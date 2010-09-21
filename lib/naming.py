@@ -82,6 +82,10 @@ class UndefinedServiceError(Error):
   """Raised if a service is referenced but not defined."""
 
 
+class UnexpectedDefinitionType(Error):
+  """An unexpected/unknown definition type was used."""
+
+
 class _ItemUnit(object):
   """This class is a container for an index key and a list of associated values.
 
@@ -112,10 +116,26 @@ class Naming(object):
     self.current_symbol = None
     self.services = {}
     self.networks = {}
-    self.networks6 = {}
+    self.unseen_services = {}
+    self.unseen_networks = {}
     if naming_dir:
       self._Parse(naming_dir, 'services')
+      self._CheckUnseen('services')
+
       self._Parse(naming_dir, 'networks')
+      self._CheckUnseen('networks')
+
+  def _CheckUnseen(self, def_type):
+    if def_type == 'services':
+      if self.unseen_services:
+        raise UndefinedServiceError('%s %s' % (
+            'The following tokens were nested as a values, but not defined',
+            self.unseen_services))
+    if def_type == 'networks':
+      if self.unseen_networks:
+        raise UndefinedAddressError('%s %s' % (
+            'The following tokens were nested as a values, but not defined',
+            self.unseen_networks))
 
   def GetIpParents(self, query):
     """Return network tokens that contain IP in query.
@@ -185,7 +205,7 @@ class Naming(object):
         if item == query:
           rval.append(token)
     if not rval:
-      raise UndefinedServiceError('No such service, %s' % query)
+      raise UndefinedServiceError('%s %s' % ('\nNo such service,', query))
     for next in rval:
       done = False
       for token in self.services:
@@ -218,23 +238,19 @@ class Naming(object):
     data = query.split('#')     # Get the token keyword and remove any comment
     service_name = data[0].split()[0]  # strip and cast from list to string
     if service_name not in self.services:
-      raise UndefinedServiceError('No such service, %s' % query)
+      raise UndefinedServiceError('%s %s' % ('\nNo such service,', query))
 
     already_done.add(service_name)
 
-    for next in self.services[service_name].items:
-      comment = ''
-      if next.find('#') > -1:
-        (service, comment) = [x.strip() for x in next.split('#')]
-      else:
-        service = next.strip()
+    for next_item in self.services[service_name].items:
+      # Remove any trailing comment
+      service = next_item.split('#')[0].strip()
       # Recognized token, not a value.
-      if service in self.services:
+      if not '/' in service:
         # Make sure we are not descending into recursion hell.
         if service not in already_done:
           already_done.add(service)
-          for token_within_a_service in self.GetService(service):
-            expandset.add(token_within_a_service)
+          expandset.update(self.GetService(service))
       else:
         expandset.add(service)
     return sorted(expandset)
@@ -259,7 +275,7 @@ class Naming(object):
     data = query.split('#')     # Get the token keyword and remove any comment
     servicename = data[0].split()[0]  # strip and cast from list to string
     if servicename not in self.services:
-      raise UndefinedServiceError('No such service %s' % servicename)
+      raise UndefinedServiceError('%s %s' % ('\nNo such service,', servicename))
 
     for service in self.GetService(servicename):
       if service and '/' in service:
@@ -304,7 +320,7 @@ class Naming(object):
     data = query.split('#')     # Get the token keyword and remove any comment
     token = data[0].split()[0]  # Remove whitespace and cast from list to string
     if token not in self.networks:
-      raise UndefinedAddressError('UNDEFINED: %s' % str(token))
+      raise UndefinedAddressError('%s %s' % ('\nUNDEFINED:', str(token)))
 
     for next in self.networks[token].items:
       comment = ''
@@ -330,7 +346,7 @@ class Naming(object):
       next.parent_token = token
     return returnlist
 
-  def _Parse(self, defdirectory, dotype):
+  def _Parse(self, defdirectory, def_type):
     """Parse files of a particular type for tokens and values.
 
     Given a directory name and the type (services|networks) to
@@ -339,7 +355,7 @@ class Naming(object):
 
     Args:
       defdirectory: Path to directory containing definition files.
-      dotype: Type of definitions to parse
+      def_type: Type of definitions to parse
 
     Raises:
       NoDefinitionsError: if no definitions are found.
@@ -348,8 +364,8 @@ class Naming(object):
     get_files = {'services': lambda: glob.glob(defdirectory + '/*.svc'),
                  'networks': lambda: glob.glob(defdirectory + '/*.net')}
 
-    if dotype in get_files:
-      file_names = get_files[dotype]()
+    if def_type in get_files:
+      file_names = get_files[def_type]()
     else:
       raise NoDefinitionsError('Unknown definitions type.')
     if not file_names:
@@ -357,10 +373,9 @@ class Naming(object):
 
     for current_file in file_names:
       try:
-        file_handle = open(current_file, 'r')
+        file_handle = open(current_file, 'r').readlines()
         for line in file_handle:
-          self._ParseLine(line, dotype)
-        file_handle.close()
+          self._ParseLine(line, def_type)
       except IOError, error_info:
         raise NoDefinitionsError('%s', error_info)
 
@@ -401,11 +416,13 @@ class Naming(object):
       definition_type: Either 'networks' or 'services'
 
     Raises:
+      UnexpectedDefinitionType: when called with unexpected type of defintions
       NamespaceCollisionError: when overlapping tokens are found.
       ParseError: If errors occur
     """
     if definition_type not in ['services', 'networks']:
-      return
+      raise UnexpectedDefinitionType('%s %s' % (
+          'Received an unexpected defintion type:', definition_type))
     line = line.strip()
     if not line or line.startswith('#'):  # Skip comments and blanks.
       return
@@ -419,16 +436,28 @@ class Naming(object):
       self.current_symbol = line_parts[0].strip()  # varname left of '='
       if definition_type == 'services':
         if self.current_symbol in self.services:
-          raise NamespaceCollisionError(self.current_symbol)
+          raise NamespaceCollisionError('%s %s' % (
+              '\nMultiple definitions found for service: ',
+              self.current_symbol))
       elif definition_type == 'networks':
         if self.current_symbol in self.networks:
-          raise NamespaceCollisionError(self.current_symbol)
+          raise NamespaceCollisionError('%s %s' % (
+              '\nMultiple definitions found for service: ',
+              self.current_symbol))
 
       self.unit = _ItemUnit(self.current_symbol)
       if definition_type == 'services':
         self.services[self.current_symbol] = self.unit
+        # unseen_services is a list of service TOKENS found in the values
+        # of newly defined services, but not previously defined themselves.
+        # When we define a new service, we should remove it (if it exists)
+        # from the list of unseen_services.
+        if self.current_symbol in self.unseen_services:
+          self.unseen_services.pop(self.current_symbol)
       elif definition_type == 'networks':
         self.networks[self.current_symbol] = self.unit
+        if self.current_symbol in self.unseen_networks:
+          self.unseen_networks.pop(self.current_symbol)
       else:
         raise ParseError('Unknown definitions type.')
       values = line_parts[1]
@@ -436,10 +465,23 @@ class Naming(object):
     else:
       values = line_parts[0]  # values for previous var are continued this line
     for value_piece in values.split():
-      if value_piece:
-        if self.current_symbol:
-          if comment:
-            self.unit.items.append(value_piece + ' # ' + comment)
-          else:
-            self.unit.items.append(value_piece)
-
+      if not value_piece:
+        continue
+      if not self.current_symbol:
+        break
+      if comment:
+        self.unit.items.append(value_piece + ' # ' + comment)
+      else:
+        self.unit.items.append(value_piece)
+        # token?
+        if value_piece[0].isalpha() and ':' not in value_piece:
+          if definition_type == 'services':
+            # already in top definitions list?
+            if value_piece not in self.services:
+              # already have it as an unused value?
+              if value_piece not in self.unseen_services:
+                self.unseen_services[value_piece] = True
+          if definition_type == 'networks':
+            if value_piece not in self.networks:
+              if value_piece not in self.unseen_networks:
+                self.unseen_networks[value_piece] = True
