@@ -588,8 +588,8 @@ class Iptables(object):
                            ))
         target.append('\n')
       target.pop()  # remove extra \n
-      target.append('COMMIT\n')
-      return '\n'.join(target)
+    target.append('COMMIT\n')
+    return '\n'.join(target)
 
 
 def WrapWords(textlist, size):
