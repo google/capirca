@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright 2009 Google Inc.
+# Copyright 2011 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@
 # juniper firewall filters.
 
 
+__author__ = 'watson@google.com (Tony Watson)'
+
 # system imports
 import copy
 import dircache
@@ -33,6 +35,7 @@ from lib import policy
 # renderers
 from lib import cisco
 from lib import iptables
+from lib import speedway
 from lib import juniper
 from lib import silverpeak
 
@@ -87,6 +90,8 @@ def render_filters(source_file, policy):
       acl = copy.deepcopy(policy)
     if 'iptables' in header.platforms:
       ipt = copy.deepcopy(policy)
+    if 'speedway' in header.platforms:
+      spd = copy.deepcopy(policy)
     if 'silverpeak' in header.platforms:
       spk = copy.deepcopy(policy)
   if jcl:
@@ -101,8 +106,12 @@ def render_filters(source_file, policy):
     fw = iptables.Iptables(ipt)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
+  if spd:
+    fw = speedway.Speedway(spd)
+    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+    count += 1
   if spk:
-    spk_obj = silverpeak.Silverpeak(spk)
+    spk_obj = silverpeak.Silverpeak(spk, '')
     do_output_filter(spk_obj.GenerateACLString(),
                      filter_name(source_file, spk_obj._SUFFIX))
     do_output_filter(spk_obj.GenerateConfString(),

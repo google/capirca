@@ -23,6 +23,7 @@ import socket
 import logging
 
 from third_party import ipaddr
+import aclgenerator
 import nacaddr
 
 
@@ -67,16 +68,6 @@ class UnsupportedCiscoAccessListError(Error):
 
 class StandardAclTermError(Error):
   """Raised when there is a problem in a standard access list."""
-  pass
-
-
-class NoCiscoPolicyError(Error):
-  """Raised when a policy is errantly passed to this module for rendering."""
-  pass
-
-
-class EstablishedError(Error):
-  """Raised when established option used with inappropriate protocol."""
   pass
 
 
@@ -273,7 +264,7 @@ class ObjectGroupTerm(object):
       protocol = ['ip']
     else:
       # fix the protocol, b/1746531
-      protocol = map(lambda x: FixupProtocol(x), self.term.protocol)
+      protocol = map(FixupProtocol, self.term.protocol)
 
     # addresses
     source_address = self.term.source_address
@@ -327,14 +318,14 @@ class ObjectGroupTerm(object):
 
 class Term(object):
   """A single ACL Term."""
+  _TCP = 6
 
   def __init__(self, term, af=4):
     self.term = term
     self.options = []
-    if af == 6:
-      self.af = 6
-    else:
-      self.af = 4  # make 4, unless explicitly 6
+    # Our caller should have already verified the address family.
+    assert af in (4, 6)
+    self.af = af
 
   def __str__(self):
     ret_str = ['\n']
@@ -356,8 +347,8 @@ class Term(object):
     if not self.term.protocol:
       protocol = ['ip']
     else:
-      # fix the protocol
-      protocol = map(lambda x: FixupProtocol(x), self.term.protocol)
+      # fix the protocol, b/1746531
+      protocol = map(FixupProtocol, self.term.protocol)
 
     # source address
     if self.term.source_address:
@@ -387,14 +378,10 @@ class Term(object):
       destination_address = ['any']
 
     # options
-    extra_options = []
-    for opt in [str(x) for x in self.term.option]:
-      if opt.find('tcp-established') == 0 and 6 in protocol:
-        extra_options.append('established')
-      elif opt.find('established') == 0 and 6 in protocol:
-        # only needed for TCP, for other protocols policy.py handles high-ports
-        extra_options.append('established')
-    self.options.extend(extra_options)
+    opts = [str(x) for x in self.term.option]
+    if self._TCP in protocol and ('tcp-established' in opts or
+                                  'established' in opts):
+      self.options.extend(['established'])
 
     # ports
     source_port = [()]
@@ -413,25 +400,14 @@ class Term(object):
         for sport in source_port:
           for dport in destination_port:
             for proto in protocol:
-              # only output address family appropriate IP addresses
-              do_output = False
-              if self.af == 4:
-                if (((type(saddr) is nacaddr.IPv4) or (saddr == 'any')) and
-                    ((type(daddr) is nacaddr.IPv4) or (daddr == 'any'))):
-                  do_output = True
-              if self.af == 6:
-                if (((type(saddr) is nacaddr.IPv6) or (saddr == 'any')) and
-                    ((type(daddr) is nacaddr.IPv6) or (daddr == 'any'))):
-                  do_output = True
-              if do_output:
-                ret_str.append(self._TermletToStr(
-                    _ACTION_TABLE.get(str(self.term.action[0])),
-                    proto,
-                    saddr,
-                    sport,
-                    daddr,
-                    dport,
-                    self.options))
+              ret_str.append(self._TermletToStr(
+                  _ACTION_TABLE.get(str(self.term.action[0])),
+                  proto,
+                  saddr,
+                  sport,
+                  daddr,
+                  dport,
+                  self.options))
 
     return '\n'.join(ret_str)
 
@@ -464,12 +440,12 @@ class Term(object):
     # inet6
     if type(saddr) is nacaddr.IPv6 or type(saddr) is ipaddr.IPv6Network:
       if saddr.numhosts > 1:
-        saddr = '%s/%s' % (saddr.ip, saddr.prefixlen)
+        saddr = '%s' % (saddr.with_prefixlen)
       else:
         saddr = 'host %s' % (saddr.ip)
     if type(daddr) is nacaddr.IPv6 or type(daddr) is ipaddr.IPv6Network:
       if daddr.numhosts > 1:
-        daddr = '%s/%s' % (daddr.ip, daddr.prefixlen)
+        daddr = '%s' % (daddr.with_prefixlen)
       else:
         daddr = 'host %s' % (daddr.ip)
 
@@ -495,18 +471,12 @@ class Term(object):
         action, proto, saddr, sport, daddr, dport, ' '.join(option))
 
 
-class Cisco(object):
+class Cisco(aclgenerator.ACLGenerator):
   """A cisco policy object."""
 
+  _PLATFORM = 'cisco'
+  _DEFAULT_PROTOCOL = 'ip'
   _SUFFIX = '.acl'
-
-  def __init__(self, pol):
-    for header in pol.headers:
-      if 'cisco' not in header.platforms:
-        raise NoCiscoPolicyError('no cisco policy found in %s' % (
-            header.target))
-
-    self.policy = pol
 
   def __str__(self):
     target_header = []
@@ -518,12 +488,12 @@ class Cisco(object):
                     'mixed']
 
     # add the p4 tags
-    p4_id = '%s%s' % ('$I', 'd:$')
-    p4_date = '%s%s' % ('$Da', 'te:$')
-    target_header.append('! %s' % p4_id)
-    target_header.append('! %s' % p4_date)
+    target.extend(aclgenerator.AddRepositoryTags('! '))
 
     for header, terms in self.policy.filters:
+      if not self._PLATFORM in header.platforms:
+        continue
+
       filter_options = header.FilterOptions('cisco')
       filter_name = header.FilterName('cisco')
 
@@ -546,8 +516,9 @@ class Cisco(object):
         if filter_type is 'extended':
           if filter_name.isdigit():
             if 1 <= int(filter_name) <= 99:
-              raise UnsupportedCiscoAccessListError(
-                  'access-lists between 1-99 are reservered for standard ACLs')
+              raise UnsupportedCiscoAccessListError('%s %s' % (
+                  'access-lists between 1-99 are reservered for',
+                  'standard ACLs'))
 
           # setup the access list names
           target.append('no ip access-list extended %s' % filter_name)
@@ -574,6 +545,10 @@ class Cisco(object):
           target.append('no ipv6 access-list %s' % filter_name)
           target.append('ipv6 access-list %s' % filter_name)
 
+        # Add the Perforce Id/Date tags, these must come after
+        # remove/re-create of the filter, otherwise config mode doesn't
+        # know where to place these remarks in the configuration.
+        target.extend(aclgenerator.AddRepositoryTags('remark '))
         # add a header comment if one exists
         for comment in header.comment:
           for line in comment.split('\n'):
@@ -581,18 +556,12 @@ class Cisco(object):
 
         # now add the terms
         for term in terms:
-          # append high-ports when established option used.
-          for opt in [str(x) for x in term.option]:
-            if (opt.find('established') == 0):
-              # established option only makes sense with tcp or udp
-              for proto in term.protocol:
-                if proto not in ['tcp', 'udp']:
-                  raise EstablishedError('%s (%s) %s %s' % (
-                      'using established option with inappropriate protocol',
-                      proto, 'in term', term.name))
-              # add in high ports, then collapse list to eliminate overlaps
-              term.destination_port.append((1024, 65535))
-          term.destination_port = term._CollapsePortList(term.destination_port)
+          af = 'inet'
+          if filter_type == 'inet6':
+            af = 'inet6'
+          term = self.FixHighPorts(term, af=af)
+          if not term:
+            continue
           # render terms based on filter type
           if filter_type == 'standard':
             target.append(str(TermStandard(term, filter_name)))
@@ -603,13 +572,10 @@ class Cisco(object):
             target.append(str(ObjectGroupTerm(term, filter_name)))
           elif filter_type == 'inet6':
             target.append(str(Term(term, 6)))
-
         target.append('\n')
 
       if obj_target.valid:
         target = [str(obj_target)] + target
-
       # ensure that the header is always first
       target = target_header + target
-
-      return '\n'.join(target)
+    return '\n'.join(target)
