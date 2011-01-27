@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright 2009 Google Inc.
+# Copyright 2011 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,27 +21,26 @@ __author__ = 'pmoody@google.com (Peter Moody)'
 
 import logging
 
+import aclgenerator
 import policy
 import nacaddr
 
 
 # generic error class
-class Error(Exception): pass
+class Error(Exception):
+  pass
 
 
-class NoJuniperPolicyError(Error): pass
+class JuniperTermPortProtocolError(Error):
+  pass
 
 
-class JuniperTermPortProtocolError(Error): pass
+class TcpEstablishedWithNonTcp(Error):
+  pass
 
 
-class TcpEstablishedWithNonTcp(Error): pass
-
-
-class EstablishedError(Error): pass
-
-
-class JuniperDuplicateTermError(Error): pass
+class JuniperDuplicateTermError(Error):
+  pass
 
 
 class Term(object):
@@ -53,11 +52,11 @@ class Term(object):
   """
 
   _DEFAULT_INDENT = 12
-  _ACTIONS = { 'accept' : 'accept',
-               'deny' : 'discard',
-               'reject' : 'reject',
-               'next' : 'next term',
-               'reject-with-tcp-rst' : 'reject tcp-reset' }
+  _ACTIONS = {'accept': 'accept',
+              'deny': 'discard',
+              'reject': 'reject',
+              'next': 'next term',
+              'reject-with-tcp-rst': 'reject tcp-reset'}
 
   # the following lookup table is used to map between the various types of
   # filters the juniper generator can render.  As new differences are
@@ -68,28 +67,28 @@ class Term(object):
   # it's critical that the members of each filter type be the same, that is
   # to say that if _TERM_TYPE.get('inet').get('foo') returns something,
   # _TERM_TYPE.get('inet6').get('foo') must return the inet6 equivalent.
-  _TERM_TYPE = { 'inet' : { 'addr' : 'address',
-                            'saddr': 'source-address',
-                            'daddr': 'destination-address',
-                            'protocol' : 'protocol',
-                            'protocol-except' : 'protocol-except',
-                            'tcp-est' : 'tcp-established' },
-                 'inet6' : { 'addr' : 'address',
-                             'saddr' : 'source-address',
-                             'daddr' : 'destination-address',
-                             'protocol' : 'next-header',
-                             'protocol-except' : 'next-header-except',
-                             'tcp-est' : 'tcp-established' },
-                 'bridge' : { 'addr' : 'ip-address',
-                              'saddr' : 'ip-source-address',
-                              'daddr' : 'ip-destination-address',
-                              'protocol' : 'ip-protocol',
-                              'protocol-except' : 'ip-protocol-except',
-                              'tcp-est': 'tcp-flags "(ack|rst)"'}}
+  _TERM_TYPE = {'inet': {'addr': 'address',
+                         'saddr': 'source-address',
+                         'daddr': 'destination-address',
+                         'protocol': 'protocol',
+                         'protocol-except': 'protocol-except',
+                         'tcp-est': 'tcp-established'},
+                'inet6': {'addr': 'address',
+                          'saddr': 'source-address',
+                          'daddr': 'destination-address',
+                          'protocol': 'next-header',
+                          'protocol-except': 'next-header-except',
+                          'tcp-est': 'tcp-established'},
+                'bridge': {'addr': 'ip-address',
+                           'saddr': 'ip-source-address',
+                           'daddr': 'ip-destination-address',
+                           'protocol': 'ip-protocol',
+                           'protocol-except': 'ip-protocol-except',
+                           'tcp-est': 'tcp-flags "(ack|rst)"'}}
 
-  _INET = { 'inet' : 4,
-            'inet6' : 6,
-            'bridge' : 4 }  # if this doesn't exist, output includes v4 & v6
+  _INET = {'inet': 4,
+           'inet6': 6,
+           'bridge': 4}  # if this doesn't exist, output includes v4 & v6
 
   def __init__(self, term, term_type):
     self.term = term
@@ -114,7 +113,7 @@ class Term(object):
     # some options need to modify the actions
     self.extra_actions = []
 
-  #todo(pmoody): get rid of all of the default string contcatination here:
+  # TODO(pmoody): get rid of all of the default string concatenation here.
   #  eg, indent(8) + 'foo;' -> '%s%s;' % (indent(8), 'foo'). pyglint likes this
   #  more.
   def __str__(self):
@@ -166,8 +165,8 @@ class Term(object):
         elif opt.find('tcp-established') == 0:
           if self.term.protocol == ['tcp']:
             if 'tcp-established;' not in [x.strip() for x in from_str]:
-              from_str.append(indent(8) +
-                  self._TERM_TYPE.get(self.term_type).get('tcp-est') + ';')
+              term_est = self._TERM_TYPE.get(self.term_type).get('tcp-est')
+              from_str.append(indent(8) + term_est + ';')
           else:
             raise TcpEstablishedWithNonTcp(
                 'tcp-established can only be used with tcp protocol in term %s'
@@ -192,14 +191,14 @@ class Term(object):
       ret_str.append(indent(4) + 'from {')
 
       # address
-      address = self.term.GetAddressOfVersion(
-            'address', self._INET.get(self.term_type))
+      address = self.term.GetAddressOfVersion('address',
+                                              self._INET.get(self.term_type))
       if address:
         ret_str.append(indent(8) +
                        self._TERM_TYPE.get(self.term_type).get('addr') + ' {')
         for addr in address:
           # nacaddr comments may not appear for some optimized addresses
-          ret_str.append(indent(12) + str(addr) + ';' + self._comment(addr))
+          ret_str.append(indent(12) + str(addr) + ';' + self._Comment(addr))
         ret_str.append(indent(8) + '}')
 
       # source address
@@ -214,13 +213,13 @@ class Term(object):
                        self._TERM_TYPE.get(self.term_type).get('saddr') + ' {')
         for saddr in source_address:
           # nacaddr comments may not  appear for some optimized addresses
-          ret_str.append(indent(12) + str(saddr) + ';' + self._comment(saddr))
+          ret_str.append(indent(12) + str(saddr) + ';' + self._Comment(saddr))
         # source-excludes?
         if source_address_exclude:
           for ex in source_address_exclude:
             # nacaddr comments may not  appear for some optimized addresses
             ret_str.append(indent(12) + str(ex) + ' except;' +
-                self._comment(ex, exclude = True))
+                           self._Comment(ex, exclude=True))
         ret_str.append(indent(8) + '}')
 
       # destination address
@@ -236,12 +235,12 @@ class Term(object):
                        self._TERM_TYPE.get(self.term_type).get('daddr') + ' {')
         for daddr in destination_address:
           # nacaddr comments may not  appear for some optimized addresses
-          ret_str.append(indent(12) + str(daddr) + ';' + self._comment(daddr))
+          ret_str.append(indent(12) + str(daddr) + ';' + self._Comment(daddr))
         # destination-excludes?
         if destination_address_exclude:
           for ex in destination_address_exclude:
             ret_str.append(indent(12) + str(ex) + ' except;' +
-                self._comment(ex, exclude = True))
+                           self._Comment(ex, exclude=True))
 
         ret_str.append(indent(8) + '}')
 
@@ -263,28 +262,27 @@ class Term(object):
       if self.term.protocol:
         ret_str.append(indent(8) +
                        self._TERM_TYPE.get(self.term_type).get('protocol') +
-                       ' ' + self._group(self.term.protocol))
+                       ' ' + self._Group(self.term.protocol))
 
       # protocol
       if self.term.protocol_except:
-        ret_str.append(indent(8)
-                       + self._TERM_TYPE.get(self.term_type).get(
-                       'protocol-except') + ' '
-                       + self._group(self.term.protocol_except))
+        term_except = self._TERM_TYPE.get(self.term_type).get('protocol-except')
+        ret_str.append(indent(8) + term_except + ' '
+                       + self._Group(self.term.protocol_except))
 
       # port
       if self.term.port:
-        ret_str.append(indent(8) + 'port ' + self._group(self.term.port))
+        ret_str.append(indent(8) + 'port ' + self._Group(self.term.port))
 
       # source port
       if self.term.source_port:
         ret_str.append(indent(8) + 'source-port ' +
-            self._group(self.term.source_port))
+                       self._Group(self.term.source_port))
 
       # destination port
       if self.term.destination_port:
         ret_str.append(indent(8) + 'destination-port ' +
-            self._group(self.term.destination_port))
+                       self._Group(self.term.destination_port))
 
       # append any options beloging in the from {} section
       for next in from_str:
@@ -292,25 +290,25 @@ class Term(object):
 
       # packet length
       if self.term.packet_length:
-        ret_str.append(indent(8) + 'packet-length ' + str(
-            self.term.packet_length) + ';')
+        ret_str.append(indent(8) + 'packet-length ' +
+                       str(self.term.packet_length) + ';')
 
       # fragment offset
       if self.term.fragment_offset:
-        ret_str.append(indent(8) + 'fragment-offset ' + str(
-            self.term.fragment_offset) + ';')
+        ret_str.append(indent(8) + 'fragment-offset ' +
+                       str(self.term.fragment_offset) + ';')
 
       if self.term.icmp_type:
         ret_str.append(indent(8) + 'icmp-type ' +
-            self._group(self.term.icmp_type))
+                       self._Group(self.term.icmp_type))
 
       if self.term.ether_type:
         ret_str.append(indent(8) + 'ether-type ' +
-            self._group(self.term.ether_type))
+                       self._Group(self.term.ether_type))
 
       if self.term.traffic_type:
         ret_str.append(indent(8) + 'traffic-type ' +
-            self._group(self.term.traffic_type))
+                       self._Group(self.term.traffic_type))
 
       if self.term.precedence:
         ret_str.append(indent(8) + 'precedence %d;' % int(self.term.precedence))
@@ -355,7 +353,7 @@ class Term(object):
     for action in self.extra_actions:
       ret_str.append(indent(8) + str(action) + ';')
 
-    for action in  self.term.action:
+    for action in self.term.action:
       ret_str.append(indent(8) + self._ACTIONS.get(str(action)) + ';')
 
     # end then { ... }
@@ -366,7 +364,7 @@ class Term(object):
 
     return '\n'.join(ret_str)
 
-  def _comment(self, addr, exclude = False, line_length = 132):
+  def _Comment(self, addr, exclude=False, line_length=132):
     """Returns address comment field if it exists.
 
     Args:
@@ -416,7 +414,7 @@ class Term(object):
     # to keep from wrapping
     length_eol = 77 - indentation
 
-    if type(addr) is nacaddr.IPv4:
+    if isinstance(addr, (nacaddr.IPv4, nacaddr.IPv6)):
       if addr.text:
 
         if line_length == 0:
@@ -426,7 +424,7 @@ class Term(object):
         # There should never be a /* or */, but be safe and ignore those
         # comments
         if addr.text.find('/*') >= 0 or addr.text.find('*/') >= 0:
-          logging.debug('Malformed comment [%s] ignoring' % addr.text)
+          logging.debug('Malformed comment [%s] ignoring', addr.text)
         else:
 
           text = addr.text[:line_length]
@@ -453,21 +451,22 @@ class Term(object):
           rval[-1] += ' */'
     else:
       # should we be paying attention to any other addr type?
-      logging.debug('Ignoring non IPv4 address: %s' % addr)
+      logging.debug('Ignoring non IPv4 or IPv6 address: %s', addr)
     return '\n'.join(rval)
 
-  def _group(self, group):
+  def _Group(self, group):
     """If 1 item return it, else return [ item1 item2 ].
 
     Args:
-      group. a list.  could be a list of strings (protocols)
-        or a list of tuples (ports)
+      group: a list.  could be a list of strings (protocols) or a list of
+             tuples (ports)
 
     Returns:
-      rval. a string surrounded by '[' and '];' if len(group) > 1
-       or with just ';' appended if len(group) == 1
+      rval: a string surrounded by '[' and '];' if len(group) > 1
+            or with just ';' appended if len(group) == 1
     """
-    def __group(el):
+
+    def _FormattedGroup(el):
       """Return the actual formatting of an individual element.
 
       Args:
@@ -486,13 +485,13 @@ class Term(object):
         return '%d-%d' % (el[0], el[1])
 
     if len(group) > 1:
-      rval = '[ ' + ' '.join([__group(x) for x in group]) + ' ];'
+      rval = '[ ' + ' '.join([_FormattedGroup(x) for x in group]) + ' ];'
     else:
-      rval = __group(group[0]) + ';'
+      rval = _FormattedGroup(group[0]) + ';'
     return rval
 
 
-class Juniper(object):
+class Juniper(aclgenerator.ACLGenerator):
   """JCL rendering class.
 
     This class takes a policy object and renders the output into a syntax
@@ -502,94 +501,77 @@ class Juniper(object):
     pol: policy.Policy object
   """
 
+  _PLATFORM = 'juniper'
+  _DEFAULT_PROTOCOL = 'ip'
+  _SUPPORTED_AF = set(('inet', 'inet6', 'bridge'))
+  _FILTER_BLACKLIST = {'inet': set(('icmpv6',)), 'inet6': set(('icmp',))}
   _SUFFIX = '.jcl'
-
-  def __init__(self, pol):
-    # should we really have been called?
-    # we might want to iterate this instead. can we be sure that this isn't
-    # a list?
-    for header in pol.headers:
-      if 'juniper' not in header.platforms:
-        raise NoJuniperPolicyError("'%s' is not a juniper target" %
-                                   header.target)
-    self.policy = pol
 
   def __str__(self):
     target = []
 
     for header, terms in self.policy.filters:
-      filter_options = header.FilterOptions('juniper')
-      filter_name = filter_options[0]
-      # Checks if the non-interface-specific option was specified.
-      # I'm assuming that it will be specified as maximum one time, and don't
-      # check for more appearances of the word in the options.
-      interface_specific = True
-      if 'not-interface-specific' in filter_options[1:]:
-        interface_specific = False
-        # Remove the option so that it is not confused with a filter type
-        filter_options.remove('not-interface-specific')
+      if 'juniper' in header.platforms:
+        filter_options = header.FilterOptions('juniper')
+        filter_name = filter_options[0]
+        # Checks if the non-interface-specific option was specified.
+        # I'm assuming that it will be specified as maximum one time, and
+        # don't check for more appearances of the word in the options.
+        interface_specific = True
+        if 'not-interface-specific' in filter_options[1:]:
+          interface_specific = False
+          # Remove the option so that it is not confused with a filter type
+          filter_options.remove('not-interface-specific')
 
-      # default to inet4 filters
-      filter_type = 'inet'
-      if len(filter_options) > 1:
-        filter_type = filter_options[1]
+        # default to inet4 filters
+        filter_type = 'inet'
+        if len(filter_options) > 1:
+          filter_type = filter_options[1]
 
-      if not Term._TERM_TYPE.has_key(filter_type):
-        raise ValueError('Unkown Filter Type: %s' % filter_type)
+        if not filter_type in Term._TERM_TYPE:
+          raise ValueError('Unknown Filter Type: %s' % filter_type)
 
-      # add the header information
-      target.append('firewall {')
-      target.append(' ' * 4 + 'family %s {' % filter_type)
-      target.append(' ' * 8 + 'replace:')
+        # add the header information
+        target.append('firewall {')
+        target.append(' ' * 4 + 'family %s {' % filter_type)
+        target.append(' ' * 8 + 'replace:')
 
-      target.append(' ' * 8 + '/*')
+        target.append(' ' * 8 + '/*')
 
-      # we want the acl to contain id and date tags, but p4 will expand the tags
-      # here when we submit the generator, so we have to trick p4 into not
-      # knowing these words.  like taking c-a-n-d-y from a baby.
-      p4_id = '$I' + 'd:$'
-      p4_date = '$Da' + 'te:$'
-      target.append(' ' * 8 + '** ' +  p4_id)
-      target.append(' ' * 8 + '** ' + p4_date)
-      target.append(' ' * 8 + '**')
+        # we want the acl to contain id and date tags, but p4 will expand
+        # the tags here when we submit the generator, so we have to trick
+        # p4 into not knowing these words.  like taking c-a-n-d-y from a
+        # baby.
+        target.extend(aclgenerator.AddRepositoryTags(' ' * 8 + '** '))
+        target.append(' ' * 8 + '**')
 
-      for comment in header.comment:
-        for line in comment.split('\n'):
-          target.append(' ' * 8 + '** ' + line)
-      target.append(' ' * 8 + '*/')
+        for comment in header.comment:
+          for line in comment.split('\n'):
+            target.append(' ' * 8 + '** ' + line)
+        target.append(' ' * 8 + '*/')
 
-      target.append(' ' * 8 + 'filter ' + filter_name + ' {')
-      if interface_specific:
-        target.append(' ' * 12 + 'interface-specific;')
+        target.append(' ' * 8 + 'filter ' + filter_name + ' {')
+        if interface_specific:
+          target.append(' ' * 12 + 'interface-specific;')
 
-      # add the terms, raise an error if there is a repeat term name.
-      term_names = set()
-      for term in terms:
-        # established option implies high ports for stateless filters 
-        for opt in [str(x) for x in term.option]:
-          if (opt.find('established') == 0):
-            for proto in term.protocol:
-              # established option only makes sense with tcp or udp
-              if proto not in ['tcp', 'udp']:
-                raise EstablishedError('%s (%s) %s %s' % (
-                    'using established option with inappropriate protocol',
-                    proto, 'in term', term.name))
-              # add in high ports, then collapse list to eliminate overlaps
-              term.destination_port.append((1024, 65535))
-        term.destination_port = term._CollapsePortList(term.destination_port)
+        term_names = set()
+        for term in terms:
+          term = self.FixHighPorts(term, af=filter_type)
+          if not term:
+            continue
+          # add the terms, raise an error if there is a repeat term name.
+          if not term.name in term_names:
+            term_names.add(term.name)
+            target.append(str(Term(term, filter_type)))
+          else:
+            raise JuniperDuplicateTermError(
+                'You have a duplicate term: %s' % term.name)
 
-        if not term.name in term_names:
-          term_names.add(term.name)
-          target.append(str(Term(term, filter_type)))
-        else:
-          raise JuniperDuplicateTermError('You have a duplicate term: %s' %
-                                          term.name)
-
-      target.append(' ' * 8 + '}')  # filter { ... }
-      target.append(' ' * 4 + '}')  # family inet { ... }
-      target.append('}')            # firewall { ... }
-      target.append('\n')
-    # end for header, terms in self.policy.filters
+        target.append(' ' * 8 + '}')  # filter { ... }
+        target.append(' ' * 4 + '}')  # family inet { ... }
+        target.append('}')            # firewall { ... }
+        target.append('\n')
+      # end for header, terms in self.policy.filters
 
     # get the eff out.
     return '\n'.join(target)

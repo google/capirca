@@ -8,6 +8,7 @@ header {
   target:: juniper edge-inbound
   target:: cisco edge-inbound mixed
   target:: iptables INPUT DROP nostate truncatenames
+  target:: speedway INPUT DROP
   target:: silverpeak wireless_filter_in
 }
 
