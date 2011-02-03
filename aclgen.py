@@ -81,7 +81,7 @@ def do_output_filter(filter_text, filter_file):
 
 def render_filters(source_file, policy):
   count = 0
-  [(jcl, acl, ipt, spk)] = [(False, False, False, False)]
+  [(jcl, acl, ipt, spd, spk)] = [(False, False, False, False, False)]
 
   for header in policy.headers:
     if 'juniper' in header.platforms:
