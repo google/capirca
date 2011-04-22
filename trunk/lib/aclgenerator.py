@@ -7,6 +7,8 @@
 import copy
 import re
 
+import policy
+
 
 # generic error class
 class Error(Exception):
@@ -24,6 +26,16 @@ class UnsupportedFilter(Error):
   pass
 
 
+class UnknownIcmpTypeError(Error):
+  """Raised when we see an unknown icmp-type."""
+  pass
+
+
+class MismatchIcmpInetError(Error):
+  """Raised when mistmatch between icmp/icmpv6 and inet/inet6."""
+  pass
+
+
 class EstablishedError(Error):
   """Raised when a term has established option with inappropriate protocol."""
   pass
@@ -37,6 +49,112 @@ class UnsupportedAF(Error):
 class DuplicateTermError(Error):
   """Raised when duplication of term names are detected."""
   pass
+
+
+class UnsupportedFilterError(Error):
+  """Raised when we see an inappropriate filter."""
+
+
+class Term(object):
+  """Generic framework for a generator Term."""
+  ICMP_TYPE = policy.Term.ICMP_TYPE
+  PROTO_MAP = {'ip': 0,
+               'icmp': 1,
+               'igmp': 2,
+               'ggp': 3,
+               'ipencap': 4,
+               'tcp': 6,
+               'egp': 8,
+               'igp': 9,
+               'udp': 17,
+               'rdp': 27,
+               'ipv6': 41,
+               'ipv6-route': 43,
+               'ipv6-frag': 44,
+               'rsvp': 46,
+               'gre': 47,
+               'esp': 50,
+               'ah': 51,
+               'icmpv6': 58,
+               'ipv6-nonxt': 59,
+               'ipv6-opts': 60,
+               'ospf': 89,
+               'ipip': 94,
+               'pim': 103,
+               'vrrp': 112,
+               'l2tp': 115,
+               'sctp': 132,
+              }
+  AF_MAP = {'inet': 4,
+            'inet6': 6,
+            'bridge': 4  # if this doesn't exist, output includes v4 & v6
+           }
+
+  def NormalizeAddressFamily(self, af):
+    """Convert (if necessary) address family name to numeric value.
+
+    Args:
+      af: Address family, can be either numeric or string (e.g. 4 or 'inet')
+
+    Returns:
+      af: Numeric address family value
+
+    Raises:
+      MismatchIcmpInetError: mismatch between protocol and address family
+    """
+    # ensure address family (af) is valid
+    if af in self.AF_MAP.values():
+      return af
+    elif af in self.AF_MAP:
+      # convert AF name to number (e.g. 'inet' becomes 4, 'inet6' becomes 6)
+      af = self.AF_MAP[af]
+    else:
+      raise MismatchIcmpInetError('%s %s' % (
+          'ICMP/ICMPv6 mismatch with address family IPv4/IPv6; in term',
+          self.term.name))
+    return af
+
+  def NormalizeIcmpTypes(self, icmp_types, protocols, af, term_name):
+    """Return verified list of appropriate icmp-types.
+
+    Args:
+      icmp_types: list of icmp_types
+      protocols: list of protocols
+      af: address family of this term, either numeric or text (see self.AF_MAP)
+      term_name: the name of the current term (for error reporting)
+
+    Returns:
+      sorted list of numeric icmp-type codes.
+
+    Raises:
+      UnsupportedFilterError: icmp-types specified with non-icmp protocol.
+      MismatchIcmpInetError: mismatch between icmp protocol and address family.
+      UnknownIcmpTypeError: unknown icmp-type specified
+    """
+    if not icmp_types:
+      return ['']
+    # only protocols icmp or icmpv6 can be used with icmp-types
+    if protocols != ['icmp'] and protocols != ['icmpv6']:
+      raise UnsupportedFilterError('%s %s %s' % (
+          'icmp-types specified for non-icmp protocols in term: ', term_name))
+    # make sure we have a numeric address family (4 or 6)
+    af = self.NormalizeAddressFamily(af)
+    # check that addr family and protocl are appropriate
+    if ((af != 4 and protocols == ['icmp']) or
+        (af != 6 and protocols == ['icmpv6'])):
+      raise MismatchIcmpInetError('%s %s' % (
+          'ICMP/ICMPv6 mismatch with address family IPv4/IPv6 in term',
+          self.term.name))
+    # ensure all icmp types are valid
+    for icmptype in icmp_types:
+      if icmptype not in self.ICMP_TYPE[af]:
+        raise UnknownIcmpTypeError('%s %s %s %s' % (
+            '\nUnrecognized ICMP-type (', icmptype,
+            ') specified in term ', self.term.name))
+    rval = []
+    rval.extend([self.ICMP_TYPE[af][x] for x in icmp_types])
+    rval.sort()
+    return rval
 
 
 class ACLGenerator(object):
@@ -66,6 +184,12 @@ class ACLGenerator(object):
     else:
       raise NoPlatformPolicyError('\nNo %s policy found' % self._PLATFORM)
 
+    self._TranslatePolicy(pol)
+
+  def _TranslatePolicy(self, pol):
+    """Translate policy contents to platform specific data structures."""
+    raise Error('%s does not implement _TranslatePolicies()' % self._PLATFORM)
+
   def FixHighPorts(self, term, af='inet', all_protocols_stateful=False):
     """Evaluate protocol and ports of term, return sane version of term."""
     mod = term
@@ -79,8 +203,7 @@ class ACLGenerator(object):
     # Check that the address family matches the protocols.
     if not af in self._SUPPORTED_AF:
       raise UnsupportedAF('\nAddress family %s, found in %s, '
-                          'unsupported by %s' %
-                          (af, term.net, self._PLATFORM))
+                          'unsupported by %s' % (af, term.name, self._PLATFORM))
     if af in self._FILTER_BLACKLIST:
       unsupported_protocols = self._FILTER_BLACKLIST[af].intersection(protocols)
       if unsupported_protocols:
@@ -97,7 +220,7 @@ class ACLGenerator(object):
           # TCP/UDP: add in high ports then collapse to eliminate overlaps.
           mod = copy.deepcopy(term)
           mod.destination_port.append((1024, 65535))
-          mod.destination_port = mod._CollapsePortList(mod.destination_port)
+          mod.destination_port = mod.CollapsePortList(mod.destination_port)
         elif not all_protocols_stateful:
           errmsg = 'Established option supplied with inappropriate protocol(s)'
           raise EstablishedError('%s %s %s %s' %
@@ -138,11 +261,11 @@ def WrapWords(textlist, size, joiner='\n'):
   # .{1,%d} collects words and spaces up to size in length.
   # (?:\s|\Z) ensures that we break on spaces or at end of string.
   rval = []
-  _re = re.compile(r'(\S*?.{1,%d}(?:\s|\Z))' % size)
+  linelength_re = re.compile(r'(\S*?.{1,%d}(?:\s|\Z))' % size)
   for index in range(len(textlist)):
     if len(textlist[index]) > size:
       # insert joiner into the string at appropriate places.
-      textlist[index] = joiner.join(_re.findall(textlist[index]))
+      textlist[index] = joiner.join(linelength_re.findall(textlist[index]))
     # avoid empty comment lines
     rval.extend(x.strip() for x in textlist[index].strip().split(joiner) if x)
   return rval

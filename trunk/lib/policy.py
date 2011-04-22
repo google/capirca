@@ -19,6 +19,7 @@
 """Parses the generic policy files and return a policy object for acl rendering.
 """
 
+import os
 import sys
 
 import nacaddr
@@ -39,6 +40,18 @@ class Error(Exception):
   """Generic error class."""
 
 
+class FileNotFoundError(Error):
+  """Policy file unable to be read."""
+
+
+class FileReadError(Error):
+  """Policy file unable to be read."""
+
+
+class RecursionTooDeepError(Error):
+  """Included files exceed maximum recursion depth."""
+
+
 class ParseError(Error):
   """ParseError in the input."""
 
@@ -56,12 +69,15 @@ class TermPortProtocolError(Error):
 
 
 class TermProtocolEtherTypeError(Error):
-  """Error when both ether-type and upper-layer protocol matches are
-     requested."""
+  """Error when both ether-type & upper-layer protocol matches are requested."""
 
 
 class TermNoActionError(Error):
   """Error when a term hasn't defined an action."""
+
+
+class TermInvalidIcmpType(Error):
+  """Error when a term has invalid icmp-types specified."""
 
 
 class InvalidTermActionError(Error):
@@ -91,7 +107,7 @@ def TranslatePorts(ports, protocols):
     ret_array: list of ports ['25, '53', '53']
 
   Note:
-    Duplication will be taken care of in Term._CollapsePortList
+    Duplication will be taken care of in Term.CollapsePortList
   """
   ret_array = []
   for proto in protocols:
@@ -132,8 +148,10 @@ class Policy(object):
     if not terms:
       raise NoTermsError('no terms found')
     for term in terms:
-      # todo(pmoody): this probably belongs in Term.SanityCheck(),
+      # TODO(pmoody): this probably belongs in Term.SanityCheck(),
       # or at the very least, in some method under class Term()
+      if term.translated:
+        continue
       if term.port:
         term.port = TranslatePorts(term.port, term.protocol)
         if not term.port:
@@ -157,6 +175,7 @@ class Policy(object):
       # If argument is true, we optimize, otherwise just sort addresses
       term.AddressCleanup(_OPTIMIZE)
       term.SanityCheck()
+      term.translated = True
 
   @property
   def headers(self):
@@ -188,6 +207,56 @@ class Term(object):
     qos: VarType.QOS
     policer: VarType.POLICER
   """
+  ICMP_TYPE = {4: {'echo-reply': 0,
+                   'unreachable': 3,
+                   'source-quench': 4,
+                   'redirect': 5,
+                   'alternate-address': 6,
+                   'echo-request': 8,
+                   'router-advertisement': 9,
+                   'router-solicitation': 10,
+                   'time-exceeded': 11,
+                   'parameter-problem': 12,
+                   'timestamp-request': 13,
+                   'timestamp-reply': 14,
+                   'information-request': 15,
+                   'information-reply': 16,
+                   'mask-request': 17,
+                   'mask-reply': 18,
+                   'conversion-error': 31,
+                   'mobile-redirect': 32,
+                  },
+               6: {'destination-unreachable': 1,
+                   'packet-too-big': 2,
+                   'time-exceeded': 3,
+                   'parameter-problem': 4,
+                   'echo-request': 128,
+                   'echo-reply': 129,
+                   'multicast-listener-query': 130,
+                   'multicast-listener-report': 131,
+                   'multicast-listener-done': 132,
+                   'router-solicit': 133,
+                   'router-advertisement': 134,
+                   'neighbor-solicit': 135,
+                   'neighbor-advertisement': 136,
+                   'redirect-message': 137,
+                   'router-renumbering': 138,
+                   'icmp-node-information-query': 139,
+                   'icmp-node-information-response': 140,
+                   'inverse-neighbor-discovery-solicitation': 141,
+                   'inverse-neighbor-discovery-advertisement': 142,
+                   'version-2-multicast-listener-report': 143,
+                   'home-agent-address-discovery-request': 144,
+                   'home-agent-address-discovery-reply': 145,
+                   'mobile-prefix-solicitation': 146,
+                   'mobile-prefix-advertisement': 147,
+                   'certification-path-solicitation': 148,
+                   'certification-path-advertisement': 149,
+                   'multicast-router-advertisement': 151,
+                   'multicast-router-solicitation': 152,
+                   'multicast-router-termination': 153,
+                  },
+              }
 
   def __init__(self, obj):
     self.name = None
@@ -221,6 +290,7 @@ class Term(object):
     self.icmp_type = []
     self.ether_type = []
     self.traffic_type = []
+    self.translated = False
 
     self.AddObject(obj)
 
@@ -423,22 +493,22 @@ class Term(object):
   def __ne__(self, other):
     return not self.__eq__(other)
 
-  def GetAddressOfVersion(self, addrType, addrFamily=None):
+  def GetAddressOfVersion(self, addr_type, af=None):
     """Returns addresses of the appropriate Address Family.
 
     Args:
-      addrType: string, this will be either
+      addr_type: string, this will be either
         'source_address', 'source_address_exclude',
         'destination_address' or 'destination_address_exclude'
-      addrFamily: int or None, either Term.INET4 or Term.INET6
+      af: int or None, either Term.INET4 or Term.INET6
 
     Returns:
       list of addresses of the correct family.
-      """
-    if not addrFamily:
-      return eval('self.' + addrType)
+    """
+    if not af:
+      return eval('self.' + addr_type)
 
-    return filter(lambda x: x.version == addrFamily, eval('self.' + addrType))
+    return filter(lambda x: x.version == af, eval('self.' + addr_type))
 
   def AddObject(self, obj):
     """Add an object of unknown type to this term.
@@ -452,6 +522,7 @@ class Term(object):
         eg, action:: godofoobar
       TermObjectTypeError: if AddObject is called with an object it doesn't
         understand.
+      InvalidTermLoggingError: when a option is set for logging not known.
     """
     if type(obj) is list:
       for x in obj:
@@ -492,7 +563,7 @@ class Term(object):
           self.traffic_type.append(x.value)
         else:
           raise TermObjectTypeError(
-              "%s isn't a type I know how to deal with (contains '%s')" % (
+              '%s isn\'t a type I know how to deal with (contains \'%s\')' % (
                   type(x), x.value))
     else:
       # stupid no switch statement in python
@@ -531,12 +602,14 @@ class Term(object):
         self.fragment_offset = obj.value
       else:
         raise TermObjectTypeError(
-            "%s isn't a type I know how to deal with" % (type(obj)))
+            '%s isn\'t a type I know how to deal with' % (type(obj)))
 
   def SanityCheck(self):
     """Sanity check the definition of the term.
 
     Raises:
+      ParseError: if term has both verbatim and non-verbatim tokens
+      TermInvalidIcmpType: if term has invalid icmp-types specified
       TermNoActionError: if the term doesn't have an action defined.
       TermPortProtocolError: if the term has a service/protocol definition pair
         which don't match up, eg. SNMP and tcp
@@ -545,14 +618,15 @@ class Term(object):
         source-address::CORP_INTERNAL source-exclude:: LOCALHOST
       TermProtocolEtherTypeError: if the term has both ether-type and
         upper-layer protocol restrictions
+      InvalidTermActionError: action and routing-instance both defined
 
     This should be called when the term is fully formed, and
     all of the options are set.
 
     """
     if self.verbatim:
-      if self.action or self.source_port or self.destination_port or self.port \
-          or self.protocol or self.option:
+      if (self.action or self.source_port or self.destination_port or
+          self.port or self.protocol or self.option):
         raise ParseError(
             'term "%s" has both verbatim and non-verbatim tokens.' % self.name)
     else:
@@ -565,8 +639,8 @@ class Term(object):
       if self.source_port or self.destination_port or self.port:
         if 'tcp' not in self.protocol and 'udp' not in self.protocol:
           raise TermPortProtocolError(
-              "ports specified with a protocol that doesn't support ports. "
-              "Term: %s " % self.name)
+              'ports specified with a protocol that doesn\'t support ports. '
+              'Term: %s ' % self.name)
     # TODO(pmoody): do we have mutually exclusive options?
     # eg. tcp-established + tcp-initial?
 
@@ -582,8 +656,16 @@ class Term(object):
         self.source_port or
         self.source_prefix):
       raise TermProtocolEtherTypeError(
-          "ether-type not supported when used with upper-layer protocol "
-          "restrictions. Term: %s" % self.name)
+          'ether-type not supported when used with upper-layer protocol '
+          'restrictions. Term: %s' % self.name)
+    # validate icmp-types if specified, but addr_family will have to be checked
+    # in the generators as policy module doesn't know about that at this point.
+    if self.icmp_type:
+      for icmptype in self.icmp_type:
+        if (icmptype not in self.ICMP_TYPE[4] and icmptype not in
+            self.ICMP_TYPE[6]):
+          raise TermInvalidIcmpType('Term %s contains an invalid icmp-type:'
+                                    '%s' % (self.name, icmptype))
 
   def AddressCleanup(self, optimize=True):
     """Do Address and Port collapsing.
@@ -591,6 +673,9 @@ class Term(object):
     Notes:
       Collapses both the address definitions and the port definitions
       to their smallest possible length.
+
+    Args:
+      optimize: boolean value indicating whether to optimize addresses
     """
     if optimize:
       cleanup = nacaddr.CollapseAddrList
@@ -612,13 +697,13 @@ class Term(object):
 
     # port collapsing.
     if self.port:
-      self.port = self._CollapsePortList(self.port)
+      self.port = self.CollapsePortList(self.port)
     if self.source_port:
-      self.source_port = self._CollapsePortList(self.source_port)
+      self.source_port = self.CollapsePortList(self.source_port)
     if self.destination_port:
-      self.destination_port = self._CollapsePortList(self.destination_port)
+      self.destination_port = self.CollapsePortList(self.destination_port)
 
-  def _CollapsePortListRecursive(self, ports):
+  def CollapsePortListRecursive(self, ports):
     """Given a sorted list of ports, collapse to the smallest required list.
 
     Args:
@@ -649,10 +734,10 @@ class Term(object):
         ret_ports.append(port)
 
     if optimized:
-      return self._CollapsePortListRecursive(ret_ports)
+      return self.CollapsePortListRecursive(ret_ports)
     return ret_ports
 
-  def _CollapsePortList(self, ports):
+  def CollapsePortList(self, ports):
     """Given a list of ports, Collapse to the smallest required.
 
     Args:
@@ -663,7 +748,7 @@ class Term(object):
       ret_array: the collapsed sorted list of ports, eg: [(53,53), (80,80),
                                                           (1024,65535)]
     """
-    return self._CollapsePortListRecursive(sorted(ports))
+    return self.CollapsePortListRecursive(sorted(ports))
 
   def CheckProtocolIsSuperset(self, superset, subset):
     """Check to if the given list of protocols is wholly contained.
@@ -771,7 +856,6 @@ class VarType(object):
   LOSS_PRIORITY = 24
   ROUTING_INSTANCE = 25
   PRECEDENCE = 26
-
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -911,58 +995,68 @@ literals = r':{},-'
 t_ignore = ' \t'
 
 reserved = {
-    'action' : 'ACTION',
-    'address' : 'ADDR',
-    'comment' : 'COMMENT',
-    'counter' : 'COUNTER',
-    'destination-address' : 'DADDR',
-    'destination-exclude' : 'DADDREXCLUDE',
-    'destination-prefix' : 'DPFX',
-    'destination-port' : 'DPORT',
-    'ether-type' : 'ETHER_TYPE',
-    'fragment-offset' : 'FRAGMENT_OFFSET',
-    'header' : 'HEADER',
-    'icmp-type' : 'ICMP_TYPE',
-    'logging' : 'LOGGING',
-    'loss-priority' : 'LOSS_PRIORITY',
-    'option' : 'OPTION',
-    'packet-length' : 'PACKET_LEN',
-    'policer' : 'POLICER',
-    'precedence' : 'PRECEDENCE',
-    'protocol' : 'PROTOCOL',
-    'protocol-except' : 'PROTOCOL_EXCEPT',
-    'qos' : 'QOS',
-    'routing-instance' : 'ROUTING_INSTANCE',
-    'source-address' : 'SADDR',
-    'source-exclude' : 'SADDREXCLUDE',
-    'source-prefix' : 'SPFX',
-    'source-port' : 'SPORT',
-    'target' : 'TARGET',
-    'term' : 'TERM',
-    'traffic-type' : 'TRAFFIC_TYPE',
-    'verbatim' : 'VERBATIM',
+    'action': 'ACTION',
+    'address': 'ADDR',
+    'comment': 'COMMENT',
+    'counter': 'COUNTER',
+    'destination-address': 'DADDR',
+    'destination-exclude': 'DADDREXCLUDE',
+    'destination-prefix': 'DPFX',
+    'destination-port': 'DPORT',
+    'ether-type': 'ETHER_TYPE',
+    'fragment-offset': 'FRAGMENT_OFFSET',
+    'header': 'HEADER',
+    'icmp-type': 'ICMP_TYPE',
+    'logging': 'LOGGING',
+    'loss-priority': 'LOSS_PRIORITY',
+    'option': 'OPTION',
+    'packet-length': 'PACKET_LEN',
+    'policer': 'POLICER',
+    'precedence': 'PRECEDENCE',
+    'protocol': 'PROTOCOL',
+    'protocol-except': 'PROTOCOL_EXCEPT',
+    'qos': 'QOS',
+    'routing-instance': 'ROUTING_INSTANCE',
+    'source-address': 'SADDR',
+    'source-exclude': 'SADDREXCLUDE',
+    'source-prefix': 'SPFX',
+    'source-port': 'SPORT',
+    'target': 'TARGET',
+    'term': 'TERM',
+    'traffic-type': 'TRAFFIC_TYPE',
+    'verbatim': 'VERBATIM',
 }
+
+
+# disable linting warnings for lexx/yacc code
+# pylint: disable-msg=W0613,C6102,C6104,C6105,C6108,C6409
+
 
 def t_IGNORE_COMMENT(t):
   r'\#.*'
   pass
+
 
 def t_DQUOTEDSTRING(t):
   r'"[^"]*?"'
   t.lexer.lineno += str(t.value).count('\n')
   return t
 
+
 def t_newline(t):
   r'\n+'
   t.lexer.lineno += len(t.value)
+
 
 def t_error(t):
   print "Illegal character '%s' on line %s" % (t.value[0], t.lineno)
   t.lexer.skip(1)
 
+
 def t_INTEGER(t):
   r'\d+'
   return t
+
 
 def t_STRING(t):
   r'\w+([-_]\w*)*'
@@ -984,9 +1078,11 @@ def p_target(p):
     else:
       p[0] = Policy(p[2], p[3])
 
+
 def p_header(p):
   """ header : HEADER '{' header_spec '}' """
   p[0] = p[3]
+
 
 def p_header_spec(p):
   """ header_spec : header_spec target_spec
@@ -1000,11 +1096,13 @@ def p_header_spec(p):
       p[0] = Header()
       p[0].AddObject(p[2])
 
+
 # we may want to change this at some point if we want to be clever with things
 # like being able to set a default input/output policy for iptables policies.
 def p_target_spec(p):
   """ target_spec : TARGET ':' ':' strings_or_ints """
   p[0] = Target(p[4])
+
 
 def p_terms(p):
   """ terms : terms TERM STRING '{' term_spec '}'
@@ -1016,6 +1114,7 @@ def p_terms(p):
       p[0] = p[1]
     else:
       p[0] = [p[5]]
+
 
 def p_term_spec(p):
   """ term_spec : term_spec action_spec
@@ -1047,21 +1146,26 @@ def p_term_spec(p):
     else:
       p[0] = Term(p[2])
 
+
 def p_routinginstance_spec(p):
   """ routinginstance_spec : ROUTING_INSTANCE ':' ':' STRING """
   p[0] = VarType(VarType.ROUTING_INSTANCE, p[4])
+
 
 def p_losspriority_spec(p):
   """ losspriority_spec :  LOSS_PRIORITY ':' ':' STRING """
   p[0] = VarType(VarType.LOSS_PRIORITY, p[4])
 
+
 def p_precedence_spec(p):
   """ precedence_spec : PRECEDENCE ':' ':' INTEGER """
   p[0] = VarType(VarType.PRECEDENCE, p[4])
 
+
 def p_icmp_type_spec(p):
   """ icmp_type_spec : ICMP_TYPE ':' ':' one_or_more_strings """
   p[0] = VarType(VarType.ICMP_TYPE, p[4])
+
 
 def p_packet_length_spec(p):
   """ packet_length_spec : PACKET_LEN ':' ':' INTEGER
@@ -1071,6 +1175,7 @@ def p_packet_length_spec(p):
   else:
     p[0] = VarType(VarType.PACKET_LEN, str(p[4]) + '-' + str(p[6]))
 
+
 def p_fragment_offset_spec(p):
   """ fragment_offset_spec : FRAGMENT_OFFSET ':' ':' INTEGER
                            | FRAGMENT_OFFSET ':' ':' INTEGER '-' INTEGER """
@@ -1078,6 +1183,7 @@ def p_fragment_offset_spec(p):
     p[0] = VarType(VarType.FRAGMENT_OFFSET, str(p[4]))
   else:
     p[0] = VarType(VarType.FRAGMENT_OFFSET, str(p[4]) + '-' + str(p[6]))
+
 
 def p_exclude_spec(p):
   """ exclude_spec : SADDREXCLUDE ':' ':' one_or_more_strings
@@ -1093,6 +1199,7 @@ def p_exclude_spec(p):
     elif p[1].find('protocol-except') >= 0:
       p[0].append(VarType(VarType.PROTOCOL_EXCEPT, ex))
 
+
 def p_prefix_list_spec(p):
   """ prefix_list_spec : DPFX ':' ':' one_or_more_strings
                        | SPFX ':' ':' one_or_more_strings """
@@ -1102,6 +1209,7 @@ def p_prefix_list_spec(p):
       p[0].append(VarType(VarType.SPFX, pfx))
     elif p[1].find('destination-prefix') >= 0:
       p[0].append(VarType(VarType.DPFX, pfx))
+
 
 def p_addr_spec(p):
   """ addr_spec : SADDR ':' ':' one_or_more_strings
@@ -1115,6 +1223,7 @@ def p_addr_spec(p):
       p[0].append(VarType(VarType.DADDRESS, addr))
     else:
       p[0].append(VarType(VarType.ADDRESS, addr))
+
 
 def p_port_spec(p):
   """ port_spec : SPORT ':' ':' one_or_more_strings
@@ -1133,11 +1242,13 @@ def p_protocol_spec(p):
   for proto in p[4]:
     p[0].append(VarType(VarType.PROTOCOL, proto))
 
+
 def p_ether_type_spec(p):
   """ ether_type_spec : ETHER_TYPE ':' ':' one_or_more_strings """
   p[0] = []
   for proto in p[4]:
     p[0].append(VarType(VarType.ETHER_TYPE, proto))
+
 
 def p_traffic_type_spec(p):
   """ traffic_type_spec : TRAFFIC_TYPE ':' ':' one_or_more_strings """
@@ -1145,13 +1256,16 @@ def p_traffic_type_spec(p):
   for proto in p[4]:
     p[0].append(VarType(VarType.TRAFFIC_TYPE, proto))
 
+
 def p_policer_spec(p):
   """ policer_spec : POLICER ':' ':' STRING """
   p[0] = VarType(VarType.POLICER, p[4])
 
+
 def p_logging_spec(p):
   """ logging_spec : LOGGING ':' ':' STRING """
   p[0] = VarType(VarType.LOGGING, p[4])
+
 
 def p_option_spec(p):
   """ option_spec : OPTION ':' ':' one_or_more_strings """
@@ -1159,25 +1273,31 @@ def p_option_spec(p):
   for opt in p[4]:
     p[0].append(VarType(VarType.OPTION, opt))
 
+
 def p_action_spec(p):
   """ action_spec : ACTION ':' ':' STRING """
   p[0] = VarType(VarType.ACTION, p[4])
+
 
 def p_counter_spec(p):
   """ counter_spec : COUNTER ':' ':' STRING """
   p[0] = VarType(VarType.COUNTER, p[4])
 
+
 def p_comment_spec(p):
   """ comment_spec : COMMENT ':' ':' DQUOTEDSTRING """
   p[0] = VarType(VarType.COMMENT, p[4])
+
 
 def p_verbatim_spec(p):
   """ verbatim_spec : VERBATIM ':' ':' STRING DQUOTEDSTRING """
   p[0] = VarType(VarType.VERBATIM, [p[4], p[5].strip('"')])
 
+
 def p_qos_spec(p):
   """ qos_spec : QOS ':' ':' STRING """
   p[0] = VarType(VarType.QOS, p[4])
+
 
 def p_one_or_more_strings(p):
   """ one_or_more_strings : one_or_more_strings STRING
@@ -1189,6 +1309,7 @@ def p_one_or_more_strings(p):
       p[0] = p[1]
     else:
       p[0] = [p[1]]
+
 
 def p_strings_or_ints(p):
   """ strings_or_ints : strings_or_ints STRING
@@ -1203,23 +1324,113 @@ def p_strings_or_ints(p):
     else:
       p[0] = [p[1]]
 
+
 def p_error(p):
+  """."""
   next_token = yacc.token()
   if next_token is None:
-    next = 'EOF'
+    use_token = 'EOF'
   else:
-    next = repr(next_token.value)
+    use_token = repr(next_token.value)
 
   if p:
     raise ParseError(' ERROR on "%s" (type %s, line %d, Next %s)'
-                     % (p.value, p.type, p.lineno, next))
+                     % (p.value, p.type, p.lineno, use_token))
   else:
     raise ParseError(' ERROR you likely have unablanaced "{"\'s')
 
+# pylint: enable-msg=W0613,C6102,C6104,C6105,C6108,C6409
+
+
+def _ReadFile(filename):
+  """Read data from a file if it exists.
+
+  Args:
+    filename: str - Filename
+
+  Returns:
+    data: str contents of file.
+
+  Raises:
+    FileNotFoundError: if requested file does not exist.
+    FileReadError: Any error resulting from trying to open/read file.
+  """
+  if os.path.exists(filename):
+    try:
+      data = open(filename, 'r').read()
+      return data
+    except IOError:
+      raise FileReadError('Unable to open or read file %s' % filename)
+  else:
+    raise FileNotFoundError('Unable to open policy file %s' % filename)
+
+
+def _Preprocess(data, max_depth=5):
+  """Search input for include statements and import specified include file.
+
+  Search input for include statements and if found, import specified file
+  and recursively search included data for includes as well up to max_depth.
+
+  Args:
+    data: A string of Policy file data.
+    max_depth: Maximum depth of included files
+
+  Returns:
+    A string containing result of the processed input data
+
+  Raises:
+    RecursionTooDeepError: nested include files exceed maximum
+  """
+  if not max_depth:
+    raise RecursionTooDeepError('%s' % (
+        'Included files exceed maximum recursion depth of %s.' % max_depth))
+  rval = []
+  lines = [x.rstrip() for x in data.splitlines()]
+  for line in lines:
+    words = line.split()
+    if len(words) > 1 and words[0] == '#include':
+      # remove any quotes around included filename
+      include_file = words[1].strip('\'"')
+      data = _ReadFile(include_file)
+      # recursively handle includes in included data
+      inc_data = _Preprocess(data, max_depth - 1)
+      rval.extend(inc_data)
+    else:
+      rval.append(line)
+  return rval
+
+
+def ParseFile(filename, definitions=None, optimize=True):
+  """Parse the policy contained in file, optionally provide a naming object.
+
+  Read specified policy file and parse into a policy object.
+
+  Args:
+    filename: Name of policy file to parse.
+    definitions: optional naming library definitions object.
+    optimize: bool - whether to summarize networks and services.
+
+  Returns:
+    policy object.
+  """
+  data = _ReadFile(filename)
+  p = ParsePolicy(data, definitions, optimize)
+  return p
+
 
 def ParsePolicy(data, definitions=None, optimize=True):
-  """Parse the policy in 'data', optionally provide a naming object."""
+  """Parse the policy in 'data', optionally provide a naming object.
 
+  Parse a blob of policy text into a policy object.
+
+  Args:
+    data: a string blob of policy data to parse.
+    definitions: optional naming library definitions object.
+    optimize: bool - whether to summarize networks and services.
+
+  Returns:
+    policy object.
+  """
   try:
     if definitions:
       globals()['DEFINITIONS'] = definitions
@@ -1231,13 +1442,15 @@ def ParsePolicy(data, definitions=None, optimize=True):
     # I wanna lex you up
     lexer = lex.lex()
 
-    # I think I'm gonna hurl
-    yacc.yacc(write_tables=False, debug=0, errorlog=yacc.NullLogger())
+    preprocessed_data = '\n'.join(_Preprocess(data))
 
-    # I wanna parse you up
-    return yacc.parse(data)
+    p = yacc.yacc(write_tables=False, debug=0, errorlog=yacc.NullLogger())
+
+    return p.parse(preprocessed_data, lexer=lexer)
+
   except IndexError:
     return False
+
 
 # if you call this from the command line, you can specify a jcl file for it to
 # read.

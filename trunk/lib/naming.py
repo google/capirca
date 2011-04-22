@@ -142,12 +142,9 @@ class Naming(object):
 
     Args:
       query: an ip string ('10.1.1.1') or nacaddr.IP object
-
-    Returns:
-      rval2: a list of tokens containing this IP
     """
-    rval = []
-    rval2 = []
+    base_parents = []
+    recursive_parents = []
     # convert string to nacaddr, if arg is ipaddr then convert str() to nacaddr
     if type(query) != nacaddr.IPv4 and type(query) != nacaddr.IPv6:
       if query[:1].isdigit():
@@ -157,67 +154,73 @@ class Naming(object):
       for token in self.networks:
         for item in self.networks[token].items:
           item = item.split('#')[0].strip()
-          if item[:1].isdigit():
-            if nacaddr.IP(item).Contains(query):
-              rval.append(token)
+          if item[:1].isdigit() and nacaddr.IP(item).Contains(query):
+            base_parents.append(token)
     # Get parent token for another token
     else:
       for token in self.networks:
         for item in self.networks[token].items:
           item = item.split('#')[0].strip()
-          if item[:1].isalpha():
-            if item == query:
-              rval.append(token)
+          if item[:1].isalpha() and item == query:
+            base_parents.append(token)
     # look for nested tokens
-    for next in rval:
+    for bp in base_parents:
       done = False
       for token in self.networks:
-        if next in self.networks[token].items:
+        if bp in self.networks[token].items:
           # ignore IPs, only look at token values
-          if next[:1].isalpha():
-            if next not in rval2:
-              rval2.append(next)
-              rval2.extend(self.GetIpParents(next))
+          if bp[:1].isalpha():
+            if bp not in recursive_parents:
+              recursive_parents.append(bp)
+              recursive_parents.extend(self.GetIpParents(bp))
             done = True
       # if no nested tokens, just append value
       if not done:
-        if next[:1].isalpha():
-          if next not in rval2:
-            rval2.append(next)
-    return sorted(list(set(rval2)))
+        if bp[:1].isalpha() and bp not in recursive_parents:
+          recursive_parents.append(bp)
+    return sorted(list(set(recursive_parents)))
 
   def GetServiceParents(self, query):
-    """Given a service, return any tokens containing the value.
+    """Given a query token, return list of services definitions with that token.
+
+    Args:
+      query: a service token name.
+
+    """
+    return self._GetParents(query, self.services)
+
+  def GetNetParents(self, query):
+    """Given a query token, return list of network definitions with that token.
+
+    Args:
+      query: a network token name.
+    """
+    return self._GetParents(query, self.networks)
+
+  def _GetParents(self, query, query_group):
+    """Given a naming item dict, return any tokens containing the value.
 
     Args:
       query: a service or token name, such as 53/tcp or DNS
-
-    Returns:
-      rval2: a list of tokens that contain query or parents of query
-
-    Raises:
-      UndefinedServiceError: If the service name isn't defined.
+      query_group: either services or networks dict
     """
-    rval = []
-    rval2 = []
-    for token in self.services:
-      for item in self.services[token].items:
-        if item == query:
-          rval.append(token)
-    if not rval:
-      raise UndefinedServiceError('%s %s' % ('\nNo such service,', query))
-    for next in rval:
-      done = False
-      for token in self.services:
-        if next in self.services[token].items:
-          if next not in rval2:
-            rval2.append(next)
-            rval2.extend(self.GetServiceParents(next))
-          done = True
-      if not done:
-        if next not in rval2:
-          rval2.append(next)
-    return rval2
+    base_parents = []
+    recursive_parents = []
+    # collect list of tokens containing query
+    for token in query_group:
+      if query in query_group[token].items:
+        base_parents.append(token)
+    if not base_parents:
+      return []
+    # iterate through tokens containing query, doing recursion if necessary
+    for bp in base_parents:
+      for token in query_group:
+        if bp in query_group[token].items and bp not in recursive_parents:
+          recursive_parents.append(bp)
+          recursive_parents.extend(self._GetParents(bp, query_group))
+      if bp not in recursive_parents:
+        recursive_parents.append(bp)
+    return recursive_parents
 
   def GetService(self, query):
     """Given a service name, return a list of associated ports and protocols.
@@ -238,19 +241,23 @@ class Naming(object):
     data = query.split('#')     # Get the token keyword and remove any comment
     service_name = data[0].split()[0]  # strip and cast from list to string
     if service_name not in self.services:
-      raise UndefinedServiceError('%s %s' % ('\nNo such service,', query))
+      raise UndefinedServiceError('\nNo such service: %s' % query)
 
     already_done.add(service_name)
 
     for next_item in self.services[service_name].items:
-      # Remove any trailing comment
+      # Remove any trailing comment.
       service = next_item.split('#')[0].strip()
       # Recognized token, not a value.
       if not '/' in service:
         # Make sure we are not descending into recursion hell.
         if service not in already_done:
           already_done.add(service)
-          expandset.update(self.GetService(service))
+          try:
+            expandset.update(self.GetService(service))
+          except UndefinedServiceError, e:
+            # One of the services in query is undefined, refine the error msg.
+            raise UndefinedServiceError('%s (in %s)' % (e, query))
       else:
         expandset.add(service)
     return sorted(expandset)

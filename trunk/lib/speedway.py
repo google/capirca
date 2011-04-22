@@ -9,10 +9,6 @@
 
 __author__ = 'watson@google.com (Tony Watson)'
 
-import re
-
-import logging
-import nacaddr
 import iptables
 
 
@@ -34,6 +30,4 @@ class Speedway(iptables.Iptables):
   _RENDER_SUFFIX = 'COMMIT'
   _DEFAULTACTION_FORMAT = ':%s %s'
 
-  def __init__(self, pol):
-    super(Speedway, self).__init__(pol)
-    self._Term = Term
+  _TERM = Term
