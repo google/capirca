@@ -18,9 +18,10 @@
 """Cisco renderer."""
 
 __author__ = 'pmoody@google.com (Peter Moody)'
+__author__ = 'watson@google.com (Tony Watson)'
 
-import socket
 import logging
+import re
 
 from third_party import ipaddr
 import aclgenerator
@@ -33,26 +34,7 @@ _ACTION_TABLE = {
     'reject': 'deny',
     'next': '! next',
     'reject-with-tcp-rst': 'deny',  # tcp rst not supported
-    }
-
-
-def FixupProtocol(proto):
-  """Numeric representation of the protocol.
-
-  Args:
-    proto: the protocol, eg, 'tcp', 'ip'
-
-  Returns:
-    the numeric representation, eg 6, or 'ip' in the case
-    of 'ip' being the proto.  thank you cisco.
-  """
-  ret = proto
-  if type(proto) is str:
-    try:
-      ret = socket.getprotobyname(proto.lower())
-    except socket.error:
-      ret = proto
-  return ret
+}
 
 
 # generic error class
@@ -82,6 +64,9 @@ class TermStandard(object):
     if self.term.protocol:
       raise StandardAclTermError(
           'Standard ACLs cannot specify protocols')
+    if self.term.icmp_type:
+      raise StandardAclTermError(
+          'ICMP Type specifications are not permissible in standard ACLs')
     if (self.term.source_address
         or self.term.source_address_exclude
         or self.term.destination_address
@@ -112,9 +97,9 @@ class TermStandard(object):
     # Term verbatim output - this will skip over normal term creation
     # code by returning early.  Warnings provided in policy.py.
     if self.term.verbatim:
-      for next in self.term.verbatim:
-        if next.value[0] == 'cisco':
-          ret_str.append(str(next.value[1]))
+      for next_verbatim in self.term.verbatim:
+        if next_verbatim.value[0] == 'cisco':
+          ret_str.append(str(next_verbatim.value[1]))
         return '\n'.join(ret_str)
 
     for addr in self.term.address:
@@ -163,7 +148,9 @@ class ObjectGroup(object):
 
   @property
   def valid(self):
+    # pylint: disable-msg=C6411
     return len(self.terms) > 0
+    # pylint: enable-msg=C6411
 
   def AddTerm(self, term):
     self.terms.append(term)
@@ -221,7 +208,7 @@ class ObjectGroup(object):
     return '\n'.join(ret_str)
 
 
-class ObjectGroupTerm(object):
+class ObjectGroupTerm(aclgenerator.Term):
   """An individual term of an object-group'd acl.
 
   Object Group acls are very similar to extended acls in their
@@ -253,18 +240,18 @@ class ObjectGroupTerm(object):
     # Term verbatim output - this will skip over normal term creation
     # code by returning early.  Warnings provided in policy.py.
     if self.term.verbatim:
-      for next in self.term.verbatim:
-        if next.value[0] == 'cisco':
-          ret_str.append(str(next.value[1]))
+      for next_verbatim in self.term.verbatim:
+        if next_verbatim.value[0] == 'cisco':
+          ret_str.append(str(next_verbatim.value[1]))
         return '\n'.join(ret_str)
 
     # protocol
-    protocol = self.term.protocol
-    if not protocol:
+    if not self.term.protocol:
       protocol = ['ip']
     else:
-      # fix the protocol, b/1746531
-      protocol = map(FixupProtocol, self.term.protocol)
+      # pylint: disable-msg=C6402
+      protocol = map(self.PROTO_MAP.get, self.term.protocol, self.term.protocol)
+      # pylint: enable-msg=C6402
 
     # addresses
     source_address = self.term.source_address
@@ -316,9 +303,8 @@ class ObjectGroupTerm(object):
         action, proto, saddr, sport, daddr, dport)
 
 
-class Term(object):
+class Term(aclgenerator.Term):
   """A single ACL Term."""
-  _TCP = 6
 
   def __init__(self, term, af=4):
     self.term = term
@@ -338,17 +324,18 @@ class Term(object):
     # Term verbatim output - this will skip over normal term creation
     # code by returning early.  Warnings provided in policy.py.
     if self.term.verbatim:
-      for next in self.term.verbatim:
-        if next.value[0] == 'cisco':
-          ret_str.append(str(next.value[1]))
+      for next_verbatim in self.term.verbatim:
+        if next_verbatim.value[0] == 'cisco':
+          ret_str.append(str(next_verbatim.value[1]))
         return '\n'.join(ret_str)
 
     # protocol
     if not self.term.protocol:
       protocol = ['ip']
     else:
-      # fix the protocol, b/1746531
-      protocol = map(FixupProtocol, self.term.protocol)
+      # pylint: disable-msg=C6402
+      protocol = map(self.PROTO_MAP.get, self.term.protocol, self.term.protocol)
+      # pylint: enable-msg=C6402
 
     # source address
     if self.term.source_address:
@@ -379,8 +366,8 @@ class Term(object):
 
     # options
     opts = [str(x) for x in self.term.option]
-    if self._TCP in protocol and ('tcp-established' in opts or
-                                  'established' in opts):
+    if self.PROTO_MAP['tcp'] in protocol and ('tcp-established' in opts or
+                                              'established' in opts):
       self.options.extend(['established'])
 
     # ports
@@ -395,23 +382,33 @@ class Term(object):
     if self.term.logging:
       self.options.append('log')
 
+    # icmp-types
+    icmp_types = ['']
+    if self.term.icmp_type:
+      icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type,
+                                           self.term.protocol, self.af,
+                                           self.term.name)
+
     for saddr in source_address:
       for daddr in destination_address:
         for sport in source_port:
           for dport in destination_port:
             for proto in protocol:
-              ret_str.append(self._TermletToStr(
-                  _ACTION_TABLE.get(str(self.term.action[0])),
-                  proto,
-                  saddr,
-                  sport,
-                  daddr,
-                  dport,
-                  self.options))
+              for icmp_type in icmp_types:
+                ret_str.extend(self._TermletToStr(
+                    _ACTION_TABLE.get(str(self.term.action[0])),
+                    proto,
+                    saddr,
+                    sport,
+                    daddr,
+                    dport,
+                    icmp_type,
+                    self.options))
 
     return '\n'.join(ret_str)
 
-  def _TermletToStr(self, action, proto, saddr, sport, daddr, dport, option):
+  def _TermletToStr(self, action, proto, saddr, sport, daddr, dport,
+                    icmp_type, option):
     """Take the various compenents and turn them into a cisco acl line.
 
     Args:
@@ -421,10 +418,14 @@ class Term(object):
       sport: str list or none, the source port
       daddr: str or ipaddr, the destination address
       dport: str list or none, the destination port
+      icmp_type: icmp-type numeric specification (if any)
       option: list or none, optional, eg. 'logging' tokens.
 
     Returns:
       string of the cisco acl line, suitable for printing.
+
+    Raises:
+      UnsupportedCiscoAccessListError: When unknown icmp-types specified
     """
     # inet4
     if type(saddr) is nacaddr.IPv4 or type(saddr) is ipaddr.IPv4Network:
@@ -467,8 +468,30 @@ class Term(object):
     if not option:
       option = ['']
 
-    return ' %s %s %s %s %s %s %s' % (
-        action, proto, saddr, sport, daddr, dport, ' '.join(option))
+    # Prevent UDP from appending 'established' to ACL line
+    sane_options = list(option)
+    if proto == self.PROTO_MAP['udp'] and 'established' in sane_options:
+      sane_options.remove('established')
+
+    ret_lines = []
+
+    # str(icmp_type) is needed to ensure 0 maps to '0' instead of FALSE
+    icmp_type = str(icmp_type)
+    if icmp_type:
+      ret_lines.append(' %s %s %s %s %s %s %s %s' % (action, proto, saddr,
+                                                     sport, daddr, dport,
+                                                     icmp_type,
+                                                     ' '.join(sane_options)
+                                                    ))
+    else:
+      ret_lines.append(' %s %s %s %s %s %s %s' % (action, proto, saddr,
+                                                  sport, daddr, dport,
+                                                  ' '.join(sane_options)
+                                                 ))
+
+    # remove any trailing spaces and replace multiple spaces with singles
+    stripped_ret_lines = [re.sub('\s+', ' ', x).rstrip() for x in ret_lines]
+    return stripped_ret_lines
 
 
 class Cisco(aclgenerator.ACLGenerator):
@@ -478,21 +501,18 @@ class Cisco(aclgenerator.ACLGenerator):
   _DEFAULT_PROTOCOL = 'ip'
   _SUFFIX = '.acl'
 
-  def __str__(self):
-    target_header = []
-    target = []
-    obj_target = ObjectGroup()
+  def _TranslatePolicy(self, pol):
+    self.cisco_policies = []
 
     # a mixed filter outputs both ipv4 and ipv6 acls in the same output file
     good_filters = ['extended', 'standard', 'object-group', 'inet6',
                     'mixed']
 
-    # add the p4 tags
-    target.extend(aclgenerator.AddRepositoryTags('! '))
-
-    for header, terms in self.policy.filters:
+    for header, terms in pol.filters:
       if not self._PLATFORM in header.platforms:
         continue
+
+      obj_target = ObjectGroup()
 
       filter_options = header.FilterOptions('cisco')
       filter_name = header.FilterName('cisco')
@@ -505,56 +525,33 @@ class Cisco(aclgenerator.ACLGenerator):
       # check if filter type is renderable
       if filter_type not in good_filters:
         raise UnsupportedCiscoAccessListError(
-            'only access list types %s are supported' % str(good_filters))
+            'access list type %s not supported by %s (good types: %s)' % (
+                filter_type, self._PLATFORM, str(good_filters)))
 
       filter_list = [filter_type]
       if filter_type == 'mixed':
         #(loop through and generate output for inet then inet6 in sequence)
         filter_list = ['extended', 'inet6']
+
+      new_terms = []
       for filter_type in filter_list:
-        # if extended, validate filter name
         if filter_type is 'extended':
-          if filter_name.isdigit():
+          try:
             if 1 <= int(filter_name) <= 99:
-              raise UnsupportedCiscoAccessListError('%s %s' % (
-                  'access-lists between 1-99 are reservered for',
-                  'standard ACLs'))
-
-          # setup the access list names
-          target.append('no ip access-list extended %s' % filter_name)
-          target.append('ip access-list extended %s' % filter_name)
-
-        # if standard, validate filter name
+              raise UnsupportedCiscoAccessListError(
+                  'access lists between 1-99 are reservered for standard ACLs')
+          except ValueError:
+            # Extended access list names do not have to be numbers.
+            pass
         if filter_type == 'standard':
-          if not filter_name.isdigit():
-            raise UnsupportedCiscoAccessListError(
-                'standard access lists must be numbered between 1 - 99')
-          if filter_name.isdigit():
+          try:
             if not 1 <= int(filter_name) <= 99:
               raise UnsupportedCiscoAccessListError(
                   'standard access lists must be numbered between 1 - 99')
-          # setup the access list names
-          target.append('no ip access-list %s' % filter_name)
+          except ValueError:
+            raise UnsupportedCiscoAccessListError(
+                'standard access lists must be numbered between 1 - 99')
 
-        if filter_type == 'object-group':
-          obj_target.AddName(filter_name)
-          target.append('no ip access-list extended %s' % filter_name)
-          target.append('ip access-list extended %s' % filter_name)
-
-        if filter_type == 'inet6':
-          target.append('no ipv6 access-list %s' % filter_name)
-          target.append('ipv6 access-list %s' % filter_name)
-
-        # Add the Perforce Id/Date tags, these must come after
-        # remove/re-create of the filter, otherwise config mode doesn't
-        # know where to place these remarks in the configuration.
-        target.extend(aclgenerator.AddRepositoryTags('remark '))
-        # add a header comment if one exists
-        for comment in header.comment:
-          for line in comment.split('\n'):
-            target.append('remark %s' % line)
-
-        # now add the terms
         for term in terms:
           af = 'inet'
           if filter_type == 'inet6':
@@ -562,16 +559,61 @@ class Cisco(aclgenerator.ACLGenerator):
           term = self.FixHighPorts(term, af=af)
           if not term:
             continue
+
           # render terms based on filter type
           if filter_type == 'standard':
-            target.append(str(TermStandard(term, filter_name)))
+            new_terms.append(TermStandard(term, filter_name))
           elif filter_type == 'extended':
-            target.append(str(Term(term)))
+            new_terms.append(Term(term))
           elif filter_type == 'object-group':
             obj_target.AddTerm(term)
-            target.append(str(ObjectGroupTerm(term, filter_name)))
+            new_terms.append(ObjectGroupTerm(term, filter_name))
           elif filter_type == 'inet6':
-            target.append(str(Term(term, 6)))
+            new_terms.append(Term(term, 6))
+
+      self.cisco_policies.append((header, filter_name, filter_list, new_terms,
+                                  obj_target))
+
+  def __str__(self):
+    target_header = []
+    target = []
+
+    # add the p4 tags
+    target.extend(aclgenerator.AddRepositoryTags('! '))
+
+    for (header, filter_name, filter_list, terms, obj_target
+        ) in self.cisco_policies:
+      for filter_type in filter_list:
+        if filter_type == 'standard':
+          target.append('no ip access-list %d' % int(filter_name))
+        elif filter_type is 'extended':
+          target.append('no ip access-list extended %s' % filter_name)
+          target.append('ip access-list extended %s' % filter_name)
+        elif filter_type == 'object-group':
+          obj_target.AddName(filter_name)
+          target.append('no ip access-list extended %s' % filter_name)
+          target.append('ip access-list extended %s' % filter_name)
+        elif filter_type == 'inet6':
+          target.append('no ipv6 access-list %s' % filter_name)
+          target.append('ipv6 access-list %s' % filter_name)
+        else:
+          raise UnsupportedCiscoAccessListError(
+              'access list type %s not supported by %s' % (
+                  filter_type, self._PLATFORM))
+
+        # Add the Perforce Id/Date tags, these must come after
+        # remove/re-create of the filter, otherwise config mode doesn't
+        # know where to place these remarks in the configuration.
+        target.extend(aclgenerator.AddRepositoryTags('remark '))
+
+        # add a header comment if one exists
+        for comment in header.comment:
+          for line in comment.split('\n'):
+            target.append('remark %s' % line)
+
+        # now add the terms
+        for term in terms:
+          target.append(str(term))
         target.append('\n')
 
       if obj_target.valid:

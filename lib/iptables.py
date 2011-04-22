@@ -26,7 +26,7 @@ import nacaddr
 import re
 
 
-class Term(object):
+class Term(aclgenerator.Term):
   """Generate Iptables policy terms."""
 
   # Validate that term does not contain any fields we do not
@@ -66,6 +66,7 @@ class Term(object):
       'next': '-j RETURN'
       }
   _PROTO_TABLE = {
+      'icmpv6': '-p icmpv6',
       'icmp': '-p icmp',
       'tcp': '-p tcp',
       'udp': '-p udp',
@@ -91,16 +92,6 @@ class Term(object):
       'tcp-initial': '--syn',
       'sample': '',
       }
-  # TODO(argent): automate the translation from policy-ese to
-  # 'iptables -p icmp -h' names.
-  _ICMP_POLICY_TO_NAMES = {'info-reply': '16',
-                           'info-request': '15',
-                           'mask-request': 'address-mask-request',
-                           'mask-reply': 'address-mask-reply',
-                           'router-solicit': 'router-solicitation',
-                           'timestamp': 'timestamp-request',
-                           'unreachable': 'destination-unreachable',
-                          }
 
   def __init__(self, term, filter_name, trackstate, filter_action, af='inet',
                truncate=True):
@@ -135,16 +126,15 @@ class Term(object):
     if af == 'inet6':
       self._all_ips = nacaddr.IPv6('::/0')
       self._ACTION_TABLE['reject'] = '-j REJECT --reject-with adm-prohibited'
-      self._PROTO_TABLE['icmp'] = '-p icmpv6'
 
   def __str__(self):
     ret_str = []
     # Term verbatim output - this will skip over most normal term
     # creation code by returning early. Warnings provided in policy.py
     if self.term.verbatim:
-      for next in self.term.verbatim:
-        if next.value[0] == self._PLATFORM:
-          ret_str.append(str(next.value[1]))
+      for next_verbatim in self.term.verbatim:
+        if next_verbatim.value[0] == self._PLATFORM:
+          ret_str.append(str(next_verbatim.value[1]))
       return '\n'.join(ret_str)
 
     # We don't support these keywords for filtering, so unless users
@@ -260,31 +250,26 @@ class Term(object):
     if self.term.destination_port:
       destination_port = self.term.destination_port
 
-    # icmp types
-    icmp_types = []
-    for icmp in self.term.icmp_type:
-      if protocol != ['icmp']:
-        raise UnsupportedFilterError('%s %s %s %s' % (
-            '\nMay not specify icmp_type for protocol',
-            protocol, '\nError in term:', self.term.name))
-      # Translate if needed, or pass verbatim otherwise.
-      icmp_types.append(self._ICMP_POLICY_TO_NAMES.get(icmp, icmp))
-    if not icmp_types:
-      icmp_types = [None]
+    # icmp-types
+    icmp_types = ['']
+    if self.term.icmp_type:
+      icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type, protocol,
+                                           self.af, self.term.name)
 
     # options
     tcp_flags = []
     tcp_track_options = []
-    for next in [str(x) for x in self.term.option]:
+    for next_opt in [str(x) for x in self.term.option]:
       #
       # Sanity checking and high-ports are added as appropriate in
       # pre-processing that is done in __str__ within class Iptables.
       # Option established will add destination port high-ports if protocol
       # contains only tcp, udp or both.  This is done earlier in class Iptables.
       #
-      if ((next.find('established') == 0 or next.find('tcp-established') == 0)
+      if ((next_opt.find('established') == 0 or
+           next_opt.find('tcp-established') == 0)
           and 'ESTABLISHED' not in [x.strip() for x in self.options]):
-        if next.find('tcp-established') == 0 and protocol != ['tcp']:
+        if next_opt.find('tcp-established') == 0 and protocol != ['tcp']:
           raise TcpEstablishedError('%s %s %s' % (
               '\noption tcp-established can only be applied for proto tcp.',
               '\nError in term:', self.term.name))
@@ -300,10 +285,10 @@ class Term(object):
 
       # Iterate through flags table, and create list of tcp-flags to append
       for next_flag in self._TCP_FLAGS_TABLE:
-        if next.find(next_flag) == 0:
+        if next_opt.find(next_flag) == 0:
           tcp_flags.append(self._TCP_FLAGS_TABLE.get(next_flag))
-      if next in self._KNOWN_OPTIONS_MATCHERS:
-        self.options.append(self._KNOWN_OPTIONS_MATCHERS[next])
+      if next_opt in self._KNOWN_OPTIONS_MATCHERS:
+        self.options.append(self._KNOWN_OPTIONS_MATCHERS[next_opt])
     if self.term.packet_length:
       # Policy format is "#-#", but iptables format is "#:#"
       self.options.append('-m length --length %s' %
@@ -419,6 +404,7 @@ class Term(object):
     else:
       flags = ''
 
+    icmp_type = str(icmp_type)
     if not icmp_type:
       icmp = ''
     else:
@@ -435,7 +421,7 @@ class Term(object):
     for sport in sports:
       for dport in dports:
         rval = [filter_top]
-        if re.search('multiport', sport) and not re.search('multipor', dport):
+        if re.search('multiport', sport) and not re.search('multiport', dport):
           # Due to bug in iptables, use of multiport module before a single
           # port specification will result in multiport trying to consume it.
           # this is a little hack to ensure single ports are listed before
@@ -573,13 +559,11 @@ class Iptables(aclgenerator.ACLGenerator):
   _RENDER_PREFIX = None
   _RENDER_SUFFIX = None
   _DEFAULTACTION_FORMAT = '-P %s %s'
+  _TERM = Term
 
-  def __init__(self, pol):
-    super(Iptables, self).__init__(pol)
-    self._Term = Term
+  def _TranslatePolicy(self, pol):
+    self.iptables_policies = []
 
-  def __str__(self):
-    target = []
     default_action = 'DROP'
     policy_default_action = None
     good_default_actions = ['ACCEPT', 'DROP']
@@ -589,19 +573,17 @@ class Iptables(aclgenerator.ACLGenerator):
     all_protocols_stateful = True
     filter_type = None
 
-    if self._RENDER_PREFIX:
-      target.append(self._RENDER_PREFIX)
-
-    for header, terms in self.policy.filters:
+    for header, terms in pol.filters:
       if not self._PLATFORM in header.platforms:
         continue
-      filter_name = header.FilterName(self._PLATFORM)
-      if filter_name not in good_filters:
-        logging.warn('%s %s %s %s' % (
-            'Filter is generating a non-standard chain that will not ',
-            'apply to traffic unless linked from INPUT, OUTPUT or ',
-            'FORWARD filters. New chain name is: ', filter_name))
+
       filter_options = header.FilterOptions(self._PLATFORM)[1:]
+      filter_name = header.FilterName(self._PLATFORM)
+
+      if filter_name not in good_filters:
+        logging.warn('Filter is generating a non-standard chain that will not '
+                     'apply to traffic unless linked from INPUT, OUTPUT or '
+                     'FORWARD filters. New chain name is: %s', filter_name)
       # ensure all options after the filter name are expected
       for opt in filter_options:
         if opt not in good_default_actions + good_afs + good_options:
@@ -629,10 +611,10 @@ class Iptables(aclgenerator.ACLGenerator):
         default_action = 'DROP'
 
       # does this policy override the default filter actions?
-      for next in header.target:
-        if next.platform == self._PLATFORM:
-          if len(next.options) > 1:
-            for arg in next.options:
+      for next_target in header.target:
+        if next_target.platform == self._PLATFORM:
+          if len(next_target.options) > 1:
+            for arg in next_target.options:
               if arg in good_default_actions:
                 policy_default_action = arg
                 default_action = policy_default_action
@@ -641,10 +623,38 @@ class Iptables(aclgenerator.ACLGenerator):
             '\nOnly ACCEPT or DROP default filter action allowed;',
             default_action, 'used.'))
 
+      # add the terms
+      new_terms = []
+      term_names = set()
+      for term in terms:
+        if term.name in term_names:
+          raise aclgenerator.DuplicateTermError(
+              'You have a duplicate term: %s' % term.name)
+        term_names.add(term.name)
+
+        term = self.FixHighPorts(term, af=filter_type,
+                                 all_protocols_stateful=all_protocols_stateful)
+        if term:
+          new_terms.append(self._TERM(term, filter_name, all_protocols_stateful,
+                                      default_action, filter_type,
+                                      'truncatenames' in filter_options))
+
+      self.iptables_policies.append((header, filter_name, filter_type,
+                                     policy_default_action, new_terms))
+
+  def __str__(self):
+    target = []
+    pretty_platform = '%s%s' % (self._PLATFORM[0].upper(), self._PLATFORM[1:])
+
+    if self._RENDER_PREFIX:
+      target.append(self._RENDER_PREFIX)
+
+    for (header, filter_name, filter_type, policy_default_action, terms
+        ) in self.iptables_policies:
       # Add comments for this filter
-      pretty_platform = '%s%s' % (self._PLATFORM[0].upper(), self._PLATFORM[1:])
       target.append('# %s %s Policy' % (pretty_platform,
                                         header.FilterName(self._PLATFORM)))
+
       # reformat long text comments, if needed
       comments = aclgenerator.WrapWords(header.comment, 70)
       if comments and comments[0]:
@@ -662,22 +672,8 @@ class Iptables(aclgenerator.ACLGenerator):
                                                     policy_default_action))
 
       # add the terms
-      term_names = set()
       for term in terms:
-        term = self.FixHighPorts(term, af=filter_type,
-                                 all_protocols_stateful=all_protocols_stateful)
-        if not term:
-          continue
-        if not term.name in term_names:
-          term_names.add(term.name)
-          target.append(str(self._Term(term, filter_name,
-                                       all_protocols_stateful, default_action,
-                                       filter_type,
-                                       'truncatenames' in filter_options)
-                           ))
-        else:
-          raise aclgenerator.DuplicateTermError(
-              'You have a duplicate term: %s' % term.name)
+        target.append(str(term))
       target.append('\n')
 
     if self._RENDER_SUFFIX:

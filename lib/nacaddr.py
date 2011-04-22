@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright 2009 Google Inc.
+# Copyright 2011 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -127,7 +127,7 @@ class IPv6(ipaddr.IPv6Network):
       self.text = comment
 
 
-def _CollapseAddrListRecursive(addresses):
+def CollapseAddrListRecursive(addresses):
   """Recursively loops through the addresses, collapsing concurent netblocks.
 
    Example:
@@ -139,7 +139,7 @@ def _CollapseAddrListRecursive(addresses):
    ip5 = ipaddr.IPv4Network('1.1.4.0/24')
    ip6 = ipaddr.IPv4Network('1.1.0.1/22')
 
-   _CollapseAddrRecursive([ip1, ip2, ip3, ip4, ip5, ip6]) ->
+   CollapseAddrRecursive([ip1, ip2, ip3, ip4, ip5, ip6]) ->
    [IPv4Network('1.1.0.0/22'), IPv4Network('1.1.4.0/24')]
 
    Note, this shouldn't be called directly, but is called via
@@ -171,7 +171,7 @@ def _CollapseAddrListRecursive(addresses):
       ret_array.append(cur_addr)
 
   if optimized:
-    return _CollapseAddrListRecursive(ret_array)
+    return CollapseAddrListRecursive(ret_array)
   return ret_array
 
 
@@ -188,7 +188,7 @@ def CollapseAddrList(addresses):
   Returns:
     list of ipaddr.IPNetwork objects
   """
-  return _CollapseAddrListRecursive(
+  return CollapseAddrListRecursive(
       sorted(addresses, key=ipaddr._BaseNet._get_networks_key))
 
 

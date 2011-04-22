@@ -8,27 +8,11 @@ header {
   target:: juniper edge-inbound
   target:: cisco edge-inbound mixed
   target:: iptables INPUT DROP nostate truncatenames
-  target:: speedway INPUT DROP
+  target:: speedway INPUT
   target:: silverpeak wireless_filter_in
 }
 
-term deny-from-bogons {
-  comment:: "this is a sample edge input filter with a very very very long and
-        multi-line comment that"
-  comment:: "also has multiple entries."
-  source-address:: BOGON
-  action:: deny
-}
-
-term deny-from-reserved {
-  source-address:: RESERVED
-  action:: deny
-}
-
-term deny-to-rfc1918 {
-  destination-address:: RFC1918
-  action:: deny
-}
+#include 'policies/includes/untrusted-networks-blocking.inc'
 
 term permit-mail-services {
   destination-address:: MAIL_SERVERS
@@ -66,7 +50,8 @@ header {
   comment:: "this is a sample output filter"
   target:: juniper edge-outbound
   target:: cisco edge-outbound mixed
-  target:: iptables OUTPUT
+  target:: iptables OUTPUT DROP nostate truncatenames
+  target:: speedway OUTPUT
   target:: silverpeak wireless_filter_out
 }
 

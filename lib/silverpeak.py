@@ -15,10 +15,7 @@
 #
 
 
-"""One-line documentation for silverpeak module.
-
-A detailed description of silverpeak.
-"""
+"""silverpeak ACL generator."""
 
 __author__ = 'jfz@google.com (Joseph Zhou) & andrewlv@google.com (Hongli Lv)'
 
@@ -26,13 +23,8 @@ __author__ = 'jfz@google.com (Joseph Zhou) & andrewlv@google.com (Hongli Lv)'
 import aclgenerator
 import logging
 
-# generic error class
+
 class Error(Exception):
-  pass
-
-
-# no silverpeak policy error
-class NoSilverpeakPolicyError(Exception):
   pass
 
 
@@ -221,7 +213,6 @@ class Silverpeak(aclgenerator.ACLGenerator):
                        fixed_content_file.name
                       )
     self.fixed_content = ''
-
     try:
       fixed_content_file.seek(0)
       self.fixed_content = fixed_content_file.read()
@@ -257,28 +248,37 @@ class Silverpeak(aclgenerator.ACLGenerator):
       return None
     return self.FixHighPorts(term)
 
+  def _TranslatePolicy(self, pol):
+    self.silverpeak_terms = []
+
+    for header, terms in pol.filters:
+      if not self._PLATFORM in header.platforms:
+        continue
+
+      new_terms = []
+      for term in terms:
+        verified = self.VerifyTerm(term)
+        if verified:
+          new_terms.append(Term(term))
+
+      self.silverpeak_terms.append(new_terms)
+
   def GenerateACLString(self):
     """Generate ACL file content in string format."""
     target_string = ''
     app_id = 0  # variable in ACL sentenses.
 
-    for header, terms in self.policy.filters:
-      if not self._PLATFORM in header.platforms:
-        continue
+    for terms in self.silverpeak_terms:
       for term in terms:
-        term = self.VerifyTerm(term)
-        if not term:
-          continue
-        for unit in Term(term).GenerateUnitList():
+        for unit in term.GenerateUnitList():
           app_id += 100
           target = []
           target.append('application')
           target.append(str(app_id))
-          target.append(term.name)
+          target.append(term.term.name)
           target.append('protocol')
-          if term.protocol:
-            term.protocol.sort()
-            target.append('/'.join(term.protocol))
+          if term.term.protocol:
+            target.append('/'.join(sorted(term.term.protocol)))
           else:
             target.append(self._DEFAULT_PROTOCOL)
           target.append('src-ip %s src-port %s' % (unit[0], unit[1]))
@@ -295,21 +295,17 @@ class Silverpeak(aclgenerator.ACLGenerator):
     """Generate configuration file."""
     target_string = ''
     unit_list = []
-    for header, terms in self.policy.filters:
-      if not self._PLATFORM in header.platforms:
-        continue
+
+    for terms in self.silverpeak_terms:
       for term in terms:
-        term = self.VerifyTerm(term)
-        if not term:
-          continue
-        unit_list = Term(term).GenerateUnitList()
+        unit_list = term.GenerateUnitList()
         if unit_list:
-          if term.qos in self.qos_value_map:
+          if term.term.qos in self.qos_value_map:
             target = []
-            qos_value = self.qos_value_map[term.qos]
+            qos_value = self.qos_value_map[term.term.qos]
             target.append('match protocol ip src-ip any src-port any')
             target.append('dst-ip any dst-port any application')
-            target.append(term.name)
+            target.append(term.term.name)
             target.append('dscp any set traffic-class 1')
             target.append('lan-qos-dscp %s wan-qos-dscp %s\n\n' %
                           (qos_value, qos_value))
