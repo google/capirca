@@ -10,13 +10,23 @@ INTERNAL = RFC1918
 LOOPBACK = 127.0.0.0/8  # loopback
            ::1/128       # ipv6 loopback
 
+RFC_3330 = 169.254.0.0/16  # special use IPv4 addresses - netdeploy
+
+LINKLOCAL = FE80::/10  # IPv6 link-local
+
+SITELOCAL = FEC0::/10    # Ipv6 Site-local
+
+MULTICAST = 224.0.0.0/4  # IP multicast
+            FF00::/8     # IPv6 multicast
+
+CLASS-E   = 240.0.0.0/4
+
 RESERVED = 0.0.0.0/8           # reserved
-           127.0.0.0/8         # reserved
-           169.254.0.0/16      # reserved
-           192.0.2.0/24        # reserved
-           224.0.0.0/4         # reserved
-           240.0.0.0/4         # reserved
-           255.255.255.255/32  # reserved
+           RFC1918
+           LOOPBACK
+           RFC_3330
+           MULTICAST
+           CLASS-E
            0000::/8            # reserved by IETF
            0100::/8            # reserved by IETF
            0200::/7            # reserved by IETF
@@ -33,45 +43,22 @@ RESERVED = 0.0.0.0/8           # reserved
            F800::/6            # reserved by IETF
            FC00::/7            # unique local unicast
            FE00::/9            # reserved by IETF
-           FE80::/10           # link local unicast
-           FEC0::/10           # site-local
-           FF00::/8            # multicast
+           LINKLOCAL           # link local unicast
+           SITELOCAL           # IPv6 site-local
 
-BOGON = 1.0.0.0/8      # unallocated
-        5.0.0.0/8      # unallocated
-        14.0.0.0/8     # unallocated
-        23.0.0.0/8     # unallocated
-        27.0.0.0/8     # unallocated
-        31.0.0.0/8     # unallocated
-        36.0.0.0/8     # unallocated
-        37.0.0.0/8     # unallocated
-        39.0.0.0/8     # unallocated
-        42.0.0.0/8     # unallocated
-        42.0.0.0/8     # unallocated
-        49.0.0.0/8     # unallocated
-        50.0.0.0/8     # unallocated
-        100.0.0.0/8    # unallocated
-        101.0.0.0/8    # unallocated
-        102.0.0.0/8    # unallocated
-        103.0.0.0/8    # unallocated
-        104.0.0.0/8    # unallocated
-        105.0.0.0/8    # unallocated
-        106.0.0.0/8    # unallocated
-        107.0.0.0/8    # unallocated
-        176.0.0.0/8    # unallocated
-        177.0.0.0/8    # unallocated
-        179.0.0.0/8    # unallocated
-        181.0.0.0/8    # unallocated
-        185.0.0.0/8    # unallocated
-        223.0.0.0/8    # unallocated
+# http://www.team-cymru.org/Services/Bogons/bogon-bn-agg.txt
+# 22-Apr-2011
+BOGON = 0.0.0.0/8
+        192.0.0.0/24
+        192.0.2.0/24
+        192.18.0.0/15
+        198.51.100.0/24
+        203.0.113.0/24
+        MULTICAST
+        CLASS-E
         3FFE::/16      # 6bone
         5F00::/8       # 6bone
         2001:DB8::/32  # IPv6 documentation prefix
-
-RFC_3330 = 169.254.0.0/16  # special use IPv4 addresses - netdeploy
-
-LINKLOCAL = FE80::/10  # IPv6 link-local
-
 
 # The following are sample entires intended for us in the included
 # sample policy file.  These should be removed.
