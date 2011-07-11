@@ -141,19 +141,19 @@ The following are a list of keywords that must be supported by all output genera
 The following are keywords that can be optionally supported by output generators.  It is important to note that these may or may not function properly on all generators.
 
   * _address::_ one or more network address tokens
-  * _counter::_ update a counter for matching packets
-  * _destination-prefix::_ currently only supported by the juniper generator 
-  * _ether-type::_ currently on used by juniper generator to specify arp packets
-  * _fragement-offset::_ currently only used by juniper generator to specify a fragment offset of a fragmented packet
-  * _logging::_ specify that this packet should be logged
+  * _counter::_ juniper only, update a counter for matching packets
+  * _destination-prefix::_ juniper only, specify destination-prefix matching (e.g. source-prefix:: configured-neighbors-only)
+  * _ether-type::_ juniper only, specify matching ether-type(e.g. ether-type:: arp)
+  * _fragement-offset::_ juniper only, specify a fragment offset of a fragmented packet
+  * _logging::_ supported juniper and iptables/speedway, specify that this packet should be logged via syslog
   * _loss-priority::_ juniper only, specify loss priority
   * _packet-length::_ juniper only, specify packet length
   * _policer::_ juniper only, specify which policer to apply to matching packets
   * _precedence::_ juniper only, specify precendence
-  * _qos::_ apply quality of service classification to matching packets
+  * _qos::_ juniper only, apply quality of service classification to matching packets (e.g. qos:: af4)
   * _routing-instance::_ juniper only, specify routing instance for matching packets
   * _source-interface::_ iptables and speedway only, specify specific interface a term should apply to (e.g. source-interface:: eth3)
-  * _source-prefix::_ juniper only, specify source-prefix matching
+  * _source-prefix::_ juniper only, specify source-prefix matching (e.g. source-prefix:: configured-neighbors-only)
   * _traffic-type::_ juniper only, specify traffic-type
 
 === Term Examples ===
