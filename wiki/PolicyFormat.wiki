@@ -4,12 +4,15 @@
 
 The access control policy describes the desired network security policy through the use of a high-level language that uses keywords and tokens.  Tokens are derived from the [NamingLibrary naming libraries] import of definition files.
 
-
 = Basic Policy File Format =
 
 A policy file consists of one or more filters, with each filter containing one or more terms.  Each term specifies basic network filter information, such as addresses, ports, protocols and actions.
 
 A policy file consists of one or more header sections, with each header section being followed by one or more terms.
+
+A header section is typically used to specify a filter for a given direction, such as an INPUT filter on Iptables.  A second header section will typically be included in the policy to specify the OUTPUT filter.
+
+In addition, the policy language support "include files" which inject the text from the included file into the policy at the specified location.  For more details, see the [PolicyFormat#Includes Includes] section.
 
 == Header Section ==
 Each filter is identified with a header section.  The header section is used to define the type of filter, a descriptor or name, direction (if applicable) and format (ipv4/ipv6).
@@ -201,6 +204,21 @@ term allow-inbound-ftp-from-corp {
   action:: accept
 }
 }}}
+
+
+== Includes ==
+The policy language supports the use of #include statements.  An include can be used to avoid duplication of commonly used text, such as a group of terms that permit or block specific types of traffic.
+
+An include directive will result in the contents of the included file being injected into the current policy at the exact location of the include directive.
+
+The include directive has the following format:
+{{{
+...
+#include 'policies/includes/untrusted-networks-blocking.inc'
+...
+}}}
+
+The .inc file extension and "include" directory path are not required, but typically used to help differentiate from typical policy files.  
 
 == Example Policy File ==
 
