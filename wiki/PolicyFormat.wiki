@@ -19,6 +19,7 @@ For example, the following simple header defines a filter that can generate outp
 header {
   comment:: "Example header for juniper and iptables filter."
   target:: juniper edge-filter
+  target:: speedway INPUT 
   target:: iptables INPUT
   target:: cisco edge-filter
 }
@@ -27,10 +28,10 @@ header {
 Notice that the first target has 2 arguments: "juniper" and "edge_filter".
 The first argument specifies that the filter can be rendered for Juniper JCLs, and that the output filter should be called "edge_filter".
 
-The second target also has 2 arguments: "iptables" and "INPUT".
-Since Iptables has specific inherent filters, such as INPUT, OUTPUT and FORWARD, the target specification for iptables must point to one of these filters.
+The second target also has 2 arguments: "speedway" and "INPUT".
+Since Speedway/Iptables has specific inherent filters, such as INPUT, OUTPUT and FORWARD, the target specification for iptables usually points to one of these filters although a custom chain can be specified (usually for combining with other filters rules through the use of a jump from one of the default filters)
 
-Likewise, the 3rd target, "cisco" simply specifies the name of the access control list to be generated.
+Likewise, the 4th target, "cisco" simply specifies the name of the access control list to be generated.
 
 Each target platform may have different possible arguments, which are detailed in the following subsections.
 
@@ -51,35 +52,68 @@ The default format is _inet4_, and is implied if not other argument is given.
 === Cisco ===
 The cisco header designation has the following format:
 {{{
-target:: cisco [filter name] {extended|standard|object-group}
+target:: cisco [filter name] {extended|standard|object-group|inet6|mixed}
 }}}
   * _filter name_: defines the name or number of the cisco filter.
   * _extended_: specifies that the output should be an extended access list, and the filter name should be non-numeric.  This is the default option.
   * _standard_: specifies that the output should be a standard access list, and the filter name should be numeric and in the range of 1-99.
   * _object-group_: specifies this is a cisco extended access list, and that object-groups should be used for ports and addresses.
+  * _inet6_: specifies the output be for IPv6 only filters.
+  * _mixed_: specifies output will include both IPv6 and IPv4 filters.
 
-At this time, the Cisco generator does not support IPv6 output.  Any IPv6 addresses contained in the naming tokens will not be rendered in the output.
+When _inet4_ or _inet6_ is specified, naming tokens with both IPv4 and IPv6 filters will be rendered using only the specified addresses.
+
+The default format is _inet4_, and is implied if not other argument is given.
+
 
 === Iptables ===
+NOTE: Iptables produces output that must be passed, line by line, to the 'iptables/ip6tables' command line.  For 'iptables-restore' compatible output, please use the [Speedway#Speedway] generator.
+
 The Iptables header designation has the following format:
 {{{
-target:: iptables [INPUT|OUTPUT|FORWARD] {ACCEPT|DROP} {inet|inet6}
+target:: iptables [INPUT|OUTPUT|FORWARD|custom] {ACCEPT|DROP} {truncatenames} {nostate} {inet|inet6}
 }}}
   * _INPUT_: apply the terms to the input filter.
   * _OUTPUT_: apply the terms to the output filter.
   * _FORWARD_: apply the terms to the forwarding filter.
+  * _custom_: create the terms under a custom filter name, which must then be linked/jumped to from one of the default filters (e.g. iptables -A input -j custom)
   * _ACCEPT_: specifies that the default policy on the filter should be 'accept'.
   * _DROP_: specifies that the default policy on the filter should be to 'drop'.
   * _inet_: specifies that the resulting filter should only render IPv4 addresses.
   * _inet6_: specifies that the resulting filter should only render IPv6 addresses.
+  * _truncatenames_: specifies to abbreviate term names if necessary (see lib/iptables.py:_CheckTerMLength for abbreviation table)
+  * _nostate_: specifies to produce 'stateless' filter output (e.g. no connection tracking)
+
+=== Speedway ===
+NOTE: Speedway produces Iptables filtering output that is suitable for passing to the 'iptables-restore' command.
+
+The Speedway header designation has the following format:
+{{{
+target:: speedway [INPUT|OUTPUT|FORWARD|custom] {ACCEPT|DROP} {truncatenames} {nostate} {inet|inet6}
+}}}
+  * _INPUT_: apply the terms to the input filter.
+  * _OUTPUT_: apply the terms to the output filter.
+  * _FORWARD_: apply the terms to the forwarding filter.
+  * _custom_: create the terms under a custom filter name, which must then be linked/jumped to from one of the default filters (e.g. iptables -A input -j custom)
+  * _ACCEPT_: specifies that the default policy on the filter should be 'accept'.
+  * _DROP_: specifies that the default policy on the filter should be to 'drop'.
+  * _inet_: specifies that the resulting filter should only render IPv4 addresses.
+  * _inet6_: specifies that the resulting filter should only render IPv6 addresses.
+  * _truncatenames_: specifies to abbreviate term names if necessary (see lib/iptables.py: CheckTermLength for abbreviation table)
+  * _nostate_: specifies to produce 'stateless' filter output (e.g. no connection tracking)
+
 
 == Terms Section ==
 
-Terms defines access control rules within a filter.  Once the filter is defined in the header sections, it is following by one or more terms.  Terms are enclosed in brackets and use keywords to specify the functionality of a specific access control.
+Terms defines access control rules within a filter.  Once the filter is defined in the header sections, it is followed by one or more terms.  Terms are enclosed in brackets and use keywords to specify the functionality of a specific access control.
 
 A term section begins with the keyword term, followed by a term name.  Opening and closing brackets follow, which include the keywords and tokens to define the matching and action of the access control term.
 
-The keywords fall into two categories, those are are required to be supported by all output generators, and those that are not required to be supported.
+The keywords fall into two categories, those are are required to be supported by all output generators, and those that are optionally supported by each generator.  Optional keywords are intended to provide additional flexibility when developing policies on a single target platform.  
+
+*NOTE* Some generators may silently ignore optional keyword tokens which they do not support.  
+
+*WARNING* When developing filters that are intended to be rendered across multiple generators (cisco, iptables & juniper for example) it is strongly recommended to only use required keyword tokens in the policy terms.  This will help ensure each platform's rendered filter will contain compatible security policies.
 
 === Keywords ===
 The following are a list of keywords that must be supported by all output generators:
@@ -88,6 +122,7 @@ The following are a list of keywords that must be supported by all output genera
   * _destination-address::_ one or more destination address tokens
   * _destination-exclude::_ exclude one or more address tokens from the specified destination-address 
   * _destination-port::_ one or more service definition tokens
+  * _icmp-type::_ specify icmp-type code to match, see section [ICMP TYPES|ICMP_TYPES] for list of valid arguments
   * _option::_ [established|tcp-established|sample|intial|rst|first-fragment]
     * _established_ - only permit established connections, implements tcp-established if protocol is tcp only, otherwise adds 1024-65535 to required destination-ports.
     * _tcp-established_ - only permit established tcp connections, usually checked based on TCP flag settings.  If protocol UDP is included in term, only adds 1024-65535 to required destination-ports.
@@ -110,7 +145,6 @@ The following are keywords that can be optionally supported by output generators
   * _destination-prefix::_ currently only supported by the juniper generator 
   * _ether-type::_ currently on used by juniper generator to specify arp packets
   * _fragement-offset::_ currently only used by juniper generator to specify a fragment offset of a fragmented packet
-  * _icmp-type::_ [echo-reply|echo-request|port-unreachable]
   * _logging::_ specify that this packet should be logged
   * _loss-priority::_ juniper only, specify loss priority
   * _packet-length::_ juniper only, specify packet length
@@ -118,6 +152,7 @@ The following are keywords that can be optionally supported by output generators
   * _precedence::_ juniper only, specify precendence
   * _qos::_ apply quality of service classification to matching packets
   * _routing-instance::_ juniper only, specify routing instance for matching packets
+  * _source-interface::_ iptables and speedway only, specify specific interface a term should apply to (e.g. source-interface:: eth3)
   * _source-prefix::_ juniper only, specify source-prefix matching
   * _traffic-type::_ juniper only, specify traffic-type
 
@@ -224,3 +259,57 @@ term default-accept {
   action:: accept
 }
 }}}
+
+== ICMP TYPES ==
+The following are the list of icmp-type specifications which can be used with the 'icmp-type::' policy token.
+
+=== IPv4 ===
+  * echo-reply
+  * unreachable
+  * source-quench
+  * redirect
+  * alternate-address
+  * echo-request
+  * router-advertisement
+  * router-solicitation
+  * time-exceeded
+  * parameter-problem
+  * timestamp-request
+  * timestamp-reply
+  * information-request
+  * information-reply
+  * mask-request
+  * mask-reply
+  * conversion-error
+  * mobile-redirect
+
+=== IPv6 ===
+  * destination-unreachable
+  * packet-too-big
+  * time-exceeded
+  * parameter-problem
+  * echo-request
+  * echo-reply
+  * multicast-listener-query
+  * multicast-listener-report
+  * multicast-listener-done
+  * router-solicit
+  * router-advertisement
+  * neighbor-solicit
+  * neighbor-advertisement
+  * redirect-message
+  * router-renumbering
+  * icmp-node-information-query
+  * icmp-node-information-response
+  * inverse-neighbor-discovery-solicitation
+  * inverse-neighbor-discovery-advertisement
+  * version-2-multicast-listener-report
+  * home-agent-address-discovery-request
+  * home-agent-address-discovery-reply
+  * mobile-prefix-solicitation
+  * mobile-prefix-advertisement
+  * certification-path-solicitation
+  * certification-path-advertisement
+  * multicast-router-advertisement
+  * multicast-router-solicitation
+  * multicast-router-termination
