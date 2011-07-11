@@ -7,7 +7,10 @@ header {
   comment:: "also has multiple entries."
   target:: juniper edge-inbound
   target:: cisco edge-inbound mixed
+  # iptables produces filter 'lines' that must be used as args to the
+  # '$ iptables' cmd
   target:: iptables INPUT DROP nostate truncatenames
+  # speedway creates stateful iptables filters compatible with iptables-restore
   target:: speedway INPUT
   target:: silverpeak wireless_filter_in
 }

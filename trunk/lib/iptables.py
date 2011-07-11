@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright 2011 Google Inc.
+# Copyright 2010 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 
 """Iptables generator."""
 
@@ -45,7 +44,7 @@ class Term(aclgenerator.Term):
       'source_address', 'source_address_exclude',
       'destination_address', 'destination_address_exclude',
       # Other packet filtering
-      'option', 'protocol', 'icmp_type',
+      'option', 'protocol', 'icmp_type', 'source_interface',
       'source_port', 'destination_port', 'packet_length',
       # Unsupported address limits: may produce UnsupportedFilter exceptions
       # omitted with 'accept'/'next', error elsewise
@@ -146,11 +145,11 @@ class Term(aclgenerator.Term):
           'ether_type unsupported by', self._PLATFORM,
           '\nError in term', self.term.name))
     if self.term.address:
-      raise UnsupportedFilterError('\n%s %s %s %s' % (
+      raise UnsupportedFilterError('\n%s %s %s %s %s' % (
           'address unsupported by', self._PLATFORM,
           '- specify source or dest', '\nError in term:', self.term.name))
     if self.term.port:
-      raise UnsupportedFilterError('\n%s %s %s %s' % (
+      raise UnsupportedFilterError('\n%s %s %s %s %s' % (
           'port unsupported by', self._PLATFORM,
           '- specify source or dest', '\nError in term:', self.term.name))
 
@@ -256,6 +255,15 @@ class Term(aclgenerator.Term):
       icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type, protocol,
                                            self.af, self.term.name)
 
+    source_interface = ''
+    if self.term.source_interface:
+      source_interface = self.term.source_interface
+
+    log_hits = False
+    if self.term.logging:
+      # Iptables sends logs to hosts configured syslog
+      log_hits = True
+
     # options
     tcp_flags = []
     tcp_track_options = []
@@ -299,11 +307,11 @@ class Term(aclgenerator.Term):
 
     for saddr in exclude_saddr:
       ret_str.extend(self._FormatPart(
-          self.af, '', saddr, '', '', '', '', '', '', '',
+          self.af, '', saddr, '', '', '', '', '', '', '', '', '',
           self._ACTION_TABLE.get('next')))
     for daddr in exclude_daddr:
       ret_str.extend(self._FormatPart(
-          self.af, '', '', '', daddr, '', '', '', '', '',
+          self.af, '', '', '', daddr, '', '', '', '', '', '', '',
           self._ACTION_TABLE.get('next')))
 
     for saddr in term_saddr:
@@ -322,6 +330,8 @@ class Term(aclgenerator.Term):
                   tcp_flags,
                   icmp,
                   tcp_matcher,
+                  source_interface,
+                  log_hits,
                   self._ACTION_TABLE.get(str(self.term.action[0]))
                   ))
 
@@ -331,7 +341,7 @@ class Term(aclgenerator.Term):
     return '\n'.join(str(v) for v in ret_str if v is not '')
 
   def _FormatPart(self, af, protocol, saddr, sport, daddr, dport, options,
-                  tcp_flags, icmp_type, track_flags, action):
+                  tcp_flags, icmp_type, track_flags, sint, log_hits, action):
     """Compose one iteration of the term parts into a string.
 
     Args:
@@ -345,6 +355,8 @@ class Term(aclgenerator.Term):
       tcp_flags: Which tcp_flag arguments, if any, should be appended
       icmp_type: What icmp protocol to allow, if any
       track_flags: A tuple of ([check-flags], [set-flags]) arguments to tcp-flag
+      sint: Optional source interface
+      log_hits: Boolean, to log matches or not
       action: What should happen if this rule matches
     Returns:
       rval:  A single iptables argument line
@@ -373,6 +385,14 @@ class Term(aclgenerator.Term):
       dst = ''
     else:
       dst = '-d %s/%d' % (daddr.ip, daddr.prefixlen)
+
+    source_int = ''
+    if sint:
+      source_int = '-i %s' % sint
+
+    log_jump = ''
+    if log_hits:
+      log_jump = '-j LOG --log-prefix %s ' % self.term.name
 
     if not options:
       options = []
@@ -428,10 +448,14 @@ class Term(aclgenerator.Term):
           # any multiport specification.
           dport, sport = sport, dport
         for value in (proto, flags, sport, dport, icmp, src, dst,
-                      ' '.join(options), action):
+                      ' '.join(options), source_int):
           if value:
             rval.append(str(value))
-        ret_lines.append(' '.join(rval))
+        if log_jump:
+          # -j LOG
+          ret_lines.append(' '.join(rval+[log_jump]))
+        # -j ACTION
+        ret_lines.append(' '.join(rval+[action]))
     return ret_lines
 
   def _GeneratePortStatement(self, ports, source=False, dest=False):
@@ -584,6 +608,7 @@ class Iptables(aclgenerator.ACLGenerator):
         logging.warn('Filter is generating a non-standard chain that will not '
                      'apply to traffic unless linked from INPUT, OUTPUT or '
                      'FORWARD filters. New chain name is: %s', filter_name)
+
       # ensure all options after the filter name are expected
       for opt in filter_options:
         if opt not in good_default_actions + good_afs + good_options:

@@ -15,12 +15,17 @@
 # from capirca import iptables
 # from capirca import policyreader
 # from capirca import aclcheck
-#
+# from capirca import aclgenerator
+# from capirca import nacaddr
+# from capirca import port
+# from capirca import silverpeak
+# from capirca import speedway
 #
 
 __version__ = '1.0.0'
 
 __all__ = ['naming', 'policy', 'cisco', 'juniper', 'iptables',
-           'policyreader', 'aclcheck']
+           'policyreader', 'aclcheck', 'aclgenerator', 'nacaddr',
+           'port', 'silverpeak', 'speedway']
 
 __author__ = 'Paul (Tony) Watson (watson@gmail.com / watson@google.com)'

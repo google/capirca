@@ -1,5 +1,6 @@
 #!/usr/bin/python
-# Copyright 2009 Google Inc.
+#
+# Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,8 +15,7 @@
 # limitations under the License.
 #
 
-
-"""Cisco renderer."""
+"""Cisco generator."""
 
 __author__ = 'pmoody@google.com (Peter Moody)'
 __author__ = 'watson@google.com (Tony Watson)'
@@ -335,7 +335,7 @@ class Term(aclgenerator.Term):
     else:
       # pylint: disable-msg=C6402
       protocol = map(self.PROTO_MAP.get, self.term.protocol, self.term.protocol)
-      # pylint: enable-msg=C6402
+      # pylint: disable-msg=C6402
 
     # source address
     if self.term.source_address:
