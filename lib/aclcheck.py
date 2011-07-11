@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright 2009 Google Inc.
+# Copyright 2011 Google Inc. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,11 +15,11 @@
 # limitations under the License.
 #
 
-
 """Check where hosts, ports and protocols are matched in a capirca policy."""
 
 __author__ = 'watson@google.com (Tony Watson)'
 
+import logging
 import sys
 import nacaddr
 import policy
@@ -52,10 +52,10 @@ class AclCheck(object):
       string, the source address
     dst:
       string: the destination address.
-    dport:
-      string, the destination port.
     sport:
       string, the source port.
+    dport:
+      string, the destination port.
     proto:
       string, the protocol.
 
@@ -89,7 +89,7 @@ class AclCheck(object):
 
     # validate destination port
     if dport == 'any':
-      self.dport = sport
+      self.dport = dport
     else:
       self.dport = port.Port(dport)
 
@@ -121,29 +121,55 @@ class AclCheck(object):
       for term in terms:
         possible = []
 
-        if self._AddrInside(self.src, term.source_address):
-          if self._AddrInside(self.dst, term.destination_address):
-            if (self.sport == 'any' or not term.source_port or
-                self._PortInside(self.sport, term.source_port)):
-              if (self.dport == 'any' or not term.destination_port or
-                  self._PortInside(self.dport, term.destination_port)):
-                if (self.proto == 'any' or not term.protocol or
-                    self.proto in term.protocol):
+        logging.debug('checking term: %s', term.name)
+        if not self._AddrInside(self.src, term.source_address):
+          logging.debug('srcaddr does not match')
+          continue
+        logging.debug('srcaddr matches: %s', self.src)
+        if not self._AddrInside(self.dst, term.destination_address):
+          logging.debug('dstaddr does not match')
+          continue
+        logging.debug('dstaddr matches: %s', self.dst)
+        if (self.sport != 'any' and term.source_port and not
+            self._PortInside(self.sport, term.source_port)):
+          logging.debug('sport does not match')
+          continue
+        logging.debug('sport matches: %s', self.sport)
+        if (self.dport != 'any' and term.destination_port and not
+            self._PortInside(self.dport, term.destination_port)):
+          logging.debug('dport does not match')
+          continue
+        logging.debug('dport matches: %s', self.dport)
+        if (self.proto != 'any' and term.protocol and
+            self.proto not in term.protocol):
+          logging.debug('proto does not match')
+          continue
+        logging.debug('proto matches: %s', self.proto)
+        if term.protocol_except and self.proto in term.protocol_except:
+          logging.debug('protocol excepted by term, no match.')
+          continue
+        logging.debug('proto not excepted: %s', self.proto)
+        if not term.action:  # avoid any verbatim
+          logging.debug('term had no action (verbatim?), no match.')
+          continue
+        logging.debug('term has an action')
+        possible = self._PossibleMatch(term)
+        self.matches.append(Match(filtername, term.name, possible, term.action,
+                                  term.qos))
+        if possible:
+          logging.debug('term has options: %s, not treating as exact match',
+                        possible)
+          continue
 
-                  possible = self._PossibleMatch(term)
-                  if term.action:  # avoid any verbatim
-                    self.matches.append(Match(filtername, term.name, possible,
-                                              term.action, term.qos))
+        # if we get here then we have a match, and if the action isn't next and
+        # there are no possibles, then this is a "definite" match and we needn't
+        # look for any further matches (i.e. later terms may match, but since
+        # we'll never get there we shouldn't report them)
+        if 'next' not in term.action:
+          self.exact_matches.append(Match(filtername, term.name, [],
+                                          term.action, term.qos))
+          break
 
-                    # so if we get here then we have a match, and if the action
-                    # isn't next and there are no possibles, then this is a
-                    # "definite" match and we needn't look for any further
-                    # matches (i.e. later terms may match, but since we'll never
-                    # get there we shouldn't report them)
-                    if 'next' not in term.action and not possible:
-                      self.exact_matches.append(Match(filtername, term.name, [],
-                                                      term.action, term.qos))
-                      break
 
   def Matches(self):
     """Return list of matched terms."""

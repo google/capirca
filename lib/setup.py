@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright 2009 Google Inc.
+# Copyright 2011 Google Inc. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,11 +15,9 @@
 # limitations under the License.
 #
 
-
 from distutils.core import setup
 
 import capirca
-
 
 setup(name='capirca',
       maintainer='Google',

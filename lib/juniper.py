@@ -15,7 +15,6 @@
 # limitations under the License.
 #
 
-
 __author__ = 'pmoody@google.com (Peter Moody)'
 __author__ = 'watson@google.com (Tony Watson)'
 
@@ -554,7 +553,6 @@ class Juniper(aclgenerator.ACLGenerator):
         new_terms.append(Term(term, filter_type))
       self.juniper_policies.append((header, filter_name, filter_type,
                                     interface_specific, new_terms))
-
 
   def __str__(self):
     target = []

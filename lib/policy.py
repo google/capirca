@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright 2009 Google Inc.
+# Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 
 """Parses the generic policy files and return a policy object for acl rendering.
 """
@@ -291,6 +290,8 @@ class Term(object):
     self.ether_type = []
     self.traffic_type = []
     self.translated = False
+    # iptables specific
+    self.source_interface = None
 
     self.AddObject(obj)
 
@@ -422,6 +423,8 @@ class Term(object):
       ret_str.append('  logging: %s' % self.logging)
     if self.counter:
       ret_str.append('  counter: %s' % self.counter)
+    if self.source_interface:
+      ret_str.append('  source_interface: %s' % self.source_interface)
     return '\n'.join(ret_str)
 
   def __eq__(self, other):
@@ -471,6 +474,10 @@ class Term(object):
 
     # policer
     if not self.policer == other.policer:
+      return False
+
+    # interface
+    if not self.source_interface == other.source_interface:
       return False
 
     if not sorted(self.logging) == sorted(other.logging):
@@ -600,6 +607,8 @@ class Term(object):
         self.packet_length = obj.value
       elif obj.var_type is VarType.FRAGMENT_OFFSET:
         self.fragment_offset = obj.value
+      elif obj.var_type is VarType.SINTERFACE:
+        self.source_interface = obj.value
       else:
         raise TermObjectTypeError(
             '%s isn\'t a type I know how to deal with' % (type(obj)))
@@ -856,6 +865,7 @@ class VarType(object):
   LOSS_PRIORITY = 24
   ROUTING_INSTANCE = 25
   PRECEDENCE = 26
+  SINTERFACE = 27
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -982,6 +992,7 @@ tokens = (
     'ROUTING_INSTANCE',
     'SADDR',
     'SADDREXCLUDE',
+    'SINTERFACE',
     'SPFX',
     'SPORT',
     'STRING',
@@ -1019,6 +1030,7 @@ reserved = {
     'routing-instance': 'ROUTING_INSTANCE',
     'source-address': 'SADDR',
     'source-exclude': 'SADDREXCLUDE',
+    'source-interface': 'SINTERFACE',
     'source-prefix': 'SPFX',
     'source-port': 'SPORT',
     'target': 'TARGET',
@@ -1059,7 +1071,7 @@ def t_INTEGER(t):
 
 
 def t_STRING(t):
-  r'\w+([-_]\w*)*'
+  r'\w+([-_+]\w*)*'
   # we have an identifier; let's check if it's a keyword or just a string.
   t.type = reserved.get(t.value, 'STRING')
   return t
@@ -1125,6 +1137,7 @@ def p_term_spec(p):
                 | term_spec exclude_spec
                 | term_spec fragment_offset_spec
                 | term_spec icmp_type_spec
+                | term_spec interface_spec
                 | term_spec logging_spec
                 | term_spec losspriority_spec
                 | term_spec option_spec
@@ -1299,6 +1312,11 @@ def p_qos_spec(p):
   p[0] = VarType(VarType.QOS, p[4])
 
 
+def p_interface_spec(p):
+  """ interface_spec : SINTERFACE ':' ':' STRING """
+  p[0] = VarType(VarType.SINTERFACE, p[4])
+
+
 def p_one_or_more_strings(p):
   """ one_or_more_strings : one_or_more_strings STRING
                           | STRING
@@ -1365,7 +1383,7 @@ def _ReadFile(filename):
     raise FileNotFoundError('Unable to open policy file %s' % filename)
 
 
-def _Preprocess(data, max_depth=5):
+def _Preprocess(data, max_depth=5, base_dir=''):
   """Search input for include statements and import specified include file.
 
   Search input for include statements and if found, import specified file
@@ -1374,6 +1392,7 @@ def _Preprocess(data, max_depth=5):
   Args:
     data: A string of Policy file data.
     max_depth: Maximum depth of included files
+    base_dir: Base path string where to look for policy or include files
 
   Returns:
     A string containing result of the processed input data
@@ -1391,16 +1410,16 @@ def _Preprocess(data, max_depth=5):
     if len(words) > 1 and words[0] == '#include':
       # remove any quotes around included filename
       include_file = words[1].strip('\'"')
-      data = _ReadFile(include_file)
+      data = _ReadFile(os.path.join(base_dir, include_file))
       # recursively handle includes in included data
-      inc_data = _Preprocess(data, max_depth - 1)
+      inc_data = _Preprocess(data, max_depth - 1, base_dir=base_dir)
       rval.extend(inc_data)
     else:
       rval.append(line)
   return rval
 
 
-def ParseFile(filename, definitions=None, optimize=True):
+def ParseFile(filename, definitions=None, optimize=True, base_dir=''):
   """Parse the policy contained in file, optionally provide a naming object.
 
   Read specified policy file and parse into a policy object.
@@ -1409,16 +1428,17 @@ def ParseFile(filename, definitions=None, optimize=True):
     filename: Name of policy file to parse.
     definitions: optional naming library definitions object.
     optimize: bool - whether to summarize networks and services.
+    base_dir: base path string to look for acls or include files.
 
   Returns:
     policy object.
   """
   data = _ReadFile(filename)
-  p = ParsePolicy(data, definitions, optimize)
+  p = ParsePolicy(data, definitions, optimize, base_dir=base_dir)
   return p
 
 
-def ParsePolicy(data, definitions=None, optimize=True):
+def ParsePolicy(data, definitions=None, optimize=True, base_dir=''):
   """Parse the policy in 'data', optionally provide a naming object.
 
   Parse a blob of policy text into a policy object.
@@ -1427,6 +1447,7 @@ def ParsePolicy(data, definitions=None, optimize=True):
     data: a string blob of policy data to parse.
     definitions: optional naming library definitions object.
     optimize: bool - whether to summarize networks and services.
+    base_dir: base path string to look for acls or include files.
 
   Returns:
     policy object.
@@ -1442,7 +1463,7 @@ def ParsePolicy(data, definitions=None, optimize=True):
     # I wanna lex you up
     lexer = lex.lex()
 
-    preprocessed_data = '\n'.join(_Preprocess(data))
+    preprocessed_data = '\n'.join(_Preprocess(data, base_dir=base_dir))
 
     p = yacc.yacc(write_tables=False, debug=0, errorlog=yacc.NullLogger())
 
