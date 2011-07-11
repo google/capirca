@@ -67,7 +67,7 @@ The default format is _inet4_, and is implied if not other argument is given.
 
 
 === Iptables ===
-NOTE: Iptables produces output that must be passed, line by line, to the 'iptables/ip6tables' command line.  For 'iptables-restore' compatible output, please use the [Speedway #Speedway] generator.
+NOTE: Iptables produces output that must be passed, line by line, to the 'iptables/ip6tables' command line.  For 'iptables-restore' compatible output, please use the [PolicyFormat#Speedway Speedway] generator.
 
 The Iptables header designation has the following format:
 {{{
