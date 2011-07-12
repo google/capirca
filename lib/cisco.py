@@ -533,9 +533,8 @@ class Cisco(aclgenerator.ACLGenerator):
         #(loop through and generate output for inet then inet6 in sequence)
         filter_list = ['extended', 'inet6']
 
-      new_terms = []
-      for filter_type in filter_list:
-        if filter_type is 'extended':
+      for filter in filter_list:
+        if filter is 'extended':
           try:
             if 1 <= int(filter_name) <= 99:
               raise UnsupportedCiscoAccessListError(
@@ -543,7 +542,7 @@ class Cisco(aclgenerator.ACLGenerator):
           except ValueError:
             # Extended access list names do not have to be numbers.
             pass
-        if filter_type == 'standard':
+        if filter == 'standard':
           try:
             if not 1 <= int(filter_name) <= 99:
               raise UnsupportedCiscoAccessListError(
@@ -552,27 +551,28 @@ class Cisco(aclgenerator.ACLGenerator):
             raise UnsupportedCiscoAccessListError(
                 'standard access lists must be numbered between 1 - 99')
 
+        new_terms = []
         for term in terms:
           af = 'inet'
-          if filter_type == 'inet6':
+          if filter == 'inet6':
             af = 'inet6'
           term = self.FixHighPorts(term, af=af)
           if not term:
             continue
 
           # render terms based on filter type
-          if filter_type == 'standard':
+          if filter == 'standard':
             new_terms.append(TermStandard(term, filter_name))
-          elif filter_type == 'extended':
+          elif filter == 'extended':
             new_terms.append(Term(term))
-          elif filter_type == 'object-group':
+          elif filter == 'object-group':
             obj_target.AddTerm(term)
             new_terms.append(ObjectGroupTerm(term, filter_name))
-          elif filter_type == 'inet6':
+          elif filter == 'inet6':
             new_terms.append(Term(term, 6))
 
-      self.cisco_policies.append((header, filter_name, filter_list, new_terms,
-                                  obj_target))
+        self.cisco_policies.append((header, filter_name, [filter], new_terms,
+                                    obj_target))
 
   def __str__(self):
     target_header = []
