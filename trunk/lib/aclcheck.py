@@ -297,8 +297,8 @@ class Match(object):
     return text
 
 
-def main(_):
+def main():
   pass
 
 if __name__ == '__main__':
-  main(sys.argv)
+  main()
