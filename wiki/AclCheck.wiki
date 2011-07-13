@@ -28,23 +28,24 @@ Most AclCheck methods return "match" objects which have the following properties
 
 
 = Usage = 
-The AclCheck code is designed to be used as a library, but also provides command-line functionality.
+The AclCheck code is designed to be used as a library.
+However, for ease of use a command-line interface is provided in the top directory of the installation.
 
 {{{
-./aclcheck.py:
+./aclcheck_cmdline.py:
   --definitions_directory: Directory where the definitions can be found.
-    (default: '/home/network/acl/def')
-  -d,--destination: Desintation IP address.
-  --destination_port: Destination port number.
-  -p,--policy_file: The NAC policy file to check.
-  --protocol: Protocol (tcp, udp, icmp, etc).
-  -s,--source: Source IP address.
-  --source_port: Source port number.
+    (default: './def')
+  -p,--policy_file: The NAC policy file to check (default='./policies/sample.pol')
+  -d,--destination: Desintation IP address (default='200.1.1.1')
+  -s,--source: Source IP address (default='11.1.1.1')
+  --protocol: Protocol (default='tcp')
+  --destination_port: Destination port number (default=80)
+  --source_port: Source port number (default=1025)
 }}}
 
 *Commandline example:*
 {{{
- ./aclcheck.py --source_port 4096 --destination_port 80 -s 64.142.101.1 -d 209.85.129.0/24 --protocol tcp -p /home/network/acl/pol/edge_filter.pol 
+ ./aclcheck.py --source_port 4096 --destination_port 80 -s 64.142.101.1 -d 200.1.1.0/24 --protocol tcp -p ./policies/sample.pol 
 }}}
 
 *Library Usage:*
