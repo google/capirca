@@ -143,7 +143,7 @@ The following are a list of keywords that must be supported by all output genera
 === Optionally Supported Keywords ===
 The following are keywords that can be optionally supported by output generators.  It is important to note that these may or may not function properly on all generators.
 
-  * _address::_ one or more network address tokens
+  * _address::_ cisco only, one or more network address tokens
   * _counter::_ juniper only, update a counter for matching packets
   * _destination-prefix::_ juniper only, specify destination-prefix matching (e.g. source-prefix:: configured-neighbors-only)
   * _ether-type::_ juniper only, specify matching ether-type(e.g. ether-type:: arp)
@@ -153,6 +153,7 @@ The following are keywords that can be optionally supported by output generators
   * _packet-length::_ juniper only, specify packet length
   * _policer::_ juniper only, specify which policer to apply to matching packets
   * _precedence::_ juniper only, specify precendence
+  * _protocol_except::_ juniper only, allow all protocol "except" specified
   * _qos::_ juniper only, apply quality of service classification to matching packets (e.g. qos:: af4)
   * _routing-instance::_ juniper only, specify routing instance for matching packets
   * _source-interface::_ iptables and speedway only, specify specific interface a term should apply to (e.g. source-interface:: eth3)
