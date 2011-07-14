@@ -134,7 +134,6 @@ The following are a list of keywords that must be supported by all output genera
     * _rst_ - currently only supported by juniper generator.  Appends "tcp-flags rst" to the term.
     * _first-fragment_ - currently only supported by juniper generator.  Appends 'first-fragment' to the term.
   * _protocol::_ the network protocols this term will match, such as tcp, udp, icmp, or a numeric value.
-  * _protocol-except::_ network protocols that should be excluded from the protocol specification.  This is rarely used.
   * _source-address::_ one or more source address tokens
   * _source-exclude::_ exclude one or more address tokens from the specified source-address
   * _source-port::_ one or more service definition tokens
