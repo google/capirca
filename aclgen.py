@@ -34,6 +34,7 @@ from lib import policy
 
 # renderers
 from lib import cisco
+from lib import ciscoasa
 from lib import iptables
 from lib import speedway
 from lib import juniper
@@ -88,6 +89,8 @@ def render_filters(source_file, policy):
       jcl = copy.deepcopy(policy)
     if 'cisco' in header.platforms:
       acl = copy.deepcopy(policy)
+    if 'ciscoasa' in header.platforms:
+      asa = copy.deepcopy(policy)
     if 'iptables' in header.platforms:
       ipt = copy.deepcopy(policy)
     if 'speedway' in header.platforms:
@@ -100,6 +103,10 @@ def render_filters(source_file, policy):
     count += 1
   if acl:
     fw = cisco.Cisco(acl)
+    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+    count += 1
+  if asa:
+    fw = ciscoasa.CiscoASA(asa)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
   if ipt:
