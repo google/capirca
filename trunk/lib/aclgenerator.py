@@ -203,13 +203,15 @@ class ACLGenerator(object):
                            ])
   # Generators should redefine this in subclass as optional support is added
   _OPTIONAL_SUPPORTED_KEYWORDS = set([])
-  # The default list of valid keyword tokens for generators
-  _VALID_KEYWORDS = _REQUIRED_KEYWORDS.union(_OPTIONAL_SUPPORTED_KEYWORDS)
 
 
   def __init__(self, pol):
     """Initialise an ACLGenerator.  Store policy structure for processing."""
     object.__init__(self)
+
+    # The default list of valid keyword tokens for generators
+    self._VALID_KEYWORDS = self._REQUIRED_KEYWORDS.union(
+        self._OPTIONAL_SUPPORTED_KEYWORDS)
 
     self.policy = pol
 
