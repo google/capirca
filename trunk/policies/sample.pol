@@ -13,6 +13,7 @@ header {
   # speedway creates stateful iptables filters compatible with iptables-restore
   target:: speedway INPUT
   target:: silverpeak wireless_filter_in
+  target:: ciscoasa asa_in
 }
 
 #include 'policies/includes/untrusted-networks-blocking.inc'
@@ -56,6 +57,7 @@ header {
   target:: iptables OUTPUT DROP nostate truncatenames
   target:: speedway OUTPUT
   target:: silverpeak wireless_filter_out
+  target:: ciscoasa asa_out
 }
 
 term deny-to-bad-destinations {
