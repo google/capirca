@@ -185,6 +185,25 @@ class ACLGenerator(object):
   # Commonly misspelled protocols that the generator should reject.
   _FILTER_BLACKLIST = {}
 
+  # set of required keywords that every generator must support
+  _REQUIRED_KEYWORDS = set(['action',
+                            'comment',
+                            'destination_address',
+                            'destination_address_exclude',
+                            'destination_port',
+                            'icmp_type',
+                            'name',         # obj attribute, not keyword
+                            'option',
+                            'protocol',
+                            'source_address',
+                            'source_address_exclude',
+                            'source_port',
+                            'translated',  # obj attribute, not keyword
+                            'verbatim',
+                           ])
+  # Generators should redefine this in subclass as optional support is added
+  _OPTIONAL_SUPPORTED_KEYWORDS = set([])
+
   def __init__(self, pol):
     """Initialise an ACLGenerator.  Store policy structure for processing."""
     object.__init__(self)
