@@ -501,8 +501,7 @@ class Cisco(aclgenerator.ACLGenerator):
   _DEFAULT_PROTOCOL = 'ip'
   _SUFFIX = '.acl'
 
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
-                                      'address',
+  _OPTIONAL_SUPPORTED_KEYWORDS = set(['address',
                                       'counter',
                                       'logging',
                                       'loss-priority',
@@ -510,6 +509,10 @@ class Cisco(aclgenerator.ACLGenerator):
                                       'port',
                                       'qos',
                                      ])
+  # The default list of valid keyword tokens for generators
+  _VALID_KEYWORDS = aclgenerator.ACLGenerator._REQUIRED_KEYWORDS.union(
+      _OPTIONAL_SUPPORTED_KEYWORDS)
+
 
   def _TranslatePolicy(self, pol):
     self.cisco_policies = []
@@ -574,8 +577,7 @@ class Cisco(aclgenerator.ACLGenerator):
           # in dangerous or unexpected results
           err = []
           for el, val in term.__dict__.items():
-            if val and (el not in list(self._REQUIRED_KEYWORDS) +
-                        list(self._OPTIONAL_SUPPORTED_KEYWORDS)):
+            if val and el not in self._VALID_KEYWORDS:
               err.append(el)
           if err:
             raise aclgenerator.UnsupportedFilterError('%s %s %s %s' % (
