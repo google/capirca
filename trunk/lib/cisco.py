@@ -501,6 +501,16 @@ class Cisco(aclgenerator.ACLGenerator):
   _DEFAULT_PROTOCOL = 'ip'
   _SUFFIX = '.acl'
 
+  _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
+                                      'address',
+                                      'counter',
+                                      'logging',
+                                      'loss-priority',
+                                      'policer',
+                                      'port',
+                                      'qos',
+                                     ])
+
   def _TranslatePolicy(self, pol):
     self.cisco_policies = []
 
@@ -533,8 +543,8 @@ class Cisco(aclgenerator.ACLGenerator):
         #(loop through and generate output for inet then inet6 in sequence)
         filter_list = ['extended', 'inet6']
 
-      for filter in filter_list:
-        if filter is 'extended':
+      for next_filter in filter_list:
+        if next_filter == 'extended':
           try:
             if 1 <= int(filter_name) <= 99:
               raise UnsupportedCiscoAccessListError(
@@ -542,7 +552,7 @@ class Cisco(aclgenerator.ACLGenerator):
           except ValueError:
             # Extended access list names do not have to be numbers.
             pass
-        if filter == 'standard':
+        if next_filter == 'standard':
           try:
             if not 1 <= int(filter_name) <= 99:
               raise UnsupportedCiscoAccessListError(
@@ -554,25 +564,37 @@ class Cisco(aclgenerator.ACLGenerator):
         new_terms = []
         for term in terms:
           af = 'inet'
-          if filter == 'inet6':
+          if next_filter == 'inet6':
             af = 'inet6'
           term = self.FixHighPorts(term, af=af)
           if not term:
             continue
 
+          # error on unsupported optional keywords that could result
+          # in dangerous or unexpected results
+          err = []
+          for el, val in term.__dict__.items():
+            if val and (el not in list(self._REQUIRED_KEYWORDS) +
+                        list(self._OPTIONAL_SUPPORTED_KEYWORDS)):
+              err.append(el)
+          if err:
+            raise aclgenerator.UnsupportedFilterError('%s %s %s %s' % (
+                '\n', term.name, 'unsupported optional keywords in policy:',
+                ' '.join(err)))
+
           # render terms based on filter type
-          if filter == 'standard':
+          if next_filter == 'standard':
             new_terms.append(TermStandard(term, filter_name))
-          elif filter == 'extended':
+          elif next_filter == 'extended':
             new_terms.append(Term(term))
-          elif filter == 'object-group':
+          elif next_filter == 'object-group':
             obj_target.AddTerm(term)
             new_terms.append(ObjectGroupTerm(term, filter_name))
-          elif filter == 'inet6':
+          elif next_filter == 'inet6':
             new_terms.append(Term(term, 6))
 
-        self.cisco_policies.append((header, filter_name, [filter], new_terms,
-                                    obj_target))
+        self.cisco_policies.append((header, filter_name, [next_filter],
+                                    new_terms, obj_target))
 
   def __str__(self):
     target_header = []
