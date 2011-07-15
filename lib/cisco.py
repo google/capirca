@@ -509,9 +509,6 @@ class Cisco(aclgenerator.ACLGenerator):
                                       'port',
                                       'qos',
                                      ])
-  # The default list of valid keyword tokens for generators
-  _VALID_KEYWORDS = aclgenerator.ACLGenerator._REQUIRED_KEYWORDS.union(
-      _OPTIONAL_SUPPORTED_KEYWORDS)
 
 
   def _TranslatePolicy(self, pol):
