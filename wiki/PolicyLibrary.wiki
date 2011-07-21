@@ -56,7 +56,6 @@ for header, terms in policy.filters:
 == Terms ===
 {{{
 for header, terms in policy.filters:
-    terms[x].action[]
 
     # addresses - lists of nacaddr objects
     terms[x].address[]
@@ -64,8 +63,6 @@ for header, terms in policy.filters:
     terms[x].destination_address_exclude[]
     terms[x].source_address[]
     terms[x].source_address_exclude[]
-    terms[x].destination-prefix
-    terms[x].source-prefix
 
     # ports - list of tuples.  e.g. [(80, 80), (1024, 65535)]
     terms[x].port[]
@@ -73,21 +70,32 @@ for header, terms in policy.filters:
     terms[x].source_port[]
 
     # list of strings
+    terms[x].action[]
     terms[x].comment[]
+    terms[x].destination_prefix[]
     terms[x].protocol[]
     terms[x].protocol_except[]
     terms[x].option[]
+    terms[x].source_prefix[]
+    terms[x].traffic_type[]
     terms[x].verbatim[x].value[]
 
     # string
     terms[x].name    
     terms[x].counter
+    terms[x].ether_type
+    terms[x].logging
+    terms[x].loss_priority
     terms[x].packet_length
     terms[x].policer
     terms[x].precedence
     terms[x].qos
     terms[x].routing_instance
+    terms[x].source_interface
 
 
-    terms[x].
+
+    # integer
+    terms[x].fragment_offset
+
 }}}
