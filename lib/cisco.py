@@ -504,12 +504,11 @@ class Cisco(aclgenerator.ACLGenerator):
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['address',
                                       'counter',
                                       'logging',
-                                      'loss-priority',
+                                      'loss_priority',
                                       'policer',
                                       'port',
                                       'qos',
                                      ])
-
 
   def _TranslatePolicy(self, pol):
     self.cisco_policies = []
@@ -569,17 +568,6 @@ class Cisco(aclgenerator.ACLGenerator):
           term = self.FixHighPorts(term, af=af)
           if not term:
             continue
-
-          # error on unsupported optional keywords that could result
-          # in dangerous or unexpected results
-          err = []
-          for el, val in term.__dict__.items():
-            if val and el not in self._VALID_KEYWORDS:
-              err.append(el)
-          if err:
-            raise aclgenerator.UnsupportedFilterError('%s %s %s %s' % (
-                '\n', term.name, 'unsupported optional keywords in policy:',
-                ' '.join(err)))
 
           # render terms based on filter type
           if next_filter == 'standard':

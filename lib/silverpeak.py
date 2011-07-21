@@ -178,6 +178,10 @@ class Silverpeak(aclgenerator.ACLGenerator):
   # silverpeak module output configuration file extension.
   _CONF_SUFFIX = '.conf'
 
+  _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
+                                      'qos',
+                                     ])
+
   # qos value map in configuration file.
   qos_value_map = {'be1': 'be',
                    'af1': 'cs1',

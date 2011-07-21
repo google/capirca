@@ -21,6 +21,7 @@
 import os
 import sys
 
+import logging
 import nacaddr
 import naming
 
@@ -95,15 +96,16 @@ class NoTermsError(Error):
   """Error when no terms were found."""
 
 
-def TranslatePorts(ports, protocols):
+def TranslatePorts(ports, protocols, term_name):
   """Return all ports of all protocols requested.
 
   Args:
-    ports: list of ports, eg ['SMTP', 'DNS']
+    ports: list of ports, eg ['SMTP', 'DNS', 'HIGH_PORTS']
     protocols: list of protocols, eg ['tcp', 'udp']
+    term_name: name of current term, used for warning messages
 
   Returns:
-    ret_array: list of ports ['25, '53', '53']
+    ret_array: list of ports tuples such as [(25,25), (53,53), (1024,65535)]
 
   Note:
     Duplication will be taken care of in Term.CollapsePortList
@@ -111,6 +113,13 @@ def TranslatePorts(ports, protocols):
   ret_array = []
   for proto in protocols:
     for port in ports:
+      if not DEFINITIONS.GetServiceByProto(port, proto):
+        logging.warn('%s %s %s %s %s %s %s %s' % (
+                     'Term', term_name, 'has service', port, 
+                     'which is not defined with protocol', proto,
+                     ', but will be permitted. Unless intended, you should',
+                     'consider splitting the protocols into separate terms!'))
+
       for p in [x.split('-') for x in DEFINITIONS.GetServiceByProto(
           port, proto)]:
         if len(p) == 1:
@@ -152,20 +161,21 @@ class Policy(object):
       if term.translated:
         continue
       if term.port:
-        term.port = TranslatePorts(term.port, term.protocol)
+        term.port = TranslatePorts(term.port, term.protocol, term.name)
         if not term.port:
           raise TermPortProtocolError(
               'no ports of the correct protocol for term %s' % (
                   term.name))
       if term.source_port:
-        term.source_port = TranslatePorts(term.source_port, term.protocol)
+        term.source_port = TranslatePorts(term.source_port, term.protocol,
+                                          term.name)
         if not term.source_port:
           raise TermPortProtocolError(
               'no source ports of the correct protocol for term %s' % (
                   term.name))
       if term.destination_port:
         term.destination_port = TranslatePorts(term.destination_port,
-                                               term.protocol)
+                                               term.protocol, term.name)
         if not term.destination_port:
           raise TermPortProtocolError(
               'no destination ports of the correct protocol for term %s' % (
