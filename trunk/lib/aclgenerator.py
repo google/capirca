@@ -148,7 +148,7 @@ class Term(object):
       return ['']
     # only protocols icmp or icmpv6 can be used with icmp-types
     if protocols != ['icmp'] and protocols != ['icmpv6']:
-      raise UnsupportedFilterError('%s %s %s' % (
+      raise UnsupportedFilterError('%s %s' % (
           'icmp-types specified for non-icmp protocols in term: ', term_name))
     # make sure we have a numeric address family (4 or 6)
     af = self.NormalizeAddressFamily(af)
@@ -215,11 +215,21 @@ class ACLGenerator(object):
 
     self.policy = pol
 
-    for header in pol.headers:
+    for header, terms in pol.filters:
       if self._PLATFORM in header.platforms:
-        break
-    else:
-      raise NoPlatformPolicyError('\nNo %s policy found' % self._PLATFORM)
+        # Verify valid keywords
+        # error on unsupported optional keywords that could result
+        # in dangerous or unexpected results
+        for term in terms:
+          err = []
+          for el, val in term.__dict__.items():
+            if val and el not in self._VALID_KEYWORDS:
+              err.append(el)
+          if err:
+            raise UnsupportedFilterError('%s %s %s %s' % ('\n', term.name,
+                'unsupported optional keywords in policy:', ' '.join(err)))
+      else:
+        raise NoPlatformPolicyError('\nNo %s policy found' % self._PLATFORM)
 
     self._TranslatePolicy(pol)
 

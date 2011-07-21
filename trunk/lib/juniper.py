@@ -515,6 +515,22 @@ class Juniper(aclgenerator.ACLGenerator):
   _FILTER_BLACKLIST = {'inet': set(('icmpv6',)), 'inet6': set(('icmp',))}
   _SUFFIX = '.jcl'
 
+  _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
+                                      'destination-prefix',
+                                      'ether_type',
+                                      'fragment_offset',
+                                      'logging',
+                                      'loss_priority',
+                                      'packet_length',
+                                      'policer',
+                                      'precedence',
+                                      'protocol_except',
+                                      'qos',
+                                      'routing_instance',
+                                      'source_prefix',
+                                      'traffic_type',
+                                     ])
+
   def _TranslatePolicy(self, pol):
     self.juniper_policies = []
 

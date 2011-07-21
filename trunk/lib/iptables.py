@@ -34,29 +34,6 @@ class Term(aclgenerator.Term):
   _PLATFORM = 'iptables'
   _POSTJUMP_FORMAT = None
   _PREJUMP_FORMAT = '-A %s -j %s'
-  _ALLOWED_KEYWORDS = set([
-      # Basic operations
-      'comment', 'action', 'verbatim', 'name',
-      # IPtables only supports simple filtering (deliberately ignored)
-      'loss_priority', 'precedence', 'policer', 'qos', 'routing_instance',
-      'logging', 'counter', 'traffic_type',
-      # Supported address limits
-      'source_address', 'source_address_exclude',
-      'destination_address', 'destination_address_exclude',
-      # Other packet filtering
-      'option', 'protocol', 'icmp_type', 'source_interface',
-      'source_port', 'destination_port', 'packet_length',
-      # Unsupported address limits: may produce UnsupportedFilter exceptions
-      # omitted with 'accept'/'next', error elsewise
-      'source_prefix', 'destination_prefix',
-      # Supported only for specific values (i.e. "1-6" for fragment_offset)
-      'fragment_offset',
-      # entirely unsupported - address and port imply something in
-      # cisco which they do not imply in iptables. protocol_except
-      # would require restructuring the generation loop to emit
-      # returns + catch-all.
-      'address', 'port', 'ether_type', 'protocol_except', 'translated',
-      ])
   _ACTION_TABLE = {
       'accept': '-j ACCEPT',
       'deny': '-j DROP',
@@ -113,11 +90,7 @@ class Term(aclgenerator.Term):
     self.default_action = filter_action
     self.options = []
     self.af = af
-    for element in self.term.__dict__:
-      if element not in self._ALLOWED_KEYWORDS:
-        raise UnsupportedFilterError('%s%s%s %s %s' % (
-            '\n"', element, '" in term', self.term.name,
-            'unsupported by iptables.'))
+
     # Iptables enforces 30 char limit, but weirdness happens after 28 or 29
     self.term_name = '%s_%s' % (
         self.filter[:1], self._CheckTermLength(self.term.name, 24, truncate))
@@ -584,6 +557,13 @@ class Iptables(aclgenerator.ACLGenerator):
   _RENDER_SUFFIX = None
   _DEFAULTACTION_FORMAT = '-P %s %s'
   _TERM = Term
+  _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
+                                      'fragment_offset',
+                                      'logging',
+                                      'packet_length',
+                                      'qos',
+                                      'source_interface',
+                                     ])
 
   def _TranslatePolicy(self, pol):
     self.iptables_policies = []
