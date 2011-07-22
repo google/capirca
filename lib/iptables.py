@@ -558,11 +558,14 @@ class Iptables(aclgenerator.ACLGenerator):
   _DEFAULTACTION_FORMAT = '-P %s %s'
   _TERM = Term
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
+                                      'destination-prefix', # skips these terms
                                       'fragment_offset',
                                       'logging',
                                       'packet_length',
+                                      'policer',            # safely ignored
                                       'qos',
                                       'source_interface',
+                                      'source_prefix',      # skips these terms
                                      ])
 
   def _TranslatePolicy(self, pol):

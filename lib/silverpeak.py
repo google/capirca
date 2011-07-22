@@ -179,7 +179,9 @@ class Silverpeak(aclgenerator.ACLGenerator):
   _CONF_SUFFIX = '.conf'
 
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
+                                      'policer',           # safely ignored
                                       'qos',
+                                      'routing_instance',  # safely ignored
                                      ])
 
   # qos value map in configuration file.
