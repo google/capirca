@@ -226,10 +226,10 @@ class ACLGenerator(object):
             if val and el not in self._VALID_KEYWORDS:
               err.append(el)
           if err:
-            raise UnsupportedFilterError('%s %s %s %s' % ('\n', term.name,
-                'unsupported optional keywords in policy:', ' '.join(err)))
-      else:
-        raise NoPlatformPolicyError('\nNo %s policy found' % self._PLATFORM)
+            raise UnsupportedFilterError('%s %s %s %s %s %s' % ('\n', term.name,
+                'unsupported optional keywords for target', self._PLATFORM,
+                in policy:', ' '.join(err)))
+        continue
 
     self._TranslatePolicy(pol)
 
