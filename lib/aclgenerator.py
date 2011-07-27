@@ -228,7 +228,7 @@ class ACLGenerator(object):
           if err:
             raise UnsupportedFilterError('%s %s %s %s %s %s' % ('\n', term.name,
                 'unsupported optional keywords for target', self._PLATFORM,
-                in policy:', ' '.join(err)))
+                'in policy:', ' '.join(err)))
         continue
 
     self._TranslatePolicy(pol)
