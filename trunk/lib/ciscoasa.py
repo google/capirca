@@ -1,9 +1,8 @@
 #!/usr/bin/python
 
-"""Cisco ASA renderer.
 
-Unsupported user contributed platform generator/render for Cisco ASA.
-"""
+
+"""Cisco ASA renderer."""
 
 __author__ = 'antony@slac.stanford.edu (Antonio Ceseracciu)'
 
@@ -45,29 +44,9 @@ class NoCiscoPolicyError(Error):
   pass
 
 
-  def _TermletToStr(self, action, proto, saddr, sport, daddr, dport):
-
-    # fix addreses
-    if saddr:
-      saddr = 'addrgroup %s' % saddr
-    if daddr:
-      daddr = 'addrgroup %s' % daddr
-    # fix ports
-    if sport:
-      sport = 'portgroup %d-%d' % (sport[0], sport[1])
-    else:
-      sport = ''
-    if dport:
-      dport = 'portgroup %d-%d' % (dport[0], dport[1])
-    else:
-      dport = ''
-
-    return ' %s %s %s %s %s %s' % (
-        action, proto, saddr, sport, daddr, dport)
-
-
 class Term(aclgenerator.Term):
   """A single ACL Term."""
+
 
   def __init__(self, term, filter_name, af=4):
     self.term = term
@@ -75,7 +54,6 @@ class Term(aclgenerator.Term):
     self.options = []
     assert af in (4, 6)
     self.af = af
-
 
   def __str__(self):
     ret_str = ['\n']
@@ -100,7 +78,7 @@ class Term(aclgenerator.Term):
       protocol = ['ip']
     else:
       # fix the protocol
-      protocol = map(self.PROTO_MAP.get, self.term.protocol, self.term.protocol)
+      protocol = self.term.protocol
 
     # source address
     if self.term.source_address:
@@ -150,6 +128,8 @@ class Term(aclgenerator.Term):
     # logging
     if self.term.logging:
       self.options.append('log')
+      if 'disable' in [x.value for x in self.term.logging]:
+        self.options.append('disable')
 
     for saddr in source_address:
       for daddr in destination_address:
@@ -179,6 +159,99 @@ class Term(aclgenerator.Term):
 
     return '\n'.join(ret_str)
 
+  def _TermPortToProtocol (self,portNumber,proto):
+
+    _ASA_PORTS_TCP = {
+5190: "aol",
+179: "bgp",
+19: "chargen",
+1494: "citrix-ica",
+514: "cmd",
+2748: "ctiqbe",
+13: "daytime",
+9: "discard",
+53: "domain",
+7: "echo",
+512: "exec",
+79: "finger",
+21: "ftp",
+20: "ftp-data",
+70: "gopher",
+443: "https",
+1720: "h323",
+101: "hostname",
+113: "ident",
+143: "imap4",
+194: "irc",
+750: "kerberos",
+543: "klogin",
+544: "kshell",
+389: "ldap",
+636: "ldaps",
+515: "lpd",
+513: "login",
+1352: "lotusnotes",
+139: "netbios-ssn",
+119: "nntp",
+5631: "pcanywhere-data",
+496: "pim-auto-rp",
+109: "pop2",
+110: "pop3",
+1723: "pptp",
+25: "smtp",
+1521: "sqlnet",
+22: "ssh",
+111: "sunrpc",
+49: "tacacs",
+517: "talk",
+23: "telnet",
+540: "uucp",
+43: "whois",
+80: "www",
+2049: "nfs"
+    }
+    _ASA_PORTS_UDP = {
+512: "biff",
+68: "bootpc",
+67: "bootps",
+9: "discard",
+53: "domain",
+195: "dnsix",
+7: "echo",
+500: "isakmp",
+750: "kerberos",
+434: "mobile-ip",
+42: "nameserver",
+137: "netbios-ns",
+138: "netbios-dgm",
+123: "ntp",
+5632: "pcanywhere-status",
+496: "pim-auto-rp",
+1645: "radius",
+1646: "radius-acct",
+520: "rip",
+5510: "secureid-udp",
+161: "snmp",
+162: "snmptrap",
+111: "sunrpc",
+514: "syslog",
+49: "tacacs",
+517: "talk",
+69: "tftp",
+37: "time",
+513: "who",
+177: "xdmcp",
+2049: "nfs"
+    }
+
+    if proto == "tcp":
+      if portNumber in _ASA_PORTS_TCP:
+        return _ASA_PORTS_TCP[portNumber]
+    elif proto == "udp":
+      if portNumber in _ASA_PORTS_UDP:
+        return _ASA_PORTS_UDP[portNumber]
+    return portNumber
+
   def _TermletToStr(self, filter_name, action, proto, saddr, sport, daddr, dport, option):
     """Take the various compenents and turn them into a cisco acl line.
 
@@ -194,6 +267,8 @@ class Term(aclgenerator.Term):
     Returns:
       string of the cisco acl line, suitable for printing.
     """
+
+
     # inet4
     if type(saddr) is nacaddr.IPv4 or type(saddr) is ipaddr.IPv4Network:
       if saddr.numhosts > 1:
@@ -221,21 +296,21 @@ class Term(aclgenerator.Term):
     if not sport:
       sport = ''
     elif sport[0] != sport[1]:
-      sport = 'range %d %d' % (sport[0], sport[1])
+      sport = ' range %s %s' % (self._TermPortToProtocol(sport[0],proto), self._TermPortToProtocol(sport[1],proto))
     else:
-      sport = 'eq %d' % (sport[0])
+      sport = ' eq %s' % (self._TermPortToProtocol(sport[0],proto))
 
     if not dport:
       dport = ''
     elif dport[0] != dport[1]:
-      dport = 'range %d %d' % (dport[0], dport[1])
+      dport = ' range %s %s' % (self._TermPortToProtocol(dport[0],proto), self._TermPortToProtocol(dport[1],proto))
     else:
-      dport = 'eq %d' % (dport[0])
+      dport = ' eq %s' % (self._TermPortToProtocol(dport[0],proto))
 
     if not option:
       option = ['']
 
-    return 'access-list %s extended %s %s %s %s %s %s %s' % (
+    return 'access-list %s extended %s %s %s%s %s%s %s' % (
         filter_name, action, proto, saddr, sport, daddr, dport, ' '.join(option))
 
 

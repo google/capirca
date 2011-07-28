@@ -2,15 +2,14 @@
 # This is an example policy for capirca
 #
 header {
-  comment:: "this is a sample edge input filter with a very very very long and
-        multi-line comment that"
-  comment:: "also has multiple entries."
+  comment:: "this is a sample edge input filter that generates"
+  comment:: "multiple output formats."
+  # NOTES: iptables produces filter 'lines' that must be used as args to the
+  # '$ iptables' cmd, while Speedway produces stateful iptables filters
+  # compatible with iptables-restore (most people will prefer speedway)
   target:: juniper edge-inbound
   target:: cisco edge-inbound mixed
-  # iptables produces filter 'lines' that must be used as args to the
-  # '$ iptables' cmd
   target:: iptables INPUT DROP nostate truncatenames
-  # speedway creates stateful iptables filters compatible with iptables-restore
   target:: speedway INPUT
   target:: silverpeak wireless_filter_in
   target:: ciscoasa asa_in

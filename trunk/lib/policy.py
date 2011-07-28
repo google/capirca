@@ -32,7 +32,7 @@ from third_party.ply import yacc
 DEFINITIONS = None
 DEFAULT_DEFINITIONS = './def'
 _ACTIONS = set(('accept', 'deny', 'reject', 'next', 'reject-with-tcp-rst'))
-_LOGGING = set(('true', 'True', 'syslog', 'local'))
+_LOGGING = set(('true', 'True', 'syslog', 'local', 'disable'))
 _OPTIMIZE = True
 
 
