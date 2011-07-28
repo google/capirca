@@ -34,6 +34,6 @@ setup(name='capirca',
           'Topic :: Software Development :: Libraries',
           'Topic :: System :: Networking',
           'Topic :: Security'],
-      py_modules=['naming', 'policy', 'nacaddr', 'cisco', 'juniper',
+      py_modules=['naming', 'policy', 'nacaddr', 'cisco', 'ciscoasa', 'juniper',
                   'iptables', 'policyreader', 'aclcheck', 'aclgenerator',
                   'port', 'silverpeak', 'speedway'])

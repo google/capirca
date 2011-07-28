@@ -27,6 +27,7 @@ import dircache
 from optparse import OptionParser
 import os
 import stat
+import logging
 
 # compiler imports
 from lib import naming
@@ -50,6 +51,7 @@ _parser.add_option('', '--poldir', dest='policy_directory',
                    default='./policies')
 _parser.add_option('-p', '--pol', help='policy file (incompatible with poldir)',
                    dest='policy')
+_parser.add_option('--debug', help='enable debug-level logging', dest='debug')
 (FLAGS, args) = _parser.parse_args()
 
 
@@ -57,9 +59,11 @@ def load_and_render(base_dir, defs):
   rendered = 0
   for dirfile in dircache.listdir(base_dir):
     fname = os.path.join(base_dir, dirfile)
+    #logging.debug('load_and_render working with fname %s', fname)
     if os.path.isdir(fname):
       rendered += load_and_render(fname, defs)
     elif fname.endswith('.pol'):
+      #logging.debug('attempting to render_filters on fname %s', fname)
       rendered += render_filters(fname, policy.ParsePolicy(open(fname).read(),
                                                            defs))
   return rendered
@@ -82,7 +86,8 @@ def do_output_filter(filter_text, filter_file):
 
 def render_filters(source_file, policy):
   count = 0
-  [(jcl, acl, ipt, spd, spk)] = [(False, False, False, False, False)]
+  [(jcl, acl, asa, ipt, spd, spk)] = [(False, False, False, False, False,
+                                       False)]
 
   for header in policy.headers:
     if 'juniper' in header.platforms:
@@ -124,7 +129,7 @@ def render_filters(source_file, policy):
     do_output_filter(spk_obj.GenerateConfString(),
                      filter_name(source_file, spk_obj._CONF_SUFFIX))
     count += 1
-    
+
   return count
 
 def main():
@@ -137,20 +142,24 @@ def main():
 
   count = 0
   if FLAGS.policy_directory:
-    count = load_and_render(FLAGS.policy_directory, defs)    
+    count = load_and_render(FLAGS.policy_directory, defs)
 
   elif FLAGS.policy:
     count = render_filters(policy.ParsePolicy(FLAGS.policy).read(), defs)
 
   print '%d filters rendered' % count
 
-  
+
 if __name__ == '__main__':
   # some sanity checking
   if FLAGS.policy_directory and FLAGS.policy:
     raise ValueError('policy and policy_directory are mutually exclusive')
   if not (FLAGS.policy_directory or FLAGS.policy):
     raise ValueError('must provide policy or policy_directive')
+
+  # enable debugging
+  if FLAGS.debug:
+    logging.basicConfig(level=logging.DEBUG)
 
   # run run run run run away
   main()
