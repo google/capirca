@@ -433,7 +433,7 @@ class Naming(object):
       return
     comment = ''
     if line.find('#') > -1:  # if there is a comment, save it
-      (line, comment) = line.split('#')
+      (line, comment) = line.split('#', 1)
     line_parts = line.split('=')   # Split on var = val lines.
     # the value field still has the comment at this point
     # If there was '=', then do var and value
