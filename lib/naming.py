@@ -330,7 +330,7 @@ class Naming(object):
     for next in self.networks[token].items:
       comment = ''
       if next.find('#') > -1:
-        (net, comment) = next.split('#')
+        (net, comment) = next.split('#', 1)
       else:
         net = next
       try:
