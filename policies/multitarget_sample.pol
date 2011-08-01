@@ -9,9 +9,7 @@ header {
   # compatible with iptables-restore (most people will prefer speedway)
   target:: juniper edge-inbound
   target:: cisco edge-inbound mixed
-  target:: iptables INPUT DROP nostate truncatenames
   target:: speedway INPUT
-  target:: silverpeak wireless_filter_in
   target:: ciscoasa asa_in
 }
 
@@ -53,9 +51,7 @@ header {
   comment:: "this is a sample output filter"
   target:: juniper edge-outbound
   target:: cisco edge-outbound mixed
-  target:: iptables OUTPUT DROP nostate truncatenames
   target:: speedway OUTPUT
-  target:: silverpeak wireless_filter_out
   target:: ciscoasa asa_out
 }
 
