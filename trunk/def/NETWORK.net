@@ -60,6 +60,13 @@ BOGON = 0.0.0.0/8
         5F00::/8       # 6bone
         2001:DB8::/32  # IPv6 documentation prefix
 
+GOOGLE_PUBLIC_DNS_ANYCAST = 8.8.4.4/32               # IPv4 Anycast
+                            8.8.8.8/32               # IPv4 Anycast
+                            2001:4860:4860::8844/128 # IPv6 Anycast
+                            2001:4860:4860::8888/128 # IPv6 Anycast
+GOOGLE_DNS = GOOGLE_PUBLIC_DNS_ANYCAST
+
+
 # The following are sample entires intended for us in the included
 # sample policy file.  These should be removed.
 
@@ -71,3 +78,8 @@ MAIL_SERVERS = 200.1.1.4/32 # Example mail server 1
 
 PUBLIC_NAT = 200.1.1.3/32   # Example company NAT address
 
+NTP_SERVERS = 10.0.0.1/32   # Example NTP server
+              10.0.0.2/32   # Example NTP server
+
+TACACS_SERVERS = 10.1.0.1/32  # Example tacacs server
+                 10.1.0.2/32  # Example tacacs server
