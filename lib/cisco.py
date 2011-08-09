@@ -331,7 +331,10 @@ class Term(aclgenerator.Term):
 
     # protocol
     if not self.term.protocol:
-      protocol = ['ip']
+      if self.af == '6':
+        protocol = ['ipv6']
+      else:
+        protocol = ['ip']
     else:
       # pylint: disable-msg=C6402
       protocol = map(self.PROTO_MAP.get, self.term.protocol, self.term.protocol)
