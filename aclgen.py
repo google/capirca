@@ -145,7 +145,8 @@ def main():
     count = load_and_render(FLAGS.policy_directory, defs)
 
   elif FLAGS.policy:
-    count = render_filters(policy.ParsePolicy(FLAGS.policy).read(), defs)
+    count = render_filters(FLAGS.policy,
+                           policy.ParsePolicy(open(FLAGS.policy).read(), defs))
 
   print '%d filters rendered' % count
 
