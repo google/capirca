@@ -10,7 +10,7 @@ A policy object is created based on a policy text file.
 
 For information on how to define policy text files, please read the [PolicyFormat Policy Format] documentation.
 
-For testing, you can use the provided _[http://code.google.com/p/capirca/source/browse/trunk/policies/sample.pol sample.pol]_ policy contained in the policies directory.
+For testing, you can use the provided _[http://code.google.com/p/capirca/source/browse/trunk/policies/multitarget_sample.pol sample.pol]_ policy contained in the policies directory.
 
 
 = Using Policy Objects in Generators =
