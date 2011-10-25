@@ -193,7 +193,7 @@ def CollapseAddrList(addresses):
 
 def SortAddrList(addresses):
   """Return a sorted list of nacaddr objects."""
-  return sorted(addresses, cmp=ipaddr._BaseNet._get_networks_key)
+  return sorted(addresses, key=ipaddr._BaseNet._get_networks_key)
 
 
 def RemoveAddressFromList(superset, exclude):
