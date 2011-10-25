@@ -29,9 +29,9 @@ from lib import naming
 def main():
   usage = "usage: %prog [options] arg"
   _parser = OptionParser(usage)
-  _parser.add_option('--definitions_directory', dest='definitions',
+  _parser.add_option('--definitions-directory', dest='definitions',
                      help='definitions directory', default='./def')
-  _parser.add_option('-p', '--policy_file', dest='pol',
+  _parser.add_option('-p', '--policy-file', dest='pol',
                      help='policy file', default='./policies/sample.pol')
   _parser.add_option('-d', '--destination', dest='dst',
                      help='destination IP', default='200.1.1.1')
