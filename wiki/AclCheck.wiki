@@ -33,19 +33,19 @@ However, for ease of use a command-line interface is provided in the top directo
 
 {{{
 ./aclcheck_cmdline.py:
-  --definitions_directory: Directory where the definitions can be found.
+  --definitions-directory: Directory where the definitions can be found.
     (default: './def')
-  -p,--policy_file: The NAC policy file to check (default='./policies/sample.pol')
+  -p,--policy-file: The NAC policy file to check (default='./policies/sample.pol')
   -d,--destination: Desintation IP address (default='200.1.1.1')
   -s,--source: Source IP address (default='11.1.1.1')
   --protocol: Protocol (default='tcp')
-  --destination_port: Destination port number (default=80)
-  --source_port: Source port number (default=1025)
+  --destination-port: Destination port number (default=80)
+  --source-port: Source port number (default=1025)
 }}}
 
 *Commandline example:*
 {{{
- ./aclcheck.py --source_port 4096 --destination_port 80 -s 64.142.101.1 -d 200.1.1.0/24 --protocol tcp -p ./policies/sample.pol 
+ ./aclcheck.py --source-port 4096 --destination-port 80 -s 64.142.101.1 -d 200.1.1.0/24 --protocol tcp -p ./policies/sample.pol 
 }}}
 
 *Library Usage:*
