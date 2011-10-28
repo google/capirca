@@ -11,6 +11,7 @@ header {
   target:: cisco edge-inbound mixed
   target:: speedway INPUT
   target:: ciscoasa asa_in
+  target:: demo edge-inbound
 }
 
 #include 'policies/includes/untrusted-networks-blocking.inc'

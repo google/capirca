@@ -40,6 +40,7 @@ from lib import iptables
 from lib import speedway
 from lib import juniper
 from lib import silverpeak
+from lib import demo
 
 _parser = OptionParser()
 _parser.add_option('-d', '--def', dest='definitions',
@@ -86,8 +87,8 @@ def do_output_filter(filter_text, filter_file):
 
 def render_filters(source_file, policy):
   count = 0
-  [(jcl, acl, asa, ipt, spd, spk)] = [(False, False, False, False, False,
-                                       False)]
+  [(jcl, acl, asa, ipt, spd, spk, dem)] = [(False, False, False, False, False,
+                                       False, False)]
 
   for header in policy.headers:
     if 'juniper' in header.platforms:
@@ -102,6 +103,8 @@ def render_filters(source_file, policy):
       spd = copy.deepcopy(policy)
     if 'silverpeak' in header.platforms:
       spk = copy.deepcopy(policy)
+    if 'demo' in header.platforms:
+      dem = copy.deepcopy(policy)
   if jcl:
     fw = juniper.Juniper(jcl)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
@@ -120,6 +123,10 @@ def render_filters(source_file, policy):
     count += 1
   if spd:
     fw = speedway.Speedway(spd)
+    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+    count += 1
+  if dem:
+    fw = demo.Demo(dem)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
   if spk:
@@ -145,8 +152,7 @@ def main():
     count = load_and_render(FLAGS.policy_directory, defs)
 
   elif FLAGS.policy:
-    count = render_filters(FLAGS.policy,
-                           policy.ParsePolicy(open(FLAGS.policy).read(), defs))
+    count = render_filters(policy.ParsePolicy(FLAGS.policy).read(), defs)
 
   print '%d filters rendered' % count
 
