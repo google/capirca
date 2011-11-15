@@ -556,6 +556,7 @@ class Iptables(aclgenerator.ACLGenerator):
   _RENDER_PREFIX = None
   _RENDER_SUFFIX = None
   _DEFAULTACTION_FORMAT = '-P %s %s'
+  _DEFAULT_ACTION = 'DROP'
   _TERM = Term
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
                                       'destination_prefix', # skips these terms
@@ -571,8 +572,7 @@ class Iptables(aclgenerator.ACLGenerator):
   def _TranslatePolicy(self, pol):
     self.iptables_policies = []
 
-    default_action = 'DROP'
-    policy_default_action = None
+    default_action = None
     good_default_actions = ['ACCEPT', 'DROP']
     good_filters = ['INPUT', 'OUTPUT', 'FORWARD']
     good_afs = ['inet', 'inet6']
@@ -624,9 +624,8 @@ class Iptables(aclgenerator.ACLGenerator):
           if len(next_target.options) > 1:
             for arg in next_target.options:
               if arg in good_default_actions:
-                policy_default_action = arg
-                default_action = policy_default_action
-      if default_action not in good_default_actions:
+                default_action = arg
+      if default_action and default_action not in good_default_actions:
         raise UnsupportedDefaultAction('%s %s %s' % (
             '\nOnly ACCEPT or DROP default filter action allowed;',
             default_action, 'used.'))
@@ -648,7 +647,7 @@ class Iptables(aclgenerator.ACLGenerator):
                                       'truncatenames' in filter_options))
 
       self.iptables_policies.append((header, filter_name, filter_type,
-                                     policy_default_action, new_terms))
+                                     default_action, new_terms))
 
   def __str__(self):
     target = []
@@ -673,11 +672,15 @@ class Iptables(aclgenerator.ACLGenerator):
       target.extend(aclgenerator.AddRepositoryTags('# '))
       target.append('# ' + filter_type)
 
-      # setup the default filter states.
-      # if default action policy not specified, do nothing.
-      if policy_default_action:
+      # always specify the default filter states for speedway,
+      # if default action policy not specified for iptables, do nothing.
+      if self._PLATFORM == 'iptables' and policy_default_action:
         target.append(self._DEFAULTACTION_FORMAT % (filter_name,
                                                     policy_default_action))
+      if self._PLATFORM == 'speedway':
+        if not policy_default_action:
+          target.append(self._DEFAULTACTION_FORMAT % (filter_name,
+                                                      self._DEFAULT_ACTION))
 
       # add the terms
       for term in terms:
