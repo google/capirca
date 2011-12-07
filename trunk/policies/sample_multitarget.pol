@@ -12,6 +12,7 @@ header {
   target:: speedway INPUT
   target:: ciscoasa asa_in
   target:: demo edge-inbound
+  target:: silverpeak foo
 }
 
 #include 'policies/includes/untrusted-networks-blocking.inc'
@@ -20,6 +21,7 @@ term permit-mail-services {
   destination-address:: MAIL_SERVERS
   protocol:: tcp
   destination-port:: MAIL_SERVICES
+  expiration:: 12-31-2010
   action:: accept
 }
 
@@ -54,6 +56,7 @@ header {
   target:: cisco edge-outbound mixed
   target:: speedway OUTPUT
   target:: ciscoasa asa_out
+  target:: silverpeak foo
 }
 
 term deny-to-bad-destinations {

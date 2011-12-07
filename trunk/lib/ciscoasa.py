@@ -6,6 +6,7 @@
 
 __author__ = 'antony@slac.stanford.edu (Antonio Ceseracciu)'
 
+import datetime
 import socket
 import logging
 
@@ -332,6 +333,7 @@ class CiscoASA(aclgenerator.ACLGenerator):
   def __str__(self):
     target_header = []
     target = []
+    current_date = datetime.date.today()
 
     # add the p4 tags
     p4_id = '%s%s' % ('$I', 'd:$')
@@ -351,6 +353,8 @@ class CiscoASA(aclgenerator.ACLGenerator):
 
       # now add the terms
       for term in terms:
+        if term.expiration and term.expiration <= current_date:
+          continue
         target.append(str(Term(term,filter_name)))
 
       target.append('\n')

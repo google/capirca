@@ -20,6 +20,7 @@
 __author__ = 'watson@google.com (Tony Watson)'
 
 import aclgenerator
+import datetime
 import logging
 import nacaddr
 import re
@@ -560,6 +561,7 @@ class Iptables(aclgenerator.ACLGenerator):
   _TERM = Term
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
                                       'destination_prefix', # skips these terms
+                                      'expiration',
                                       'fragment_offset',
                                       'logging',
                                       'packet_length',
@@ -571,6 +573,7 @@ class Iptables(aclgenerator.ACLGenerator):
 
   def _TranslatePolicy(self, pol):
     self.iptables_policies = []
+    current_date = datetime.date.today()
 
     default_action = None
     good_default_actions = ['ACCEPT', 'DROP']
@@ -641,10 +644,15 @@ class Iptables(aclgenerator.ACLGenerator):
 
         term = self.FixHighPorts(term, af=filter_type,
                                  all_protocols_stateful=all_protocols_stateful)
-        if term:
-          new_terms.append(self._TERM(term, filter_name, all_protocols_stateful,
-                                      default_action, filter_type,
-                                      'truncatenames' in filter_options))
+        if not term:
+          continue
+
+        if term.expiration and term.expiration <= current_date:
+          continue
+
+        new_terms.append(self._TERM(term, filter_name, all_protocols_stateful,
+                                    default_action, filter_type,
+                                    'truncatenames' in filter_options))
 
       self.iptables_policies.append((header, filter_name, filter_type,
                                      default_action, new_terms))

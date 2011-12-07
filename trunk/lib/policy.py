@@ -19,6 +19,7 @@
 """
 
 import os
+import datetime
 import sys
 
 import logging
@@ -211,6 +212,7 @@ class Term(object):
     counter: VarType.COUNTER
     action: list of VarType.ACTION's
     comments: VarType.COMMENT
+    expiration:: VarType.EXPIRATION
     verbatim: VarType.VERBATIM
     logging: VarType.LOGGING
     qos: VarType.QOS
@@ -273,6 +275,7 @@ class Term(object):
     self.action = []
     self.address = []
     self.comment = []
+    self.expiration = None
     self.counter = None
     self.destination_address = []
     self.destination_address_exclude = []
@@ -435,6 +438,8 @@ class Term(object):
       ret_str.append('  counter: %s' % self.counter)
     if self.source_interface:
       ret_str.append('  source_interface: %s' % self.source_interface)
+    if self.expiration:
+      ret_str.append('  expiration: %s' % self.expiration)
     return '\n'.join(ret_str)
 
   def __eq__(self, other):
@@ -532,7 +537,7 @@ class Term(object):
 
     Args:
       obj: single or list of either
-        [Address, Port, Option, Protocol, Counter, Action, Comment]
+        [Address, Port, Option, Protocol, Counter, Action, Comment, Expiration]
 
     Raises:
       InvalidTermActionError: if the action defined isn't an accepted action.
@@ -586,6 +591,8 @@ class Term(object):
       # stupid no switch statement in python
       if obj.var_type is VarType.COMMENT:
         self.comment.append(str(obj))
+      elif obj.var_type is VarType.EXPIRATION:
+        self.expiration = obj.value
       elif obj.var_type is VarType.LOSS_PRIORITY:
         self.loss_priority = obj.value
       elif obj.var_type is VarType.ROUTING_INSTANCE:
@@ -876,6 +883,7 @@ class VarType(object):
   ROUTING_INSTANCE = 25
   PRECEDENCE = 26
   SINTERFACE = 27
+  EXPIRATION = 28
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -986,6 +994,7 @@ tokens = (
     'DPORT',
     'DQUOTEDSTRING',
     'ETHER_TYPE',
+    'EXPIRATION',
     'FRAGMENT_OFFSET',
     'HEADER',
     'ICMP_TYPE',
@@ -1025,6 +1034,7 @@ reserved = {
     'destination-prefix': 'DPFX',
     'destination-port': 'DPORT',
     'ether-type': 'ETHER_TYPE',
+    'expiration': 'EXPIRATION',
     'fragment-offset': 'FRAGMENT_OFFSET',
     'header': 'HEADER',
     'icmp-type': 'ICMP_TYPE',
@@ -1078,7 +1088,6 @@ def t_error(t):
 def t_INTEGER(t):
   r'\d+'
   return t
-
 
 def t_STRING(t):
   r'\w+([-_+]\w*)*'
@@ -1145,6 +1154,7 @@ def p_term_spec(p):
                 | term_spec counter_spec
                 | term_spec ether_type_spec
                 | term_spec exclude_spec
+                | term_spec expiration_spec
                 | term_spec fragment_offset_spec
                 | term_spec icmp_type_spec
                 | term_spec interface_spec
@@ -1310,6 +1320,13 @@ def p_counter_spec(p):
 def p_comment_spec(p):
   """ comment_spec : COMMENT ':' ':' DQUOTEDSTRING """
   p[0] = VarType(VarType.COMMENT, p[4])
+
+
+def p_expiration_spec(p):
+  """ expiration_spec : EXPIRATION ':' ':' INTEGER '-' INTEGER '-' INTEGER """
+  p[0] = VarType(VarType.EXPIRATION, datetime.date(int(p[8]),
+                                                   int(p[4]),
+                                                   int(p[6])))
 
 
 def p_verbatim_spec(p):
