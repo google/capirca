@@ -19,6 +19,7 @@
 __author__ = 'robankeny@google.com (Robert Ankeny)'
 
 
+import datetime
 from lib import aclgenerator
 
 
@@ -170,7 +171,10 @@ class Demo(aclgenerator.ACLGenerator):
   _PLATFORM = 'demo'
   _SUFFIX = '.demo'
 
+  _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',])
+
   def _TranslatePolicy(self, pol):
+    current_date = datetime.date.today()
     self.demo_policies = []
     for header, terms in pol.filters:
       if not self._PLATFORM in header.platforms:
@@ -185,7 +189,11 @@ class Demo(aclgenerator.ACLGenerator):
       term_names = set()
       new_terms = []
       for term in terms:
+        if term.name in term_names:
+          raise DemoFilterError('Duplicate term name')
         term_names.add(term.name)
+        if term.expiration and term.expiration <= current_date:
+          continue
         new_terms.append(Term(term, filter_type))
       self.demo_policies.append((header, filter_name, filter_type,
                                  interface_specific, new_terms))
@@ -208,3 +216,10 @@ class Demo(aclgenerator.ACLGenerator):
         target.append(' ')
       target.append('}')
     return '\n'.join(target)
+
+
+class Error(Exception):
+  pass
+
+class DemoFilterError(Error):
+  pass

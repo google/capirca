@@ -21,6 +21,7 @@ __author__ = 'jfz@google.com (Joseph Zhou) & andrewlv@google.com (Hongli Lv)'
 
 
 import aclgenerator
+import datetime
 import logging
 
 
@@ -179,6 +180,7 @@ class Silverpeak(aclgenerator.ACLGenerator):
   _CONF_SUFFIX = '.conf'
 
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
+                                      'expiration',
                                       'policer',           # safely ignored
                                       'qos',
                                       'routing_instance',  # safely ignored
@@ -206,6 +208,7 @@ class Silverpeak(aclgenerator.ACLGenerator):
   #                      }
 
   def __init__(self, pol, fixed_content_file=None):
+    self.current_date = datetime.date.today()
     aclgenerator.ACLGenerator.__init__(self, pol)
 
     if not fixed_content_file:
@@ -251,6 +254,8 @@ class Silverpeak(aclgenerator.ACLGenerator):
 
   def VerifyTerm(self, term):
     if self._CheckExceptionTerm(term.name, self.exception_term_rule):
+      return None
+    if term.expiration and term.expiration <= self.current_date:
       return None
     return self.FixHighPorts(term)
 

@@ -20,6 +20,7 @@
 __author__ = 'pmoody@google.com (Peter Moody)'
 __author__ = 'watson@google.com (Tony Watson)'
 
+import datetime
 import logging
 import re
 
@@ -506,6 +507,7 @@ class Cisco(aclgenerator.ACLGenerator):
 
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['address',
                                       'counter',
+                                      'expiration',
                                       'logging',
                                       'loss_priority',
                                       'policer',
@@ -515,6 +517,7 @@ class Cisco(aclgenerator.ACLGenerator):
 
   def _TranslatePolicy(self, pol):
     self.cisco_policies = []
+    current_date = datetime.date.today()
 
     # a mixed filter outputs both ipv4 and ipv6 acls in the same output file
     good_filters = ['extended', 'standard', 'object-group', 'inet6',
@@ -570,6 +573,9 @@ class Cisco(aclgenerator.ACLGenerator):
             af = 'inet6'
           term = self.FixHighPorts(term, af=af)
           if not term:
+            continue
+
+          if term.expiration and term.expiration <= current_date:
             continue
 
           # render terms based on filter type

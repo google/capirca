@@ -19,6 +19,7 @@ __author__ = 'pmoody@google.com (Peter Moody)'
 __author__ = 'watson@google.com (Tony Watson)'
 
 
+import datetime
 import logging
 
 import aclgenerator
@@ -518,6 +519,7 @@ class Juniper(aclgenerator.ACLGenerator):
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
                                       'destination-prefix',
                                       'ether_type',
+                                      'expiration',
                                       'fragment_offset',
                                       'logging',
                                       'loss_priority',
@@ -533,6 +535,7 @@ class Juniper(aclgenerator.ACLGenerator):
 
   def _TranslatePolicy(self, pol):
     self.juniper_policies = []
+    current_date = datetime.date.today()
 
     for header, terms in pol.filters:
       if not self._PLATFORM in header.platforms:
@@ -566,7 +569,11 @@ class Juniper(aclgenerator.ACLGenerator):
         if not term:
           continue
 
+        if term.expiration and term.expiration <= current_date:
+          continue
+
         new_terms.append(Term(term, filter_type))
+
       self.juniper_policies.append((header, filter_name, filter_type,
                                     interface_specific, new_terms))
 
