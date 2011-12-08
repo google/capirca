@@ -332,7 +332,7 @@ class Term(aclgenerator.Term):
 
     # protocol
     if not self.term.protocol:
-      if self.af == '6':
+      if self.af == 6:
         protocol = ['ipv6']
       else:
         protocol = ['ip']

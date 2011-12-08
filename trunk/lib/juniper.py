@@ -517,7 +517,7 @@ class Juniper(aclgenerator.ACLGenerator):
   _SUFFIX = '.jcl'
 
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
-                                      'destination-prefix',
+                                      'destination_prefix',
                                       'ether_type',
                                       'expiration',
                                       'fragment_offset',
@@ -612,5 +612,4 @@ class Juniper(aclgenerator.ACLGenerator):
       target.append('}')            # firewall { ... }
       target.append('\n')
     # end for header, filter_name, filter_type...
-    # get the eff out.
     return '\n'.join(target)
