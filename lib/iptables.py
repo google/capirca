@@ -682,14 +682,13 @@ class Iptables(aclgenerator.ACLGenerator):
 
       # always specify the default filter states for speedway,
       # if default action policy not specified for iptables, do nothing.
-      if self._PLATFORM == 'iptables' and policy_default_action:
-        target.append(self._DEFAULTACTION_FORMAT % (filter_name,
-                                                    policy_default_action))
       if self._PLATFORM == 'speedway':
         if not policy_default_action:
           target.append(self._DEFAULTACTION_FORMAT % (filter_name,
                                                       self._DEFAULT_ACTION))
-
+      if policy_default_action:
+        target.append(self._DEFAULTACTION_FORMAT % (filter_name,
+                                                    policy_default_action))
       # add the terms
       for term in terms:
         target.append(str(term))

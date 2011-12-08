@@ -114,15 +114,15 @@ def TranslatePorts(ports, protocols, term_name):
   ret_array = []
   for proto in protocols:
     for port in ports:
-      if not DEFINITIONS.GetServiceByProto(port, proto):
+      service_by_proto = DEFINITIONS.GetServiceByProto(port, proto)
+      if not service_by_proto:
         logging.warn('%s %s %s %s %s %s%s %s' % (
                      'Term', term_name, 'has service', port,
                      'which is not defined with protocol', proto,
                      ', but will be permitted. Unless intended, you should',
                      'consider splitting the protocols into separate terms!'))
 
-      for p in [x.split('-') for x in DEFINITIONS.GetServiceByProto(
-          port, proto)]:
+      for p in [x.split('-') for x in service_by_proto]:
         if len(p) == 1:
           ret_array.append((int(p[0]), int(p[0])))
         else:
@@ -1088,6 +1088,7 @@ def t_error(t):
 def t_INTEGER(t):
   r'\d+'
   return t
+
 
 def t_STRING(t):
   r'\w+([-_+]\w*)*'
