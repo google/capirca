@@ -1325,9 +1325,9 @@ def p_comment_spec(p):
 
 def p_expiration_spec(p):
   """ expiration_spec : EXPIRATION ':' ':' INTEGER '-' INTEGER '-' INTEGER """
-  p[0] = VarType(VarType.EXPIRATION, datetime.date(int(p[8]),
-                                                   int(p[4]),
-                                                   int(p[6])))
+  p[0] = VarType(VarType.EXPIRATION, datetime.date(int(p[4]),
+                                                   int(p[6]),
+                                                   int(p[8])))
 
 
 def p_verbatim_spec(p):
