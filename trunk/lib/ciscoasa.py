@@ -9,6 +9,7 @@ __author__ = 'antony@slac.stanford.edu (Antonio Ceseracciu)'
 import datetime
 import socket
 import logging
+import re
 
 from third_party import ipaddr
 import aclgenerator
@@ -132,31 +133,40 @@ class Term(aclgenerator.Term):
       if 'disable' in [x.value for x in self.term.logging]:
         self.options.append('disable')
 
+    # icmp-types
+    icmp_types = ['']
+    if self.term.icmp_type:
+      icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type,
+                                           self.term.protocol, self.af,
+                                           self.term.name)
+
     for saddr in source_address:
       for daddr in destination_address:
         for sport in source_port:
           for dport in destination_port:
             for proto in protocol:
-              # only output address family appropriate IP addresses
-              do_output = False
-              if self.af == 4:
-                if (((type(saddr) is nacaddr.IPv4) or (saddr == 'any')) and
-                    ((type(daddr) is nacaddr.IPv4) or (daddr == 'any'))):
-                  do_output = True
-              if self.af == 6:
-                if (((type(saddr) is nacaddr.IPv6) or (saddr == 'any')) and
-                    ((type(daddr) is nacaddr.IPv6) or (daddr == 'any'))):
-                  do_output = True
-              if do_output:
-                ret_str.append(self._TermletToStr(
-                    self.filter_name,
-                    _ACTION_TABLE.get(str(self.term.action[0])),
-                    proto,
-                    saddr,
-                    sport,
-                    daddr,
-                    dport,
-                    self.options))
+              for icmp_type in icmp_types:
+                # only output address family appropriate IP addresses
+                do_output = False
+                if self.af == 4:
+                  if (((type(saddr) is nacaddr.IPv4) or (saddr == 'any')) and
+                      ((type(daddr) is nacaddr.IPv4) or (daddr == 'any'))):
+                    do_output = True
+                if self.af == 6:
+                  if (((type(saddr) is nacaddr.IPv6) or (saddr == 'any')) and
+                      ((type(daddr) is nacaddr.IPv6) or (daddr == 'any'))):
+                    do_output = True
+                if do_output:
+                  ret_str.extend(self._TermletToStr(
+                      self.filter_name,
+                      _ACTION_TABLE.get(str(self.term.action[0])),
+                      proto,
+                      saddr,
+                      sport,
+                      daddr,
+                      dport,
+                      icmp_type,
+                      self.options))
 
     return '\n'.join(ret_str)
 
@@ -253,7 +263,8 @@ class Term(aclgenerator.Term):
         return _ASA_PORTS_UDP[portNumber]
     return portNumber
 
-  def _TermletToStr(self, filter_name, action, proto, saddr, sport, daddr, dport, option):
+  def _TermletToStr(self, filter_name, action, proto, saddr, sport, daddr, dport,
+                    icmp_type, option):
     """Take the various compenents and turn them into a cisco acl line.
 
     Args:
@@ -263,6 +274,7 @@ class Term(aclgenerator.Term):
       sport: str list or none, the source port
       daddr: str or ipaddr, the destination address
       dport: str list or none, the destination port
+      icmp_type: icmp-type numeric specification (if any)
       option: list or none, optional, eg. 'logging' tokens.
 
     Returns:
@@ -311,8 +323,29 @@ class Term(aclgenerator.Term):
     if not option:
       option = ['']
 
-    return 'access-list %s extended %s %s %s%s %s%s %s' % (
-        filter_name, action, proto, saddr, sport, daddr, dport, ' '.join(option))
+    # Prevent UDP from appending 'established' to ACL line
+    sane_options = list(option)
+    if proto == 'udp' and 'established' in sane_options:
+      sane_options.remove('established')
+
+    ret_lines = []
+
+    # str(icmp_type) is needed to ensure 0 maps to '0' instead of FALSE
+    icmp_type = str(icmp_type)
+
+    ret_lines.append('access-list %s extended  %s %s %s %s %s %s %s %s' % 
+                     (filter_name, action, proto, saddr,
+                      sport, daddr, dport,
+                      icmp_type,
+                      ' '.join(sane_options)
+                      ))
+
+    # remove any trailing spaces and replace multiple spaces with singles
+    stripped_ret_lines = [re.sub('\s+', ' ', x).rstrip() for x in ret_lines]
+    return stripped_ret_lines
+
+#    return 'access-list %s extended %s %s %s%s %s%s %s' % (
+#        filter_name, action, proto, saddr, sport, daddr, dport, ' '.join(option))
 
 
 class CiscoASA(aclgenerator.ACLGenerator):
