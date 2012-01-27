@@ -125,6 +125,7 @@ The following are a list of keywords that must be supported by all output genera
   * _destination-address::_ one or more destination address tokens
   * _destination-exclude::_ exclude one or more address tokens from the specified destination-address 
   * _destination-port::_ one or more service definition tokens
+  * _expiration::_ stop rendering this term after specified date. [YYYY]-[MM]-[DD] 
   * _icmp-type::_ specify icmp-type code to match, see section [PolicyFormat#ICMP_TYPES ICMP TYPES] for list of valid arguments
   * _option::_ [established|tcp-established|sample|intial|rst|first-fragment]
     * _established_ - only permit established connections, implements tcp-established if protocol is tcp only, otherwise adds 1024-65535 to required destination-ports.
