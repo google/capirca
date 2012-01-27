@@ -1,4 +1,8 @@
 #summary Naming Library Usage
+
+= Table of Contents =
+<wiki:toc max_depth="3" />
+
 = Introduction =
 
 The naming library is used by the capirca system to parse definitions of network and service data.  These definitions are based on 'tokens' that are used in the high-level [PolicyFormat policy language].
