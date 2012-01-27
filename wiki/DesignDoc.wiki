@@ -1,4 +1,6 @@
 #summary Capirca Design Document.
+= Table of Contents =
+<wiki:toc max_depth="3" />
 
 = Capirca Design Doc =
 
