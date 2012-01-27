@@ -529,8 +529,8 @@ class Cisco(aclgenerator.ACLGenerator):
 
       obj_target = ObjectGroup()
 
-      filter_options = header.FilterOptions('cisco')
-      filter_name = header.FilterName('cisco')
+      filter_options = header.FilterOptions(self._PLATFORM)
+      filter_name = header.FilterName(self._PLATFORM)
 
       # extended is the most common filter type.
       filter_type = 'extended'
@@ -576,6 +576,8 @@ class Cisco(aclgenerator.ACLGenerator):
             continue
 
           if term.expiration and term.expiration <= current_date:
+            logging.warn('WARNING: Term %s in policy %s is expired and will '
+                         'not be rendered.', term.name, filter_name)
             continue
 
           # render terms based on filter type
