@@ -12,7 +12,7 @@ term accept-icmp {
 
 term accept-traceroute {
   comment:: "Allow inbound traceroute from any source."
-  expiration:: 11-5-2011
+  expiration:: 2001-12-31
   destination-port:: TRACEROUTE
   protocol:: udp
   counter:: inbound-traceroute
