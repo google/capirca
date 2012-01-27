@@ -1,5 +1,8 @@
 #summary Installation Notes.
 
+= Table of Contents =
+<wiki:toc max_depth="3" />
+
 = Introduction =
 
 This page is intended to provide the necessary information needed to install
