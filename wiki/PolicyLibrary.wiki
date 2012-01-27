@@ -1,5 +1,8 @@
 #summary Policy Library Usage
 
+= Table of Contents =
+<wiki:toc max_depth="3" />
+
 = Introduction =
 
 The policy library is intended for parsing the generic high-level policy files and returning a policy object for acl rendering.  The policy library depends on a [NamingLibrary naming library] object to be able to interpret network and service tokens.
