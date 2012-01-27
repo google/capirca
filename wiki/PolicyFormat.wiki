@@ -1,5 +1,8 @@
 #summary Access Control Policy Format
 
+= Table of Contents =
+<wiki:toc max_depth="3" />
+
 = Introduction =
 
 The access control policy describes the desired network security policy through the use of a high-level language that uses keywords and tokens.  Tokens are derived from the [NamingLibrary naming libraries] import of definition files.
