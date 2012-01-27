@@ -1,5 +1,8 @@
 #summary Naming Definitions Format
 
+= Table of Contents =
+<wiki:toc max_depth="3" />
+
 = Introduction =
 
 The naming definitions provide the network and service "address books" that are used in the creation of policy files.  Naming definitions are usually stored in a single directory, and consist of two or more files.  Each file must end in either a '.net' or '.svc' extension, specifying a network or services definitions files.
