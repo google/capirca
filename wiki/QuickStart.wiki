@@ -1,5 +1,8 @@
 #Quick Start Guide for Capirca ACL Generation
 
+= Table of Contents =
+<wiki:toc max_depth="3" />
+
 = Quick Start Instructions =
 
  # Download the latest Capirca bundle:
