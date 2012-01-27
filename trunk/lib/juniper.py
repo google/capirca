@@ -541,8 +541,8 @@ class Juniper(aclgenerator.ACLGenerator):
       if not self._PLATFORM in header.platforms:
         continue
 
-      filter_options = header.FilterOptions('juniper')
-      filter_name = filter_options[0]
+      filter_options = header.FilterOptions(self._PLATFORM)
+      filter_name = header.FilterName(self._PLATFORM)
 
       # Checks if the non-interface-specific option was specified.
       # I'm assuming that it will be specified as maximum one time, and
@@ -570,6 +570,8 @@ class Juniper(aclgenerator.ACLGenerator):
           continue
 
         if term.expiration and term.expiration <= current_date:
+          logging.warn('WARNING: Term %s in policy %s is expired and will not '
+                       'be rendered.', term.name, filter_name)
           continue
 
         new_terms.append(Term(term, filter_type))

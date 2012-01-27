@@ -560,15 +560,15 @@ class Iptables(aclgenerator.ACLGenerator):
   _DEFAULT_ACTION = 'DROP'
   _TERM = Term
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
-                                      'destination_prefix', # skips these terms
+                                      'destination_prefix',  # skips these terms
                                       'expiration',
                                       'fragment_offset',
                                       'logging',
                                       'packet_length',
-                                      'policer',            # safely ignored
+                                      'policer',             # safely ignored
                                       'qos',
                                       'source_interface',
-                                      'source_prefix',      # skips these terms
+                                      'source_prefix',       # skips these terms
                                      ])
 
   def _TranslatePolicy(self, pol):
@@ -630,8 +630,8 @@ class Iptables(aclgenerator.ACLGenerator):
                 default_action = arg
       if default_action and default_action not in good_default_actions:
         raise UnsupportedDefaultAction('%s %s %s' % (
-            '\nOnly ACCEPT or DROP default filter action allowed;',
-            default_action, 'used.'))
+            '\nOnly', ' '.join(good_default_actions),
+            'default filter action allowed;', default_action, 'used.'))
 
       # add the terms
       new_terms = []
@@ -648,6 +648,8 @@ class Iptables(aclgenerator.ACLGenerator):
           continue
 
         if term.expiration and term.expiration <= current_date:
+          logging.warn('WARNING: Term %s in policy %s is expired and will '
+                       'not be rendered.', term.name, filter_name)
           continue
 
         new_terms.append(self._TERM(term, filter_name, all_protocols_stateful,
@@ -664,7 +666,7 @@ class Iptables(aclgenerator.ACLGenerator):
     if self._RENDER_PREFIX:
       target.append(self._RENDER_PREFIX)
 
-    for (header, filter_name, filter_type, policy_default_action, terms
+    for (header, filter_name, filter_type, default_action, terms
         ) in self.iptables_policies:
       # Add comments for this filter
       target.append('# %s %s Policy' % (pretty_platform,
@@ -683,12 +685,12 @@ class Iptables(aclgenerator.ACLGenerator):
       # always specify the default filter states for speedway,
       # if default action policy not specified for iptables, do nothing.
       if self._PLATFORM == 'speedway':
-        if not policy_default_action:
+        if not default_action:
           target.append(self._DEFAULTACTION_FORMAT % (filter_name,
                                                       self._DEFAULT_ACTION))
-      if policy_default_action:
+      if default_action:
         target.append(self._DEFAULTACTION_FORMAT % (filter_name,
-                                                    policy_default_action))
+                                                    default_action))
       # add the terms
       for term in terms:
         target.append(str(term))

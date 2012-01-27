@@ -21,7 +21,6 @@ term permit-mail-services {
   destination-address:: MAIL_SERVERS
   protocol:: tcp
   destination-port:: MAIL_SERVICES
-  expiration:: 2001-12-31
   action:: accept
 }
 

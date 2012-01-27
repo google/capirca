@@ -256,6 +256,8 @@ class Silverpeak(aclgenerator.ACLGenerator):
     if self._CheckExceptionTerm(term.name, self.exception_term_rule):
       return None
     if term.expiration and term.expiration <= self.current_date:
+      logging.warn('WARNING: Term %s in policy is expired and will not be '
+                   'rendered.', term.name)
       return None
     return self.FixHighPorts(term)
 
