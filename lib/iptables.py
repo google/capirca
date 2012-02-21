@@ -401,6 +401,8 @@ class Term(aclgenerator.Term):
     icmp_type = str(icmp_type)
     if not icmp_type:
       icmp = ''
+    elif str(protocol) == 'icmpv6':
+      icmp = '--icmpv6-type %s' % icmp_type
     else:
       icmp = '--icmp-type %s' % icmp_type
 
