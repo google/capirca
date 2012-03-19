@@ -39,6 +39,7 @@ from lib import ciscoasa
 from lib import iptables
 from lib import speedway
 from lib import juniper
+from lib import junipersrx
 from lib import silverpeak
 from lib import demo
 
@@ -65,8 +66,7 @@ def load_and_render(base_dir, defs):
       rendered += load_and_render(fname, defs)
     elif fname.endswith('.pol'):
       #logging.debug('attempting to render_filters on fname %s', fname)
-      rendered += render_filters(fname, policy.ParsePolicy(open(fname).read(),
-                                                           defs))
+      rendered += render_filters(fname, defs) 
   return rendered
 
 def filter_name(source, suffix):
@@ -85,26 +85,34 @@ def do_output_filter(filter_text, filter_file):
     output.write(filter_text)
 
 
-def render_filters(source_file, policy):
+def render_filters(source_file, definitions_obj):
   count = 0
-  [(jcl, acl, asa, ipt, spd, spk, dem)] = [(False, False, False, False, False,
-                                       False, False)]
+  [(jcl, acl, asa, ipt, spd, spk, srx, dem)] = [(False, False, False, False,
+                                                 False, False, False, False)]
 
-  for header in policy.headers:
+  pol = policy.ParsePolicy(open(source_file).read(), definitions_obj)
+
+  for header in pol.headers:
     if 'juniper' in header.platforms:
-      jcl = copy.deepcopy(policy)
+      jcl = copy.deepcopy(pol)
     if 'cisco' in header.platforms:
-      acl = copy.deepcopy(policy)
+      acl = copy.deepcopy(pol)
     if 'ciscoasa' in header.platforms:
-      asa = copy.deepcopy(policy)
+      asa = copy.deepcopy(pol)
     if 'iptables' in header.platforms:
-      ipt = copy.deepcopy(policy)
+      ipt = copy.deepcopy(pol)
     if 'speedway' in header.platforms:
-      spd = copy.deepcopy(policy)
+      spd = copy.deepcopy(pol)
     if 'silverpeak' in header.platforms:
-      spk = copy.deepcopy(policy)
+      spk = copy.deepcopy(pol)
+    # SRX needs to be un-optimized for correct building of the address book
+    # entries.
+    if 'srx' in header.platforms:
+      unoptimized_pol = policy.ParsePolicy(open(source_file).read(),
+                                           definitions_obj, optimize=False)
+      srx = copy.deepcopy(unoptimized_pol)
     if 'demo' in header.platforms:
-      dem = copy.deepcopy(policy)
+      dem = copy.deepcopy(pol)
   if jcl:
     fw = juniper.Juniper(jcl)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
@@ -123,6 +131,10 @@ def render_filters(source_file, policy):
     count += 1
   if spd:
     fw = speedway.Speedway(spd)
+    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+    count += 1
+  if srx:
+    fw = junipersrx.JuniperSRX(srx)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
   if dem:
@@ -152,7 +164,7 @@ def main():
     count = load_and_render(FLAGS.policy_directory, defs)
 
   elif FLAGS.policy:
-    count = render_filters(policy.ParsePolicy(FLAGS.policy).read(), defs)
+    count = render_filters(FLAGS.policy, defs)
 
   print '%d filters rendered' % count
 
