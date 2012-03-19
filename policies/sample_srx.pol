@@ -1,0 +1,43 @@
+#
+# This is an example policy for capirca
+#
+header {
+  comment:: "this is a sample policy to generate Juniper SRX filter"
+  comment:: "from zone Untrust to zone DMZ."
+  target:: srx from-zone Untrust to-zone DMZ
+}
+
+#include 'policies/includes/untrusted-networks-blocking.inc'
+
+term permit-mail-services {
+  destination-address:: MAIL_SERVERS
+  protocol:: tcp
+  destination-port:: MAIL_SERVICES
+  action:: accept
+}
+
+term permit-web-services {
+  destination-address:: WEB_SERVERS
+  protocol:: tcp
+  destination-port:: WEB_SERVICES
+  action:: accept
+}
+
+term default-deny {
+  action:: deny
+}
+
+header {
+  comment:: "this is a sample policy to generate Juniper SRX filter"
+  comment:: "from zone DMZ to zone Untrust."
+  target:: srx from-zone DMZ to-zone Untrust
+}
+
+term deny-to-bad-destinations {
+  destination-address:: RFC1918 BOGON RESERVED
+  action:: deny
+}
+
+term default-accept {
+  action:: accept
+}

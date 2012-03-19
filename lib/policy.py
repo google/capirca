@@ -18,8 +18,8 @@
 """Parses the generic policy files and return a policy object for acl rendering.
 """
 
-import os
 import datetime
+import os
 import sys
 
 import logging
@@ -184,6 +184,8 @@ class Policy(object):
 
       # If argument is true, we optimize, otherwise just sort addresses
       term.AddressCleanup(_OPTIMIZE)
+      # Reset _OPTIMIZE global to default value
+      globals()['_OPTIMIZE'] = True
       term.SanityCheck()
       term.translated = True
 
@@ -212,7 +214,7 @@ class Term(object):
     counter: VarType.COUNTER
     action: list of VarType.ACTION's
     comments: VarType.COMMENT
-    expiration:: VarType.EXPIRATION
+    expiration: VarType.EXPIRATION
     verbatim: VarType.VERBATIM
     logging: VarType.LOGGING
     qos: VarType.QOS
@@ -275,8 +277,8 @@ class Term(object):
     self.action = []
     self.address = []
     self.comment = []
-    self.expiration = None
     self.counter = None
+    self.expiration = None
     self.destination_address = []
     self.destination_address_exclude = []
     self.destination_port = []
@@ -1318,16 +1320,16 @@ def p_counter_spec(p):
   p[0] = VarType(VarType.COUNTER, p[4])
 
 
-def p_comment_spec(p):
-  """ comment_spec : COMMENT ':' ':' DQUOTEDSTRING """
-  p[0] = VarType(VarType.COMMENT, p[4])
-
-
 def p_expiration_spec(p):
   """ expiration_spec : EXPIRATION ':' ':' INTEGER '-' INTEGER '-' INTEGER """
   p[0] = VarType(VarType.EXPIRATION, datetime.date(int(p[4]),
                                                    int(p[6]),
                                                    int(p[8])))
+
+
+def p_comment_spec(p):
+  """ comment_spec : COMMENT ':' ':' DQUOTEDSTRING """
+  p[0] = VarType(VarType.COMMENT, p[4])
 
 
 def p_verbatim_spec(p):
