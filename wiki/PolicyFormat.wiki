@@ -108,6 +108,14 @@ target:: speedway [INPUT|OUTPUT|FORWARD|custom] {ACCEPT|DROP} {truncatenames} {n
   * _truncatenames_: specifies to abbreviate term names if necessary (see lib/iptables.py: CheckTermLength for abbreviation table)
   * _nostate_: specifies to produce 'stateless' filter output (e.g. no connection tracking)
 
+=== Juniper SRX ===
+Note: The Juniper SRX is currently in beta testing.
+{{{
+target:: srx from-zone [zone name] to-zone [zone name] {inet}
+}}}
+  * _from-zone_: static keyword, followed by user specified zone
+  * _to-zone_: static keyword, followed by user specified zone
+  * _inet_: Address family (only IPv4 tested at this time)
 
 == Terms Section ==
 
