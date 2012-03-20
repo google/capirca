@@ -8,6 +8,7 @@
 __author__ = 'robankeny@google.com (Robert Ankeny)'
 
 import datetime
+import logging
 
 import aclgenerator
 import nacaddr
@@ -218,8 +219,9 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         term_dup_check.add(term.name)
 
         if term.expiration and term.expiration <= current_date:
-          logging.warn('WARNING: Term %s in policy %s is expired and will not '
-                       'be rendered.', term.name, filter_name)
+          logging.warn('WARNING: Term %s in policy %s>%s is expired and will '
+                       'not be rendered.', term.name, self.from_zone,
+                       self.to_zone)
 
         new_terms.append(Term(term, filter_type, filter_options))
         for i in term.source_address_exclude:
