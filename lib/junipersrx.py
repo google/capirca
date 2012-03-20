@@ -164,7 +164,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
   _SUFFIX = '.srx'
   _SUPPORTED_AF = set(('inet',))
 
-  _OPTIONAL_SUPPORTED_KEYWORDS = set([])
+  _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration'])
   INDENT = '    '
 
   def _TranslatePolicy(self, pol):
