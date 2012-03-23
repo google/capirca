@@ -111,11 +111,16 @@ class Term(aclgenerator.Term):
       ret_str.append(JuniperSRX.INDENT * 5 + 'destination-address any;')
 
     #APPLICATION
-    if not self.term.source_port and not self.term.destination_port:
-      ret_str.append(JuniperSRX.INDENT * 5 + 'application any;')
+    if (not self.term.source_port and not self.term.destination_port and not
+        self.term.icmp_type):
+      if self.term.protocol:
+        ret_str.append(JuniperSRX.INDENT * 5 + 'protocol %s' %
+                       self._Group(self.term.protocol))
+      else:
+        ret_str.append(JuniperSRX.INDENT * 5 + 'application any;')
     else:
       ret_str.append(JuniperSRX.INDENT * 5 + 'application ' + self.term.name +
-                     '-app')
+                     '-app;')
 
     ret_str.append(JuniperSRX.INDENT * 4 + '}')
 
@@ -133,21 +138,49 @@ class Term(aclgenerator.Term):
       raise SRXOptionError('Options are not implemented yet, please remove ' +
                            'from term %s' % self.term.name)
 
-    #ICMP-TYPE
-    if self.term.icmp_type:
-      icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type,
-                                           self.term.protocol,
-                                           self.term_type,
-                                           self.term.name)
-      for icmp in icmp_types:
-        ret_str.append('set applications application %s-app icmp-type %s' % (
-            self.term.name, str(icmp)))
-
     #VERBATIM
     if self.term.verbatim:
       raise SRXVerbatimError('Verbatim is not implemented, please remove ' +
                              'the offending term %s.' % self.term.name)
     return '\n'.join(ret_str)
+
+  def _Group(self, group):
+    """If 1 item return it, else return [ item1 item2 ].
+
+    Args:
+      group: a list.  could be a list of strings (protocols) or a list of
+             tuples (ports)
+
+    Returns:
+      rval: a string surrounded by '[' and '];' if len(group) > 1
+            or with just ';' appended if len(group) == 1
+    """
+
+    def _FormattedGroup(el):
+      """Return the actual formatting of an individual element.
+
+      Args:
+        el: either a string (protocol) or a tuple (ports)
+
+      Returns:
+        string: either the lower()'ed string or the ports, hyphenated
+                if they're a range, or by itself if it's not.
+      """
+      if isinstance(el, str):
+        return el.lower()
+      elif isinstance(el, int):
+        return str(el)
+      # type is a tuple below here
+      elif el[0] == el[1]:
+        return '%d' % el[0]
+      else:
+        return '%d-%d' % (el[0], el[1])
+
+    if len(group) > 1:
+      rval = '[ ' + ' '.join([_FormattedGroup(x) for x in group]) + ' ];'
+    else:
+      rval = _FormattedGroup(group[0]) + ';'
+    return rval
 
 
 class JuniperSRX(aclgenerator.ACLGenerator):
@@ -235,11 +268,17 @@ class JuniperSRX(aclgenerator.ACLGenerator):
           self._BuildAddressBook(self.from_zone, addr)
         for addr in term.destination_address:
           self._BuildAddressBook(self.to_zone, addr)
+        _tmp = aclgenerator.Term()
         self.applications.append({'sport': self._BuildPort(term.source_port),
                                   'dport': self._BuildPort(
                                       term.destination_port),
                                   'name': term.name,
-                                  'protocol': term.protocol})
+                                  'protocol': term.protocol,
+                                  'icmp-type': _tmp.NormalizeIcmpTypes(
+                                      term.icmp_type,
+                                      term.protocol,
+                                      filter_type,
+                                      term.name)})
       self.srx_policies.append((header, new_terms, filter_options))
 
   def _BuildAddressBook(self, zone, address):
@@ -313,7 +352,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     #APPLICATIONS
     target.append('applications {')
     for app in self.applications:
-      if app['sport'] or app['dport']:
+      if app['sport'] or app['dport'] or app['icmp-type'] != ['']:
         target.append(self.INDENT + 'application ' + app['name'] + '-app {')
         i = 1
         if app['sport']:
@@ -328,6 +367,13 @@ class JuniperSRX(aclgenerator.ACLGenerator):
               target.append(self.INDENT * 2 + 'term t' + str(i) + ' protocol ' +
                             protocol + ' destination-port ' + port + ';')
               i+=1
+        if app['icmp-type'] != ['']:
+          for code in app['icmp-type']:
+            target.append(self.INDENT * 2 + 'term t' + str(i) + 
+                          ' protocol icmp icmp-type ' + str(code) +
+                          ' inactivity-timeout 60;')
+            i+=1
         target.append(self.INDENT+'}')
+
     target.append('}')
     return '\n'.join(target)
