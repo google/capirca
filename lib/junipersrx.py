@@ -129,6 +129,11 @@ class Term(aclgenerator.Term):
       ret_str.append(JuniperSRX.INDENT * 4 + 'then {')
       ret_str.append(JuniperSRX.INDENT * 5 + self._ACTIONS.get(
           str(action)) + ';')
+
+      #LOGGING
+      if self.term.logging:
+        ret_str.append(JuniperSRX.INDENT * 5 + 'log {')
+        ret_str.append(JuniperSRX.INDENT * 6 + 'session-init;')
       ret_str.append(JuniperSRX.INDENT * 4 + '}')
 
       ret_str.append(JuniperSRX.INDENT * 3 + '}')
@@ -197,7 +202,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
   _SUFFIX = '.srx'
   _SUPPORTED_AF = set(('inet',))
 
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration'])
+  _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration', 'logging'])
   INDENT = '    '
 
   def _TranslatePolicy(self, pol):
