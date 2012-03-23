@@ -247,7 +247,6 @@ class JuniperSRX(aclgenerator.ACLGenerator):
             'SRX Generator currently does not support %s as a header option' %
             (filter_type))
 
-
       term_dup_check = set()
       new_terms = []
       for term in terms:
@@ -273,13 +272,16 @@ class JuniperSRX(aclgenerator.ACLGenerator):
           self._BuildAddressBook(self.from_zone, addr)
         for addr in term.destination_address:
           self._BuildAddressBook(self.to_zone, addr)
-        _tmp = aclgenerator.Term()
+
+        # create Term object so we can access the NormalizeIcmpTypes method
+        # This is ugly, and the fix is probably to make method a function
+        tmp = aclgenerator.Term()
         self.applications.append({'sport': self._BuildPort(term.source_port),
                                   'dport': self._BuildPort(
                                       term.destination_port),
                                   'name': term.name,
                                   'protocol': term.protocol,
-                                  'icmp-type': _tmp.NormalizeIcmpTypes(
+                                  'icmp-type': tmp.NormalizeIcmpTypes(
                                       term.icmp_type,
                                       term.protocol,
                                       filter_type,
@@ -374,7 +376,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
               i+=1
         if app['icmp-type'] != ['']:
           for code in app['icmp-type']:
-            target.append(self.INDENT * 2 + 'term t' + str(i) + 
+            target.append(self.INDENT * 2 + 'term t' + str(i) +
                           ' protocol icmp icmp-type ' + str(code) +
                           ' inactivity-timeout 60;')
             i+=1

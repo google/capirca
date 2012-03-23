@@ -9,10 +9,11 @@ header {
 
 term test-tcp {
   destination-address:: RFC1918
-  protocol:: icmp tcp udp
+  protocol:: tcp udp
   logging:: true
   action:: accept
 }
+
 term test-icmp {
   destination-address:: RFC1918
   protocol:: icmp
