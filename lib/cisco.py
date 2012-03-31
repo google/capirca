@@ -552,19 +552,19 @@ class Cisco(aclgenerator.ACLGenerator):
         if next_filter == 'extended':
           try:
             if int(filter_name) in range(1,100) + range(1300,2000):
-              raise UnsupportedCiscoAccessListError('access lists between 1-99 '
+              raise UnsupportedCiscoAccessListError('Access lists between 1-99 '
                   'and 1300-1999 are reserved for standard ACLs')
           except ValueError:
             # Extended access list names do not have to be numbers.
             pass
         if next_filter == 'standard':
           try:
-            if not int(filter_name) in range(1,100) + range(1300,2000):
-              raise UnsupportedCiscoAccessListError('standard access lists '
-                  'must be numbered between 1-99 or 1300-1999.')
+            if int(filter_name) not in range(1,100) + range(1300,2000):
+              raise UnsupportedCiscoAccessListError('Standard access lists '
+                  'must be numeric in the range of 1-99 or 1300-1999.')
           except ValueError:
-            raise UnsupportedCiscoAccessListError('standard access lists must '
-                'be numbered between 1-99 or 1300-1999.')
+            raise UnsupportedCiscoAccessListError('Standard access lists must '
+                'be numeric in the range of 1-99 or 1300-1999.')
 
         new_terms = []
         for term in terms:
