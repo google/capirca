@@ -105,7 +105,7 @@ class TermStandard(object):
     v4_addresses = [x for x in self.term.address if type(x) != nacaddr.IPv6]
     if self.filter_name.isdigit():
       ret_str.append('access-list %s remark %s' % (self.filter_name,
-                     self.term.name))
+                                                   self.term.name))
 
       comment_max_width = 70
       comments = aclgenerator.WrapWords(self.term.comment, comment_max_width)
