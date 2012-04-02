@@ -61,6 +61,7 @@ class TermStandard(object):
     self.term = term
     self.filter_name = filter_name
     self.options = []
+    self.logstring = ''
     # sanity checking for standard acls
     if self.term.protocol:
       raise StandardAclTermError(
@@ -84,16 +85,14 @@ class TermStandard(object):
       raise StandardAclTermError(
           'Counters are not implemented in standard ACLs')
     if self.term.logging:
-      raise StandardAclTermError(
-          'Logging is not implemented in standard ACLs')
+      logging.warn(
+          'WARNING: Standard ACL logging is set in filter %s, term %s and '
+          'may not implemented on all IOS versions', self.filter_name,
+          self.term.name)
+      self.logstring = ' log'
 
   def __str__(self):
     ret_str = []
-
-    ret_str.append('remark ' + self.term.name)
-    for comment in self.term.comment:
-      for line in comment.split('\n'):
-        ret_str.append('remark ' + str(line))
 
     # Term verbatim output - this will skip over normal term creation
     # code by returning early.  Warnings provided in policy.py.
@@ -103,21 +102,54 @@ class TermStandard(object):
           ret_str.append(str(next_verbatim.value[1]))
         return '\n'.join(ret_str)
 
-    for addr in self.term.address:
-      if type(addr) is nacaddr.IPv6:
-        logging.debug('Ignoring unsupported IPv6 address in "%s"',
-                      self.term.name)
+    v4_addresses = [x for x in self.term.address if type(x) != nacaddr.IPv6]
+    if self.filter_name.isdigit():
+      ret_str.append('access-list %s remark %s' % (self.filter_name,
+                     self.term.name))
+
+      comment_max_width = 70
+      comments = aclgenerator.WrapWords(self.term.comment, comment_max_width)
+      if comments and comments[0]:
+        for comment in comments:
+          ret_str.append('access-list %s remark %s' % (self.filter_name,
+                                                       comment))
+
+      action = _ACTION_TABLE.get(str(self.term.action[0]))
+      if v4_addresses:
+        for addr in v4_addresses:
+          if addr.prefixlen == 32:
+            ret_str.append('access-list %s %s %s%s' % (self.filter_name,
+                                                       action,
+                                                       addr.ip,
+                                                       self.logstring))
+          else:
+            ret_str.append('access-list %s %s %s %s%s' % (self.filter_name,
+                                                          action,
+                                                          addr.network,
+                                                          addr.hostmask,
+                                                          self.logstring))
       else:
-        action = _ACTION_TABLE.get(str(self.term.action[0]))
-        if addr.prefixlen == 32:
-          ret_str.append('access-list %s %s %s' % (self.filter_name,
-                                                   action,
-                                                   addr.ip))
-        else:
-          ret_str.append('access-list %s %s %s %s' % (self.filter_name,
-                                                      action,
-                                                      addr.network,
-                                                      addr.hostmask))
+        ret_str.append('access-list %s %s %s%s' % (self.filter_name, action,
+                                                   'any', self.logstring))
+
+    else:
+      ret_str.append('remark ' + self.term.name)
+      comment_max_width = 70
+      comments = aclgenerator.WrapWords(self.term.comment, comment_max_width)
+      if comments and comments[0]:
+        for comment in comments:
+          ret_str.append('remark ' + str(comment))
+
+      action = _ACTION_TABLE.get(str(self.term.action[0]))
+      if v4_addresses:
+        for addr in v4_addresses:
+          if addr.prefixlen == 32:
+            ret_str.append(' %s %s%s' % (action, addr.ip, self.logstring))
+          else:
+            ret_str.append(' %s %s %s%s' % (action, addr.network,
+                                            addr.hostmask, self.logstring))
+      else:
+        ret_str.append(' %s %s%s' % (action, 'any', self.logstring))
 
     return '\n'.join(ret_str)
 
@@ -234,9 +266,11 @@ class ObjectGroupTerm(aclgenerator.Term):
 
     ret_str = ['\n']
     ret_str.append('remark %s' % self.term.name)
-    for comment in self.term.comment:
-      for line in comment.split('\n'):
-        ret_str.append('remark %s' % str(line))
+    comment_max_width = 70
+    comments = aclgenerator.WrapWords(self.term.comment, comment_max_width)
+    if comments and comments[0]:
+      for comment in comments:
+        ret_str.append('remark %s' % str(comment))
 
     # Term verbatim output - this will skip over normal term creation
     # code by returning early.  Warnings provided in policy.py.
@@ -551,20 +585,25 @@ class Cisco(aclgenerator.ACLGenerator):
       for next_filter in filter_list:
         if next_filter == 'extended':
           try:
-            if int(filter_name) in range(1,100) + range(1300,2000):
-              raise UnsupportedCiscoAccessListError('Access lists between 1-99 '
-                  'and 1300-1999 are reserved for standard ACLs')
+            if int(filter_name) in range(1, 100) + range(1300, 2000):
+              raise UnsupportedCiscoAccessListError('Access lists between 1-99'
+                                                    ' and 1300-1999 are '
+                                                    'reserved for standard '
+                                                    'ACLs')
           except ValueError:
             # Extended access list names do not have to be numbers.
             pass
         if next_filter == 'standard':
           try:
-            if int(filter_name) not in range(1,100) + range(1300,2000):
+            if int(filter_name) not in range(1, 100) + range(1300, 2000):
               raise UnsupportedCiscoAccessListError('Standard access lists '
-                  'must be numeric in the range of 1-99 or 1300-1999.')
+                                                    'must be numeric in the '
+                                                    'range of 1-99 or '
+                                                    '1300-1999.')
           except ValueError:
             raise UnsupportedCiscoAccessListError('Standard access lists must '
-                'be numeric in the range of 1-99 or 1300-1999.')
+                                                  'be numeric in the range of '
+                                                  '1-99 or 1300-1999.')
 
         new_terms = []
         for term in terms:
@@ -582,6 +621,7 @@ class Cisco(aclgenerator.ACLGenerator):
 
           # render terms based on filter type
           if next_filter == 'standard':
+            # keep track of sequence numbers across terms
             new_terms.append(TermStandard(term, filter_name))
           elif next_filter == 'extended':
             new_terms.append(Term(term))
@@ -605,8 +645,12 @@ class Cisco(aclgenerator.ACLGenerator):
         ) in self.cisco_policies:
       for filter_type in filter_list:
         if filter_type == 'standard':
-          target.append('no ip access-list %d' % int(filter_name))
-        elif filter_type is 'extended':
+          if filter_name.isdigit():
+            target.append('no access-list %s' % filter_name)
+          else:
+            target.append('no ip access-list %s' % filter_name)
+            target.append('ip access-list standard %s' % filter_name)
+        elif filter_type == 'extended':
           target.append('no ip access-list extended %s' % filter_name)
           target.append('ip access-list extended %s' % filter_name)
         elif filter_type == 'object-group':
@@ -624,7 +668,11 @@ class Cisco(aclgenerator.ACLGenerator):
         # Add the Perforce Id/Date tags, these must come after
         # remove/re-create of the filter, otherwise config mode doesn't
         # know where to place these remarks in the configuration.
-        target.extend(aclgenerator.AddRepositoryTags('remark '))
+        if filter_name.isdigit():
+          target.extend(aclgenerator.AddRepositoryTags('access-list %s remark '
+                                                       % filter_name))
+        else:
+          target.extend(aclgenerator.AddRepositoryTags('remark '))
 
         # add a header comment if one exists
         for comment in header.comment:
