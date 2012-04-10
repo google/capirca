@@ -163,7 +163,7 @@ The following are keywords that can be optionally supported by output generators
   * _loss-priority::_ juniper only, specify loss priority
   * _packet-length::_ juniper only, specify packet length
   * _policer::_ juniper only, specify which policer to apply to matching packets
-  * _precedence::_ juniper only, specify precendence
+  * _precedence::_ juniper only, specify precendence.  May specify single value or multiple space separated values
   * _protocol_except::_ juniper only, allow all protocol "except" specified
   * _qos::_ juniper only, apply quality of service classification to matching packets (e.g. qos:: af4)
   * _routing-instance::_ juniper only, specify routing instance for matching packets
