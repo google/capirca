@@ -95,10 +95,14 @@ class Term(aclgenerator.Term):
     # Iptables enforces 30 char limit, but weirdness happens after 28 or 29
     self.term_name = '%s_%s' % (
         self.filter[:1], self._CheckTermLength(self.term.name, 24, truncate))
-    self._all_ips = nacaddr.IPv4('0.0.0.0/0')
+
     if af == 'inet6':
       self._all_ips = nacaddr.IPv6('::/0')
       self._ACTION_TABLE['reject'] = '-j REJECT --reject-with adm-prohibited'
+    else:
+      self._all_ips = nacaddr.IPv4('0.0.0.0/0')
+      self._ACTION_TABLE['reject'] = '-j REJECT --reject-with ' \
+                                     'icmp-host-prohibited'
 
   def __str__(self):
     ret_str = []
@@ -233,6 +237,10 @@ class Term(aclgenerator.Term):
     if self.term.source_interface:
       source_interface = self.term.source_interface
 
+    destination_interface = ''
+    if self.term.destination_interface:
+      destination_interface = self.term.destination_interface
+
     log_hits = False
     if self.term.logging:
       # Iptables sends logs to hosts configured syslog
@@ -305,6 +313,7 @@ class Term(aclgenerator.Term):
                   icmp,
                   tcp_matcher,
                   source_interface,
+                  destination_interface,
                   log_hits,
                   self._ACTION_TABLE.get(str(self.term.action[0]))
                   ))
@@ -315,7 +324,8 @@ class Term(aclgenerator.Term):
     return '\n'.join(str(v) for v in ret_str if v is not '')
 
   def _FormatPart(self, af, protocol, saddr, sport, daddr, dport, options,
-                  tcp_flags, icmp_type, track_flags, sint, log_hits, action):
+                  tcp_flags, icmp_type, track_flags, sint, dint, log_hits,
+                  action):
     """Compose one iteration of the term parts into a string.
 
     Args:
@@ -330,6 +340,7 @@ class Term(aclgenerator.Term):
       icmp_type: What icmp protocol to allow, if any
       track_flags: A tuple of ([check-flags], [set-flags]) arguments to tcp-flag
       sint: Optional source interface
+      dint: Optional destination interface
       log_hits: Boolean, to log matches or not
       action: What should happen if this rule matches
     Returns:
@@ -363,6 +374,10 @@ class Term(aclgenerator.Term):
     source_int = ''
     if sint:
       source_int = '-i %s' % sint
+
+    destination_int = ''
+    if dint:
+      destination_int = '-o %s' % dint
 
     log_jump = ''
     if log_hits:
@@ -424,7 +439,7 @@ class Term(aclgenerator.Term):
           # any multiport specification.
           dport, sport = sport, dport
         for value in (proto, flags, sport, dport, icmp, src, dst,
-                      ' '.join(options), source_int):
+                      ' '.join(options), source_int, destination_int):
           if value:
             rval.append(str(value))
         if log_jump:
@@ -570,6 +585,7 @@ class Iptables(aclgenerator.ACLGenerator):
                                       'policer',             # safely ignored
                                       'qos',
                                       'source_interface',
+                                      'destination_interface',
                                       'source_prefix',       # skips these terms
                                      ])
 
@@ -631,8 +647,8 @@ class Iptables(aclgenerator.ACLGenerator):
               if arg in good_default_actions:
                 default_action = arg
       if default_action and default_action not in good_default_actions:
-        raise UnsupportedDefaultAction('%s %s %s' % (
-            '\nOnly', ' '.join(good_default_actions),
+        raise UnsupportedDefaultAction('%s %s %s %s %s' % (
+            '\nOnly', ', '.join(good_default_actions),
             'default filter action allowed;', default_action, 'used.'))
 
       # add the terms
