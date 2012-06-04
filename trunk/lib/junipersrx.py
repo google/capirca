@@ -79,11 +79,9 @@ class Term(aclgenerator.Term):
     ret_str.append(JuniperSRX.INDENT * 4 + 'match {')
 
     #SOURCE-ADDRESS
-    source_address = self.term.GetAddressOfVersion(
-        'source_address', self.AF_MAP.get(self.term_type))
-    if source_address:
+    if self.term.source_address:
       saddr_check = []
-      for saddr in source_address:
+      for saddr in self.term.source_address:
         saddr_check.append(saddr.parent_token)
       saddr_check = set(saddr_check)
       source_address_string = ''
@@ -95,11 +93,9 @@ class Term(aclgenerator.Term):
       ret_str.append(JuniperSRX.INDENT * 5 + 'source-address any;')
 
     #DESTINATION-ADDRESS
-    destination_address = self.term.GetAddressOfVersion(
-        'destination_address', self.AF_MAP.get(self.term_type))
-    if destination_address:
+    if self.term.destination_address:
       daddr_check = []
-      for daddr in destination_address:
+      for daddr in self.term.destination_address:
         daddr_check.append(daddr.parent_token)
       daddr_check = set(daddr_check)
       destination_address_string = ''
@@ -134,6 +130,7 @@ class Term(aclgenerator.Term):
       if self.term.logging:
         ret_str.append(JuniperSRX.INDENT * 5 + 'log {')
         ret_str.append(JuniperSRX.INDENT * 6 + 'session-init;')
+        ret_str.append(JuniperSRX.INDENT * 5 + '}')
       ret_str.append(JuniperSRX.INDENT * 4 + '}')
 
       ret_str.append(JuniperSRX.INDENT * 3 + '}')
