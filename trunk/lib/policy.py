@@ -288,7 +288,7 @@ class Term(object):
     self.option = []
     self.policer = None
     self.port = []
-    self.precedence = None
+    self.precedence = []
     self.protocol = []
     self.protocol_except = []
     self.qos = None
@@ -307,6 +307,7 @@ class Term(object):
     self.translated = False
     # iptables specific
     self.source_interface = None
+    self.destination_interface = None
 
     self.AddObject(obj)
 
@@ -440,6 +441,8 @@ class Term(object):
       ret_str.append('  counter: %s' % self.counter)
     if self.source_interface:
       ret_str.append('  source_interface: %s' % self.source_interface)
+    if self.destination_interface:
+      ret_str.append('  destination_interface: %s' % self.destination_interface)
     if self.expiration:
       ret_str.append('  expiration: %s' % self.expiration)
     return '\n'.join(ret_str)
@@ -495,6 +498,9 @@ class Term(object):
 
     # interface
     if not self.source_interface == other.source_interface:
+      return False
+
+    if not self.destination_interface == other.destination_interface:
       return False
 
     if not sorted(self.logging) == sorted(other.logging):
@@ -585,6 +591,8 @@ class Term(object):
           self.ether_type.append(x.value)
         elif x.var_type is VarType.TRAFFIC_TYPE:
           self.traffic_type.append(x.value)
+        elif x.var_type is VarType.PRECEDENCE:
+          self.precedence.append(x.value)
         else:
           raise TermObjectTypeError(
               '%s isn\'t a type I know how to deal with (contains \'%s\')' % (
@@ -600,7 +608,7 @@ class Term(object):
       elif obj.var_type is VarType.ROUTING_INSTANCE:
         self.routing_instance = obj.value
       elif obj.var_type is VarType.PRECEDENCE:
-        self.precedence = int(obj.value)
+        self.precedence = obj.value
       elif obj.var_type is VarType.VERBATIM:
         self.verbatim.append(obj)
       elif obj.var_type is VarType.ACTION:
@@ -628,6 +636,8 @@ class Term(object):
         self.fragment_offset = obj.value
       elif obj.var_type is VarType.SINTERFACE:
         self.source_interface = obj.value
+      elif obj.var_type is VarType.DINTERFACE:
+        self.destination_interface = obj.value
       else:
         raise TermObjectTypeError(
             '%s isn\'t a type I know how to deal with' % (type(obj)))
@@ -886,6 +896,7 @@ class VarType(object):
   PRECEDENCE = 26
   SINTERFACE = 27
   EXPIRATION = 28
+  DINTERFACE = 29
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -994,6 +1005,7 @@ tokens = (
     'DADDREXCLUDE',
     'DPFX',
     'DPORT',
+    'DINTERFACE',
     'DQUOTEDSTRING',
     'ETHER_TYPE',
     'EXPIRATION',
@@ -1033,6 +1045,7 @@ reserved = {
     'counter': 'COUNTER',
     'destination-address': 'DADDR',
     'destination-exclude': 'DADDREXCLUDE',
+    'destination-interface': 'DINTERFACE',
     'destination-prefix': 'DPFX',
     'destination-port': 'DPORT',
     'ether-type': 'ETHER_TYPE',
@@ -1194,7 +1207,7 @@ def p_losspriority_spec(p):
 
 
 def p_precedence_spec(p):
-  """ precedence_spec : PRECEDENCE ':' ':' INTEGER """
+  """ precedence_spec : PRECEDENCE ':' ':' one_or_more_ints """
   p[0] = VarType(VarType.PRECEDENCE, p[4])
 
 
@@ -1343,14 +1356,30 @@ def p_qos_spec(p):
 
 
 def p_interface_spec(p):
-  """ interface_spec : SINTERFACE ':' ':' STRING """
-  p[0] = VarType(VarType.SINTERFACE, p[4])
+  """ interface_spec : SINTERFACE ':' ':' STRING
+                     | DINTERFACE ':' ':' STRING """
+  if p[1].find('source-interface') >= 0:
+    p[0] = VarType(VarType.SINTERFACE, p[4])
+  elif p[1].find('destination-interface') >= 0:
+    p[0] = VarType(VarType.DINTERFACE, p[4])
 
 
 def p_one_or_more_strings(p):
   """ one_or_more_strings : one_or_more_strings STRING
                           | STRING
                           | """
+  if len(p) > 1:
+    if type(p[1]) == type([]):
+      p[1].append(p[2])
+      p[0] = p[1]
+    else:
+      p[0] = [p[1]]
+
+
+def p_one_or_more_ints(p):
+  """ one_or_more_ints : one_or_more_ints INTEGER
+                      | INTEGER
+                      | """
   if len(p) > 1:
     if type(p[1]) == type([]):
       p[1].append(p[2])
