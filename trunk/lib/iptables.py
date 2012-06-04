@@ -289,11 +289,11 @@ class Term(aclgenerator.Term):
 
     for saddr in exclude_saddr:
       ret_str.extend(self._FormatPart(
-          self.af, '', saddr, '', '', '', '', '', '', '', '', '',
+          self.af, '', saddr, '', '', '', '', '', '', '', '', '', '',
           self._ACTION_TABLE.get('next')))
     for daddr in exclude_daddr:
       ret_str.extend(self._FormatPart(
-          self.af, '', '', '', daddr, '', '', '', '', '', '', '',
+          self.af, '', '', '', daddr, '', '', '', '', '', '', '', '',
           self._ACTION_TABLE.get('next')))
 
     for saddr in term_saddr:
