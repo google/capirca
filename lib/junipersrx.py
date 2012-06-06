@@ -108,12 +108,8 @@ class Term(aclgenerator.Term):
 
     #APPLICATION
     if (not self.term.source_port and not self.term.destination_port and not
-        self.term.icmp_type):
-      if self.term.protocol:
-        ret_str.append(JuniperSRX.INDENT * 5 + 'protocol %s' %
-                       self._Group(self.term.protocol))
-      else:
-        ret_str.append(JuniperSRX.INDENT * 5 + 'application any;')
+        self.term.icmp_type and not self.term.protocol):
+      ret_str.append(JuniperSRX.INDENT * 5 + 'application any;')
     else:
       ret_str.append(JuniperSRX.INDENT * 5 + 'application ' + self.term.name +
                      '-app;')
@@ -273,16 +269,16 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         # create Term object so we can access the NormalizeIcmpTypes method
         # This is ugly, and the fix is probably to make method a function
         tmp = aclgenerator.Term()
+        tmp_icmptype = tmp.NormalizeIcmpTypes(term.icmp_type, term.protocol,
+                                              filter_type, term.name)
+        # NormalizeIcmpTypes returns [''] for empty, convert to [] for eval
+        normalized_icmptype = tmp_icmptype if tmp_icmptype != [''] else []
         self.applications.append({'sport': self._BuildPort(term.source_port),
                                   'dport': self._BuildPort(
                                       term.destination_port),
                                   'name': term.name,
                                   'protocol': term.protocol,
-                                  'icmp-type': tmp.NormalizeIcmpTypes(
-                                      term.icmp_type,
-                                      term.protocol,
-                                      filter_type,
-                                      term.name)})
+                                  'icmp-type': normalized_icmptype})
       self.srx_policies.append((header, new_terms, filter_options))
 
   def _BuildAddressBook(self, zone, address):
@@ -356,27 +352,28 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     #APPLICATIONS
     target.append('applications {')
     for app in self.applications:
-      if app['sport'] or app['dport'] or app['icmp-type'] != ['']:
+      if app['protocol'] or app['sport'] or app['dport'] or app['icmp-type']:
         target.append(self.INDENT + 'application ' + app['name'] + '-app {')
         i = 1
-        if app['sport']:
-          for port in app['sport']:
-            for protocol in app['protocol']:
-              target.append(self.INDENT * 2 + 'term t' + str(i) +' protocol ' +
-                            protocol + ' source-port ' + port + ';')
-              i+=1
-        if app['dport']:
-          for port in app['dport']:
-            for protocol in app['protocol']:
-              target.append(self.INDENT * 2 + 'term t' + str(i) + ' protocol ' +
-                            protocol + ' destination-port ' + port + ';')
-              i+=1
-        if app['icmp-type'] != ['']:
+        if app['icmp-type']:
           for code in app['icmp-type']:
-            target.append(self.INDENT * 2 + 'term t' + str(i) +
-                          ' protocol icmp icmp-type ' + str(code) +
-                          ' inactivity-timeout 60;')
+            target.append(
+                self.INDENT * 2 +
+                'term t%s protocol icmp icmp-type %s inactivity-timeout 60;' %
+                (str(i), str(code)))
             i+=1
+        else:
+          for proto in (app['protocol'] or ['']):
+            for sport in (app['sport'] or ['']):
+              for dport in (app['dport'] or ['']):
+                chunks = []
+                if proto: chunks.append(' protocol %s' % proto)
+                if sport: chunks.append(' source-port %s' % sport)
+                if dport: chunks.append(' destination-port %s' % dport)
+                if chunks:
+                  target.append(self.INDENT * 2 + 'term t' + str(i) +
+                                ''.join(chunks) + ';')
+                  i+=1
         target.append(self.INDENT+'}')
 
     target.append('}')
