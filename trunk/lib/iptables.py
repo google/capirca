@@ -599,9 +599,9 @@ class Iptables(aclgenerator.ACLGenerator):
     good_afs = ['inet', 'inet6']
     good_options = ['nostate', 'truncatenames']
     all_protocols_stateful = True
-    filter_type = None
 
     for header, terms in pol.filters:
+      filter_type = None
       if not self._PLATFORM in header.platforms:
         continue
 
