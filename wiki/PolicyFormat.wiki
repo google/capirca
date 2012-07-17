@@ -156,6 +156,7 @@ The following are keywords that can be optionally supported by output generators
 
   * _address::_ cisco only, one or more network address tokens
   * _counter::_ juniper only, update a counter for matching packets
+  * _destination-interface::_ iptables and speedway only, specify specific interface a term should apply to (e.g. destination-interface:: eth3)
   * _destination-prefix::_ juniper only, specify destination-prefix matching (e.g. source-prefix:: configured-neighbors-only)
   * _ether-type::_ juniper only, specify matching ether-type(e.g. ether-type:: arp)
   * _fragement-offset::_ juniper only, specify a fragment offset of a fragmented packet
