@@ -124,6 +124,15 @@ class Term(aclgenerator.Term):
   #  eg, indent(8) + 'foo;' -> '%s%s;' % (indent(8), 'foo'). pyglint likes this
   #  more.
   def __str__(self):
+    # Verify platform specific terms. Skip whole term if platform does not
+    # match.
+    if self.term.platform:
+      if 'juniper' not in self.term.platform:
+        return ''
+    if self.term.platform_exclude:
+      if 'juniper' in self.term.platform_exclude:
+        return ''
+
     ret_str = []
     from_str = []
 

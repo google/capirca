@@ -92,6 +92,15 @@ class TermStandard(object):
       self.logstring = ' log'
 
   def __str__(self):
+    # Verify platform specific terms. Skip whole term if platform does not
+    # match.
+    if self.term.platform:
+      if 'cisco' not in self.term.platform:
+        return ''
+    if self.term.platform_exclude:
+      if 'cisco' in self.term.platform_exclude:
+        return ''
+
     ret_str = []
 
     # Term verbatim output - this will skip over normal term creation
@@ -261,6 +270,15 @@ class ObjectGroupTerm(aclgenerator.Term):
     self.filter_name = filter_name
 
   def __str__(self):
+    # Verify platform specific terms. Skip whole term if platform does not
+    # match.
+    if self.term.platform:
+      if 'cisco' not in self.term.platform:
+        return ''
+    if self.term.platform_exclude:
+      if 'cisco' in self.term.platform_exclude:
+        return ''
+
     source_address_dict = {}
     destination_address_dict = {}
 
@@ -349,6 +367,15 @@ class Term(aclgenerator.Term):
     self.af = af
 
   def __str__(self):
+    # Verify platform specific terms. Skip whole term if platform does not
+    # match.
+    if self.term.platform:
+      if 'cisco' not in self.term.platform:
+        return ''
+    if self.term.platform_exclude:
+      if 'cisco' in self.term.platform_exclude:
+        return ''
+
     ret_str = ['\n']
 
     # Don't render icmpv6 protocol terms under inet, or icmp under inet6

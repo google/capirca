@@ -308,6 +308,8 @@ class Term(object):
     # iptables specific
     self.source_interface = None
     self.destination_interface = None
+    self.platform = []
+    self.platform_exclude = []
 
     self.AddObject(obj)
 
@@ -399,6 +401,14 @@ class Term(object):
       if sorted(self.icmp_type) is not sorted(other.icmp_type):
         return False
 
+    # check platform
+    if self.platform:
+      if sorted(self.platform) is not sorted(other.platform):
+        return False
+    if self.platform_exclude:
+      if sorted(self.platform_exclude) is not sorted(other.platform_exclude):
+        return False
+
     # we have containment
     return True
 
@@ -445,6 +455,10 @@ class Term(object):
       ret_str.append('  destination_interface: %s' % self.destination_interface)
     if self.expiration:
       ret_str.append('  expiration: %s' % self.expiration)
+    if self.platform:
+      ret_str.append('  platform: %s' % self.platform)
+    if self.platform_exclude:
+      ret_str.append('  platform_exclude: %s' % self.platform_exclude)
     return '\n'.join(ret_str)
 
   def __eq__(self, other):
@@ -516,6 +530,11 @@ class Term(object):
     if not sorted(self.ether_type) == sorted(other.ether_type):
       return False
     if not sorted(self.traffic_type) == sorted(other.traffic_type):
+      return False
+
+    # platform
+    if not (sorted(self.platform) == sorted(other.platform) and
+            sorted(self.platform_exclude) == sorted(other.platform_exclude)):
       return False
 
     return True
@@ -593,6 +612,10 @@ class Term(object):
           self.traffic_type.append(x.value)
         elif x.var_type is VarType.PRECEDENCE:
           self.precedence.append(x.value)
+        elif x.var_type is VarType.PLATFORM:
+          self.platform.append(x.value)
+        elif x.var_type is VarType.PLATFORMEXCLUDE:
+          self.platform_exclude.append(x.value)
         else:
           raise TermObjectTypeError(
               '%s isn\'t a type I know how to deal with (contains \'%s\')' % (
@@ -897,6 +920,8 @@ class VarType(object):
   SINTERFACE = 27
   EXPIRATION = 28
   DINTERFACE = 29
+  PLATFORM = 30
+  PLATFORMEXCLUDE = 31
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1016,11 +1041,13 @@ tokens = (
     'LOGGING',
     'LOSS_PRIORITY',
     'OPTION',
-    'PROTOCOL',
-    'PROTOCOL_EXCEPT',
     'PACKET_LEN',
+    'PLATFORM',
+    'PLATFORMEXCLUDE',
     'POLICER',
     'PRECEDENCE',
+    'PROTOCOL',
+    'PROTOCOL_EXCEPT',
     'QOS',
     'ROUTING_INSTANCE',
     'SADDR',
@@ -1057,6 +1084,8 @@ reserved = {
     'loss-priority': 'LOSS_PRIORITY',
     'option': 'OPTION',
     'packet-length': 'PACKET_LEN',
+    'platform': 'PLATFORM',
+    'platform-exclude': 'PLATFORMEXCLUDE',
     'policer': 'POLICER',
     'precedence': 'PRECEDENCE',
     'protocol': 'PROTOCOL',
@@ -1178,6 +1207,7 @@ def p_term_spec(p):
                 | term_spec losspriority_spec
                 | term_spec option_spec
                 | term_spec packet_length_spec
+                | term_spec platform_spec
                 | term_spec policer_spec
                 | term_spec port_spec
                 | term_spec precedence_spec
@@ -1363,6 +1393,15 @@ def p_interface_spec(p):
   elif p[1].find('destination-interface') >= 0:
     p[0] = VarType(VarType.DINTERFACE, p[4])
 
+def p_platform_spec(p):
+  """ platform_spec : PLATFORM ':' ':' one_or_more_strings
+                    | PLATFORMEXCLUDE ':' ':' one_or_more_strings """
+  p[0] = []
+  for platform in p[4]:
+    if p[1].find('platform-exclude') >= 0:
+      p[0].append(VarType(VarType.PLATFORMEXCLUDE, platform))
+    elif p[1].find('platform') >= 0:
+      p[0].append(VarType(VarType.PLATFORM, platform))
 
 def p_one_or_more_strings(p):
   """ one_or_more_strings : one_or_more_strings STRING

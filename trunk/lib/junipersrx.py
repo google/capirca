@@ -64,6 +64,14 @@ class Term(aclgenerator.Term):
 
   def __str__(self):
     """Render config output from this term object."""
+    # Verify platform specific terms. Skip whole term if platform does not
+    # match.
+    if self.term.platform:
+      if 'srx' not in self.term.platform:
+        return ''
+    if self.term.platform_exclude:
+      if 'srx' in self.term.platform_exclude:
+        return ''
     ret_str = []
 
     #COMMENTS

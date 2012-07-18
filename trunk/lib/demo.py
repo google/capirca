@@ -44,6 +44,15 @@ class Term(aclgenerator.Term):
     self.term_type = term_type
 
   def __str__(self):
+    # Verify platform specific terms. Skip whole term if platform does not
+    # match.
+    if self.term.platform:
+      if 'demo' not in self.term.platform:
+        return ''
+    if self.term.platform_exclude:
+      if 'demo' in self.term.platform_exclude:
+        return ''
+
     ret_str = []
 
     #NAME

@@ -132,6 +132,15 @@ class Term(object):
         [(src_ip, src_port, dst_ip, dst_port),
         (src_ip, src_port, dst_ip, dst_port)]
     """
+    # Verify platform specific terms. Skip whole term if platform does not
+    # match.
+    if self.term.platform:
+      if 'silverpeak' not in self.term.platform:
+        return []
+    if self.term.platform_exclude:
+      if 'silverpeak' in self.term.platform_exclude:
+        return []
+
     ret_str = []
     if 'established' in self.term.option:
       dst_ports = ['any']
