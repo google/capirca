@@ -245,7 +245,7 @@ class ObjectGroupTerm(aclgenerator.Term):
   """An individual term of an object-group'd acl.
 
   Object Group acls are very similar to extended acls in their
-  syntax expect they use a meta language with address/service
+  syntax except they use a meta language with address/service
   definitions.
 
   eg:
@@ -350,9 +350,11 @@ class Term(aclgenerator.Term):
 
   def __str__(self):
     ret_str = ['\n']
+
+    # Don't render icmpv6 protocol terms under inet, or icmp under inet6
     if ((self.af == 6 and 'icmp' in self.term.protocol) or
         (self.af == 4 and 'icmpv6' in self.term.protocol)):
-      ret_str.append('remark ' + self.term.name)
+      ret_str.append('remark Term %s' % self.term.name)
       ret_str.append('remark not rendered due to protocol/AF mismatch.')
       return '\n'.join(ret_str)
 
@@ -650,7 +652,7 @@ class Cisco(aclgenerator.ACLGenerator):
           if filter_name.isdigit():
             target.append('no access-list %s' % filter_name)
           else:
-            target.append('no ip access-list %s' % filter_name)
+            target.append('no ip access-list standard %s' % filter_name)
             target.append('ip access-list standard %s' % filter_name)
         elif filter_type == 'extended':
           target.append('no ip access-list extended %s' % filter_name)
