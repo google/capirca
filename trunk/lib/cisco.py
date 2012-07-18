@@ -350,6 +350,11 @@ class Term(aclgenerator.Term):
 
   def __str__(self):
     ret_str = ['\n']
+    if ((self.af == 6 and 'icmp' in self.term.protocol) or
+        (self.af == 4 and 'icmpv6' in self.term.protocol)):
+      ret_str.append('remark ' + self.term.name)
+      ret_str.append('remark not rendered due to protocol/AF mismatch.')
+      return '\n'.join(ret_str)
 
     ret_str.append('remark ' + self.term.name)
     for comment in self.term.comment:

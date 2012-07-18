@@ -127,6 +127,14 @@ class Term(aclgenerator.Term):
     # the terms properly.
     indent = lambda n: ' ' * (self._DEFAULT_INDENT + n)
 
+    # Don't render icmpv6 protocol terms under inet, or icmp under inet6
+    if ((self.term_type == 'inet6' and 'icmp' in self.term.protocol) or
+        (self.term_type == 'inet' and 'icmpv6' in self.term.protocol)):
+      ret_str.append(indent(0) + '/* Term %s' % self.term.name)
+      ret_str.append(indent(0) + '** not rendered due to protocol/AF mismatch.')
+      ret_str.append(indent(0) + '*/')
+      return '\n'.join(ret_str)
+
     # comment
     # this deals just fine with multi line comments, but we could probably
     # output them a little cleaner; do things like make sure the
@@ -513,7 +521,7 @@ class Juniper(aclgenerator.ACLGenerator):
   _PLATFORM = 'juniper'
   _DEFAULT_PROTOCOL = 'ip'
   _SUPPORTED_AF = set(('inet', 'inet6', 'bridge'))
-  _FILTER_BLACKLIST = {'inet': set(('icmpv6',)), 'inet6': set(('icmp',))}
+  #_FILTER_BLACKLIST = {'inet': set(('icmpv6',)), 'inet6': set(('icmp',))}
   _SUFFIX = '.jcl'
 
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
