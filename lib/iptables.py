@@ -106,6 +106,14 @@ class Term(aclgenerator.Term):
 
   def __str__(self):
     ret_str = []
+
+    # Don't render icmpv6 protocol terms under inet, or icmp under inet6
+    if ((self.af == 'inet6' and 'icmp' in self.term.protocol) or
+        (self.af == 'inet' and 'icmpv6' in self.term.protocol)):
+      ret_str.append('# Term %s' % self.term.name)
+      ret_str.append('# not rendered due to protocol/AF mismatch.')
+      return '\n'.join(ret_str)
+
     # Term verbatim output - this will skip over most normal term
     # creation code by returning early. Warnings provided in policy.py
     if self.term.verbatim:
