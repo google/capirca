@@ -334,7 +334,7 @@ class Term(aclgenerator.Term):
         policy_precedences = set()
         # precedence values may only be 0 through 7
         for precedence in self.term.precedence:
-          if int(precedence) in range(0,8):
+          if int(precedence) in range(0, 8):
             policy_precedences.add(precedence)
           else:
             raise PrecedenceError('Precedence value %s is out of bounds in %s' %
