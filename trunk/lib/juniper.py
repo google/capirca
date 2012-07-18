@@ -47,6 +47,10 @@ class UnsupportedFilterError(Error):
   pass
 
 
+class PrecedenceError(Error):
+  pass
+
+
 class Term(aclgenerator.Term):
   """Representation of an individual Juniper term.
 
@@ -326,7 +330,22 @@ class Term(aclgenerator.Term):
                        self._Group(self.term.traffic_type))
 
       if self.term.precedence:
-        ret_str.append(indent(8) + 'precedence %d;' % int(self.term.precedence))
+        # precedence may be a single integer, or a space separated list
+        policy_precedences = set()
+        # precedence values may only be 0 through 7
+        for precedence in self.term.precedence:
+          if int(precedence) in range(0,8):
+            policy_precedences.add(precedence)
+          else:
+            raise PrecedenceError('Precedence value %s is out of bounds in %s' %
+                                  (precedence, self.term.name))
+        if len(policy_precedences) > 1:
+          # A list looks like '[ 0 3 4 ]'
+          precedence_string = '[ %s ]' % ' '.join(policy_precedences)
+        else:
+          precedence_string = policy_precedences.pop()
+
+        ret_str.append(indent(8) + 'precedence %s;' % precedence_string)
 
       # end from { ... }
       ret_str.append(indent(4) + '}')
@@ -521,7 +540,6 @@ class Juniper(aclgenerator.ACLGenerator):
   _PLATFORM = 'juniper'
   _DEFAULT_PROTOCOL = 'ip'
   _SUPPORTED_AF = set(('inet', 'inet6', 'bridge'))
-  #_FILTER_BLACKLIST = {'inet': set(('icmpv6',)), 'inet6': set(('icmp',))}
   _SUFFIX = '.jcl'
 
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
