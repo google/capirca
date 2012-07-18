@@ -692,4 +692,5 @@ class Cisco(aclgenerator.ACLGenerator):
         target = [str(obj_target)] + target
       # ensure that the header is always first
       target = target_header + target
+    target += ['end', '']
     return '\n'.join(target)
