@@ -197,6 +197,8 @@ class ACLGenerator(object):
                             'icmp_type',
                             'name',         # obj attribute, not keyword
                             'option',
+                            'platform',
+                            'platform_exclude',
                             'protocol',
                             'source_address',
                             'source_address_exclude',
