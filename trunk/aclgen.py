@@ -78,7 +78,7 @@ def filter_name(source, suffix):
 
 def do_output_filter(filter_text, filter_file):
   if not os.path.isdir(os.path.dirname(filter_file)):
-    os.mkdir(os.path.dirname(output_file))
+    os.makedirs(os.path.dirname(filter_file))
   output = open(filter_file, 'w')
   if output:
     print 'writing %s' % filter_file
