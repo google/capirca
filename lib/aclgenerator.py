@@ -226,6 +226,13 @@ class ACLGenerator(object):
         # error on unsupported optional keywords that could result
         # in dangerous or unexpected results
         for term in terms:
+          # Only verify optional keywords if the term is active on the platform.
+          if term.platform:
+            if self._PLATFORM not in term.platform:
+              continue
+          if term.platform_exclude:
+            if self._PLATFORM in term.platform_exclude:
+              continue
           err = []
           for el, val in term.__dict__.items():
             if val and el not in self._VALID_KEYWORDS:
