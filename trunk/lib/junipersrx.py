@@ -360,17 +360,19 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     #APPLICATIONS
     target.append('applications {')
     for app in self.applications:
+      app_list = []
       if app['protocol'] or app['sport'] or app['dport'] or app['icmp-type']:
-        target.append(self.INDENT + 'application ' + app['name'] + '-app {')
-        i = 1
         if app['icmp-type']:
-          for code in app['icmp-type']:
+          target.append(self.INDENT + 'application ' + app['name'] + '-app {')
+          for i, code in enumerate(app['icmp-type']):
             target.append(
                 self.INDENT * 2 +
-                'term t%s protocol icmp icmp-type %s inactivity-timeout 60;' %
-                (str(i), str(code)))
-            i+=1
+                'term t%d protocol icmp icmp-type %s inactivity-timeout 60;' %
+                (i+1, str(code)))
         else:
+          i = 1
+          target.append(self.INDENT +
+                        'application-set ' + app['name'] + '-app {')
           for proto in (app['protocol'] or ['']):
             for sport in (app['sport'] or ['']):
               for dport in (app['dport'] or ['']):
@@ -379,10 +381,17 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                 if sport: chunks.append(' source-port %s' % sport)
                 if dport: chunks.append(' destination-port %s' % dport)
                 if chunks:
-                  target.append(self.INDENT * 2 + 'term t' + str(i) +
-                                ''.join(chunks) + ';')
-                  i+=1
-        target.append(self.INDENT+'}')
+                  target.append(self.INDENT * 2 +
+                                'application ' + app['name'] + '-app%d;' % i)
+                  app_list.append(self.INDENT + 'application ' + app['name'] +
+                                  '-app%d {' % i)
+                  app_list.append(self.INDENT * 2 + 'term t%d' % i +
+                                  ''.join(chunks) + ';')
+                  app_list.append(self.INDENT + '}')
+                  i += 1
+        target.append(self.INDENT + '}')
+        if app_list:
+          target.extend(app_list)
 
     target.append('}')
     return '\n'.join(target)
