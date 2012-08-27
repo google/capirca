@@ -271,12 +271,38 @@ class Term(aclgenerator.Term):
 2049: "nfs"
     }
 
+    _ASA_TYPES_ICMP = {
+6:  "alternate-address",
+31: "conversion-error",    
+8: "echo",                  
+0: "echo-reply",            
+16: "information-reply",
+15: "information-request",
+18:  "mask-reply",            
+17:  "mask-request",          
+32:  "mobile-redirect",       
+12:  "parameter-problem",     
+5:  "redirect",              
+9:  "router-advertisement",  
+10:  "router-solicitation",   
+4:  "source-quench",         
+11:  "time-exceeded",         
+14:  "timestamp-reply",       
+13:  "timestamp-request",     
+30:  "traceroute",            
+3:  "unreachable"
+    }
+       
+
     if proto == "tcp":
       if portNumber in _ASA_PORTS_TCP:
         return _ASA_PORTS_TCP[portNumber]
     elif proto == "udp":
       if portNumber in _ASA_PORTS_UDP:
         return _ASA_PORTS_UDP[portNumber]
+    elif proto == "icmp":
+      if portNumber in _ASA_TYPES_ICMP:
+        return _ASA_TYPES_ICMP[portNumber]
     return portNumber
 
   def _TermletToStr(self, filter_name, action, proto, saddr, sport, daddr, dport,
@@ -347,7 +373,7 @@ class Term(aclgenerator.Term):
     ret_lines = []
 
     # str(icmp_type) is needed to ensure 0 maps to '0' instead of FALSE
-    icmp_type = str(icmp_type)
+    icmp_type = str(self._TermPortToProtocol(icmp_type,"icmp"))
 
     ret_lines.append('access-list %s extended  %s %s %s %s %s %s %s %s' % 
                      (filter_name, action, proto, saddr,
@@ -384,17 +410,15 @@ class CiscoASA(aclgenerator.ACLGenerator):
     target = []
     current_date = datetime.date.today()
 
-    # add the p4 tags
-    p4_id = '%s%s' % ('$I', 'd:$')
-    p4_date = '%s%s' % ('$Da', 'te:$')
-    target_header.append('! %s' % p4_id)
-    target_header.append('! %s' % p4_date)
-
     for header, terms in self.policy.filters:
       filter_options = header.FilterOptions('ciscoasa')
       filter_name = header.FilterName('ciscoasa')
 
       target.append('clear configure access-list %s' % filter_name)
+      # add the p4 tags
+      target.append('access-list %s remark $Id:$' % (filter_name))
+      target.append('access-list %s remark $Date:$' % (filter_name))
+
       # add a header comment if one exists
       for comment in header.comment:
         for line in comment.split('\n'):
