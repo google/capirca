@@ -551,7 +551,8 @@ class Juniper(aclgenerator.ACLGenerator):
   _SUPPORTED_AF = set(('inet', 'inet6', 'bridge'))
   _SUFFIX = '.jcl'
 
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
+  _OPTIONAL_SUPPORTED_KEYWORDS = set(['address',
+                                      'counter',
                                       'destination_prefix',
                                       'ether_type',
                                       'expiration',
@@ -560,6 +561,7 @@ class Juniper(aclgenerator.ACLGenerator):
                                       'loss_priority',
                                       'packet_length',
                                       'policer',
+                                      'port',
                                       'precedence',
                                       'protocol_except',
                                       'qos',
