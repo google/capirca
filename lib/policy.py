@@ -589,6 +589,8 @@ class Term(object):
           self.destination_address_exclude.extend(
               DEFINITIONS.GetNetAddr(x.value))
         # do we have a list of ports?
+        elif x.var_type is VarType.PORT:
+          self.port.append(x.value)
         elif x.var_type is VarType.SPORT:
           self.source_port.append(x.value)
         elif x.var_type is VarType.DPORT:
@@ -922,6 +924,7 @@ class VarType(object):
   DINTERFACE = 29
   PLATFORM = 30
   PLATFORMEXCLUDE = 31
+  PORT = 32
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1045,6 +1048,7 @@ tokens = (
     'PLATFORM',
     'PLATFORMEXCLUDE',
     'POLICER',
+    'PORT',
     'PRECEDENCE',
     'PROTOCOL',
     'PROTOCOL_EXCEPT',
@@ -1087,6 +1091,7 @@ reserved = {
     'platform': 'PLATFORM',
     'platform-exclude': 'PLATFORMEXCLUDE',
     'policer': 'POLICER',
+    'port': 'PORT',
     'precedence': 'PRECEDENCE',
     'protocol': 'PROTOCOL',
     'protocol-except': 'PROTOCOL_EXCEPT',
@@ -1306,13 +1311,16 @@ def p_addr_spec(p):
 
 def p_port_spec(p):
   """ port_spec : SPORT ':' ':' one_or_more_strings
-                | DPORT ':' ':' one_or_more_strings """
+                | DPORT ':' ':' one_or_more_strings
+                | PORT ':' ':' one_or_more_strings """
   p[0] = []
   for port in p[4]:
     if p[1].find('source-port') >= 0:
       p[0].append(VarType(VarType.SPORT, port))
-    else:
+    elif p[1].find('destination-port') >= 0:
       p[0].append(VarType(VarType.DPORT, port))
+    else:
+      p[0].append(VarType(VarType.PORT, port))
 
 
 def p_protocol_spec(p):
