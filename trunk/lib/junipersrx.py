@@ -203,7 +203,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
   _SUFFIX = '.srx'
   _SUPPORTED_AF = set(('inet',))
 
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration', 'logging'])
+  _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration', 'logging', 'timeout'])
   INDENT = '    '
 
   def _TranslatePolicy(self, pol):
@@ -286,7 +286,8 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                                       term.destination_port),
                                   'name': term.name,
                                   'protocol': term.protocol,
-                                  'icmp-type': normalized_icmptype})
+                                  'icmp-type': normalized_icmptype,
+                                  'timeout': term.timeout})
       self.srx_policies.append((header, new_terms, filter_options))
 
   def _BuildAddressBook(self, zone, address):
@@ -364,11 +365,15 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       if app['protocol'] or app['sport'] or app['dport'] or app['icmp-type']:
         if app['icmp-type']:
           target.append(self.INDENT + 'application ' + app['name'] + '-app {')
+          if app['timeout']:
+            timeout = app['timeout']
+          else:
+            timeout = 60
           for i, code in enumerate(app['icmp-type']):
             target.append(
                 self.INDENT * 2 +
-                'term t%d protocol icmp icmp-type %s inactivity-timeout 60;' %
-                (i+1, str(code)))
+                'term t%d protocol icmp icmp-type %s inactivity-timeout %d;' %
+                (i+1, str(code), int(timeout)))
         else:
           i = 1
           target.append(self.INDENT +
@@ -380,6 +385,8 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                 if proto: chunks.append(' protocol %s' % proto)
                 if sport: chunks.append(' source-port %s' % sport)
                 if dport: chunks.append(' destination-port %s' % dport)
+                if app['timeout']:
+                  chunks.append(' inactivity-timeout %d' % int(app['timeout']))
                 if chunks:
                   target.append(self.INDENT * 2 +
                                 'application ' + app['name'] + '-app%d;' % i)
