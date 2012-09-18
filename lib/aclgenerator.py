@@ -160,7 +160,7 @@ class Term(object):
         (af != 6 and protocols == ['icmpv6'])):
       raise MismatchIcmpInetError('%s %s' % (
           'ICMP/ICMPv6 mismatch with address family IPv4/IPv6 in term',
-          self.term.name))
+          term_name))
     # ensure all icmp types are valid
     for icmptype in icmp_types:
       if icmptype not in self.ICMP_TYPE[af]:
