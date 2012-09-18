@@ -310,6 +310,7 @@ class Term(object):
     self.destination_interface = None
     self.platform = []
     self.platform_exclude = []
+    self.timeout = None
 
     self.AddObject(obj)
 
@@ -459,6 +460,8 @@ class Term(object):
       ret_str.append('  platform: %s' % self.platform)
     if self.platform_exclude:
       ret_str.append('  platform_exclude: %s' % self.platform_exclude)
+    if self.timeout:
+      ret_str.append('  timeout: %s' % self.timeout)
     return '\n'.join(ret_str)
 
   def __eq__(self, other):
@@ -535,6 +538,10 @@ class Term(object):
     # platform
     if not (sorted(self.platform) == sorted(other.platform) and
             sorted(self.platform_exclude) == sorted(other.platform_exclude)):
+      return False
+
+    # timeout
+    if not self.timeout == other.timeout:
       return False
 
     return True
@@ -663,6 +670,8 @@ class Term(object):
         self.source_interface = obj.value
       elif obj.var_type is VarType.DINTERFACE:
         self.destination_interface = obj.value
+      elif obj.var_type is VarType.TIMEOUT:
+        self.timeout = obj.value
       else:
         raise TermObjectTypeError(
             '%s isn\'t a type I know how to deal with' % (type(obj)))
@@ -925,6 +934,7 @@ class VarType(object):
   PLATFORM = 30
   PLATFORMEXCLUDE = 31
   PORT = 32
+  TIMEOUT = 33
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1062,6 +1072,7 @@ tokens = (
     'STRING',
     'TARGET',
     'TERM',
+    'TIMEOUT',
     'TRAFFIC_TYPE',
     'VERBATIM',
 )
@@ -1104,6 +1115,7 @@ reserved = {
     'source-port': 'SPORT',
     'target': 'TARGET',
     'term': 'TERM',
+    'timeout': 'TIMEOUT',
     'traffic-type': 'TRAFFIC_TYPE',
     'verbatim': 'VERBATIM',
 }
@@ -1220,6 +1232,7 @@ def p_term_spec(p):
                 | term_spec protocol_spec
                 | term_spec qos_spec
                 | term_spec routinginstance_spec
+                | term_spec timeout_spec
                 | term_spec traffic_type_spec
                 | term_spec verbatim_spec
                 | """
@@ -1410,6 +1423,10 @@ def p_platform_spec(p):
       p[0].append(VarType(VarType.PLATFORMEXCLUDE, platform))
     elif p[1].find('platform') >= 0:
       p[0].append(VarType(VarType.PLATFORM, platform))
+
+def p_timeout_spec(p):
+  """ timeout_spec : TIMEOUT ':' ':' INTEGER """
+  p[0] = VarType(VarType.TIMEOUT, p[4])
 
 def p_one_or_more_strings(p):
   """ one_or_more_strings : one_or_more_strings STRING
