@@ -103,8 +103,8 @@ class Term(object):
             'bridge': 4  # if this doesn't exist, output includes v4 & v6
            }
   # provide flipped key/value dicts
-  PROTO_MAP_BY_NUMBER = dict([(v,k) for (k,v) in PROTO_MAP.iteritems()])
-  AF_MAP_BY_NUMBER = dict([(v,k) for (k,v) in AF_MAP.iteritems()])
+  PROTO_MAP_BY_NUMBER = dict([(v, k) for (k, v) in PROTO_MAP.iteritems()])
+  AF_MAP_BY_NUMBER = dict([(v, k) for (k, v) in AF_MAP.iteritems()])
 
   def NormalizeAddressFamily(self, af):
     """Convert (if necessary) address family name to numeric value.

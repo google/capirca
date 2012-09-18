@@ -1414,6 +1414,7 @@ def p_interface_spec(p):
   elif p[1].find('destination-interface') >= 0:
     p[0] = VarType(VarType.DINTERFACE, p[4])
 
+
 def p_platform_spec(p):
   """ platform_spec : PLATFORM ':' ':' one_or_more_strings
                     | PLATFORMEXCLUDE ':' ':' one_or_more_strings """
@@ -1424,9 +1425,11 @@ def p_platform_spec(p):
     elif p[1].find('platform') >= 0:
       p[0].append(VarType(VarType.PLATFORM, platform))
 
+
 def p_timeout_spec(p):
   """ timeout_spec : TIMEOUT ':' ':' INTEGER """
   p[0] = VarType(VarType.TIMEOUT, p[4])
+
 
 def p_one_or_more_strings(p):
   """ one_or_more_strings : one_or_more_strings STRING
