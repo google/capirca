@@ -366,8 +366,11 @@ class JuniperSRX(aclgenerator.ACLGenerator):
 
     #APPLICATIONS
     target.append('applications {')
+    done_apps = []
     for app in self.applications:
       app_list = []
+      if app in done_apps:
+        continue
       if app['protocol'] or app['sport'] or app['dport'] or app['icmp-type']:
         if app['icmp-type']:
           target.append(self.INDENT + 'application ' + app['name'] + '-app {')
@@ -403,6 +406,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                   app_list.append(self.INDENT + '}')
                   i += 1
         target.append(self.INDENT + '}')
+        done_apps.append(app)
         if app_list:
           target.extend(app_list)
 
