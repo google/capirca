@@ -281,11 +281,17 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                                               filter_type, term.name)
         # NormalizeIcmpTypes returns [''] for empty, convert to [] for eval
         normalized_icmptype = tmp_icmptype if tmp_icmptype != [''] else []
+        # rewrites the protocol icmpv6 to icmp6
+        if 'icmpv6' in term.protocol:
+          protocol = list(term.protocol)
+          protocol[protocol.index('icmpv6')] = 'icmp6'
+        else:
+          protocol = term.protocol
         self.applications.append({'sport': self._BuildPort(term.source_port),
                                   'dport': self._BuildPort(
                                       term.destination_port),
                                   'name': term.name,
-                                  'protocol': term.protocol,
+                                  'protocol': protocol,
                                   'icmp-type': normalized_icmptype,
                                   'timeout': term.timeout})
       self.srx_policies.append((header, new_terms, filter_options))
