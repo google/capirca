@@ -40,6 +40,7 @@ from lib import iptables
 from lib import speedway
 from lib import juniper
 from lib import junipersrx
+from lib import packetfilter
 from lib import silverpeak
 from lib import demo
 
@@ -87,8 +88,8 @@ def do_output_filter(filter_text, filter_file):
 
 def render_filters(source_file, definitions_obj):
   count = 0
-  [(jcl, acl, asa, ipt, spd, spk, srx, dem)] = [(False, False, False, False,
-                                                 False, False, False, False)]
+  [(jcl, acl, asa, ipt, pf, spd, spk, srx, dem)] = [
+      (False, False, False, False, False, False, False, False, False)]
 
   pol = policy.ParsePolicy(open(source_file).read(), definitions_obj)
 
@@ -101,6 +102,8 @@ def render_filters(source_file, definitions_obj):
       asa = copy.deepcopy(pol)
     if 'iptables' in header.platforms:
       ipt = copy.deepcopy(pol)
+    if 'packetfilter' in header.platforms:
+      pf = copy.deepcopy(pol)
     if 'speedway' in header.platforms:
       spd = copy.deepcopy(pol)
     if 'silverpeak' in header.platforms:
@@ -127,6 +130,10 @@ def render_filters(source_file, definitions_obj):
     count += 1
   if ipt:
     fw = iptables.Iptables(ipt)
+    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+    count += 1
+  if pf:
+    fw = packetfilter.PacketFilter(pf)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
   if spd:
