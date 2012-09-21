@@ -117,6 +117,15 @@ target:: srx from-zone [zone name] to-zone [zone name] {inet}
   * _to-zone_: static keyword, followed by user specified zone
   * _inet_: Address family (only IPv4 tested at this time)
 
+=== PF (Packetfilter) ===
+Note: The Juniper SRX is currently in alpha testing. The output should be compatible with OpenBSD v4.7 PF and later.
+{{{
+target:: packetfilter {inet|inet6|mixed}
+}}}
+  * _inet_: specifies that the resulting filter should only render IPv4 addresses.
+  * _inet6_: specifies that the resulting filter should only render IPv6 addresses.
+  * _mixed_: specifies that the resulting filter should only render IPv4 and IPv6 addresses (default).
+
 == Terms Section ==
 
 Terms defines access control rules within a filter.  Once the filter is defined in the header sections, it is followed by one or more terms.  Terms are enclosed in brackets and use keywords to specify the functionality of a specific access control.
