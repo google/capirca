@@ -74,6 +74,7 @@ class Term(aclgenerator.Term):
     self.af = af
 
   def __str__(self):
+    """Render config output from this term object."""
     ret_str = []
 
     # Create a new term
@@ -99,13 +100,15 @@ class Term(aclgenerator.Term):
           'protocol_except logic not currently supported.'))
 
     # source address
-    term_saddr_tmp = self.term.source_address or ['any']
-    term_saddr = self._GenerateAddrStatement(term_saddr_tmp,
+    term_saddrs = self._CheckAddressAf(self.term.source_address)
+    if not term_saddrs: return ''
+    term_saddr = self._GenerateAddrStatement(term_saddrs,
         self.term.source_address_exclude)
 
     # destination address
-    term_daddr_tmp = self.term.destination_address or ['any']
-    term_daddr = self._GenerateAddrStatement(term_daddr_tmp,
+    term_daddrs = self._CheckAddressAf(self.term.destination_address)
+    if not term_daddrs: return ''
+    term_daddr = self._GenerateAddrStatement(term_daddrs,
         self.term.destination_address_exclude)
 
     # ports
@@ -119,7 +122,14 @@ class Term(aclgenerator.Term):
     # icmp-types
     icmp_types = ['']
     if self.term.icmp_type:
-      icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type, protocol, self.af, self.term.name)
+      if self.af != 'mixed':
+        af = self.af
+      elif protocol == ['icmp']:
+        af = 'inet'
+      elif protocol == ['icmp6']:
+        af = 'inet6'
+      icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type, protocol,
+                                           af, self.term.name)
 
     # options
     opts = [str(x) for x in self.term.option]
@@ -146,34 +156,46 @@ class Term(aclgenerator.Term):
 
     return '\n'.join(str(v) for v in ret_str if v is not '')
 
-  def _FormatPart(self, action, logging, af, proto, src_addr, src_port, dst_addr, dst_port, tcp_flags, icmp_types, options):
+  def _CheckAddressAf(self, addrs):
+    if not addrs:
+      return ['any']
+    if self.af == 'mixed':
+      return addrs
+    af_addrs = []
+    af = self.NormalizeAddressFamily(self.af)
+    for addr in addrs:
+      if addr.version == af:
+        af_addrs.append(addr)
+    return af_addrs
+
+  def _FormatPart(self, action, logging, af, proto, src_addr, src_port,
+                  dst_addr, dst_port, tcp_flags, icmp_types, options):
     line = ['%s' % action]
     if logging and 'true' in [str(l) for l in logging]:
       line.append('log')
 
-    line.extend(['quick', af])
-  
+    line.append('quick')
+    if af != 'mixed':
+      line.append(af)
+
     if proto:
       line.append(self._GenerateProtoStatement(proto))
-  
-    if not src_addr or not dst_addr:
-      raise 
-    
+
     line.append('from %s' % src_addr)
     if src_port:
       line.append('port %s' % src_port)
-    
+
     line.append('to %s' % dst_addr)
     if dst_port:
       line.append('port %s' % dst_port)
-  
+
     if 'tcp' in proto and tcp_flags:
       line.append('flags')
       line.append('/'.join(tcp_flags))
-    
+
     if 'icmp' in proto and icmp_types:
-	  type_strs = [str(icmp_type) for icmp_type in icmp_types]
-	  line.append('icmp-types { %s }' % ', '.join(type_strs))
+      type_strs = [str(icmp_type) for icmp_type in icmp_types]
+      line.append('icmp-types { %s }' % ', '.join(type_strs))
 
     if options:
       line.extend(options)
@@ -197,7 +219,7 @@ class Term(aclgenerator.Term):
     for port_tuple in ports:
       for port in port_tuple:
         port_list.append(str(port))
-    return '{ %s }' % ' '.join(port_list)
+    return '{ %s }' % ' '.join(list(set(port_list)))
 
 
 class PacketFilter(aclgenerator.ACLGenerator):
@@ -216,7 +238,7 @@ class PacketFilter(aclgenerator.ACLGenerator):
     current_date = datetime.date.today()
 
     default_action = None
-    good_afs = ['inet', 'inet6']
+    good_afs = ['inet', 'inet6', 'mixed']
     good_options = []
     all_protocols_stateful = True
     filter_type = None
@@ -245,7 +267,7 @@ class PacketFilter(aclgenerator.ACLGenerator):
                 filter_options))
           filter_type = address_family
       if filter_type is None:
-        filter_type = 'inet'
+        filter_type = 'mixed'
 
       # add the terms
       new_terms = []
@@ -269,6 +291,7 @@ class PacketFilter(aclgenerator.ACLGenerator):
       self.pf_policies.append((header, filter_name, filter_type, new_terms))
 
   def __str__(self):
+    """Render the output of the PF policy into config."""
     target = []
     pretty_platform = '%s%s' % (self._PLATFORM[0].upper(), self._PLATFORM[1:])
 
@@ -289,7 +312,9 @@ class PacketFilter(aclgenerator.ACLGenerator):
 
       # add the terms
       for term in terms:
-        target.append(str(term))
+        term_str = str(term)
+        if term_str:
+          target.append(term_str)
       target.append('\n')
 
     return '\n'.join(target)
