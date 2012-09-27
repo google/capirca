@@ -109,7 +109,7 @@ target:: speedway [INPUT|OUTPUT|FORWARD|custom] {ACCEPT|DROP} {truncatenames} {n
   * _nostate_: specifies to produce 'stateless' filter output (e.g. no connection tracking)
 
 === Juniper SRX ===
-Note: The Juniper SRX is currently in beta testing.
+Note: The Juniper SRX generator is currently in beta testing.
 {{{
 target:: srx from-zone [zone name] to-zone [zone name] {inet}
 }}}
@@ -118,7 +118,7 @@ target:: srx from-zone [zone name] to-zone [zone name] {inet}
   * _inet_: Address family (only IPv4 tested at this time)
 
 === PF (Packetfilter) ===
-Note: The Juniper SRX is currently in alpha testing. The output should be compatible with OpenBSD v4.7 PF and later.
+Note: The PF generator is currently in alpha testing. The output should be compatible with OpenBSD v4.7 PF and later.
 {{{
 target:: packetfilter {inet|inet6|mixed}
 }}}
