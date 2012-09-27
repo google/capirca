@@ -119,7 +119,7 @@ class Term(aclgenerator.Term):
     if self.term.destination_port:
       destination_port = self._GeneratePortStatement(self.term.destination_port)
 
-    # icmp-types
+    # icmp-type
     icmp_types = ['']
     if self.term.icmp_type:
       if self.af != 'mixed':
@@ -195,7 +195,7 @@ class Term(aclgenerator.Term):
 
     if 'icmp' in proto and icmp_types:
       type_strs = [str(icmp_type) for icmp_type in icmp_types]
-      line.append('icmp-types { %s }' % ', '.join(type_strs))
+      line.append('icmp-type { %s }' % ', '.join(type_strs))
 
     if options:
       line.extend(options)
