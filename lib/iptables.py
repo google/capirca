@@ -248,7 +248,7 @@ class Term(aclgenerator.Term):
     icmp_types = ['']
     if self.term.icmp_type:
       icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type, protocol,
-                                           self.af, self.term.name)
+                                           self.af)
 
     source_interface = ''
     if self.term.source_interface:

@@ -35,6 +35,7 @@ DEFAULT_DEFINITIONS = './def'
 _ACTIONS = set(('accept', 'deny', 'reject', 'next', 'reject-with-tcp-rst'))
 _LOGGING = set(('true', 'True', 'syslog', 'local', 'disable'))
 _OPTIMIZE = True
+_SHADE_CHECK = False
 
 
 class Error(Exception):
@@ -97,6 +98,10 @@ class NoTermsError(Error):
   """Error when no terms were found."""
 
 
+class ShadingError(Error):
+  """Error when a term is shaded by a prior term."""
+
+
 def TranslatePorts(ports, protocols, term_name):
   """Return all ports of all protocols requested.
 
@@ -151,6 +156,8 @@ class Policy(object):
     """Add another header & term."""
     self.filters.append((header, terms))
     self._TranslateTerms(terms)
+    if _SHADE_CHECK:
+      self._DetectShading()
 
   def _TranslateTerms(self, terms):
     """."""
@@ -196,7 +203,28 @@ class Policy(object):
     Returns:
       headers
     """
-    return map(lambda x: x[0], self.filters)
+    return [x[0] for x in self.filters]
+
+  def _DetectShading(self):
+    """Finds terms which are shaded (impossible to reach).
+
+    Iterate through each term, looking at each prior term. If a prior term
+    contains every component of the current term then the current term would
+    never be hit and is thus shaded. This can be a mistake.
+
+    Raises:
+      ShadingError: When a term is impossible to reach.
+    """
+    # Reset _OPTIMIZE global to default value
+    globals()['_SHADE_CHECK'] = False
+    for _, terms in self.filters:
+      for index in xrange(len(terms)):
+        for prior_index in xrange(index):
+          # Check each of these terms for shading.
+          if terms[index] in terms[prior_index]:
+            raise ShadingError(
+                '%s is shaded by %s.' % (
+                    terms[index].name, terms[prior_index].name)) 
 
 
 class Term(object):
@@ -942,7 +970,7 @@ class VarType(object):
       # remove the double quotes
       comment = value.strip('"')
       # make all of the lines start w/o leading whitespace.
-      self.value = '\n'.join(map(lambda x: x.lstrip(), comment.split('\n')))
+      self.value = '\n'.join([x.lstrip() for x in comment.splitlines()])
     else:
       self.value = value
 
@@ -1545,7 +1573,8 @@ def _Preprocess(data, max_depth=5, base_dir=''):
   return rval
 
 
-def ParseFile(filename, definitions=None, optimize=True, base_dir=''):
+def ParseFile(filename, definitions=None, optimize=True, base_dir='',
+              shade_check=False):
   """Parse the policy contained in file, optionally provide a naming object.
 
   Read specified policy file and parse into a policy object.
@@ -1555,16 +1584,19 @@ def ParseFile(filename, definitions=None, optimize=True, base_dir=''):
     definitions: optional naming library definitions object.
     optimize: bool - whether to summarize networks and services.
     base_dir: base path string to look for acls or include files.
+    shade_check: bool - whether to raise an exception when a term is shaded.
 
   Returns:
     policy object.
   """
   data = _ReadFile(filename)
-  p = ParsePolicy(data, definitions, optimize, base_dir=base_dir)
+  p = ParsePolicy(data, definitions, optimize, base_dir=base_dir,
+                  shade_check=shade_check)
   return p
 
 
-def ParsePolicy(data, definitions=None, optimize=True, base_dir=''):
+def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
+                shade_check=False):
   """Parse the policy in 'data', optionally provide a naming object.
 
   Parse a blob of policy text into a policy object.
@@ -1574,6 +1606,7 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir=''):
     definitions: optional naming library definitions object.
     optimize: bool - whether to summarize networks and services.
     base_dir: base path string to look for acls or include files.
+    shade_check: bool - whether to raise an exception when a term is shaded.
 
   Returns:
     policy object.
@@ -1585,6 +1618,8 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir=''):
       globals()['DEFINITIONS'] = naming.Naming(DEFAULT_DEFINITIONS)
     if not optimize:
       globals()['_OPTIMIZE'] = False
+    if shade_check:
+      globals()['_SHADE_CHECK'] = True
 
     # I wanna lex you up
     lexer = lex.lex()

@@ -129,7 +129,7 @@ class Term(aclgenerator.Term):
       elif protocol == ['icmp6']:
         af = 'inet6'
       icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type, protocol,
-                                           af, self.term.name)
+                                           af)
 
     # options
     opts = [str(x) for x in self.term.option]

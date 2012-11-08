@@ -55,19 +55,21 @@ _parser.add_option('', '--poldir', dest='policy_directory',
 _parser.add_option('-p', '--pol', help='policy file (incompatible with poldir)',
                    dest='policy')
 _parser.add_option('--debug', help='enable debug-level logging', dest='debug')
+_parser.add_option('-s', '--shade_checking', help='Enable shade checking',
+                   action="store_true", dest="shade_check", default=False)
 (FLAGS, args) = _parser.parse_args()
 
 
-def load_and_render(base_dir, defs):
+def load_and_render(base_dir, defs, shade_check):
   rendered = 0
   for dirfile in dircache.listdir(base_dir):
     fname = os.path.join(base_dir, dirfile)
     #logging.debug('load_and_render working with fname %s', fname)
     if os.path.isdir(fname):
-      rendered += load_and_render(fname, defs)
+      rendered += load_and_render(fname, defs, shade_check)
     elif fname.endswith('.pol'):
       #logging.debug('attempting to render_filters on fname %s', fname)
-      rendered += render_filters(fname, defs) 
+      rendered += render_filters(fname, defs, shade_check) 
   return rendered
 
 def filter_name(source, suffix):
@@ -86,12 +88,13 @@ def do_output_filter(filter_text, filter_file):
     output.write(filter_text)
 
 
-def render_filters(source_file, definitions_obj):
+def render_filters(source_file, definitions_obj, shade_check):
   count = 0
   [(jcl, acl, asa, ipt, pf, spd, spk, srx, dem)] = [
       (False, False, False, False, False, False, False, False, False)]
 
-  pol = policy.ParsePolicy(open(source_file).read(), definitions_obj)
+  pol = policy.ParsePolicy(open(source_file).read(), definitions_obj,
+                           shade_check=shade_check)
 
   for header in pol.headers:
     if 'juniper' in header.platforms:
@@ -168,10 +171,10 @@ def main():
 
   count = 0
   if FLAGS.policy_directory:
-    count = load_and_render(FLAGS.policy_directory, defs)
+    count = load_and_render(FLAGS.policy_directory, defs, FLAGS.shade_check)
 
   elif FLAGS.policy:
-    count = render_filters(FLAGS.policy, defs)
+    count = render_filters(FLAGS.policy, defs, FLAGS.shade_check)
 
   print '%d filters rendered' % count
 
@@ -179,7 +182,8 @@ def main():
 if __name__ == '__main__':
   # some sanity checking
   if FLAGS.policy_directory and FLAGS.policy:
-    raise ValueError('policy and policy_directory are mutually exclusive')
+    # When parsing a single file, ignore default path of policy_directory
+    FLAGS.policy_directory = False
   if not (FLAGS.policy_directory or FLAGS.policy):
     raise ValueError('must provide policy or policy_directive')
 

@@ -261,7 +261,6 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                        'not be rendered.', term.name, self.from_zone,
                        self.to_zone)
 
-        new_terms.append(Term(term, filter_type, filter_options))
         for i in term.source_address_exclude:
           term.source_address = nacaddr.RemoveAddressFromList(
               term.source_address, i)
@@ -274,11 +273,11 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         for addr in term.destination_address:
           self._BuildAddressBook(self.to_zone, addr)
 
-        # create Term object so we can access the NormalizeIcmpTypes method
-        # This is ugly, and the fix is probably to make method a function
-        tmp = aclgenerator.Term()
-        tmp_icmptype = tmp.NormalizeIcmpTypes(term.icmp_type, term.protocol,
-                                              filter_type, term.name)
+        new_term = Term(term, filter_type, filter_options)
+        new_terms.append(new_term)
+        tmp_icmptype = new_term.NormalizeIcmpTypes(
+            term.icmp_type, term.protocol, filter_type)
+
         # NormalizeIcmpTypes returns [''] for empty, convert to [] for eval
         normalized_icmptype = tmp_icmptype if tmp_icmptype != [''] else []
         # rewrites the protocol icmpv6 to icmp6
