@@ -350,7 +350,7 @@ class Term(aclgenerator.Term):
                                   (precedence, self.term.name))
         if len(policy_precedences) > 1:
           # A list looks like '[ 0 3 4 ]'
-          precedence_string = '[ %s ]' % ' '.join(policy_precedences)
+          precedence_string = '[ %s ]' % ' '.join(sorted(policy_precedences))
         else:
           precedence_string = policy_precedences.pop()
 
