@@ -325,8 +325,8 @@ class Term(aclgenerator.Term):
       icmp_types = ['']
       if self.term.icmp_type:
         icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type,
-                                             self.term.protocol, self.term_type,
-                                             self.term.name)
+                                             self.term.protocol, self.term_type)
+
       if icmp_types != ['']:
         ret_str.append(indent(8) + 'icmp-type ' + self._Group(icmp_types))
 
@@ -598,7 +598,7 @@ class Juniper(aclgenerator.ACLGenerator):
       new_terms = []
       for term in terms:
         if term.name in term_names:
-          raise JuniperDuplicateTermError('You have a duplicate term: %s' %
+          raise JuniperDuplicateTermError('You have multiple terms named: %s' %
                                           term.name)
         term_names.add(term.name)
 

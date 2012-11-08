@@ -458,8 +458,7 @@ class Term(aclgenerator.Term):
     icmp_types = ['']
     if self.term.icmp_type:
       icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type,
-                                           self.term.protocol, self.af,
-                                           self.term.name)
+                                           self.term.protocol, self.af)
 
     for saddr in source_address:
       for daddr in destination_address:

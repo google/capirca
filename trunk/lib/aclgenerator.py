@@ -116,21 +116,20 @@ class Term(object):
       af: Numeric address family value
 
     Raises:
-      MismatchIcmpInetError: mismatch between protocol and address family
+      UnsupportedAF: Address family not in keys or values of our AF_MAP.
     """
     # ensure address family (af) is valid
-    if af in self.AF_MAP.values():
+    if af in self.AF_MAP_BY_NUMBER:
       return af
     elif af in self.AF_MAP:
       # convert AF name to number (e.g. 'inet' becomes 4, 'inet6' becomes 6)
       af = self.AF_MAP[af]
     else:
-      raise MismatchIcmpInetError('%s %s' % (
-          'ICMP/ICMPv6 mismatch with address family IPv4/IPv6; in term',
-          self.term.name))
+      raise UnsupportedAF('Address family %s is not supported, term %s' % (
+          af, self.term.name))
     return af
 
-  def NormalizeIcmpTypes(self, icmp_types, protocols, af, term_name):
+  def NormalizeIcmpTypes(self, icmp_types, protocols, af):
     """Return verified list of appropriate icmp-types.
 
     Args:
@@ -152,7 +151,8 @@ class Term(object):
     # only protocols icmp or icmpv6 can be used with icmp-types
     if protocols != ['icmp'] and protocols != ['icmpv6']:
       raise UnsupportedFilterError('%s %s' % (
-          'icmp-types specified for non-icmp protocols in term: ', term_name))
+          'icmp-types specified for non-icmp protocols in term: ', 
+          self.term_name))
     # make sure we have a numeric address family (4 or 6)
     af = self.NormalizeAddressFamily(af)
     # check that addr family and protocl are appropriate
@@ -160,7 +160,7 @@ class Term(object):
         (af != 6 and protocols == ['icmpv6'])):
       raise MismatchIcmpInetError('%s %s' % (
           'ICMP/ICMPv6 mismatch with address family IPv4/IPv6 in term',
-          term_name))
+          self.term_name))
     # ensure all icmp types are valid
     for icmptype in icmp_types:
       if icmptype not in self.ICMP_TYPE[af]:
