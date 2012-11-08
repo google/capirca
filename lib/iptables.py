@@ -424,8 +424,8 @@ class Term(aclgenerator.Term):
           options.append('-m state --state NEW,ESTABLISHED,RELATED')
 
     if tcp_flags or (track_flags and track_flags[0]):
-      check_fields = ','.join(set(tcp_flags + track_flags[0]))
-      set_fields = ','.join(set(tcp_flags + track_flags[1]))
+      check_fields = ','.join(sorted(set(tcp_flags + track_flags[0])))
+      set_fields = ','.join(sorted(set(tcp_flags + track_flags[1])))
       flags = '--tcp-flags %s %s' % (check_fields, set_fields)
     else:
       flags = ''
