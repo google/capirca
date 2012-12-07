@@ -1,4 +1,4 @@
-#Definate Configuration Language
+#summary Definate Configuration Language
 
 = Table of Contents =
 <wiki:toc max_depth="3" />
