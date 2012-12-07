@@ -35,7 +35,9 @@ cd ./capirca
 = Creating Your Own Definitions = 
 
  # Add your network specifications to the Definate configuration
-   * vi ./definate/definate.yaml
+{{{
+vi ./definate/definate.yaml
+}}}
    * Note: See the section "Definate Configuration Language" to understand how the configuration file is structured.
 
  # Generate your network definitions
