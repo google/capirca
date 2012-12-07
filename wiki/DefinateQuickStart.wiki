@@ -1,0 +1,56 @@
+#Quick Start Guide for Capirca Network Definition Generation
+
+= Table of Contents =
+<wiki:toc max_depth="3" />
+
+= Quick Start Instructions =
+
+ # Download the latest Capirca bundle:
+   * http://code.google.com/p/capirca/downloads/list
+ # Extract the files
+ {{{
+tar -xvzf capirca-rXXX.tgz
+}}}
+ # Move into the extracted directory
+ {{{
+cd ./capirca
+}}}
+ # Generate network definitions for the provided sample configuration
+{{{
+./definate.py   (alternately 'python ./definate.py')
+}}}
+ # Examine the resulting output definitions
+{{{
+  ls ./def
+  vi ./def/AUTOGEN.net
+}}}
+ # Embed the generated definitions in one of the policies or other network definitions
+{{{
+  vi ./def/NETWORK.net
+  vi ./policies/sample*.pol
+}}}
+ # Check the Quick Start Instructions for Capirca ACL Generation
+   * http://code.google.com/p/capirca/wiki/QuickStart
+
+= Creating Your Own Definitions = 
+
+ # Add your network specifications to the Definate configuration
+   * vi ./definate/definate.yaml
+   * Note: See the section "Definate Configuration Language" to understand how the configuration file is structured.
+
+ # Generate your network definitions
+{{{
+./definate.py
+}}}
+ # Review and check the generated network definitions
+{{{
+vi ./def/my-custom.net
+}}}
+ # Use the new definition in a policy or another network definition and regenerate the filters
+   * http://code.google.com/p/capirca/wiki/QuickStart
+
+= Help = 
+
+Discussion Forum: http://groups.google.com/group/capirca-dev
+
+Group email: capirca-dev@googlegroups.com
