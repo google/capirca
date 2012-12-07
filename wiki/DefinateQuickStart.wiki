@@ -6,7 +6,9 @@
 = Overview of Definate =
 The Definate project is intended to provide a generic framework capable of generating network and host ACL definitions as directed by a configuration file independent of the code used to generate them.
 
-To accomplish this, we use a flexible and intuitive configuration language.  The configuration will direct a configured generator to consult an external data source to obtain IPs or networks that comprise a configured definition, then apply a set of filters will transform the output (the definition list) before it is written to a Capirca definition file. This so far includes tasks like resolving host names to generate comments, sorting the entries, and formatting the definition as a human-readable string.
+To accomplish this, we use a flexible and intuitive configuration language.  The configuration will direct a configured generator to consult an external data source to obtain IPs or networks that comprise a configured definition, then apply a set of filters will transform the output (the definition list) before it is written to a Capirca definition file. This so far includes tasks like resolving host names to generate comments, sorting the entries, and formatting the definition as a human-readable string.  
+
+The definate system is designed and intended to be extensible allowing administrators to write new modules to pull definition data from whatever sources they find useful.  If you develop new definate modules that others may find useful, please send them to the capirca-dev@ mailing list so that others may benefits from your efforts.
 
 = Quick Start Instructions =
 
