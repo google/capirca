@@ -5,7 +5,7 @@
 = Definate Design Doc =
 
 Status: Final<br>
-Author: Martin Suess <msu@google.com><br>
+Author: Martin Suess<br>
 Created: Dec 6th, 2012<br>
 Last Updated: Dec 6th, 2012<br>
 
