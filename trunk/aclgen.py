@@ -24,6 +24,7 @@ __author__ = 'watson@google.com (Tony Watson)'
 # system imports
 import copy
 import dircache
+import datetime
 from optparse import OptionParser
 import os
 import stat
@@ -84,10 +85,22 @@ def do_output_filter(filter_text, filter_file):
     os.makedirs(os.path.dirname(filter_file))
   output = open(filter_file, 'w')
   if output:
+    filter_text = revision_tag_handler(filter_file, filter_text)
     print 'writing %s' % filter_file
     output.write(filter_text)
 
-
+def revision_tag_handler(fname, text):
+  # replace $Id:$ and $Date:$ tags with filename and date
+  timestamp = datetime.datetime.now().strftime('%Y/%m/%d')
+  new_text = []
+  for line in text.split('\n'):
+    if '$Id:$' in line:
+      line = line.replace('$Id:$', '$Id: %s $' % fname)
+    if '$Date:$' in line:
+      line = line.replace('$Date:$', '$Date: %s $' % timestamp)
+    new_text.append(line)
+  return '\n'.join(new_text)
+  
 def render_filters(source_file, definitions_obj, shade_check):
   count = 0
   [(jcl, acl, asa, ipt, pf, spd, spk, srx, dem)] = [
