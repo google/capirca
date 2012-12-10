@@ -416,8 +416,8 @@ class CiscoASA(aclgenerator.ACLGenerator):
 
       target.append('clear configure access-list %s' % filter_name)
       # add the p4 tags
-      target.append('access-list %s remark $Id:$' % (filter_name))
-      target.append('access-list %s remark $Date:$' % (filter_name))
+      target.extend(aclgenerator.AddRepositoryTags('access-list %s remark '
+                                                   % filter_name))
 
       # add a header comment if one exists
       for comment in header.comment:
