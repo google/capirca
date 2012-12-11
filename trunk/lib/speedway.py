@@ -39,7 +39,7 @@ class Speedway(iptables.Iptables):
   _SUFFIX = '.ipt'
 
   _RENDER_PREFIX = '*filter'
-  _RENDER_SUFFIX = 'COMMIT'
+  _RENDER_SUFFIX = 'COMMIT\n'
   _DEFAULTACTION_FORMAT = ':%s %s'
 
   _TERM = Term
