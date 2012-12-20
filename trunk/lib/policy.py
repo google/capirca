@@ -317,6 +317,7 @@ class Term(object):
     self.policer = None
     self.port = []
     self.precedence = []
+    self.principals = []
     self.protocol = []
     self.protocol_except = []
     self.qos = None
@@ -639,6 +640,8 @@ class Term(object):
         # do we have a list of options?
         elif x.var_type is VarType.OPTION:
           self.option.append(x.value)
+        elif x.var_type is VarType.PRINCIPALS:
+          self.principals.append(x.value)
         elif x.var_type is VarType.SPFX:
           self.source_prefix.append(x.value)
         elif x.var_type is VarType.DPFX:
@@ -963,6 +966,7 @@ class VarType(object):
   PLATFORMEXCLUDE = 31
   PORT = 32
   TIMEOUT = 33
+  PRINCIPALS = 35
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1088,6 +1092,7 @@ tokens = (
     'POLICER',
     'PORT',
     'PRECEDENCE',
+    'PRINCIPALS',
     'PROTOCOL',
     'PROTOCOL_EXCEPT',
     'QOS',
@@ -1132,6 +1137,7 @@ reserved = {
     'policer': 'POLICER',
     'port': 'PORT',
     'precedence': 'PRECEDENCE',
+    'principals': 'PRINCIPALS',
     'protocol': 'PROTOCOL',
     'protocol-except': 'PROTOCOL_EXCEPT',
     'qos': 'QOS',
@@ -1251,6 +1257,7 @@ def p_term_spec(p):
                 | term_spec logging_spec
                 | term_spec losspriority_spec
                 | term_spec option_spec
+                | term_spec principals_spec
                 | term_spec packet_length_spec
                 | term_spec platform_spec
                 | term_spec policer_spec
@@ -1401,6 +1408,11 @@ def p_option_spec(p):
   for opt in p[4]:
     p[0].append(VarType(VarType.OPTION, opt))
 
+def p_principals_spec(p):
+  """ principals_spec : PRINCIPALS ':' ':' one_or_more_strings """
+  p[0] = []
+  for opt in p[4]:
+    p[0].append(VarType(VarType.PRINCIPALS, opt))
 
 def p_action_spec(p):
   """ action_spec : ACTION ':' ':' STRING """
