@@ -314,6 +314,7 @@ class Term(object):
     self.logging = []
     self.loss_priority = None
     self.option = []
+    self.owner = None
     self.policer = None
     self.port = []
     self.precedence = []
@@ -463,6 +464,8 @@ class Term(object):
       ret_str.append('  destination_prefix: %s' % self.destination_prefix)
     if self.protocol:
       ret_str.append('  protocol: %s' % self.protocol)
+    if self.owner:
+      ret_str.append('  owner: %s' % self.owner)
     if self.port:
       ret_str.append('  port: %s' % self.port)
     if self.source_port:
@@ -664,6 +667,8 @@ class Term(object):
       # stupid no switch statement in python
       if obj.var_type is VarType.COMMENT:
         self.comment.append(str(obj))
+      elif obj.var_type is VarType.OWNER:
+        self.owner = obj.value
       elif obj.var_type is VarType.EXPIRATION:
         self.expiration = obj.value
       elif obj.var_type is VarType.LOSS_PRIORITY:
@@ -966,6 +971,7 @@ class VarType(object):
   PLATFORMEXCLUDE = 31
   PORT = 32
   TIMEOUT = 33
+  OWNER = 34
   PRINCIPALS = 35
 
   def __init__(self, var_type, value):
@@ -1086,6 +1092,7 @@ tokens = (
     'LOGGING',
     'LOSS_PRIORITY',
     'OPTION',
+    'OWNER',
     'PACKET_LEN',
     'PLATFORM',
     'PLATFORMEXCLUDE',
@@ -1131,6 +1138,7 @@ reserved = {
     'logging': 'LOGGING',
     'loss-priority': 'LOSS_PRIORITY',
     'option': 'OPTION',
+    'owner': 'OWNER',
     'packet-length': 'PACKET_LEN',
     'platform': 'PLATFORM',
     'platform-exclude': 'PLATFORMEXCLUDE',
@@ -1186,7 +1194,7 @@ def t_INTEGER(t):
 
 
 def t_STRING(t):
-  r'\w+([-_+]\w*)*'
+  r'\w+([-_+.@]\w*)*'
   # we have an identifier; let's check if it's a keyword or just a string.
   t.type = reserved.get(t.value, 'STRING')
   return t
@@ -1257,13 +1265,15 @@ def p_term_spec(p):
                 | term_spec logging_spec
                 | term_spec losspriority_spec
                 | term_spec option_spec
-                | term_spec principals_spec
+                | term_spec owner_spec
                 | term_spec packet_length_spec
                 | term_spec platform_spec
                 | term_spec policer_spec
                 | term_spec port_spec
                 | term_spec precedence_spec
+                | term_spec principals_spec
                 | term_spec prefix_list_spec
+                | term_spec principals_spec
                 | term_spec protocol_spec
                 | term_spec qos_spec
                 | term_spec routinginstance_spec
@@ -1434,6 +1444,11 @@ def p_expiration_spec(p):
 def p_comment_spec(p):
   """ comment_spec : COMMENT ':' ':' DQUOTEDSTRING """
   p[0] = VarType(VarType.COMMENT, p[4])
+
+
+def p_owner_spec(p):
+  """ owner_spec : OWNER ':' ':' STRING """
+  p[0] = VarType(VarType.OWNER, p[4])
 
 
 def p_verbatim_spec(p):
