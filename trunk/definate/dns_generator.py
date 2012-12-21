@@ -69,7 +69,10 @@ class DnsGenerator(generator.Generator):
         if typ not in self.SUPPORTED_TYPES:
           raise DnsGeneratorError('Unsupported DNS type found: %s' % typ)
       for name in network['names']:
-        addr_list = socket.getaddrinfo(name, None)
+        try:
+          addr_list = socket.getaddrinfo(name, None)
+        except socket.gaierror:
+          raise DnsGeneratorError('Hostname not found: %s' % name)
         for family, _, _, _, sockaddr in addr_list:
           ip_addr = None
           if family == socket.AF_INET and 'A' in network['types']:
