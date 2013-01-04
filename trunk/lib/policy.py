@@ -1273,7 +1273,6 @@ def p_term_spec(p):
                 | term_spec precedence_spec
                 | term_spec principals_spec
                 | term_spec prefix_list_spec
-                | term_spec principals_spec
                 | term_spec protocol_spec
                 | term_spec qos_spec
                 | term_spec routinginstance_spec
