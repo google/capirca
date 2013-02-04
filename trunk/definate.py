@@ -80,7 +80,7 @@ class Definate(object):
       config_file = file(conf_path, 'r')
     except IOError as e:
       raise yaml_validator.DefinateConfigError('Unable to open config: %s' % e)
-    config = yaml.load(config_file)
+    config = yaml.safe_load(config_file)
     config_file.close()
     return config
 
