@@ -609,14 +609,14 @@ class Juniper(aclgenerator.ACLGenerator):
         if not term:
           continue
 
-        if term.expiration and term.expiration <= current_date:
+        if term.expiration:
           if term.expiration <= exp_info_date:
             logging.info('INFO: Term %s in policy %s expires '
                          'in less than two weeks.', term.name, filter_name)
           if term.expiration <= current_date:
             logging.warn('WARNING: Term %s in policy %s is expired and '
                          'will not be rendered.', term.name, filter_name)
-          continue
+            continue
 
         new_terms.append(Term(term, filter_type))
 

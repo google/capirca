@@ -150,7 +150,7 @@ class Term(object):
     # only protocols icmp or icmpv6 can be used with icmp-types
     if protocols != ['icmp'] and protocols != ['icmpv6']:
       raise UnsupportedFilterError('%s %s' % (
-          'icmp-types specified for non-icmp protocols in term: ', 
+          'icmp-types specified for non-icmp protocols in term: ',
           self.term.name))
     # make sure we have a numeric address family (4 or 6)
     af = self.NormalizeAddressFamily(af)
@@ -207,7 +207,6 @@ class ACLGenerator(object):
                            ])
   # Generators should redefine this in subclass as optional support is added
   _OPTIONAL_SUPPORTED_KEYWORDS = set([])
-
 
   def __init__(self, pol, exp_info):
     """Initialise an ACLGenerator.  Store policy structure for processing."""
