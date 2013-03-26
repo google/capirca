@@ -386,6 +386,8 @@ class Term(aclgenerator.Term):
       return '\n'.join(ret_str)
 
     ret_str.append('remark ' + self.term.name)
+    if self.term.owner:
+      self.term.comment.append('Owner: %s' % self.term.owner)
     for comment in self.term.comment:
       for line in comment.split('\n'):
         ret_str.append('remark ' + str(line)[:100])
@@ -577,14 +579,16 @@ class Cisco(aclgenerator.ACLGenerator):
                                       'expiration',
                                       'logging',
                                       'loss_priority',
+                                      'owner',
                                       'policer',
                                       'port',
                                       'qos',
                                      ])
 
-  def _TranslatePolicy(self, pol):
+  def _TranslatePolicy(self, pol, exp_info):
     self.cisco_policies = []
     current_date = datetime.date.today()
+    exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     # a mixed filter outputs both ipv4 and ipv6 acls in the same output file
     good_filters = ['extended', 'standard', 'object-group', 'inet6',
@@ -612,7 +616,7 @@ class Cisco(aclgenerator.ACLGenerator):
 
       filter_list = [filter_type]
       if filter_type == 'mixed':
-        #(loop through and generate output for inet then inet6 in sequence)
+        # Loop through filter and generate output for inet and inet6 in sequence
         filter_list = ['extended', 'inet6']
 
       for next_filter in filter_list:
@@ -644,10 +648,14 @@ class Cisco(aclgenerator.ACLGenerator):
           if not term:
             continue
 
-          if term.expiration and term.expiration <= current_date:
-            logging.warn('WARNING: Term %s in policy %s is expired and will '
-                         'not be rendered.', term.name, filter_name)
-            continue
+          if term.expiration:
+            if term.expiration <= exp_info_date:
+              logging.info('INFO: Term %s in policy %s expires '
+                           'in less than two weeks.', term.name, filter_name)
+            if term.expiration <= current_date:
+              logging.warn('WARNING: Term %s in policy %s is expired and '
+                           'will not be rendered.', term.name, filter_name)
+              continue
 
           # render terms based on filter type
           if next_filter == 'standard':

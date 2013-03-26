@@ -213,7 +213,7 @@ def RemoveAddressFromList(superset, exclude):
       # raises an error.  Not tested in v2 yet.
       pass
     elif exclude.version == addr.version and exclude in addr:
-        ret_array.extend([IP(x) for x in addr.AddressExclude(exclude)])
+      ret_array.extend([IP(x) for x in addr.AddressExclude(exclude)])
     else:
       ret_array.append(addr)
   return ret_array

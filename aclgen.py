@@ -58,19 +58,23 @@ _parser.add_option('-p', '--pol', help='policy file (incompatible with poldir)',
 _parser.add_option('--debug', help='enable debug-level logging', dest='debug')
 _parser.add_option('-s', '--shade_checking', help='Enable shade checking',
                    action="store_true", dest="shade_check", default=False)
+_parser.add_option('-e', '--exp_info', type='int', action='store',
+                   dest='exp_info', default=2,
+                   help='Weeks in advance to notify that a term will expire')
+                   
 (FLAGS, args) = _parser.parse_args()
 
 
-def load_and_render(base_dir, defs, shade_check):
+def load_and_render(base_dir, defs, shade_check, exp_info):
   rendered = 0
   for dirfile in dircache.listdir(base_dir):
     fname = os.path.join(base_dir, dirfile)
     #logging.debug('load_and_render working with fname %s', fname)
     if os.path.isdir(fname):
-      rendered += load_and_render(fname, defs, shade_check)
+      rendered += load_and_render(fname, defs, shade_check, exp_info)
     elif fname.endswith('.pol'):
       #logging.debug('attempting to render_filters on fname %s', fname)
-      rendered += render_filters(fname, defs, shade_check) 
+      rendered += render_filters(fname, defs, shade_check, exp_info) 
   return rendered
 
 def filter_name(source, suffix):
@@ -101,7 +105,7 @@ def revision_tag_handler(fname, text):
     new_text.append(line)
   return '\n'.join(new_text)
   
-def render_filters(source_file, definitions_obj, shade_check):
+def render_filters(source_file, definitions_obj, shade_check, exp_info):
   count = 0
   [(jcl, acl, asa, ipt, pf, spd, spk, srx, dem)] = [
       (False, False, False, False, False, False, False, False, False)]
@@ -133,39 +137,39 @@ def render_filters(source_file, definitions_obj, shade_check):
     if 'demo' in header.platforms:
       dem = copy.deepcopy(pol)
   if jcl:
-    fw = juniper.Juniper(jcl)
+    fw = juniper.Juniper(jcl, exp_info)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
   if acl:
-    fw = cisco.Cisco(acl)
+    fw = cisco.Cisco(acl, exp_info)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
   if asa:
-    fw = ciscoasa.CiscoASA(asa)
+    fw = ciscoasa.CiscoASA(asa, exp_info)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
   if ipt:
-    fw = iptables.Iptables(ipt)
+    fw = iptables.Iptables(ipt, exp_info)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
   if pf:
-    fw = packetfilter.PacketFilter(pf)
+    fw = packetfilter.PacketFilter(pf, exp_info)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
   if spd:
-    fw = speedway.Speedway(spd)
+    fw = speedway.Speedway(spd, exp_info)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
   if srx:
-    fw = junipersrx.JuniperSRX(srx)
+    fw = junipersrx.JuniperSRX(srx, exp_info)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
   if dem:
-    fw = demo.Demo(dem)
+    fw = demo.Demo(dem, exp_info)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
   if spk:
-    spk_obj = silverpeak.Silverpeak(spk, '')
+    spk_obj = silverpeak.Silverpeak(spk, exp_info, '')
     do_output_filter(spk_obj.GenerateACLString(),
                      filter_name(source_file, spk_obj._SUFFIX))
     do_output_filter(spk_obj.GenerateConfString(),
@@ -184,10 +188,12 @@ def main():
 
   count = 0
   if FLAGS.policy_directory:
-    count = load_and_render(FLAGS.policy_directory, defs, FLAGS.shade_check)
+    count = load_and_render(FLAGS.policy_directory, defs, FLAGS.shade_check,
+                            FLAGS.exp_info)
 
   elif FLAGS.policy:
-    count = render_filters(FLAGS.policy, defs, FLAGS.shade_check)
+    count = render_filters(FLAGS.policy, defs, FLAGS.shade_check,
+                           FLAGS.exp_info)
 
   print '%d filters rendered' % count
 

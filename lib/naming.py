@@ -110,14 +110,18 @@ class Naming(object):
      networks: A collection of all the current network item tokens.
   """
 
-  def __init__(self, naming_dir=None):
+  def __init__(self, naming_dir=None, naming_file=None, naming_type=None):
     """Set the default values for a new Naming object."""
     self.current_symbol = None
     self.services = {}
     self.networks = {}
     self.unseen_services = {}
     self.unseen_networks = {}
-    if naming_dir:
+    if naming_file and naming_type:
+      filename = os.path.sep.join([naming_dir, naming_file])
+      file_handle = gfile.GFile(filename, 'r')
+      self._ParseFile(file_handle, naming_type)
+    elif naming_dir:
       self._Parse(naming_dir, 'services')
       self._CheckUnseen('services')
 
@@ -253,7 +257,7 @@ class Naming(object):
           already_done.add(service)
           try:
             expandset.update(self.GetService(service))
-          except UndefinedServiceError, e:
+          except UndefinedServiceError as e:
             # One of the services in query is undefined, refine the error msg.
             raise UndefinedServiceError('%s (in %s)' % (e, query))
       else:
@@ -334,6 +338,7 @@ class Naming(object):
       else:
         net = next
       try:
+        net = net.strip()
         addr = nacaddr.IP(net)
         # we want to make sure that we're storing the network addresses
         # ie, FOO = 192.168.1.1/24 should actually return 192.168.1.0/24
@@ -381,8 +386,12 @@ class Naming(object):
         file_handle = open(current_file, 'r').readlines()
         for line in file_handle:
           self._ParseLine(line, def_type)
-      except IOError, error_info:
+      except IOError as error_info:
         raise NoDefinitionsError('%s', error_info)
+
+  def _ParseFile(self, file_handle, def_type):
+    for line in file_handle:
+      self._ParseLine(line, def_type)
 
   def ParseServiceList(self, data):
     """Take an array of service data and import into class.

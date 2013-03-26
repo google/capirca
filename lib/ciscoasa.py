@@ -78,6 +78,8 @@ class Term(aclgenerator.Term):
 
     ret_str.append('access-list %s remark %s' % (self.filter_name,
                                                  self.term.name))
+    if self.term.owner:
+      self.term.comment.append('Owner: %s' % self.term.owner)
     for comment in self.term.comment:
       for line in comment.split('\n'):
         ret_str.append('access-list %s remark %s' % (self.filter_name,
@@ -396,24 +398,44 @@ class CiscoASA(aclgenerator.ACLGenerator):
   _DEFAULT_PROTOCOL = 'ip'
   _SUFFIX = '.asa'
 
-  def __init__(self, pol):
-    for header in pol.headers:
-      if self._PLATFORM not in header.platforms:
-        raise NoCiscoPolicyError('no ciscoasa policy found in %s' % (
-            header.target))
+  _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',
+                                      'logging',
+                                      'owner',
+                                     ])
 
-    self.policy = pol
-
-  def __str__(self):
-    target_header = []
-    target = []
+  def _TranslatePolicy(self, pol, exp_info):
+    self.ciscoasa_policies = []
     current_date = datetime.date.today()
+    exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     for header, terms in self.policy.filters:
       filter_options = header.FilterOptions('ciscoasa')
       filter_name = header.FilterName('ciscoasa')
 
+      new_terms = []
+      # now add the terms
+      for term in terms:
+        if term.expiration:
+          if term.expiration <= exp_info_date:
+            logging.info('INFO: Term %s in policy %s expires '
+                         'in less than two weeks.', term.name, filter_name)
+          if term.expiration <= current_date:
+            logging.warn('WARNING: Term %s in policy %s is expired and '
+                         'will not be rendered.', term.name, filter_name)
+            continue
+
+        new_terms.append(str(Term(term,filter_name)))
+
+      self.ciscoasa_policies.append((header, filter_name, new_terms))
+
+  def __str__(self):
+    target_header = []
+    target = []
+
+    for (header, filter_name, terms) in self.ciscoasa_policies:
+
       target.append('clear configure access-list %s' % filter_name)
+
       # add the p4 tags
       target.extend(aclgenerator.AddRepositoryTags('access-list %s remark '
                                                    % filter_name))
@@ -425,14 +447,8 @@ class CiscoASA(aclgenerator.ACLGenerator):
 
       # now add the terms
       for term in terms:
-        if term.expiration and term.expiration <= current_date:
-          continue
-        target.append(str(Term(term,filter_name)))
+        target.append(str(term))
 
-      target.append('\n')
+      # end for header, filter_name, filter_type...
+      return '\n'.join(target)
 
-
-    # ensure that the header is always first
-    target = target_header + target
-
-    return '\n'.join(target)

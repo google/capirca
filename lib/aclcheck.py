@@ -120,7 +120,6 @@ class AclCheck(object):
       filtername = header.target[0].options[0]
       for term in terms:
         possible = []
-
         logging.debug('checking term: %s', term.name)
         if not self._AddrInside(self.src, term.source_address):
           logging.debug('srcaddr does not match')
@@ -169,7 +168,6 @@ class AclCheck(object):
           self.exact_matches.append(Match(filtername, term.name, [],
                                           term.action, term.qos))
           break
-
 
   def Matches(self):
     """Return list of matched terms."""

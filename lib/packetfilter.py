@@ -233,9 +233,10 @@ class PacketFilter(aclgenerator.ACLGenerator):
                                       'logging',
                                      ])
 
-  def _TranslatePolicy(self, pol):
+  def _TranslatePolicy(self, pol, exp_info):
     self.pf_policies = []
     current_date = datetime.date.today()
+    exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     default_action = None
     good_afs = ['inet', 'inet6', 'mixed']
@@ -281,10 +282,14 @@ class PacketFilter(aclgenerator.ACLGenerator):
         if not term:
           continue
 
-        if term.expiration and term.expiration <= current_date:
-          logging.warn('WARNING: Term %s in policy %s is expired and will '
-                       'not be rendered.', term.name, filter_name)
-          continue
+        if term.expiration:
+          if term.expiration <= exp_info_date:
+            logging.info('INFO: Term %s in policy %s expires '
+                         'in less than two weeks.', term.name, filter_name)
+          if term.expiration <= current_date:
+            logging.warn('WARNING: Term %s in policy %s is expired and '
+                         'will not be rendered.', term.name, filter_name)
+            continue
 
         new_terms.append(self._TERM(term, filter_name, filter_type))
 

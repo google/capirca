@@ -152,6 +152,8 @@ class Term(aclgenerator.Term):
     # this deals just fine with multi line comments, but we could probably
     # output them a little cleaner; do things like make sure the
     # len(output) < 80, etc.
+    if self.term.owner:
+      self.term.comment.append('Owner: %s' % self.term.owner)
     if self.term.comment:
       ret_str.append(indent(0) + '/*')
       for comment in self.term.comment:
@@ -326,7 +328,6 @@ class Term(aclgenerator.Term):
       if self.term.icmp_type:
         icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type,
                                              self.term.protocol, self.term_type)
-
       if icmp_types != ['']:
         ret_str.append(indent(8) + 'icmp-type ' + self._Group(icmp_types))
 
@@ -559,6 +560,7 @@ class Juniper(aclgenerator.ACLGenerator):
                                       'fragment_offset',
                                       'logging',
                                       'loss_priority',
+                                      'owner',
                                       'packet_length',
                                       'policer',
                                       'port',
@@ -570,9 +572,10 @@ class Juniper(aclgenerator.ACLGenerator):
                                       'traffic_type',
                                      ])
 
-  def _TranslatePolicy(self, pol):
+  def _TranslatePolicy(self, pol, exp_info):
     self.juniper_policies = []
     current_date = datetime.date.today()
+    exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     for header, terms in pol.filters:
       if not self._PLATFORM in header.platforms:
@@ -607,8 +610,12 @@ class Juniper(aclgenerator.ACLGenerator):
           continue
 
         if term.expiration and term.expiration <= current_date:
-          logging.warn('WARNING: Term %s in policy %s is expired and will not '
-                       'be rendered.', term.name, filter_name)
+          if term.expiration <= exp_info_date:
+            logging.info('INFO: Term %s in policy %s expires '
+                         'in less than two weeks.', term.name, filter_name)
+          if term.expiration <= current_date:
+            logging.warn('WARNING: Term %s in policy %s is expired and '
+                         'will not be rendered.', term.name, filter_name)
           continue
 
         new_terms.append(Term(term, filter_type))

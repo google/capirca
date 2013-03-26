@@ -89,6 +89,8 @@ class Term(aclgenerator.Term):
 
     #COMMENTS
     comment_max_width = 68
+    if self.term.owner:
+      self.term.comment.append('Owner: %s' % self.term.owner)
     comments = aclgenerator.WrapWords(self.term.comment, comment_max_width)
     if comments and comments[0]:
       ret_str.append(JuniperSRX.INDENT * 3 + '/*')
@@ -216,10 +218,14 @@ class JuniperSRX(aclgenerator.ACLGenerator):
   _SUFFIX = '.srx'
   _SUPPORTED_AF = set(('inet',))
 
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration', 'logging', 'timeout'])
+  _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',
+                                      'logging',
+                                      'owner',
+                                      'timeout'
+                                     ])
   INDENT = '    '
 
-  def _TranslatePolicy(self, pol):
+  def _TranslatePolicy(self, pol, exp_info):
     """Transform a policy object into a JuniperSRX object.
 
     Args:
@@ -238,6 +244,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     self.to_zone = ''
 
     current_date = datetime.date.today()
+    exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     for header, terms in pol.filters:
       if not self._PLATFORM in header.platforms:
@@ -270,9 +277,13 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         term_dup_check.add(term.name)
 
         if term.expiration and term.expiration <= current_date:
-          logging.warn('WARNING: Term %s in policy %s>%s is expired and will '
-                       'not be rendered.', term.name, self.from_zone,
-                       self.to_zone)
+          if term.expiration <= exp_info_date:
+            logging.info('INFO: Term %s in policy %s expires '
+                         'in less than two weeks.', term.name, filter_name)
+          if term.expiration <= current_date:
+            logging.warn('WARNING: Term %s in policy %s is expired and '
+                         'will not be rendered.', term.name, filter_name)
+          continue
 
         for i in term.source_address_exclude:
           term.source_address = nacaddr.RemoveAddressFromList(
