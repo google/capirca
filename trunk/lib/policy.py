@@ -137,27 +137,31 @@ def TranslatePorts(ports, protocols, term_name):
 
 # classes for storing the object types in the policy files.
 class Policy(object):
-  """The policy object contains everything found in a given policy file.
-
-  members:
-    header: __main__.Header object. contains comments which should be passed
-      on to the rendered acls as well as the type of acls this policy file
-      should render to.
-
-    terms: list __main__.Term. an array of Term objects which must be rendered
-      in each of the rendered acls.
-  """
+  """The policy object contains everything found in a given policy file."""
 
   def __init__(self, header, terms):
+    """Initiator for the Policy object.
+
+    Args:
+      header: __main__.Header object. contains comments which should be passed
+        on to the rendered acls as well as the type of acls this policy file
+        should render to.
+
+      terms: list __main__.Term. an array of Term objects which must be rendered
+        in each of the rendered acls.
+
+    Attributes:
+      filters: list of tuples containing (header, terms).
+    """
     self.filters = []
     self.AddFilter(header, terms)
 
   def AddFilter(self, header, terms):
-    """Add another header & term."""
+    """Add another header & filter."""
     self.filters.append((header, terms))
     self._TranslateTerms(terms)
     if _SHADE_CHECK:
-      self._DetectShading()
+      self._DetectShading(terms)
 
   def _TranslateTerms(self, terms):
     """."""
@@ -205,26 +209,33 @@ class Policy(object):
     """
     return [x[0] for x in self.filters]
 
-  def _DetectShading(self):
+  def _DetectShading(self, terms):
     """Finds terms which are shaded (impossible to reach).
 
     Iterate through each term, looking at each prior term. If a prior term
     contains every component of the current term then the current term would
     never be hit and is thus shaded. This can be a mistake.
 
+    Args:
+      terms: list of Term objects.
+
     Raises:
       ShadingError: When a term is impossible to reach.
     """
     # Reset _OPTIMIZE global to default value
     globals()['_SHADE_CHECK'] = False
-    for _, terms in self.filters:
-      for index in xrange(len(terms)):
-        for prior_index in xrange(index):
-          # Check each of these terms for shading.
-          if terms[index] in terms[prior_index]:
-            raise ShadingError(
-                '%s is shaded by %s.' % (
-                    terms[index].name, terms[prior_index].name)) 
+    shading_errors = []
+    for index, term in enumerate(terms):
+      for prior_index in xrange(index):
+        # Check each term that came before for shading. Terms with next as an
+        # action do not terminate evaluation, so cannot shade.
+        if (term in terms[prior_index]
+            and 'next' not in terms[prior_index].action):
+          shading_errors.append(
+              '  %s is shaded by %s.' % (
+                  term.name, terms[prior_index].name))
+    if shading_errors:
+      raise ShadingError('\n'.join(shading_errors))
 
 
 class Term(object):
@@ -234,8 +245,10 @@ class Term(object):
     obj: an object of type VarType or a list of objects of type VarType
 
   members:
-    address/source_address/destination_address: list of
+    address/source_address/destination_address/: list of
       VarType.(S|D)?ADDRESS's
+    address_exclude/source_address_exclude/destination_address_exclude: list of
+      VarType.(S|D)?ADDEXCLUDE's
     port/source_port/destination_port: list of VarType.(S|D)?PORT's
     options: list of VarType.OPTION's.
     protocol: list of VarType.PROTOCOL's.
@@ -304,6 +317,7 @@ class Term(object):
 
     self.action = []
     self.address = []
+    self.address_exclude = []
     self.comment = []
     self.counter = None
     self.expiration = None
@@ -341,68 +355,92 @@ class Term(object):
     self.platform = []
     self.platform_exclude = []
     self.timeout = None
-
     self.AddObject(obj)
+    self.flattened = False
+    self.flattened_addr = None
+    self.flattened_saddr = None
+    self.flattened_daddr = None
 
   def __contains__(self, other):
     """Determine if other term is contained in this term."""
     if self.verbatim or other.verbatim:
       # short circuit these
-      if sorted(self.verbatim) is not sorted(other.verbatim):
+      if sorted(self.verbatim) != sorted(other.verbatim):
         return False
 
     # check prototols
-    if not self.CheckProtocolIsSuperset(self.protocol, other.protocol):
-      return False
-    if not self.CheckProtocolIsSuperset(other.protocol_except,
-                                        self.protocol_except):
-      return False
-
-    # check addresses
-    # the address directive is a special case mean either source or destination
-    # address
-    if self.address:
-      if not (self.CheckAddressIsSuperset(self.address, other.address) or
-              self.CheckAddressIsSuperset(self.address, other.source_address) or
-              self.CheckAddressIsSuperset(self.address,
-                                          other.destination_address)):
+    # either protocol or protocol-except may be used, not both at the same time.
+    # evaluating these separately for superset is reasonable.
+    if self.protocol:
+      if not self.CheckProtocolIsContained(self.protocol, other.protocol):
         return False
-    else:
-      if not self.CheckAddressIsSuperset(self.source_address,
-                                         other.source_address):
-        return False
-      if not other.CheckAddressIsSuperset(other.source_address_exclude,
-                                          self.source_address_exclude):
-        return False
-      if not self.CheckAddressIsSuperset(self.destination_address,
-                                         other.destination_address):
+    # if the other term's exceptions do not have the same, or more
+    # exceptions than our own then this term cannot contain that term.
+    if self.protocol_except:
+      if not self.CheckProtocolIsContained(other.protocol_except,
+                                           self.protocol_except):
         return False
 
-      if not other.CheckAddressIsSuperset(other.destination_address_exclude,
-                                          self.destination_address_exclude):
-        return False
+    # combine addresses with exclusions for proper contains comparisons.
+    if not self.flattened:
+      self.FlattenAll()
+    if not other.flattened:
+      other.FlattenAll()
+
+    # flat 'address' is compared against other flat (saddr|daddr).
+    # if NONE of these evaluate to True other is not contained.
+    if not (
+        self.CheckAddressIsContained(
+            self.flattened_addr, other.flattened_addr)
+        or self.CheckAddressIsContained(
+            self.flattened_addr, other.flattened_saddr)
+        or self.CheckAddressIsContained(
+            self.flattened_addr, other.flattened_daddr)):
+      return False
+
+    # compare flat address from other to flattened self (saddr|daddr).
+    if not (
+        # other's flat address needs both self saddr & daddr to contain in order
+        # for the term to be contained. We already compared the flattened_addr
+        # attributes of both above, which was not contained.
+        self.CheckAddressIsContained(
+            other.flattened_addr, self.flattened_saddr)
+        and self.CheckAddressIsContained(
+            other.flattened_addr, self.flattened_daddr)):
+      return False
+
+    # basic saddr/daddr check.
+    if not (
+        self.CheckAddressIsContained(
+            self.flattened_saddr, other.flattened_saddr)):
+      return False
+    if not (
+        self.CheckAddressIsContained(
+            self.flattened_daddr, other.flattened_daddr)):
+      return False
 
     # check ports
     # like the address directive, the port directive is special in that it can
     # be either source or destination.
     if self.port:
-      if not (self.CheckPortIsSuperset(self.port, other.port) or
-              self.CheckPortIsSuperset(self.port, other.source_port) or
-              self.CheckPortIsSuperset(self.port, other.destination_port)):
+      if not (self.CheckPortIsContained(self.port, other.port) or
+              self.CheckPortIsContained(self.port, other.sport) or
+              self.CheckPortIsContained(self.port, other.dport)):
         return False
-    else:
-      if not self.CheckPortIsSuperset(self.source_port, other.source_port):
+    elif self.source_port:
+      if not self.CheckPortIsContained(self.source_port, other.source_port):
         return False
-      if not self.CheckPortIsSuperset(self.destination_port,
+    elif self.destination_port:
+      if not self.CheckPortIsContained(self.destination_port,
                                       other.destination_port):
         return False
 
     # prefix lists
     if self.source_prefix:
-      if sorted(self.source_prefix) is not sorted(other.source_prefix):
+      if sorted(self.source_prefix) != sorted(other.source_prefix):
         return False
     if self.destination_prefix:
-      if sorted(self.destination_prefix) is not sorted(
+      if sorted(self.destination_prefix) != sorted(
           other.destination_prefix):
         return False
 
@@ -448,6 +486,8 @@ class Term(object):
     ret_str.append(' name: %s' % self.name)
     if self.address:
       ret_str.append('  address: %s' % self.address)
+    if self.address_exclude:
+      ret_str.append('  address_exclude: %s' % self.address_exclude)
     if self.source_address:
       ret_str.append('  source_address: %s' % self.source_address)
     if self.source_address_exclude:
@@ -464,6 +504,8 @@ class Term(object):
       ret_str.append('  destination_prefix: %s' % self.destination_prefix)
     if self.protocol:
       ret_str.append('  protocol: %s' % self.protocol)
+    if self.protocol_except:
+      ret_str.append('  protocol-except: %s' % self.protocol_except)
     if self.owner:
       ret_str.append('  owner: %s' % self.owner)
     if self.port:
@@ -581,6 +623,57 @@ class Term(object):
   def __ne__(self, other):
     return not self.__eq__(other)
 
+  def FlattenAll(self):
+    """Reduce source, dest, and address fields to their post-exclude state.
+
+    Populates the self.flattened_addr, self.flattened_saddr,
+    self.flattened_daddr by removing excludes from includes.
+    """
+    # No excludes, set flattened attributes and move along.
+    self.flattened = True
+    if not (self.source_address_exclude or self.destination_address_exclude or
+            self.address_exclude):
+      self.flattened_saddr = self.source_address
+      self.flattened_daddr = self.destination_address
+      self.flattened_addr = self.address
+      return
+
+    if self.source_address_exclude:
+      self.flattened_saddr = self._FlattenAddresses(
+          self.source_address, self.source_address_exclude)
+    if self.destination_address_exclude:
+      self.flattened_daddr = self._FlattenAddresses(
+          self.destination_address, self.destination_address_exclude)
+    if self.address_exclude:
+      self.flattened_addr = self._FlattenAddresses(
+          self.address, self.address_exclude)
+
+
+  @staticmethod
+  def _FlattenAddresses(include, exclude):
+    """Reduce an include and exclude list to a single include list.
+
+    Using recursion, whittle away exclude addresses from address include
+    addresses which contain the exclusion.
+
+    Args:
+      include: list of include addresses.
+      exclude: list of exclude addresses.
+    Returns:
+      a single flattened list of nacaddr objects.
+    """
+    if not exclude:
+      return include
+
+    flat_inclusions = []
+    for in_addr in include:
+      for ex_addr in exclude:
+        if ex_addr in in_addr:
+          reduced_list = in_addr.address_exclude(ex_addr)
+          flat_inclusions.extend(
+              Term._FlattenAddresses(reduced_list, exclude[1:]))
+    return flat_inclusions
+
   def GetAddressOfVersion(self, addr_type, af=None):
     """Returns addresses of the appropriate Address Family.
 
@@ -615,18 +708,27 @@ class Term(object):
     if type(obj) is list:
       for x in obj:
         # do we have a list of addresses?
+        # expanded address fields consolidate naked address fields with
+        # saddr/daddr.
         if x.var_type is VarType.SADDRESS:
-          self.source_address.extend(DEFINITIONS.GetNetAddr(x.value))
+          saddr = DEFINITIONS.GetNetAddr(x.value)
+          self.source_address.extend(saddr)
         elif x.var_type is VarType.DADDRESS:
-          self.destination_address.extend(DEFINITIONS.GetNetAddr(x.value))
+          daddr = DEFINITIONS.GetNetAddr(x.value)
+          self.destination_address.extend(daddr)
         elif x.var_type is VarType.ADDRESS:
-          self.address.extend(DEFINITIONS.GetNetAddr(x.value))
+          addr = DEFINITIONS.GetNetAddr(x.value)
+          self.address.extend(addr)
         # do we have address excludes?
         elif x.var_type is VarType.SADDREXCLUDE:
-          self.source_address_exclude.extend(DEFINITIONS.GetNetAddr(x.value))
+          saddr_exclude = DEFINITIONS.GetNetAddr(x.value)
+          self.source_address_exclude.extend(saddr_exclude)
         elif x.var_type is VarType.DADDREXCLUDE:
-          self.destination_address_exclude.extend(
-              DEFINITIONS.GetNetAddr(x.value))
+          daddr_exclude = DEFINITIONS.GetNetAddr(x.value)
+          self.destination_address_exclude.extend(daddr_exclude)
+        elif x.var_type is VarType.ADDREXCLUDE:
+          addr_exclude = DEFINITIONS.GetNetAddr(x.value)
+          self.address_exclude.extend(addr_exclude)
         # do we have a list of ports?
         elif x.var_type is VarType.PORT:
           self.port.append(x.value)
@@ -858,7 +960,7 @@ class Term(object):
     """
     return self.CollapsePortListRecursive(sorted(ports))
 
-  def CheckProtocolIsSuperset(self, superset, subset):
+  def CheckProtocolIsContained(self, superset, subset):
     """Check to if the given list of protocols is wholly contained.
 
     Args:
@@ -873,17 +975,12 @@ class Term(object):
     if not subset:
       return False
 
-    for sub_proto in subset:
-      not_contains = True
-      for sup_proto in superset:
-        if sub_proto == sup_proto:
-          not_contains = False
-          break
-      if not_contains:
-        return False
-    return True
+    # Convert these lists to sets to use set comparison.
+    sup = set(superset)
+    sub = set(subset)
+    return sub.issubset(sup)
 
-  def CheckPortIsSuperset(self, superset, subset):
+  def CheckPortIsContained(self, superset, subset):
     """Check if the given list of ports is wholly contained.
 
     Args:
@@ -901,15 +998,16 @@ class Term(object):
     for sub_port in subset:
       not_contains = True
       for sup_port in superset:
-        if sub_port[0] >= sup_port[0] and sub_port[1] <= sup_port[1]:
+        if (int(sub_port[0]) >= int(sup_port[0])
+            and int(sub_port[1]) <= int(sup_port[1])):
           not_contains = False
           break
       if not_contains:
         return False
     return True
 
-  def CheckAddressIsSuperset(self, superset, subset):
-    """Check to see if subset is wholey contained by superset.
+  def CheckAddressIsContained(self, superset, subset):
+    """Check if subset is wholey contained by superset.
 
     Args:
       superset: list of the superset addresses
@@ -924,12 +1022,13 @@ class Term(object):
       return False
 
     for sub_addr in subset:
-      not_contains = True
+      sub_contained = False
       for sup_addr in superset:
-        if sub_addr in sup_addr and sub_addr.version == sup_addr.version:
-          not_contains = False
+        # ipaddr ensures that version numbers match for inclusion.
+        if sub_addr in sup_addr:
+          sub_contained = True
           break
-      if not_contains:
+      if not sub_contained:
         return False
     return True
 
@@ -973,6 +1072,7 @@ class VarType(object):
   TIMEOUT = 33
   OWNER = 34
   PRINCIPALS = 35
+  ADDREXCLUDE = 36
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1075,6 +1175,7 @@ class Target(object):
 tokens = (
     'ACTION',
     'ADDR',
+    'ADDREXCLUDE',
     'COMMENT',
     'COUNTER',
     'DADDR',
@@ -1123,6 +1224,7 @@ t_ignore = ' \t'
 reserved = {
     'action': 'ACTION',
     'address': 'ADDR',
+    'address-exclude': 'ADDREXCLUDE',
     'comment': 'COMMENT',
     'counter': 'COUNTER',
     'destination-address': 'DADDR',
@@ -1329,6 +1431,7 @@ def p_fragment_offset_spec(p):
 def p_exclude_spec(p):
   """ exclude_spec : SADDREXCLUDE ':' ':' one_or_more_strings
                    | DADDREXCLUDE ':' ':' one_or_more_strings
+                   | ADDREXCLUDE ':' ':' one_or_more_strings
                    | PROTOCOL_EXCEPT ':' ':' one_or_more_strings """
 
   p[0] = []
@@ -1337,6 +1440,8 @@ def p_exclude_spec(p):
       p[0].append(VarType(VarType.SADDREXCLUDE, ex))
     elif p[1].find('destination-exclude') >= 0:
       p[0].append(VarType(VarType.DADDREXCLUDE, ex))
+    elif p[1].find('address-exclude') >= 0:
+      p[0].append(VarType(VarType.ADDREXCLUDE, ex))
     elif p[1].find('protocol-except') >= 0:
       p[0].append(VarType(VarType.PROTOCOL_EXCEPT, ex))
 
@@ -1585,7 +1690,7 @@ def _Preprocess(data, max_depth=5, base_dir=''):
         'Included files exceed maximum recursion depth of %s.' % max_depth))
   rval = []
   lines = [x.rstrip() for x in data.splitlines()]
-  for line in lines:
+  for index, line in enumerate(lines):
     words = line.split()
     if len(words) > 1 and words[0] == '#include':
       # remove any quotes around included filename
@@ -1647,11 +1752,9 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
     if shade_check:
       globals()['_SHADE_CHECK'] = True
 
-    # I wanna lex you up
     lexer = lex.lex()
 
     preprocessed_data = '\n'.join(_Preprocess(data, base_dir=base_dir))
-
     p = yacc.yacc(write_tables=False, debug=0, errorlog=yacc.NullLogger())
 
     return p.parse(preprocessed_data, lexer=lexer)

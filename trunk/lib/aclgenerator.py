@@ -125,7 +125,7 @@ class Term(object):
       # convert AF name to number (e.g. 'inet' becomes 4, 'inet6' becomes 6)
       af = self.AF_MAP[af]
     else:
-      raise UnsupportedAF('Address family %s is not supported, term %s' % (
+      raise UnsupportedAF('Address family %s is not supported, term %s.' % (
           af, self.term.name))
     return af
 
@@ -136,7 +136,6 @@ class Term(object):
       icmp_types: list of icmp_types
       protocols: list of protocols
       af: address family of this term, either numeric or text (see self.AF_MAP)
-      term_name: the name of the current term (for error reporting)
 
     Returns:
       sorted list of numeric icmp-type codes.
@@ -152,7 +151,7 @@ class Term(object):
     if protocols != ['icmp'] and protocols != ['icmpv6']:
       raise UnsupportedFilterError('%s %s' % (
           'icmp-types specified for non-icmp protocols in term: ', 
-          self.term_name))
+          self.term.name))
     # make sure we have a numeric address family (4 or 6)
     af = self.NormalizeAddressFamily(af)
     # check that addr family and protocl are appropriate
@@ -160,7 +159,7 @@ class Term(object):
         (af != 6 and protocols == ['icmpv6'])):
       raise MismatchIcmpInetError('%s %s' % (
           'ICMP/ICMPv6 mismatch with address family IPv4/IPv6 in term',
-          self.term_name))
+          self.term.name))
     # ensure all icmp types are valid
     for icmptype in icmp_types:
       if icmptype not in self.ICMP_TYPE[af]:
@@ -197,9 +196,9 @@ class ACLGenerator(object):
                             'icmp_type',
                             'name',         # obj attribute, not keyword
                             'option',
+                            'protocol',
                             'platform',
                             'platform_exclude',
-                            'protocol',
                             'source_address',
                             'source_address_exclude',
                             'source_port',
@@ -210,7 +209,7 @@ class ACLGenerator(object):
   _OPTIONAL_SUPPORTED_KEYWORDS = set([])
 
 
-  def __init__(self, pol):
+  def __init__(self, pol, exp_info):
     """Initialise an ACLGenerator.  Store policy structure for processing."""
     object.__init__(self)
 
@@ -227,15 +226,17 @@ class ACLGenerator(object):
         # in dangerous or unexpected results
         for term in terms:
           # Only verify optional keywords if the term is active on the platform.
+          err = []
           if term.platform:
             if self._PLATFORM not in term.platform:
               continue
           if term.platform_exclude:
             if self._PLATFORM in term.platform_exclude:
               continue
-          err = []
           for el, val in term.__dict__.items():
-            if val and el not in self._VALID_KEYWORDS:
+            # Private attributes do not need to be valid keywords.
+            if (val and el not in self._VALID_KEYWORDS
+                and not el.startswith('flatten')):
               err.append(el)
           if err:
             raise UnsupportedFilterError('%s %s %s %s %s %s' % ('\n', term.name,
@@ -243,9 +244,9 @@ class ACLGenerator(object):
                 'in policy:', ' '.join(err)))
         continue
 
-    self._TranslatePolicy(pol)
+    self._TranslatePolicy(pol, exp_info)
 
-  def _TranslatePolicy(self, pol):
+  def _TranslatePolicy(self, pol, exp_info):
     """Translate policy contents to platform specific data structures."""
     raise Error('%s does not implement _TranslatePolicies()' % self._PLATFORM)
 

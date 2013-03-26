@@ -182,8 +182,9 @@ class Demo(aclgenerator.ACLGenerator):
 
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',])
 
-  def _TranslatePolicy(self, pol):
+  def _TranslatePolicy(self, pol, exp_info):
     current_date = datetime.date.today()
+    exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
     self.demo_policies = []
     for header, terms in pol.filters:
       if not self._PLATFORM in header.platforms:
@@ -201,8 +202,14 @@ class Demo(aclgenerator.ACLGenerator):
         if term.name in term_names:
           raise DemoFilterError('Duplicate term name')
         term_names.add(term.name)
-        if term.expiration and term.expiration <= current_date:
-          continue
+        if term.expiration:
+          if term.expiration <= exp_info_date:
+            logging.info('INFO: Term %s in policy %s expires '
+                         'in less than two weeks.', term.name, filter_name)
+          if term.expiration <= current_date:
+            logging.warn('WARNING: Term %s in policy %s is expired and '
+                         'will not be rendered.', term.name, filter_name)
+            continue
         new_terms.append(Term(term, filter_type))
       self.demo_policies.append((header, filter_name, filter_type,
                                  interface_specific, new_terms))

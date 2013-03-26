@@ -191,6 +191,7 @@ class Silverpeak(aclgenerator.ACLGenerator):
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
                                       'expiration',
                                       'policer',           # safely ignored
+                                      'precedence',
                                       'qos',
                                       'routing_instance',  # safely ignored
                                      ])
@@ -205,6 +206,17 @@ class Silverpeak(aclgenerator.ACLGenerator):
                    'nc1': 'cs6'
                   }
 
+  # precedence value map.
+  precedence_value_map = {'0': 'be',
+                          '1': 'cs1',
+                          '2': 'cs2',
+                          '3': 'cs3',
+                          '4': 'cs4',
+                          '5': 'cs5',
+                          '6': 'cs6',
+                          '7': 'cs7'
+                         }
+
   # Ignore terms that "starts", "ends", or "contains" the following text
   # You can define multiple "starts", "ends" or "contains" terms.
   # The following are just examples - commonly used when a policy
@@ -216,9 +228,9 @@ class Silverpeak(aclgenerator.ACLGenerator):
   #                       'nikto': 'ends'
   #                      }
 
-  def __init__(self, pol, fixed_content_file=None):
+  def __init__(self, pol, exp_info, fixed_content_file=None):
     self.current_date = datetime.date.today()
-    aclgenerator.ACLGenerator.__init__(self, pol)
+    aclgenerator.ACLGenerator.__init__(self, pol, exp_info)
 
     if not fixed_content_file:
       self.pre_string = ''
@@ -234,7 +246,7 @@ class Silverpeak(aclgenerator.ACLGenerator):
     try:
       fixed_content_file.seek(0)
       self.fixed_content = fixed_content_file.read()
-    except IOError, e:
+    except IOError as e:
       logging.fatal('bad file: \n%s', e)
 
   def __str__(self):
@@ -261,16 +273,31 @@ class Silverpeak(aclgenerator.ACLGenerator):
         flag = flag or (keyword in term)
     return flag
 
-  def VerifyTerm(self, term):
+  def VerifyTerm(self, term, exp_info):
+    """Check if the term is valid and not expired.
+
+    Args:
+      term: a term to check.
+      exp_info: print a info message when a term is set to expire
+                in that many weeks
+
+    Returns:
+      term or None of found invalid.
+    """
+    exp_info_date = self.current_date + datetime.timedelta(weeks=exp_info)
     if self._CheckExceptionTerm(term.name, self.exception_term_rule):
       return None
-    if term.expiration and term.expiration <= self.current_date:
-      logging.warn('WARNING: Term %s in policy is expired and will not be '
-                   'rendered.', term.name)
-      return None
+    if term.expiration:
+      if term.expiration <= exp_info_date:
+        logging.info('INFO: Term %s expires in less than two weeks.',
+                     term.name)
+      if term.expiration <= self.current_date:
+        logging.warn('WARNING: Term %s is expired and will not be rendered.',
+                     term.name)
+        return None
     return self.FixHighPorts(term)
 
-  def _TranslatePolicy(self, pol):
+  def _TranslatePolicy(self, pol, exp_info):
     self.silverpeak_terms = []
 
     for header, terms in pol.filters:
@@ -279,39 +306,70 @@ class Silverpeak(aclgenerator.ACLGenerator):
 
       new_terms = []
       for term in terms:
-        verified = self.VerifyTerm(term)
+        verified = self.VerifyTerm(term, exp_info)
         if verified:
           new_terms.append(Term(term))
 
       self.silverpeak_terms.append(new_terms)
 
+  def _GenerateACLLine(self, app_id, term, unit, precedence=None):
+    """Generate line for ACL file."""
+    target = []
+    target.append('application')
+    target.append(str(app_id))
+    target.append(term.term.name)
+    target.append('protocol')
+    if term.term.protocol:
+      target.append('/'.join(sorted(term.term.protocol)))
+    else:
+      target.append(self._DEFAULT_PROTOCOL)
+    target.append('src-ip %s src-port %s' % (unit[0], unit[1]))
+    target.append('dst-ip %s dst-port %s' % (unit[2], unit[3]))
+    if precedence:
+      target.append('dscp %s\n\n' %
+                    self.precedence_value_map[precedence])
+    else:
+      target.append('dscp any\n\n')
+    return ' '.join(target)
+
   def GenerateACLString(self):
     """Generate ACL file content in string format."""
     target_string = ''
-    app_id = 0  # variable in ACL sentenses.
+    app_id = 100  # variable in ACL sentences.
 
     for terms in self.silverpeak_terms:
       for term in terms:
         for unit in term.GenerateUnitList():
-          app_id += 100
-          target = []
-          target.append('application')
-          target.append(str(app_id))
-          target.append(term.term.name)
-          target.append('protocol')
-          if term.term.protocol:
-            target.append('/'.join(sorted(term.term.protocol)))
+          if term.term.precedence:
+            for precedence in term.term.precedence:
+              target_string += self._GenerateACLLine(app_id, term,
+                                                     unit, precedence)
+              app_id += 100
           else:
-            target.append(self._DEFAULT_PROTOCOL)
-          target.append('src-ip %s src-port %s' % (unit[0], unit[1]))
-          target.append('dst-ip %s dst-port %s' % (unit[2], unit[3]))
-          target.append('dscp any\n\n')
-          target_string += ' '.join(target)
-
+            target_string += self._GenerateACLLine(app_id, term, unit)
+            app_id += 100
     # finalize the target string
     target_string = self._FinalizeString(target_string, self.pre_string,
                                          self.fixed_content)
     return target_string
+
+  def _GenerateConfLine(self, term, precedence=None):
+    """Generate line for Conf file."""
+    if term.term.qos in self.qos_value_map:
+      target = []
+      qos_value = self.qos_value_map[term.term.qos]
+      target.append('match protocol ip src-ip any src-port any')
+      target.append('dst-ip any dst-port any application')
+      target.append(term.term.name)
+      if precedence:
+        target.append('dscp %s set traffic-class 1' %
+                      self.precedence_value_map[precedence])
+      else:
+        target.append('dscp any set traffic-class 1')
+      target.append('lan-qos-dscp %s wan-qos-dscp %s\n\n' %
+                    (qos_value, qos_value))
+      return ' '.join(target)
+    return ''
 
   def GenerateConfString(self):
     """Generate configuration file."""
@@ -322,17 +380,11 @@ class Silverpeak(aclgenerator.ACLGenerator):
       for term in terms:
         unit_list = term.GenerateUnitList()
         if unit_list:
-          if term.term.qos in self.qos_value_map:
-            target = []
-            qos_value = self.qos_value_map[term.term.qos]
-            target.append('match protocol ip src-ip any src-port any')
-            target.append('dst-ip any dst-port any application')
-            target.append(term.term.name)
-            target.append('dscp any set traffic-class 1')
-            target.append('lan-qos-dscp %s wan-qos-dscp %s\n\n' %
-                          (qos_value, qos_value))
-            target_string += ' '.join(target)
-
+          if term.term.precedence:
+            for precedence in term.term.precedence:
+              target_string += self._GenerateConfLine(term, precedence)
+          else:
+            target_string += self._GenerateConfLine(term)
     post_string = ('match protocol ip src-ip any src-port any dst-ip any '
                    'dst-port any application any dscp any set '
                    'traffic-class 1 lan-qos-dscp cs1 wan-qos-dscp cs1'

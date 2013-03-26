@@ -154,6 +154,8 @@ class Term(aclgenerator.Term):
     if self._PREJUMP_FORMAT:
       ret_str.append(self._PREJUMP_FORMAT % (self.filter, self.term_name))
 
+    if self.term.owner:
+      self.term.comment.append('Owner: %s' % self.term.owner)
     # reformat long comments, if needed
     #
     # iptables allows individual comments up to 256 chars.
@@ -235,6 +237,28 @@ class Term(aclgenerator.Term):
         term_saddr = term_saddr_excluded
       if term_daddr_excluded:
         term_daddr = term_daddr_excluded
+
+    # With many sources and destinations, iptables needs to generate the
+    # cartesian product of sources and destinations.  If there are no
+    # exclude rules, this can instead be written as exclude [0/0 -
+    # srcs], exclude [0/0 - dsts].
+    v4_src_count = len([x for x in term_saddr if x.version == 4])
+    v4_dst_count = len([x for x in term_daddr if x.version == 4])
+    v6_src_count = len([x for x in term_saddr if x.version == 6])
+    v6_dst_count = len([x for x in term_daddr if x.version == 6])
+    num_pairs = v4_src_count * v4_dst_count + v6_src_count * v6_dst_count
+    if num_pairs > 100:
+      new_exclude_source = nacaddr.ExcludeAddrs([self._all_ips], term_saddr)
+      new_exclude_dest = nacaddr.ExcludeAddrs([self._all_ips], term_daddr)
+      # Invert the shortest list that does not already have exclude addresses
+      if len(new_exclude_source) < len(new_exclude_dest) and not exclude_saddr:
+        if len(new_exclude_source) + len(term_daddr) < num_pairs:
+          exclude_saddr = new_exclude_source
+          term_saddr = [self._all_ips]
+      elif not exclude_daddr:
+        if len(new_exclude_dest) + len(term_saddr) < num_pairs:
+          exclude_daddr = new_exclude_dest
+          term_daddr = [self._all_ips]
 
     # ports
     source_port = []
@@ -598,6 +622,7 @@ class Iptables(aclgenerator.ACLGenerator):
                                       'expiration',
                                       'fragment_offset',
                                       'logging',
+                                      'owner',
                                       'packet_length',
                                       'policer',             # safely ignored
                                       'qos',
@@ -606,9 +631,10 @@ class Iptables(aclgenerator.ACLGenerator):
                                       'source_prefix',       # skips these terms
                                      ])
 
-  def _TranslatePolicy(self, pol):
+  def _TranslatePolicy(self, pol, exp_info):
     self.iptables_policies = []
     current_date = datetime.date.today()
+    exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     default_action = None
     good_default_actions = ['ACCEPT', 'DROP']
@@ -682,10 +708,14 @@ class Iptables(aclgenerator.ACLGenerator):
         if not term:
           continue
 
-        if term.expiration and term.expiration <= current_date:
-          logging.warn('WARNING: Term %s in policy %s is expired and will '
-                       'not be rendered.', term.name, filter_name)
-          continue
+        if term.expiration:
+          if term.expiration <= exp_info_date:
+            logging.info('INFO: Term %s in policy %s expires '
+                         'in less than two weeks.', term.name, filter_name)
+          if term.expiration <= current_date:
+            logging.warn('WARNING: Term %s in policy %s is expired and '
+                         'will not be rendered.', term.name, filter_name)
+            continue
 
         new_terms.append(self._TERM(term, filter_name, all_protocols_stateful,
                                     default_action, filter_type,
