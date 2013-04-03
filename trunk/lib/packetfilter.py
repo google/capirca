@@ -22,8 +22,6 @@ __author__ = 'msu@google.com (Martin Suess)'
 import aclgenerator
 import datetime
 import logging
-import nacaddr
-import re
 
 
 class Error(Exception):
@@ -102,14 +100,14 @@ class Term(aclgenerator.Term):
     # source address
     term_saddrs = self._CheckAddressAf(self.term.source_address)
     if not term_saddrs: return ''
-    term_saddr = self._GenerateAddrStatement(term_saddrs,
-        self.term.source_address_exclude)
+    term_saddr = self._GenerateAddrStatement(
+        term_saddrs, self.term.source_address_exclude)
 
     # destination address
     term_daddrs = self._CheckAddressAf(self.term.destination_address)
     if not term_daddrs: return ''
-    term_daddr = self._GenerateAddrStatement(term_daddrs,
-        self.term.destination_address_exclude)
+    term_daddr = self._GenerateAddrStatement(
+        term_daddrs, self.term.destination_address_exclude)
 
     # ports
     source_port = []
@@ -128,8 +126,8 @@ class Term(aclgenerator.Term):
         af = 'inet'
       elif protocol == ['icmp6']:
         af = 'inet6'
-      icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type, protocol,
-                                           af)
+      icmp_types = self.NormalizeIcmpTypes(
+          self.term.icmp_type, protocol, af)
 
     # options
     opts = [str(x) for x in self.term.option]
@@ -168,10 +166,10 @@ class Term(aclgenerator.Term):
         af_addrs.append(addr)
     return af_addrs
 
-  def _FormatPart(self, action, logging, af, proto, src_addr, src_port,
+  def _FormatPart(self, action, log, af, proto, src_addr, src_port,
                   dst_addr, dst_port, tcp_flags, icmp_types, options):
     line = ['%s' % action]
-    if logging and 'true' in [str(l) for l in logging]:
+    if log and 'true' in [str(l) for l in log]:
       line.append('log')
 
     line.append('quick')
@@ -195,7 +193,9 @@ class Term(aclgenerator.Term):
 
     if 'icmp' in proto and icmp_types:
       type_strs = [str(icmp_type) for icmp_type in icmp_types]
-      line.append('icmp-type { %s }' % ', '.join(type_strs))
+      type_strs = ', '.join(type_strs)
+      if type_strs:
+        line.append('icmp-type { %s }' % type_strs)
 
     if options:
       line.extend(options)
@@ -210,7 +210,7 @@ class Term(aclgenerator.Term):
 
   def _GenerateAddrStatement(self, addrs, exclude_addrs):
     addresses = [str(addr) for addr in addrs]
-    for exlude_addr in exclude_addrs:
+    for exclude_addr in exclude_addrs:
       addresses.append('!%s' % str(exclude_addr))
     return '{ %s }' % ', '.join(addresses)
 
@@ -238,10 +238,8 @@ class PacketFilter(aclgenerator.ACLGenerator):
     current_date = datetime.date.today()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
-    default_action = None
     good_afs = ['inet', 'inet6', 'mixed']
     good_options = []
-    all_protocols_stateful = True
     filter_type = None
 
     for header, terms in pol.filters:
