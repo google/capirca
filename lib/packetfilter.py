@@ -28,8 +28,8 @@ class Error(Exception):
   """Base error class."""
 
 
-class UnsupportedFilterError(Error):
-  """Raised when we see an inappropriate filter."""
+class UnsupportedActionError(Error):
+  """Raised when we see an unsupported action."""
 
 
 class Term(aclgenerator.Term):
@@ -64,11 +64,12 @@ class Term(aclgenerator.Term):
       af: Which address family ('inet' or 'inet6') to apply the term to.
 
     Raises:
-      UnsupportedFilterError: Filter is not supported.
+      aclgenerator.UnsupportedFilterError: Filter is not supported.
     """
     self.term = term  # term object
     self.filter = filter_name  # actual name of filter
     self.options = []
+    self.default_action = 'deny'
     self.af = af
 
   def __str__(self):
@@ -86,6 +87,10 @@ class Term(aclgenerator.Term):
     # if terms does not specify action, use filter default action
     if not self.term.action:
       self.term.action[0].value = self.default_action
+    if str(self.term.action[0]) not in self._ACTION_TABLE:
+      raise aclgenerator.UnsupportedFilterError('%s %s %s %s' % (
+          '\n', self.term.name, self.term.action[0],
+          'action not currently supported.'))
 
     # protocol
     if self.term.protocol:
@@ -93,7 +98,7 @@ class Term(aclgenerator.Term):
     else:
       protocol = []
     if self.term.protocol_except:
-      raise UnsupportedFilterError('%s %s %s' % (
+      raise aclgenerator.UnsupportedFilterError('%s %s %s' % (
           '\n', self.term.name,
           'protocol_except logic not currently supported.'))
 
@@ -126,6 +131,10 @@ class Term(aclgenerator.Term):
         af = 'inet'
       elif protocol == ['icmp6']:
         af = 'inet6'
+      else:
+        raise aclgenerator.UnsupportedFilterError('%s %s %s' % (
+            '\n', self.term.name,
+            'icmp protocol is not defined or not supported.'))
       icmp_types = self.NormalizeIcmpTypes(
           self.term.icmp_type, protocol, af)
 
@@ -261,7 +270,7 @@ class PacketFilter(aclgenerator.ACLGenerator):
         if address_family in filter_options:
           # should not specify more than one AF in options
           if filter_type is not None:
-            raise UnsupportedFilterError('%s %s %s %s' % (
+            raise aclgenerator.UnsupportedFilterError('%s %s %s %s' % (
                 '\nMay only specify one of', good_afs, 'in filter options:',
                 filter_options))
           filter_type = address_family
