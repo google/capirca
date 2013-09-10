@@ -216,7 +216,7 @@ class ObjectGroup(object):
       # source address
       saddrs = term.GetAddressOfVersion('source_address', 4)
       # check to see if we've already seen this address.
-      if saddrs and not saddrs[0].parent_token in addresses:
+      if saddrs and saddrs[0].parent_token not in addresses:
         addresses[saddrs[0].parent_token] = True
         ret_str.append('object-group ip address %s' % saddrs[0].parent_token)
         for addr in saddrs:
@@ -226,7 +226,7 @@ class ObjectGroup(object):
       # destination address
       daddrs = term.GetAddressOfVersion('destination_address', 4)
       # check to see if we've already seen this address
-      if daddrs and not daddrs[0].parent_token in addresses:
+      if daddrs and daddrs[0].parent_token not in addresses:
         addresses[daddrs[0].parent_token] = True
         ret_str.append('object-group ip address %s' % daddrs[0].parent_token)
         for addr in term.GetAddressOfVersion('destination_address', 4):
@@ -238,7 +238,7 @@ class ObjectGroup(object):
         if not port:
           continue
         port_key = '%s-%s' % (port[0], port[1])
-        if not port_key in ports.keys():
+        if port_key not in ports.keys():
           ports[port_key] = True
           ret_str.append('object-group ip port %s' % port_key)
           if port[0] != port[1]:
@@ -336,7 +336,7 @@ class ObjectGroupTerm(aclgenerator.Term):
     return '\n'.join(ret_str)
 
   def _TermletToStr(self, action, proto, saddr, sport, daddr, dport):
-
+    """Output a portion of a cisco term/filter only, based on the 5-tuple."""
     # fix addreses
     if saddr:
       saddr = 'addrgroup %s' % saddr
@@ -365,6 +365,7 @@ class Term(aclgenerator.Term):
     # Our caller should have already verified the address family.
     assert af in (4, 6)
     self.af = af
+    self.text_af = self.AF_MAP_BY_NUMBER[self.af]
 
   def __str__(self):
     # Verify platform specific terms. Skip whole term if platform does not
@@ -420,6 +421,11 @@ class Term(aclgenerator.Term):
         source_address = nacaddr.ExcludeAddrs(
             source_address,
             source_address_exclude)
+      if not source_address:
+        logging.warn(self.NO_AF_LOG_FORMAT.substitute(term=self.term.name,
+                                                      direction='source',
+                                                      af=self.text_af))
+        return ''
     else:
       # source address not set
       source_address = ['any']
@@ -434,6 +440,11 @@ class Term(aclgenerator.Term):
         destination_address = nacaddr.ExcludeAddrs(
             destination_address,
             destination_address_exclude)
+      if not destination_address:
+        logging.warn(self.NO_AF_LOG_FORMAT.substitute(term=self.term.name,
+                                                      direction='destination',
+                                                      af=self.text_af))
+        return ''
     else:
       # destination address not set
       destination_address = ['any']
@@ -545,7 +556,6 @@ class Term(aclgenerator.Term):
     sane_options = list(option)
     if proto == self.PROTO_MAP['udp'] and 'established' in sane_options:
       sane_options.remove('established')
-
     ret_lines = []
 
     # str(icmp_type) is needed to ensure 0 maps to '0' instead of FALSE
@@ -563,7 +573,7 @@ class Term(aclgenerator.Term):
                                                  ))
 
     # remove any trailing spaces and replace multiple spaces with singles
-    stripped_ret_lines = [re.sub('\s+', ' ', x).rstrip() for x in ret_lines]
+    stripped_ret_lines = [re.sub(r'\s+', ' ', x).rstrip() for x in ret_lines]
     return stripped_ret_lines
 
 
@@ -583,6 +593,7 @@ class Cisco(aclgenerator.ACLGenerator):
                                       'policer',
                                       'port',
                                       'qos',
+                                      'routing_instance',
                                      ])
 
   def _TranslatePolicy(self, pol, exp_info):
@@ -595,7 +606,7 @@ class Cisco(aclgenerator.ACLGenerator):
                     'mixed']
 
     for header, terms in pol.filters:
-      if not self._PLATFORM in header.platforms:
+      if self._PLATFORM not in header.platforms:
         continue
 
       obj_target = ObjectGroup()
@@ -641,6 +652,7 @@ class Cisco(aclgenerator.ACLGenerator):
 
         new_terms = []
         for term in terms:
+          term.name = self.FixTermLength(term.name)
           af = 'inet'
           if next_filter == 'inet6':
             af = 'inet6'
@@ -719,7 +731,9 @@ class Cisco(aclgenerator.ACLGenerator):
 
         # now add the terms
         for term in terms:
-          target.append(str(term))
+          term_str = str(term)
+          if term_str:
+            target.append(term_str)
         target.append('\n')
 
       if obj_target.valid:

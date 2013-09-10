@@ -20,6 +20,7 @@
 
 __author__ = 'robankeny@google.com (Robert Ankeny)'
 
+import collections
 import datetime
 import logging
 
@@ -87,7 +88,7 @@ class Term(aclgenerator.Term):
         return ''
     ret_str = []
 
-    #COMMENTS
+    # COMMENTS
     comment_max_width = 68
     if self.term.owner:
       self.term.comment.append('Owner: %s' % self.term.owner)
@@ -101,12 +102,12 @@ class Term(aclgenerator.Term):
     ret_str.append(JuniperSRX.INDENT * 3 + 'policy ' + self.term.name + ' {')
     ret_str.append(JuniperSRX.INDENT * 4 + 'match {')
 
-    #SOURCE-ADDRESS
+    # SOURCE-ADDRESS
     if self.term.source_address:
-      saddr_check = []
+      saddr_check = set()
       for saddr in self.term.source_address:
-        saddr_check.append(saddr.parent_token)
-      saddr_check = set(saddr_check)
+        saddr_check.add(saddr.parent_token)
+      saddr_check = sorted(saddr_check)
       source_address_string = ''
       for addr in saddr_check:
         source_address_string += addr + ' '
@@ -115,12 +116,14 @@ class Term(aclgenerator.Term):
     else:
       ret_str.append(JuniperSRX.INDENT * 5 + 'source-address any;')
 
-    #DESTINATION-ADDRESS
+    # DESTINATION-ADDRESS
     if self.term.destination_address:
       daddr_check = []
       for daddr in self.term.destination_address:
         daddr_check.append(daddr.parent_token)
       daddr_check = set(daddr_check)
+      daddr_check = list(daddr_check)
+      daddr_check.sort()
       destination_address_string = ''
       for addr in daddr_check:
         destination_address_string += addr + ' '
@@ -129,7 +132,7 @@ class Term(aclgenerator.Term):
     else:
       ret_str.append(JuniperSRX.INDENT * 5 + 'destination-address any;')
 
-    #APPLICATION
+    # APPLICATION
     if (not self.term.source_port and not self.term.destination_port and not
         self.term.icmp_type and not self.term.protocol):
       ret_str.append(JuniperSRX.INDENT * 5 + 'application any;')
@@ -139,13 +142,13 @@ class Term(aclgenerator.Term):
 
     ret_str.append(JuniperSRX.INDENT * 4 + '}')
 
-    #ACTIONS
+    # ACTIONS
     for action in self.term.action:
       ret_str.append(JuniperSRX.INDENT * 4 + 'then {')
       ret_str.append(JuniperSRX.INDENT * 5 + self._ACTIONS.get(
           str(action)) + ';')
 
-      #LOGGING
+      # LOGGING
       if self.term.logging:
         ret_str.append(JuniperSRX.INDENT * 5 + 'log {')
         ret_str.append(JuniperSRX.INDENT * 6 + 'session-init;')
@@ -154,12 +157,12 @@ class Term(aclgenerator.Term):
 
       ret_str.append(JuniperSRX.INDENT * 3 + '}')
 
-    #OPTIONS
+    # OPTIONS
     if self.term.option:
       raise SRXOptionError('Options are not implemented yet, please remove ' +
                            'from term %s' % self.term.name)
 
-    #VERBATIM
+    # VERBATIM
     if self.term.verbatim:
       raise SRXVerbatimError('Verbatim is not implemented, please remove ' +
                              'the offending term %s.' % self.term.name)
@@ -217,10 +220,10 @@ class JuniperSRX(aclgenerator.ACLGenerator):
   _PLATFORM = 'srx'
   _SUFFIX = '.srx'
   _SUPPORTED_AF = set(('inet',))
-
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',
                                       'logging',
                                       'owner',
+                                      'routing_instance',    # safe to skip
                                       'timeout'
                                      ])
   INDENT = '    '
@@ -230,6 +233,8 @@ class JuniperSRX(aclgenerator.ACLGenerator):
 
     Args:
       pol: policy.Policy object
+      exp_info: print a info message when a term is set to expire
+                in that many weeks
 
     Raises:
       UnsupportedFilterError: An unsupported filter was specified
@@ -237,7 +242,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       SRXDuplicateTermError: Two terms were found with same name in same filter
     """
     self.srx_policies = []
-    self.addressbook = {}
+    self.addressbook = collections.OrderedDict()
     self.applications = []
     self.ports = []
     self.from_zone = ''
@@ -247,10 +252,10 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     for header, terms in pol.filters:
-      if not self._PLATFORM in header.platforms:
+      if self._PLATFORM not in header.platforms:
         continue
 
-      filter_options = header.FilterOptions('srx')
+      filter_options = header.FilterOptions(self._PLATFORM)
 
       if (len(filter_options) < 4 or filter_options[0] != 'from-zone' or
           filter_options[2] != 'to-zone'):
@@ -271,19 +276,20 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       term_dup_check = set()
       new_terms = []
       for term in terms:
+        term.name = self.FixTermLength(term.name)
         if term.name in term_dup_check:
           raise SRXDuplicateTermError('You have a duplicate term: %s'
                                       % term.name)
         term_dup_check.add(term.name)
 
-        if term.expiration and term.expiration <= current_date:
+        if term.expiration:
           if term.expiration <= exp_info_date:
-            logging.info('INFO: Term %s in policy %s expires '
-                         'in less than two weeks.', term.name, filter_name)
+            logging.info('INFO: Term %s in policy %s>%s expires '
+                         'in less than two weeks.', term.name, self.from_zone,
+                         self.to_zone)
           if term.expiration <= current_date:
-            logging.warn('WARNING: Term %s in policy %s is expired and '
-                         'will not be rendered.', term.name, filter_name)
-          continue
+            logging.warn('WARNING: Term %s in policy %s>%s is expired.',
+                         term.name, self.from_zone, self.to_zone)
 
         for i in term.source_address_exclude:
           term.source_address = nacaddr.RemoveAddressFromList(
@@ -301,7 +307,6 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         new_terms.append(new_term)
         tmp_icmptype = new_term.NormalizeIcmpTypes(
             term.icmp_type, term.protocol, filter_type)
-
         # NormalizeIcmpTypes returns [''] for empty, convert to [] for eval
         normalized_icmptype = tmp_icmptype if tmp_icmptype != [''] else []
         # rewrites the protocol icmpv6 to icmp6
@@ -327,7 +332,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       address: a naming library address object
     """
     if zone not in self.addressbook:
-      self.addressbook[zone] = {}
+      self.addressbook[zone] = collections.OrderedDict()
     if address.parent_token not in self.addressbook[zone]:
       self.addressbook[zone][address.parent_token] = []
     name = address.parent_token
@@ -362,7 +367,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     target.append(self.INDENT + 'zones {')
     for zone in self.addressbook:
       target.append(self.INDENT * 2 + 'security-zone ' + zone + ' {')
-      target.append(self.INDENT * 3 + 'address-book {')
+      target.append(self.INDENT * 3 + 'replace: address-book {')
       for group in self.addressbook[zone]:
         for address, name in self.addressbook[zone][group]:
           target.append(self.INDENT * 4 + 'address ' + name + ' ' +
@@ -377,7 +382,12 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       target.append(self.INDENT * 2 + '}')
     target.append(self.INDENT + '}')
 
-    target.append(self.INDENT + 'policies {')
+    target.append(self.INDENT + 'replace: policies {')
+
+    target.append(self.INDENT * 2 + '/*')
+    target.extend(aclgenerator.AddRepositoryTags(self.INDENT * 2))
+    target.append(self.INDENT * 2 + '*/')
+
     for (_, terms, filter_options) in self.srx_policies:
       target.append(self.INDENT * 2 + 'from-zone ' + filter_options[1] +
                     ' to-zone ' + filter_options[3] + ' {')
@@ -387,8 +397,8 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     target.append(self.INDENT + '}')
     target.append('}')
 
-    #APPLICATIONS
-    target.append('applications {')
+    # APPLICATIONS
+    target.append('replace: applications {')
     done_apps = []
     for app in self.applications:
       app_list = []
@@ -410,6 +420,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
           i = 1
           target.append(self.INDENT +
                         'application-set ' + app['name'] + '-app {')
+
           for proto in (app['protocol'] or ['']):
             for sport in (app['sport'] or ['']):
               for dport in (app['dport'] or ['']):

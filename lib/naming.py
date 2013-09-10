@@ -379,7 +379,8 @@ class Naming(object):
     else:
       raise NoDefinitionsError('Unknown definitions type.')
     if not file_names:
-      raise NoDefinitionsError('No definition files found.')
+      raise NoDefinitionsError('No definition files for %s in %s found.' %
+                               (def_type, defdirectory))
 
     for current_file in file_names:
       try:

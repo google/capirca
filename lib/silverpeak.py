@@ -191,6 +191,7 @@ class Silverpeak(aclgenerator.ACLGenerator):
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
                                       'expiration',
                                       'policer',           # safely ignored
+                                      'owner',             # safely ignored
                                       'precedence',
                                       'qos',
                                       'routing_instance',  # safely ignored
@@ -228,7 +229,7 @@ class Silverpeak(aclgenerator.ACLGenerator):
   #                       'nikto': 'ends'
   #                      }
 
-  def __init__(self, pol, exp_info, fixed_content_file=None):
+  def __init__(self, pol, fixed_content_file, exp_info):
     self.current_date = datetime.date.today()
     aclgenerator.ACLGenerator.__init__(self, pol, exp_info)
 
@@ -306,6 +307,7 @@ class Silverpeak(aclgenerator.ACLGenerator):
 
       new_terms = []
       for term in terms:
+        term.name = self.FixTermLength(term.name)
         verified = self.VerifyTerm(term, exp_info)
         if verified:
           new_terms.append(Term(term))
@@ -369,7 +371,6 @@ class Silverpeak(aclgenerator.ACLGenerator):
       target.append('lan-qos-dscp %s wan-qos-dscp %s\n\n' %
                     (qos_value, qos_value))
       return ' '.join(target)
-    return ''
 
   def GenerateConfString(self):
     """Generate configuration file."""

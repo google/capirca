@@ -7,7 +7,7 @@ header {
   # NOTES: iptables produces filter 'lines' that must be used as args to the
   # '$ iptables' cmd, while Speedway produces stateful iptables filters
   # compatible with iptables-restore (most people will prefer speedway)
-  target:: juniper edge-inbound
+  target:: juniper edge-inbound inet
   target:: cisco edge-inbound mixed
   target:: speedway INPUT
   target:: ciscoasa asa_in
