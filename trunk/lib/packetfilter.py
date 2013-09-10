@@ -32,6 +32,10 @@ class UnsupportedActionError(Error):
   """Raised when we see an unsupported action."""
 
 
+class UnsupportedTargetOption(Error):
+  """Raised when we see an unsupported option."""
+
+
 class Term(aclgenerator.Term):
   """Generate PacketFilter policy terms."""
 
@@ -104,13 +108,21 @@ class Term(aclgenerator.Term):
 
     # source address
     term_saddrs = self._CheckAddressAf(self.term.source_address)
-    if not term_saddrs: return ''
+    if not term_saddrs:
+      logging.warn(self.NO_AF_LOG_FORMAT.substitute(term=self.term.name,
+                                                    direction='source',
+                                                    af=self.af))
+      return ''
     term_saddr = self._GenerateAddrStatement(
         term_saddrs, self.term.source_address_exclude)
 
     # destination address
     term_daddrs = self._CheckAddressAf(self.term.destination_address)
-    if not term_daddrs: return ''
+    if not term_daddrs:
+      logging.warn(self.NO_AF_LOG_FORMAT.substitute(term=self.term.name,
+                                                    direction='destination',
+                                                    af=self.af))
+      return ''
     term_daddr = self._GenerateAddrStatement(
         term_daddrs, self.term.destination_address_exclude)
 
@@ -164,6 +176,7 @@ class Term(aclgenerator.Term):
     return '\n'.join(str(v) for v in ret_str if v is not '')
 
   def _CheckAddressAf(self, addrs):
+    """Verify that the requested address-family matches the address's family."""
     if not addrs:
       return ['any']
     if self.af == 'mixed':
@@ -177,6 +190,7 @@ class Term(aclgenerator.Term):
 
   def _FormatPart(self, action, log, af, proto, src_addr, src_port,
                   dst_addr, dst_port, tcp_flags, icmp_types, options):
+    """Format the string which will become a single PF entry."""
     line = ['%s' % action]
     if log and 'true' in [str(l) for l in log]:
       line.append('log')
@@ -240,6 +254,7 @@ class PacketFilter(aclgenerator.ACLGenerator):
   _TERM = Term
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',
                                       'logging',
+                                      'routing_instance',
                                      ])
 
   def _TranslatePolicy(self, pol, exp_info):
@@ -252,7 +267,7 @@ class PacketFilter(aclgenerator.ACLGenerator):
     filter_type = None
 
     for header, terms in pol.filters:
-      if not self._PLATFORM in header.platforms:
+      if self._PLATFORM not in header.platforms:
         continue
 
       filter_options = header.FilterOptions(self._PLATFORM)[1:]
@@ -281,6 +296,7 @@ class PacketFilter(aclgenerator.ACLGenerator):
       new_terms = []
       term_names = set()
       for term in terms:
+        term.name = self.FixTermLength(term.name)
         if term.name in term_names:
           raise aclgenerator.DuplicateTermError(
               'You have a duplicate term: %s' % term.name)
@@ -327,6 +343,6 @@ class PacketFilter(aclgenerator.ACLGenerator):
         term_str = str(term)
         if term_str:
           target.append(term_str)
-      target.append('\n')
+      target.append('')
 
     return '\n'.join(target)

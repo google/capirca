@@ -15,8 +15,8 @@
 # limitations under the License.
 #
 
-__author__ = 'pmoody@google.com (Peter Moody)'
-__author__ = 'watson@google.com (Tony Watson)'
+__author__ = ['pmoody@google.com (Peter Moody)',
+              'watson@google.com (Tony Watson)']
 
 
 import datetime
@@ -51,12 +51,66 @@ class PrecedenceError(Error):
   pass
 
 
+class JuniperIndentationError(Error):
+  pass
+
+
+class Config(object):
+  """Config allows a configuration to be assembled easily.
+
+  Configurations are automatically indented following Juniper's style.
+  A textual representation of the config can be extracted with str().
+
+  Attributes:
+    indent: The number of leading spaces on the current line.
+    tabstop: The number of spaces to indent for a new level.
+  """
+
+  def __init__(self, indent=0, tabstop=4):
+    self.indent = indent
+    self._initial_indent = indent
+    self.tabstop = tabstop
+    self.lines = []
+
+  def __str__(self):
+    if self.indent != self._initial_indent:
+      raise JuniperIndentationError(
+          'Expected indent %d but got %d' % (self._initial_indent, self.indent))
+    return '\n'.join(self.lines)
+
+  def Append(self, line, verbatim=False):
+    """Append one line to the configuration.
+
+    Args:
+      line: The string to append to the config.
+      verbatim: append line without adjusting indentation. Default False.
+    Raises:
+      JuniperIndentationError: If the indentation would be further left
+        than the initial indent.  e.g. too many close braces.
+    """
+    if verbatim:
+      self.lines.append(line)
+      return
+
+    if line.endswith('}'):
+      self.indent -= self.tabstop
+      if self.indent < self._initial_indent:
+        raise JuniperIndentationError('Too many close braces.')
+    spaces = ' ' * self.indent
+    self.lines.append(spaces + line.strip())
+    if line.endswith(' {'):
+      self.indent += self.tabstop
+
+
 class Term(aclgenerator.Term):
   """Representation of an individual Juniper term.
 
     This is mostly useful for the __str__() method.
 
-    Args: term policy.Term object
+  Args:
+    term: policy.Term object
+    term_type: the address family for the term, one of "inet", "inet6",
+      or "bridge"
   """
   _DEFAULT_INDENT = 12
   _ACTIONS = {'accept': 'accept',
@@ -97,26 +151,9 @@ class Term(aclgenerator.Term):
     self.term = term
     self.term_type = term_type
 
-    if not term_type in self._TERM_TYPE:
+    if term_type not in self._TERM_TYPE:
       raise ValueError('Unknown Filter Type: %s' % term_type)
 
-    if (not self.term.address and
-        not self.term.destination_address and
-        not self.term.destination_prefix and
-        not self.term.destination_port and
-        not self.term.precedence and
-        not self.term.protocol and
-        not self.term.protocol_except and
-        not self.term.port and
-        not self.term.source_address and
-        not self.term.source_prefix and
-        not self.term.source_port and
-        not self.term.ether_type and
-        not self.term.traffic_type):
-
-      self.default_action = True
-    else:
-      self.default_action = False
     # some options need to modify the actions
     self.extra_actions = []
 
@@ -133,20 +170,16 @@ class Term(aclgenerator.Term):
       if 'juniper' in self.term.platform_exclude:
         return ''
 
-    ret_str = []
+    config = Config(indent=self._DEFAULT_INDENT)
     from_str = []
-
-    # we need a quick way to generate some number of ' ' chars for lining up
-    # the terms properly.
-    indent = lambda n: ' ' * (self._DEFAULT_INDENT + n)
 
     # Don't render icmpv6 protocol terms under inet, or icmp under inet6
     if ((self.term_type == 'inet6' and 'icmp' in self.term.protocol) or
         (self.term_type == 'inet' and 'icmpv6' in self.term.protocol)):
-      ret_str.append(indent(0) + '/* Term %s' % self.term.name)
-      ret_str.append(indent(0) + '** not rendered due to protocol/AF mismatch.')
-      ret_str.append(indent(0) + '*/')
-      return '\n'.join(ret_str)
+      config.Append('/* Term %s' % self.term.name)
+      config.Append('** not rendered due to protocol/AF mismatch.')
+      config.Append('*/')
+      return str(config)
 
     # comment
     # this deals just fine with multi line comments, but we could probably
@@ -155,19 +188,22 @@ class Term(aclgenerator.Term):
     if self.term.owner:
       self.term.comment.append('Owner: %s' % self.term.owner)
     if self.term.comment:
-      ret_str.append(indent(0) + '/*')
+      config.Append('/*')
       for comment in self.term.comment:
         for line in comment.split('\n'):
-          ret_str.append(indent(0) + '** ' + line)
-      ret_str.append(indent(0) + '*/')
+          config.Append('** ' + line)
+      config.Append('*/')
 
     # Term verbatim output - this will skip over normal term creation
     # code.  Warning generated from policy.py if appropriate.
     if self.term.verbatim:
       for next_term in self.term.verbatim:
         if next_term.value[0] == 'juniper':
-          ret_str.append(str(next_term.value[1]))
-      return '\n'.join(ret_str)
+          config.Append(str(next_term.value[1]), verbatim=True)
+      return str(config)
+
+    # Helper for per-address-family keywords.
+    family_keywords = self._TERM_TYPE.get(self.term_type)
 
     # option
     # this is going to be a little ugly b/c there are a few little messed
@@ -175,169 +211,176 @@ class Term(aclgenerator.Term):
     if self.term.option:
       for opt in [str(x) for x in self.term.option]:
         # there should be a better way to search the array of protocols
-        if opt.find('sample') == 0:
+        if opt.startswith('sample'):
           self.extra_actions.append('sample')
 
         # only append tcp-established for option established when
         # tcp is the only protocol, otherwise other protos break on juniper
-        elif opt.find('established') == 0:
+        elif opt.startswith('established'):
           if self.term.protocol == ['tcp']:
-            if 'tcp-established;' not in [x.strip() for x in from_str]:
-              from_str.append(indent(8) + self._TERM_TYPE.get(
-                  self.term_type).get('tcp-est') + ';')
+            if 'tcp-established;' not in from_str:
+              from_str.append(family_keywords['tcp-est'] + ';')
 
         # if tcp-established specified, but more than just tcp is included
         # in the protocols, raise an error
-        elif opt.find('tcp-established') == 0:
+        elif opt.startswith('tcp-established'):
+          flag = family_keywords['tcp-est'] + ';'
           if self.term.protocol == ['tcp']:
-            if 'tcp-established;' not in [x.strip() for x in from_str]:
-              term_est = self._TERM_TYPE.get(self.term_type).get('tcp-est')
-              from_str.append(indent(8) + term_est + ';')
+            if flag not in from_str:
+              from_str.append(flag)
           else:
             raise TcpEstablishedWithNonTcp(
                 'tcp-established can only be used with tcp protocol in term %s'
                 % self.term.name)
-        elif opt.find('rst') == 0:
-          from_str.append(indent(8) + 'tcp-flags "rst";')
-        elif opt.find('initial') == 0 and 'tcp' in self.term.protocol:
-          from_str.append(indent(8) + 'tcp-initial;')
-        elif opt.find('first-fragment') == 0:
-          from_str.append(indent(8) + 'first-fragment;')
+        elif opt.startswith('rst'):
+          from_str.append('tcp-flags "rst";')
+        elif opt.startswith('initial') and 'tcp' in self.term.protocol:
+          from_str.append('tcp-initial;')
+        elif opt.startswith('first-fragment'):
+          from_str.append('first-fragment;')
 
         # we don't have a special way of dealing with this, so we output it and
         # hope the user knows what they're doing.
         else:
-          from_str.append('%s%s;' % (indent(8), opt))
+          from_str.append('%s;' % opt)
 
     # term name
-    ret_str.append(indent(0) + 'term ' + self.term.name + ' {')
+    config.Append('term %s {' % self.term.name)
 
     # a default action term doesn't have any from { clause
-    if not self.default_action:
-      ret_str.append(indent(4) + 'from {')
+    has_match_criteria = (self.term.address or
+                          self.term.destination_address or
+                          self.term.destination_prefix or
+                          self.term.destination_port or
+                          self.term.precedence or
+                          self.term.protocol or
+                          self.term.protocol_except or
+                          self.term.port or
+                          self.term.source_address or
+                          self.term.source_prefix or
+                          self.term.source_port or
+                          self.term.ether_type or
+                          self.term.traffic_type)
+
+    if has_match_criteria:
+      config.Append('from {')
+
+      term_af = self.AF_MAP.get(self.term_type)
 
       # address
-      address = self.term.GetAddressOfVersion('address',
-                                              self.AF_MAP.get(self.term_type))
+      address = self.term.GetAddressOfVersion('address', term_af)
       if address:
-        ret_str.append(indent(8) +
-                       self._TERM_TYPE.get(self.term_type).get('addr') + ' {')
+        config.Append('%s {' % family_keywords['addr'])
         for addr in address:
-          # nacaddr comments may not appear for some optimized addresses
-          ret_str.append(indent(12) + str(addr) + ';' + self._Comment(addr))
-        ret_str.append(indent(8) + '}')
+          config.Append('%s;%s' % (addr, self._Comment(addr)))
+        config.Append('}')
+      elif self.term.address:
+        logging.warn(self.NO_AF_LOG_FORMAT.substitute(term=self.term.name,
+                                                      af=self.term_type))
+        return ''
 
       # source address
-      source_address = self.term.GetAddressOfVersion(
-          'source_address',
-          self.AF_MAP.get(self.term_type))
-      source_address_exclude = self.term.GetAddressOfVersion(
-          'source_address_exclude',
-          self.AF_MAP.get(self.term_type))
+      source_address, source_address_exclude = self._MinimizePrefixes(
+          self.term.GetAddressOfVersion('source_address', term_af),
+          self.term.GetAddressOfVersion('source_address_exclude', term_af))
+
       if source_address:
-        ret_str.append(indent(8) +
-                       self._TERM_TYPE.get(self.term_type).get('saddr') + ' {')
-        for saddr in source_address:
-          # nacaddr comments may not  appear for some optimized addresses
-          ret_str.append(indent(12) + str(saddr) + ';' + self._Comment(saddr))
-        # source-excludes?
-        if source_address_exclude:
-          for ex in source_address_exclude:
-            # nacaddr comments may not  appear for some optimized addresses
-            ret_str.append(indent(12) + str(ex) + ' except;' +
-                           self._Comment(ex, exclude=True))
-        ret_str.append(indent(8) + '}')
+        config.Append('%s {' % family_keywords['saddr'])
+        for addr in source_address:
+          config.Append('%s;%s' % (addr, self._Comment(addr)))
+        for addr in source_address_exclude:
+          config.Append('%s except;%s' % (
+              addr, self._Comment(addr, exclude=True)))
+        config.Append('}')
+      elif self.term.source_address:
+        logging.warn(self.NO_AF_LOG_FORMAT.substitute(term=self.term.name,
+                                                      direction='source',
+                                                      af=self.term_type))
+        return ''
 
       # destination address
-      destination_address = self.term.GetAddressOfVersion(
-          'destination_address',
-          self.AF_MAP.get(self.term_type))
-      destination_address_exclude = self.term.GetAddressOfVersion(
-          'destination_address_exclude',
-          self.AF_MAP.get(self.term_type))
+      destination_address, destination_address_exclude = self._MinimizePrefixes(
+          self.term.GetAddressOfVersion('destination_address', term_af),
+          self.term.GetAddressOfVersion('destination_address_exclude', term_af))
 
       if destination_address:
-        ret_str.append(indent(8) +
-                       self._TERM_TYPE.get(self.term_type).get('daddr') + ' {')
-        for daddr in destination_address:
-          # nacaddr comments may not  appear for some optimized addresses
-          ret_str.append(indent(12) + str(daddr) + ';' + self._Comment(daddr))
-        # destination-excludes?
-        if destination_address_exclude:
-          for ex in destination_address_exclude:
-            ret_str.append(indent(12) + str(ex) + ' except;' +
-                           self._Comment(ex, exclude=True))
-
-        ret_str.append(indent(8) + '}')
+        config.Append('%s {' % family_keywords['daddr'])
+        for addr in destination_address:
+          config.Append('%s;%s' % (addr, self._Comment(addr)))
+        for addr in destination_address_exclude:
+          config.Append('%s except;%s' % (
+              addr, self._Comment(addr, exclude=True)))
+        config.Append('}')
+      elif self.term.destination_address:
+        logging.warn(self.NO_AF_LOG_FORMAT.substitute(term=self.term.name,
+                                                      direction='destination',
+                                                      af=self.term_type))
+        return ''
 
       # source prefix list
       if self.term.source_prefix:
-        ret_str.append(indent(8) + 'source-prefix-list {')
+        config.Append('source-prefix-list {')
         for pfx in self.term.source_prefix:
-          ret_str.append(indent(12) + pfx + ';')
-        ret_str.append(indent(8) + '}')
+          config.Append(pfx + ';')
+        config.Append('}')
 
       # destination prefix list
       if self.term.destination_prefix:
-        ret_str.append(indent(8) + 'destination-prefix-list {')
+        config.Append('destination-prefix-list {')
         for pfx in self.term.destination_prefix:
-          ret_str.append(indent(12) + pfx + ';')
-        ret_str.append(indent(8) + '}')
+          config.Append(pfx + ';')
+        config.Append('}')
 
       # protocol
       if self.term.protocol:
-        ret_str.append(indent(8) +
-                       self._TERM_TYPE.get(self.term_type).get('protocol') +
-                       ' ' + self._Group(self.term.protocol))
+        config.Append(family_keywords['protocol'] +
+                      ' ' + self._Group(self.term.protocol))
 
       # protocol
       if self.term.protocol_except:
-        term_except = self._TERM_TYPE.get(self.term_type).get('protocol-except')
-        ret_str.append(indent(8) + term_except + ' '
-                       + self._Group(self.term.protocol_except))
+        config.Append(family_keywords['protocol-except'] + ' '
+                      + self._Group(self.term.protocol_except))
 
       # port
       if self.term.port:
-        ret_str.append(indent(8) + 'port ' + self._Group(self.term.port))
+        config.Append('port %s' % self._Group(self.term.port))
 
       # source port
       if self.term.source_port:
-        ret_str.append(indent(8) + 'source-port ' +
-                       self._Group(self.term.source_port))
+        config.Append('source-port %s' % self._Group(self.term.source_port))
 
       # destination port
       if self.term.destination_port:
-        ret_str.append(indent(8) + 'destination-port ' +
-                       self._Group(self.term.destination_port))
+        config.Append('destination-port %s' %
+                      self._Group(self.term.destination_port))
 
       # append any options beloging in the from {} section
       for next_str in from_str:
-        ret_str.append(next_str)
+        config.Append(next_str)
 
       # packet length
       if self.term.packet_length:
-        ret_str.append(indent(8) + 'packet-length ' +
-                       str(self.term.packet_length) + ';')
+        config.Append('packet-length %s;' % self.term.packet_length)
 
       # fragment offset
       if self.term.fragment_offset:
-        ret_str.append(indent(8) + 'fragment-offset ' +
-                       str(self.term.fragment_offset) + ';')
+        config.Append('fragment-offset %s;' % self.term.fragment_offset)
+
       # icmp-types
       icmp_types = ['']
       if self.term.icmp_type:
         icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type,
                                              self.term.protocol, self.term_type)
       if icmp_types != ['']:
-        ret_str.append(indent(8) + 'icmp-type ' + self._Group(icmp_types))
+        config.Append('icmp-type %s' % self._Group(icmp_types))
 
       if self.term.ether_type:
-        ret_str.append(indent(8) + 'ether-type ' +
-                       self._Group(self.term.ether_type))
+        config.Append('ether-type %s' %
+                      self._Group(self.term.ether_type))
 
       if self.term.traffic_type:
-        ret_str.append(indent(8) + 'traffic-type ' +
-                       self._Group(self.term.traffic_type))
+        config.Append('traffic-type %s' %
+                      self._Group(self.term.traffic_type))
 
       if self.term.precedence:
         # precedence may be a single integer, or a space separated list
@@ -349,64 +392,83 @@ class Term(aclgenerator.Term):
           else:
             raise PrecedenceError('Precedence value %s is out of bounds in %s' %
                                   (precedence, self.term.name))
-        if len(policy_precedences) > 1:
-          # A list looks like '[ 0 3 4 ]'
-          precedence_string = '[ %s ]' % ' '.join(sorted(policy_precedences))
-        else:
-          precedence_string = policy_precedences.pop()
+        config.Append('precedence %s' % self._Group(sorted(policy_precedences)))
 
-        ret_str.append(indent(8) + 'precedence %s;' % precedence_string)
-
-      # end from { ... }
-      ret_str.append(indent(4) + '}')
-
-    # logging
-    if self.term.logging:
-      for log_target in self.term.logging:
-        if str(log_target) == 'local':
-          self.extra_actions.append('log')
-        else:
-          self.extra_actions.append('syslog')
-
-    # routing instance.
-    if self.term.routing_instance:
-      self.extra_actions.append('routing-instance %s' %
-                                str(self.term.routing_instance))
-    # counter
-    if self.term.counter:
-      self.extra_actions.append('count %s' % str(self.term.counter))
-
-    # policer
-    if self.term.policer:
-      self.extra_actions.append('policer %s' % str(self.term.policer))
-
-    # quality-of-service
-    if self.term.qos:
-      self.extra_actions.append('forwarding-class %s' % str(self.term.qos))
-
-    # loss-priority
-    if self.term.loss_priority:
-      self.extra_actions.append('loss-priority %s' %
-                                str(self.term.loss_priority))
+      config.Append('}')  # end from { ... }
 
     ####
     # ACTIONS go below here
     ####
-    ret_str.append(indent(4) + 'then {')
+    config.Append('then {')
+    # logging
+    if self.term.logging:
+      for log_target in self.term.logging:
+        if str(log_target) == 'local':
+          config.Append('log;')
+        else:
+          config.Append('syslog;')
+
+    if self.term.routing_instance:
+      config.Append('routing-instance %s;' % self.term.routing_instance)
+
+    if self.term.counter:
+      config.Append('count %s;' % self.term.counter)
+
+    if self.term.policer:
+      config.Append('policer %s;' % self.term.policer)
+
+    if self.term.qos:
+      config.Append('forwarding-class %s;' % self.term.qos)
+
+    if self.term.loss_priority:
+      config.Append('loss-priority %s;' % self.term.loss_priority)
 
     for action in self.extra_actions:
-      ret_str.append(indent(8) + str(action) + ';')
+      config.Append(action + ';')
 
-    for action in self.term.action:
-      ret_str.append(indent(8) + self._ACTIONS.get(str(action)) + ';')
+    # If there is a routing-instance defined, skip reject/accept/etc actions.
+    if not self.term.routing_instance:
+      for action in self.term.action:
+        config.Append(self._ACTIONS.get(action) + ';')
 
-    # end then { ... }
-    ret_str.append(indent(4) + '}')
+    config.Append('}')  # end then{...}
+    config.Append('}')  # end term accept-foo-to-bar { ... }
 
-    # end term accept-foo-to-bar { ... }
-    ret_str.append(indent(0) + '}')
+    return str(config)
 
-    return '\n'.join(ret_str)
+  def _MinimizePrefixes(self, include, exclude):
+    """Calculate a minimal set of prefixes for Juniper match conditions.
+
+    Args:
+      include: Iterable of nacaddr objects, prefixes to match.
+      exclude: Iterable of nacaddr objects, prefixes to exclude.
+    Returns:
+      A tuple (I,E) where I and E are lists containing the minimized
+      versions of include and exclude, respectively.  The order
+      of each input list is preserved.
+    """
+    # Remove any included prefixes that have EXACT matches in the
+    # excluded list.  Excluded prefixes take precedence on the router
+    # regardless of the order in which the include/exclude are applied.
+    exclude_set = set(exclude)
+    include_result = [ip for ip in include if ip not in exclude_set]
+
+    # Every address match condition on a Juniper firewall filter
+    # contains an implicit "0/0 except" or "0::0/0 except".  If an
+    # excluded prefix is not contained within any less-specific prefix
+    # in the included set, we can elide it.  In other words, if the
+    # next-less-specific prefix is the implicit "default except",
+    # there is no need to configure the more specific "except".
+    #
+    # TODO(kbrint): this could be made more efficient with a Patricia trie.
+    exclude_result = []
+    for exclude_prefix in exclude:
+      for include_prefix in include_result:
+        if exclude_prefix in include_prefix:
+          exclude_result.append(exclude_prefix)
+          break
+
+    return include_result, exclude_result
 
   def _Comment(self, addr, exclude=False, line_length=132):
     """Returns address comment field if it exists.
@@ -578,7 +640,7 @@ class Juniper(aclgenerator.ACLGenerator):
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     for header, terms in pol.filters:
-      if not self._PLATFORM in header.platforms:
+      if self._PLATFORM not in header.platforms:
         continue
 
       filter_options = header.FilterOptions(self._PLATFORM)
@@ -587,7 +649,8 @@ class Juniper(aclgenerator.ACLGenerator):
       # Checks if the non-interface-specific option was specified.
       # I'm assuming that it will be specified as maximum one time, and
       # don't check for more appearances of the word in the options.
-      interface_specific = not 'not-interface-specific' in filter_options[1:]
+      interface_specific = 'not-interface-specific' not in filter_options[1:]
+
       # Remove the option so that it is not confused with a filter type
       if not interface_specific:
         filter_options.remove('not-interface-specific')
@@ -600,6 +663,7 @@ class Juniper(aclgenerator.ACLGenerator):
       term_names = set()
       new_terms = []
       for term in terms:
+        term.name = self.FixTermLength(term.name)
         if term.name in term_names:
           raise JuniperDuplicateTermError('You have multiple terms named: %s' %
                                           term.name)
@@ -624,38 +688,40 @@ class Juniper(aclgenerator.ACLGenerator):
                                     interface_specific, new_terms))
 
   def __str__(self):
-    target = []
+    config = Config()
 
     for (header, filter_name, filter_type, interface_specific, terms
         ) in self.juniper_policies:
       # add the header information
-      target.append('firewall {')
-      target.append(' ' * 4 + 'family %s {' % filter_type)
-      target.append(' ' * 8 + 'replace:')
-      target.append(' ' * 8 + '/*')
+      config.Append('firewall {')
+      config.Append('family %s {' % filter_type)
+      config.Append('replace:')
+      config.Append('/*')
 
       # we want the acl to contain id and date tags, but p4 will expand
       # the tags here when we submit the generator, so we have to trick
       # p4 into not knowing these words.  like taking c-a-n-d-y from a
       # baby.
-      target.extend(aclgenerator.AddRepositoryTags(' ' * 8 + '** '))
-      target.append(' ' * 8 + '**')
+      for line in aclgenerator.AddRepositoryTags('** '):
+        config.Append(line)
+      config.Append('**')
 
       for comment in header.comment:
         for line in comment.split('\n'):
-          target.append(' ' * 8 + '** ' + line)
-      target.append(' ' * 8 + '*/')
+          config.Append('** ' + line)
+      config.Append('*/')
 
-      target.append(' ' * 8 + 'filter ' + filter_name + ' {')
+      config.Append('filter %s {' % filter_name)
       if interface_specific:
-        target.append(' ' * 12 + 'interface-specific;')
+        config.Append('interface-specific;')
 
       for term in terms:
-        target.append(str(term))
+        term_str = str(term)
+        if term_str:
+          config.Append(term_str, verbatim=True)
 
-      target.append(' ' * 8 + '}')  # filter { ... }
-      target.append(' ' * 4 + '}')  # family inet { ... }
-      target.append('}')            # firewall { ... }
-      target.append('\n')
-    # end for header, filter_name, filter_type...
-    return '\n'.join(target)
+      config.Append('}')  # filter { ... }
+      config.Append('}')  # family inet { ... }
+      config.Append('}')  # firewall { ... }
+
+    return str(config) + '\n'

@@ -19,6 +19,7 @@
 
 import copy
 import re
+from string import Template
 
 import policy
 
@@ -66,6 +67,12 @@ class DuplicateTermError(Error):
 
 class UnsupportedFilterError(Error):
   """Raised when we see an inappropriate filter."""
+  pass
+
+
+class TermNameTooLongError(Error):
+  """Raised when term named can not be abbreviated."""
+  pass
 
 
 class Term(object):
@@ -105,6 +112,11 @@ class Term(object):
   # provide flipped key/value dicts
   PROTO_MAP_BY_NUMBER = dict([(v, k) for (k, v) in PROTO_MAP.iteritems()])
   AF_MAP_BY_NUMBER = dict([(v, k) for (k, v) in AF_MAP.iteritems()])
+
+  NO_AF_LOG_FORMAT = Template('Term $term will not be rendered, as it has'
+                              ' $direction address match specified but no'
+                              ' $direction addresses of $af address family'
+                              ' are present.')
 
   def NormalizeAddressFamily(self, af):
     """Convert (if necessary) address family name to numeric value.
@@ -187,7 +199,7 @@ class ACLGenerator(object):
   # Commonly misspelled protocols that the generator should reject.
   _FILTER_BLACKLIST = {}
 
-  # set of required keywords that every generator must support
+  # Set of required keywords that every generator must support.
   _REQUIRED_KEYWORDS = set(['action',
                             'comment',
                             'destination_address',
@@ -207,6 +219,46 @@ class ACLGenerator(object):
                            ])
   # Generators should redefine this in subclass as optional support is added
   _OPTIONAL_SUPPORTED_KEYWORDS = set([])
+
+  # Abbreviation table used to automatically abbreviate terms that exceed
+  # specified limit. We use uppercase for abbreviations to distinguish
+  # from lowercase names.  This is order list - we try the ones in the
+  # top of the list before the ones later in the list.  Prefer clear
+  # or very-space-saving abbreviations by putting them early in the
+  # list.  Abbreviations may be regular expressions or fixed terms;
+  # prefer fixed terms unless there's a clear benefit to regular
+  # expressions.
+  _ABBREVIATION_TABLE = [
+        ('bogons', 'BGN'),
+        ('bogon', 'BGN'),
+        ('reserved', 'RSV'),
+        ('rfc1918', 'PRV'),
+        ('rfc-1918', 'PRV'),
+        ('internet', 'EXT'),
+        ('global', 'GBL'),
+        ('internal', 'INT'),
+        ('customer', 'CUST'),
+        ('google', 'GOOG'),
+        ('ballmer', 'ASS'),
+        ('microsoft', 'LOL'),
+        ('china', 'BAN'),
+        ('border', 'BDR'),
+        ('service', 'SVC'),
+        ('router', 'RTR'),
+        ('transit', 'TRNS'),
+        ('experiment', 'EXP'),
+        ('established', 'EST'),
+        ('unreachable', 'UNR'),
+        ('fragment', 'FRG'),
+        ('accept', 'OK'),
+        ('discard', 'DSC'),
+        ('reject', 'REJ'),
+        ('replies', 'ACK'),
+        ('request', 'REQ'),
+        ]
+  # Maximum term length. Can be overriden by generator to enforce
+  # platform specific restrictions.
+  _TERM_MAX_LENGTH = 62
 
   def __init__(self, pol, exp_info):
     """Initialise an ACLGenerator.  Store policy structure for processing."""
@@ -288,6 +340,42 @@ class ACLGenerator(object):
         break
 
     return mod
+
+  def FixTermLength(self, term_name, abbreviate=False, truncate=False):
+    """Return a term name which is equal or shorter than _TERM_MAX_LENGTH.
+
+       New term is obtained in two steps. First, if allowed, automatic
+       abbreviation is performed using hardcoded abbreviation table. Second,
+       if allowed, term name is truncated to specified limit.
+
+    Args:
+      term_name: Name to abbreviate if necessary.
+      abbreviate: Whether to allow abbreviations to shorten the length.
+      truncate: Whether to allow truncation to shorten the length.
+    Returns:
+       A string based on term_name, that is equal or shorter than
+       _TERM_MAX_LENGTH abbreviated and truncated as necessary.
+    Raises:
+       TermNameTooLongError: term_name cannot be abbreviated
+       to be shorter than _TERM_MAX_LENGTH, or truncation is disabled.
+    """
+    new_term = term_name
+    if abbreviate:
+      for word, abbrev in self._ABBREVIATION_TABLE:
+        if len(new_term) <= self._TERM_MAX_LENGTH:
+          return new_term
+        new_term = re.sub(word, abbrev, new_term)
+    if truncate:
+      new_term = new_term[:self._TERM_MAX_LENGTH]
+    if len(new_term) <= self._TERM_MAX_LENGTH:
+      return new_term
+    raise TermNameTooLongError('Term %s (originally %s) is '
+                               'too long. Limit is %d characters (vs. %d) '
+                               'and no abbreviations remain or abbreviations '
+                               'disabled.' %
+                               (new_term, term_name,
+                                self._TERM_MAX_LENGTH,
+                                len(new_term)))
 
 
 def AddRepositoryTags(prefix=''):

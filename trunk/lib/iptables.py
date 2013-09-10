@@ -19,11 +19,13 @@
 
 __author__ = 'watson@google.com (Tony Watson)'
 
-import aclgenerator
 import datetime
 import logging
 import nacaddr
 import re
+from string import Template
+
+import aclgenerator
 
 
 class Term(aclgenerator.Term):
@@ -34,7 +36,10 @@ class Term(aclgenerator.Term):
   # correct in cases where we've omitted fields from term.
   _PLATFORM = 'iptables'
   _POSTJUMP_FORMAT = None
-  _PREJUMP_FORMAT = '-A %s -j %s'
+  _PREJUMP_FORMAT = Template('-A $filter -j $term')
+  _TERM_FORMAT = Template('-N $term')
+  _COMMENT_FORMAT = Template('-A $term -m comment --comment "$comment"')
+  _FILTER_TOP_FORMAT = Template('-A $term')
   _ACTION_TABLE = {
       'accept': '-j ACCEPT',
       'deny': '-j DROP',
@@ -70,8 +75,7 @@ class Term(aclgenerator.Term):
       'sample': '',
       }
 
-  def __init__(self, term, filter_name, trackstate, filter_action, af='inet',
-               truncate=True):
+  def __init__(self, term, filter_name, trackstate, filter_action, af='inet'):
     """Setup a new term.
 
     Args:
@@ -80,7 +84,6 @@ class Term(aclgenerator.Term):
       trackstate: Specifies if conntrack should be used for new connections
       filter_action: The default action of the filter.
       af: Which address family ('inet' or 'inet6') to apply the term to.
-      truncate: Whether to truncate names to meet iptables limits.
 
     Raises:
       UnsupportedFilterError: Filter is not supported.
@@ -92,17 +95,15 @@ class Term(aclgenerator.Term):
     self.options = []
     self.af = af
 
-    # Iptables enforces 30 char limit, but weirdness happens after 28 or 29
-    self.term_name = '%s_%s' % (
-        self.filter[:1], self._CheckTermLength(self.term.name, 24, truncate))
-
     if af == 'inet6':
       self._all_ips = nacaddr.IPv6('::/0')
       self._ACTION_TABLE['reject'] = '-j REJECT --reject-with adm-prohibited'
     else:
       self._all_ips = nacaddr.IPv4('0.0.0.0/0')
-      self._ACTION_TABLE['reject'] = '-j REJECT --reject-with ' \
-                                     'icmp-host-prohibited'
+      self._ACTION_TABLE['reject'] = ('-j REJECT --reject-with '
+                                      'icmp-host-prohibited')
+
+    self.term_name = '%s_%s' % (self.filter[:1], self.term.name)
 
   def __str__(self):
     # Verify platform specific terms. Skip whole term if platform does not
@@ -149,10 +150,12 @@ class Term(aclgenerator.Term):
           '- specify source or dest', '\nError in term:', self.term.name))
 
     # Create a new term
-    ret_str.append('-N %s' % self.term_name)  # New term
+    if self._TERM_FORMAT:
+      ret_str.append(self._TERM_FORMAT.substitute(term=self.term_name))
 
     if self._PREJUMP_FORMAT:
-      ret_str.append(self._PREJUMP_FORMAT % (self.filter, self.term_name))
+      ret_str.append(self._PREJUMP_FORMAT.substitute(filter=self.filter,
+                                                     term=self.term_name))
 
     if self.term.owner:
       self.term.comment.append('Owner: %s' % self.term.owner)
@@ -171,8 +174,9 @@ class Term(aclgenerator.Term):
         if not line:
           continue  # iptables-restore does not like 0-length comments.
         # term comments
-        ret_str.append('-A %s -m comment --comment "%s"' %
-                       (self.term_name, str(line)))
+        ret_str.append(self._COMMENT_FORMAT.substitute(filter=self.filter,
+                                                       term=self.term_name,
+                                                       comment=str(line)))
 
     # if terms does not specify action, use filter default action
     if not self.term.action:
@@ -200,65 +204,20 @@ class Term(aclgenerator.Term):
           '\n', self.term.name,
           'protocol_except logic not currently supported.'))
 
-    # source address
-    term_saddr = self.term.source_address
-    exclude_saddr = self.term.source_address_exclude
-    term_saddr_excluded = []
+    (term_saddr, exclude_saddr,
+     term_daddr, exclude_daddr) = self._CalculateAddresses(
+         self.term.source_address, self.term.source_address_exclude,
+         self.term.destination_address, self.term.destination_address_exclude)
     if not term_saddr:
-      term_saddr = [self._all_ips]
-    if exclude_saddr:
-      term_saddr_excluded.extend(nacaddr.ExcludeAddrs(term_saddr,
-                                                      exclude_saddr))
-
-    # destination address
-    term_daddr = self.term.destination_address
-    exclude_daddr = self.term.destination_address_exclude
-    term_daddr_excluded = []
+      logging.warn(self.NO_AF_LOG_FORMAT.substitute(term=self.term.name,
+                                                    direction='source',
+                                                    af=self.af))
+      return ''
     if not term_daddr:
-      term_daddr = [self._all_ips]
-    if exclude_daddr:
-      term_daddr_excluded.extend(nacaddr.ExcludeAddrs(term_daddr,
-                                                      exclude_daddr))
-
-    # Just to be safe, always have a result of at least 1 to avoid * by zero
-    # returning incorrect results (10src*10dst=100, but 10src*0dst=0, not 10)
-    bailout_count = len(exclude_saddr) + len(exclude_daddr) + (
-        (len(self.term.source_address) or 1) *
-        (len(self.term.destination_address) or 1))
-    exclude_count = ((len(term_saddr_excluded) or 1) *
-                     (len(term_daddr_excluded) or 1))
-
-    # Use bailout jumps for excluded addresses if it results in fewer output
-    # lines than nacaddr.ExcludeAddrs() method.
-    if exclude_count < bailout_count:
-      exclude_saddr = []
-      exclude_daddr = []
-      if term_saddr_excluded:
-        term_saddr = term_saddr_excluded
-      if term_daddr_excluded:
-        term_daddr = term_daddr_excluded
-
-    # With many sources and destinations, iptables needs to generate the
-    # cartesian product of sources and destinations.  If there are no
-    # exclude rules, this can instead be written as exclude [0/0 -
-    # srcs], exclude [0/0 - dsts].
-    v4_src_count = len([x for x in term_saddr if x.version == 4])
-    v4_dst_count = len([x for x in term_daddr if x.version == 4])
-    v6_src_count = len([x for x in term_saddr if x.version == 6])
-    v6_dst_count = len([x for x in term_daddr if x.version == 6])
-    num_pairs = v4_src_count * v4_dst_count + v6_src_count * v6_dst_count
-    if num_pairs > 100:
-      new_exclude_source = nacaddr.ExcludeAddrs([self._all_ips], term_saddr)
-      new_exclude_dest = nacaddr.ExcludeAddrs([self._all_ips], term_daddr)
-      # Invert the shortest list that does not already have exclude addresses
-      if len(new_exclude_source) < len(new_exclude_dest) and not exclude_saddr:
-        if len(new_exclude_source) + len(term_daddr) < num_pairs:
-          exclude_saddr = new_exclude_source
-          term_saddr = [self._all_ips]
-      elif not exclude_daddr:
-        if len(new_exclude_dest) + len(term_saddr) < num_pairs:
-          exclude_daddr = new_exclude_dest
-          term_daddr = [self._all_ips]
+      logging.warn(self.NO_AF_LOG_FORMAT.substitute(term=self.term.name,
+                                                    direction='destination',
+                                                    af=self.af))
+      return ''
 
     # ports
     source_port = []
@@ -330,11 +289,11 @@ class Term(aclgenerator.Term):
 
     for saddr in exclude_saddr:
       ret_str.extend(self._FormatPart(
-          self.af, '', saddr, '', '', '', '', '', '', '', '', '', '',
+          '', saddr, '', '', '', '', '', '', '', '', '', '',
           self._ACTION_TABLE.get('next')))
     for daddr in exclude_daddr:
       ret_str.extend(self._FormatPart(
-          self.af, '', '', '', daddr, '', '', '', '', '', '', '', '',
+          '', '', '', daddr, '', '', '', '', '', '', '', '',
           self._ACTION_TABLE.get('next')))
 
     for saddr in term_saddr:
@@ -343,7 +302,6 @@ class Term(aclgenerator.Term):
           for proto in protocol:
             for tcp_matcher in tcp_track_options or (([], []),):
               ret_str.extend(self._FormatPart(
-                  self.af,
                   str(proto),
                   saddr,
                   source_port,
@@ -360,17 +318,98 @@ class Term(aclgenerator.Term):
                   ))
 
     if self._POSTJUMP_FORMAT:
-      ret_str.append(self._POSTJUMP_FORMAT % (self.filter, self.term_name))
+      ret_str.append(self._POSTJUMP_FORMAT.substitute(filter=self.filter,
+                                                      term=self.term_name))
 
     return '\n'.join(str(v) for v in ret_str if v is not '')
 
-  def _FormatPart(self, af, protocol, saddr, sport, daddr, dport, options,
+  def _CalculateAddresses(self, term_saddr, exclude_saddr,
+                          term_daddr, exclude_daddr):
+    """Calculate source and destination address list for a term.
+
+    Args:
+      term_saddr: source address list of the term
+      exclude_saddr: source address exclude list of the term
+      term_daddr: destination address list of the term
+      exclude_daddr: destination address exclude list of the term
+
+    Returns:
+      tuple containing source address list, source exclude address list,
+      destination address list, destination exclude address list in
+      that order
+
+    """
+    # source address
+    term_saddr_excluded = []
+    if not term_saddr:
+      term_saddr = [self._all_ips]
+    if exclude_saddr:
+      term_saddr_excluded.extend(nacaddr.ExcludeAddrs(term_saddr,
+                                                      exclude_saddr))
+
+    # destination address
+    term_daddr_excluded = []
+    if not term_daddr:
+      term_daddr = [self._all_ips]
+    if exclude_daddr:
+      term_daddr_excluded.extend(nacaddr.ExcludeAddrs(term_daddr,
+                                                      exclude_daddr))
+
+    # Just to be safe, always have a result of at least 1 to avoid * by zero
+    # returning incorrect results (10src*10dst=100, but 10src*0dst=0, not 10)
+    bailout_count = len(exclude_saddr) + len(exclude_daddr) + (
+        (len(self.term.source_address) or 1) *
+        (len(self.term.destination_address) or 1))
+    exclude_count = ((len(term_saddr_excluded) or 1) *
+                     (len(term_daddr_excluded) or 1))
+
+    # Use bailout jumps for excluded addresses if it results in fewer output
+    # lines than nacaddr.ExcludeAddrs() method.
+    if exclude_count < bailout_count:
+      exclude_saddr = []
+      exclude_daddr = []
+      if term_saddr_excluded:
+        term_saddr = term_saddr_excluded
+      if term_daddr_excluded:
+        term_daddr = term_daddr_excluded
+
+    # With many sources and destinations, iptables needs to generate the
+    # cartesian product of sources and destinations.  If there are no
+    # exclude rules, this can instead be written as exclude [0/0 -
+    # srcs], exclude [0/0 - dsts].
+    v4_src_count = len([x for x in term_saddr if x.version == 4])
+    v4_dst_count = len([x for x in term_daddr if x.version == 4])
+    v6_src_count = len([x for x in term_saddr if x.version == 6])
+    v6_dst_count = len([x for x in term_daddr if x.version == 6])
+    num_pairs = v4_src_count * v4_dst_count + v6_src_count * v6_dst_count
+    if num_pairs > 100:
+      new_exclude_source = nacaddr.ExcludeAddrs([self._all_ips], term_saddr)
+      new_exclude_dest = nacaddr.ExcludeAddrs([self._all_ips], term_daddr)
+      # Invert the shortest list that does not already have exclude addresses
+      if len(new_exclude_source) < len(new_exclude_dest) and not exclude_saddr:
+        if len(new_exclude_source) + len(term_daddr) < num_pairs:
+          exclude_saddr = new_exclude_source
+          term_saddr = [self._all_ips]
+      elif not exclude_daddr:
+        if len(new_exclude_dest) + len(term_saddr) < num_pairs:
+          exclude_daddr = new_exclude_dest
+          term_daddr = [self._all_ips]
+    term_saddr = [x for x in term_saddr
+                  if x.version == self.AF_MAP[self.af]]
+    exclude_saddr = [x for x in exclude_saddr
+                     if x.version == self.AF_MAP[self.af]]
+    term_daddr = [x for x in term_daddr
+                  if x.version == self.AF_MAP[self.af]]
+    exclude_daddr = [x for x in exclude_daddr
+                     if x.version == self.AF_MAP[self.af]]
+    return (term_saddr, exclude_saddr, term_daddr, exclude_daddr)
+
+  def _FormatPart(self, protocol, saddr, sport, daddr, dport, options,
                   tcp_flags, icmp_type, track_flags, sint, dint, log_hits,
                   action):
     """Compose one iteration of the term parts into a string.
 
     Args:
-      af: Address family, inet|inet6
       protocol: The network protocol
       saddr: Source IP address
       sport: Source port numbers
@@ -387,30 +426,10 @@ class Term(aclgenerator.Term):
     Returns:
       rval:  A single iptables argument line
     """
-    src = ''
-    dst = ''
-    # Check that AF matches and is what we want
-    if saddr:
-      if (af == 'inet') and (saddr.version != 4):
-        return ''
-      if (af == 'inet6') and (saddr.version != 6):
-        return ''
-    if daddr:
-      if (af == 'inet') and (daddr.version != 4):
-        return ''
-      if (af == 'inet6') and (daddr.version != 6):
-        return ''
-    filter_top = '-A ' + self.term_name
-    # fix addresses
-    if not saddr or saddr == self._all_ips:
-      src = ''
-    else:
-      src = '-s %s/%d' % (saddr.ip, saddr.prefixlen)
+    src, dst = self._GenerateAddressStatement(saddr, daddr)
 
-    if not daddr or daddr == self._all_ips:
-      dst = ''
-    else:
-      dst = '-d %s/%d' % (daddr.ip, daddr.prefixlen)
+    filter_top = self._FILTER_TOP_FORMAT.substitute(filter=self.filter,
+                                                    term=self.term_name)
 
     source_int = ''
     if sint:
@@ -490,6 +509,30 @@ class Term(aclgenerator.Term):
         ret_lines.append(' '.join(rval+[action]))
     return ret_lines
 
+  def _GenerateAddressStatement(self, saddr, daddr):
+    """Return the address section of an individual iptables rule.
+
+    Args:
+      saddr: source address of the rule
+      daddr: destination address of the rule
+
+    Returns:
+      tuple containing source and destination address statement, in
+      that order
+
+    """
+    src = ''
+    dst = ''
+    if not saddr or saddr == self._all_ips:
+      src = ''
+    else:
+      src = '-s %s/%d' % (saddr.ip, saddr.prefixlen)
+    if not daddr or daddr == self._all_ips:
+      dst = ''
+    else:
+      dst = '-d %s/%d' % (daddr.ip, daddr.prefixlen)
+    return (src, dst)
+
   def _GeneratePortStatement(self, ports, source=False, dest=False):
     """Return the 'port' section of an individual iptables rule.
 
@@ -545,66 +588,6 @@ class Term(aclgenerator.Term):
                                                         ','.join(norm_ports)))
     return portstrings
 
-  def _CheckTermLength(self, term_name, term_max_len, abbreviate):
-    """Return a name based on term_name which is shorter than term_max_len.
-
-    Args:
-      term_name: A name to abbreviate if necessary.
-      term_max_len: An int representing the maximum acceptable length.
-      abbreviate: whether to allow abbreviations to shorten the length
-    Returns:
-      A string based on term_name, abbreviated as necessary to fit term_max_len.
-    Raises:
-      TermNameTooLongError: term_name cannot be abbreviated below term_max_len.
-    """
-    # We use uppercase for abbreviations to distinguish from lowercase
-    # names.  Ordered list of abbreviations, we try the ones in the
-    # top of the list before the ones later in the list.  Prefer clear
-    # or very-space-saving abbreviations by putting them early in the
-    # list.  Abbreviations may be regular expressions or fixed terms;
-    # prefer fixed terms unless there's a clear benefit to regular
-    # expressions.
-    abbreviation_table = [
-        ('bogons', 'BGN'),
-        ('bogon', 'BGN'),
-        ('reserved', 'RSV'),
-        ('rfc1918', 'PRV'),
-        ('rfc-1918', 'PRV'),
-        ('internet', 'EXT'),
-        ('global', 'GBL'),
-        ('internal', 'INT'),
-        ('customer', 'CUST'),
-        ('google', 'GOOG'),
-        ('ballmer', 'ASS'),
-        ('microsoft', 'LOL'),
-        ('china', 'BAN'),
-        ('border', 'BDR'),
-        ('service', 'SVC'),
-        ('router', 'RTR'),
-        ('transit', 'TRNS'),
-        ('experiment', 'EXP'),
-        ('established', 'EST'),
-        ('unreachable', 'UNR'),
-        ('fragment', 'FRG'),
-        ('accept', 'OK'),
-        ('discard', 'DSC'),
-        ('reject', 'REJ'),
-        ('replies', 'ACK'),
-        ('request', 'REQ'),
-        ]
-    new_term = term_name
-    if abbreviate:
-      for word, abbrev in abbreviation_table:
-        if len(new_term) <= term_max_len:
-          return new_term
-        new_term = re.sub(word, abbrev, new_term)
-    if len(new_term) <= term_max_len:
-      return new_term
-    raise TermNameTooLongError('%s %s %s %s%s %d %s' % (
-        '\nTerm', new_term, '(originally', term_name,
-        ') is too long. Limit is 24 characters (vs', len(new_term),
-        ') and no abbreviations remain.'))
-
 
 class Iptables(aclgenerator.ACLGenerator):
   """Generates filters and terms from provided policy object."""
@@ -617,7 +600,9 @@ class Iptables(aclgenerator.ACLGenerator):
   _DEFAULTACTION_FORMAT = '-P %s %s'
   _DEFAULT_ACTION = 'DROP'
   _TERM = Term
+  _TERM_MAX_LENGTH = 24
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
+                                      'destination_interface',
                                       'destination_prefix',  # skips these terms
                                       'expiration',
                                       'fragment_offset',
@@ -626,12 +611,13 @@ class Iptables(aclgenerator.ACLGenerator):
                                       'packet_length',
                                       'policer',             # safely ignored
                                       'qos',
+                                      'routing_instance',    # safe to skip
                                       'source_interface',
-                                      'destination_interface',
                                       'source_prefix',       # skips these terms
                                      ])
 
   def _TranslatePolicy(self, pol, exp_info):
+    """Translate a policy from objects into strings."""
     self.iptables_policies = []
     current_date = datetime.date.today()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
@@ -640,12 +626,12 @@ class Iptables(aclgenerator.ACLGenerator):
     good_default_actions = ['ACCEPT', 'DROP']
     good_filters = ['INPUT', 'OUTPUT', 'FORWARD']
     good_afs = ['inet', 'inet6']
-    good_options = ['nostate', 'truncatenames']
+    good_options = ['nostate', 'abbreviateterms', 'truncateterms']
     all_protocols_stateful = True
 
     for header, terms in pol.filters:
       filter_type = None
-      if not self._PLATFORM in header.platforms:
+      if self._PLATFORM not in header.platforms:
         continue
 
       filter_options = header.FilterOptions(self._PLATFORM)[1:]
@@ -698,6 +684,9 @@ class Iptables(aclgenerator.ACLGenerator):
       new_terms = []
       term_names = set()
       for term in terms:
+        term.name = self.FixTermLength(term.name,
+                                       'abbreviateterms' in filter_options,
+                                       'truncateterms' in filter_options)
         if term.name in term_names:
           raise aclgenerator.DuplicateTermError(
               'You have a duplicate term: %s' % term.name)
@@ -718,8 +707,7 @@ class Iptables(aclgenerator.ACLGenerator):
             continue
 
         new_terms.append(self._TERM(term, filter_name, all_protocols_stateful,
-                                    default_action, filter_type,
-                                    'truncatenames' in filter_options))
+                                    default_action, filter_type))
 
       self.iptables_policies.append((header, filter_name, filter_type,
                                      default_action, new_terms))
@@ -758,21 +746,19 @@ class Iptables(aclgenerator.ACLGenerator):
                                                     default_action))
       # add the terms
       for term in terms:
-        target.append(str(term))
-      target.append('\n')
+        term_str = str(term)
+        if term_str:
+          target.append(term_str)
 
     if self._RENDER_SUFFIX:
       target.append(self._RENDER_SUFFIX)
 
+    target.append('')
     return '\n'.join(target)
 
 
 class Error(Exception):
   """Base error class."""
-
-
-class TermNameTooLongError(Error):
-  """Term name is too long."""
 
 
 class BadPortsError(Error):

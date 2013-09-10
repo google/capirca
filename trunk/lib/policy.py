@@ -121,11 +121,11 @@ def TranslatePorts(ports, protocols, term_name):
     for port in ports:
       service_by_proto = DEFINITIONS.GetServiceByProto(port, proto)
       if not service_by_proto:
-        logging.warn('%s %s %s %s %s %s%s %s' % (
-                     'Term', term_name, 'has service', port,
-                     'which is not defined with protocol', proto,
+        logging.warn('%s %s %s %s %s %s%s %s', 'Term', term_name,
+                     'has service', port, 'which is not defined with protocol',
+                     proto,
                      ', but will be permitted. Unless intended, you should',
-                     'consider splitting the protocols into separate terms!'))
+                     'consider splitting the protocols into separate terms!')
 
       for p in [x.split('-') for x in service_by_proto]:
         if len(p) == 1:
@@ -370,15 +370,27 @@ class Term(object):
 
     # check prototols
     # either protocol or protocol-except may be used, not both at the same time.
-    # evaluating these separately for superset is reasonable.
     if self.protocol:
-      if not self.CheckProtocolIsContained(self.protocol, other.protocol):
+      if other.protocol:
+        if not self.CheckProtocolIsContained(other.protocol, self.protocol):
+          return False
+      # this term has protocol, other has protocol_except.
+      elif other.protocol_except:
         return False
-    # if the other term's exceptions do not have the same, or more
-    # exceptions than our own then this term cannot contain that term.
-    if self.protocol_except:
-      if not self.CheckProtocolIsContained(other.protocol_except,
-                                           self.protocol_except):
+      else:
+        # other does not have protocol or protocol_except. since we do other
+        # cannot be contained in self.
+        return False
+    elif self.protocol_except:
+      if other.protocol_except:
+        if self.CheckProtocolIsContained(
+            self.protocol_except, other.protocol_except):
+          return False
+      elif other.protocol:
+        for proto in other.protocol:
+          if proto in self.protocol_except:
+            return False
+      else:
         return False
 
     # combine addresses with exclusions for proper contains comparisons.
@@ -419,6 +431,11 @@ class Term(object):
             self.flattened_daddr, other.flattened_daddr)):
       return False
 
+    if not (
+        self.CheckPrincipalsContained(
+            self.principals, other.principals)):
+      return False
+
     # check ports
     # like the address directive, the port directive is special in that it can
     # be either source or destination.
@@ -427,13 +444,11 @@ class Term(object):
               self.CheckPortIsContained(self.port, other.sport) or
               self.CheckPortIsContained(self.port, other.dport)):
         return False
-    elif self.source_port:
-      if not self.CheckPortIsContained(self.source_port, other.source_port):
-        return False
-    elif self.destination_port:
-      if not self.CheckPortIsContained(self.destination_port,
-                                      other.destination_port):
-        return False
+    if not self.CheckPortIsContained(self.source_port, other.source_port):
+      return False
+    if not self.CheckPortIsContained(self.destination_port,
+                                     other.destination_port):
+      return False
 
     # prefix lists
     if self.source_prefix:
@@ -444,10 +459,20 @@ class Term(object):
           other.destination_prefix):
         return False
 
-    # check various options
-    for opt in self.option:
-      if not opt in other.option:
+    # check precedence
+    if self.precedence:
+      if not other.precedence:
         return False
+      for precedence in other.precedence:
+        if precedence not in self.precedence:
+          return False
+    # check various options
+    if self.option:
+      if not other.option:
+        return False
+      for opt in other.option:
+        if opt not in self.option:
+          return False
     if self.fragment_offset:
       # fragment_offset looks like 'integer-integer' or just, 'integer'
       sfo = [int(x) for x in self.fragment_offset.split('-')]
@@ -540,7 +565,7 @@ class Term(object):
 
   def __eq__(self, other):
     # action
-    if not sorted(self.action) == sorted(other.action):
+    if sorted(self.action) != sorted(other.action):
       return False
 
     # addresses.
@@ -572,41 +597,41 @@ class Term(object):
       return False
 
     # option
-    if not sorted(self.option) == sorted(other.option):
+    if sorted(self.option) != sorted(other.option):
       return False
 
     # qos
-    if not self.qos == other.qos:
+    if self.qos != other.qos:
       return False
 
     # verbatim
-    if not self.verbatim == other.verbatim:
+    if self.verbatim != other.verbatim:
       return False
 
     # policer
-    if not self.policer == other.policer:
+    if self.policer != other.policer:
       return False
 
     # interface
-    if not self.source_interface == other.source_interface:
+    if self.source_interface != other.source_interface:
       return False
 
-    if not self.destination_interface == other.destination_interface:
+    if self.destination_interface != other.destination_interface:
       return False
 
-    if not sorted(self.logging) == sorted(other.logging):
+    if sorted(self.logging) != sorted(other.logging):
       return False
-    if not self.qos == other.qos:
+    if self.qos != other.qos:
       return False
-    if not self.packet_length == other.packet_length:
+    if self.packet_length != other.packet_length:
       return False
-    if not self.fragment_offset == other.fragment_offset:
+    if self.fragment_offset != other.fragment_offset:
       return False
-    if not sorted(self.icmp_type) == sorted(other.icmp_type):
+    if sorted(self.icmp_type) != sorted(other.icmp_type):
       return False
-    if not sorted(self.ether_type) == sorted(other.ether_type):
+    if sorted(self.ether_type) != sorted(other.ether_type):
       return False
-    if not sorted(self.traffic_type) == sorted(other.traffic_type):
+    if sorted(self.traffic_type) != sorted(other.traffic_type):
       return False
 
     # platform
@@ -615,7 +640,7 @@ class Term(object):
       return False
 
     # timeout
-    if not self.timeout == other.timeout:
+    if self.timeout != other.timeout:
       return False
 
     return True
@@ -665,14 +690,14 @@ class Term(object):
     if not exclude:
       return include
 
-    flat_inclusions = []
-    for in_addr in include:
+    for index, in_addr in enumerate(include):
       for ex_addr in exclude:
         if ex_addr in in_addr:
           reduced_list = in_addr.address_exclude(ex_addr)
-          flat_inclusions.extend(
+          include.pop(index)
+          include.extend(
               Term._FlattenAddresses(reduced_list, exclude[1:]))
-    return flat_inclusions
+    return include
 
   def GetAddressOfVersion(self, addr_type, af=None):
     """Returns addresses of the appropriate Address Family.
@@ -842,9 +867,6 @@ class Term(object):
     else:
       if not self.action and not self.routing_instance:
         raise TermNoActionError('no action specified for term %s' % self.name)
-      if self.action and self.routing_instance:
-        raise InvalidTermActionError('action:: and routing-instance:: can\'t ' +
-                                     'both be defined for term %s' % self.name)
       # have we specified a port with a protocol that doesn't support ports?
       if self.source_port or self.destination_port or self.port:
         if 'tcp' not in self.protocol and 'udp' not in self.protocol:
@@ -960,8 +982,27 @@ class Term(object):
     """
     return self.CollapsePortListRecursive(sorted(ports))
 
+  def CheckPrincipalsContained(self, superset, subset):
+    """Check to if the given list of principals is wholly contained.
+
+    Args:
+      superset: list of principals
+      subset: list of principals
+
+    Returns:
+      bool: True if subset is contained in superset. false otherwise.
+    """
+    # Skip set comparison if neither term has principals.
+    if not superset and not subset:
+      return True
+
+    # Convert these lists to sets to use set comparison.
+    sup = set(superset)
+    sub = set(subset)
+    return sub.issubset(sup)
+
   def CheckProtocolIsContained(self, superset, subset):
-    """Check to if the given list of protocols is wholly contained.
+    """Check if the given list of protocols is wholly contained.
 
     Args:
       superset: list of protocols

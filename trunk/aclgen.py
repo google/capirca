@@ -126,8 +126,8 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
       pf = copy.deepcopy(pol)
     if 'speedway' in header.platforms:
       spd = copy.deepcopy(pol)
-    if 'silverpeak' in header.platforms:
-      spk = copy.deepcopy(pol)
+    #if 'silverpeak' in header.platforms:
+    #  spk = copy.deepcopy(pol)
     # SRX needs to be un-optimized for correct building of the address book
     # entries.
     if 'srx' in header.platforms:
