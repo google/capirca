@@ -61,6 +61,10 @@ _parser.add_option('-s', '--shade_checking', help='Enable shade checking',
 _parser.add_option('-e', '--exp_info', type='int', action='store',
                    dest='exp_info', default=2,
                    help='Weeks in advance to notify that a term will expire')
+_parser.add_option('-c', '--silverpeak_configlet_file', 
+                   dest='fixed_content_file',
+                   help='Silverpeak fixed content file',
+                   default=None)
                    
 (FLAGS, args) = _parser.parse_args()
 
@@ -169,7 +173,7 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
   if spk:
-    spk_obj = silverpeak.Silverpeak(spk, exp_info, '')
+    spk_obj = silverpeak.Silverpeak(spk, exp_info, fixed_content_file)
     do_output_filter(spk_obj.GenerateACLString(),
                      filter_name(source_file, spk_obj._SUFFIX))
     do_output_filter(spk_obj.GenerateConfString(),
