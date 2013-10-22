@@ -37,6 +37,6 @@ setup(name='capirca',
                   'definate.yaml_validator', 'lib.cisco', 'lib.ciscoasa',
                   'lib.iptables', 'lib.juniper', 'lib.junipersrx',
                   'lib.nacaddr', 'lib.policy', 'lib.naming', 'lib.aclcheck',
-                  'lib.aclgenerator', 'lib.port', 'lib.demo', 'lib.silverpeak',
-                  'lib.speedway', 'third_party.ipaddr', 'third_party.ply.lex',
+                  'lib.aclgenerator', 'lib.port', 'lib.demo', 'lib.speedway',
+                  'third_party.ipaddr', 'third_party.ply.lex',
                   'third_party.ply.yacc'])

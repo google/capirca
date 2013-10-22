@@ -42,7 +42,6 @@ from lib import speedway
 from lib import juniper
 from lib import junipersrx
 from lib import packetfilter
-from lib import silverpeak
 from lib import demo
 
 _parser = OptionParser()
@@ -61,10 +60,6 @@ _parser.add_option('-s', '--shade_checking', help='Enable shade checking',
 _parser.add_option('-e', '--exp_info', type='int', action='store',
                    dest='exp_info', default=2,
                    help='Weeks in advance to notify that a term will expire')
-_parser.add_option('-c', '--silverpeak_configlet_file', 
-                   dest='fixed_content_file',
-                   help='Silverpeak fixed content file',
-                   default=None)
                    
 (FLAGS, args) = _parser.parse_args()
 
@@ -130,8 +125,6 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
       pf = copy.deepcopy(pol)
     if 'speedway' in header.platforms:
       spd = copy.deepcopy(pol)
-    #if 'silverpeak' in header.platforms:
-    #  spk = copy.deepcopy(pol)
     # SRX needs to be un-optimized for correct building of the address book
     # entries.
     if 'srx' in header.platforms:
@@ -171,13 +164,6 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
   if dem:
     fw = demo.Demo(dem, exp_info)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
-    count += 1
-  if spk:
-    spk_obj = silverpeak.Silverpeak(spk, exp_info, fixed_content_file)
-    do_output_filter(spk_obj.GenerateACLString(),
-                     filter_name(source_file, spk_obj._SUFFIX))
-    do_output_filter(spk_obj.GenerateConfString(),
-                     filter_name(source_file, spk_obj._CONF_SUFFIX))
     count += 1
 
   return count
