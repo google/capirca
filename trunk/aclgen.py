@@ -38,6 +38,7 @@ from lib import policy
 from lib import cisco
 from lib import ciscoasa
 from lib import iptables
+from lib import ipset
 from lib import speedway
 from lib import juniper
 from lib import junipersrx
@@ -106,8 +107,8 @@ def revision_tag_handler(fname, text):
   
 def render_filters(source_file, definitions_obj, shade_check, exp_info):
   count = 0
-  [(jcl, acl, asa, ipt, pf, spd, spk, srx, dem)] = [
-      (False, False, False, False, False, False, False, False, False)]
+  [(jcl, acl, asa, ipt, ips, pf, spd, spk, srx, dem)] = [
+      (False, False, False, False, False, False, False, False, False, False)]
 
   pol = policy.ParsePolicy(open(source_file).read(), definitions_obj,
                            shade_check=shade_check)
@@ -121,6 +122,8 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
       asa = copy.deepcopy(pol)
     if 'iptables' in header.platforms:
       ipt = copy.deepcopy(pol)
+    if 'ipset' in header.platforms:
+      ips = copy.deepcopy(pol)
     if 'packetfilter' in header.platforms:
       pf = copy.deepcopy(pol)
     if 'speedway' in header.platforms:
@@ -147,6 +150,10 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
     count += 1
   if ipt:
     fw = iptables.Iptables(ipt, exp_info)
+    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+    count += 1
+  if ips:
+    fw = ipset.Ipset(ips, exp_info)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
   if pf:
