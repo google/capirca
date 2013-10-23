@@ -19,7 +19,6 @@
 # from capirca import nacaddr
 # from capirca import packetfilter
 # from capirca import port
-# from capirca import silverpeak
 # from capirca import speedway
 #
 
@@ -27,6 +26,6 @@ __version__ = '1.0.0'
 
 __all__ = ['naming', 'policy', 'cisco', 'juniper', 'iptables',
            'policyreader', 'aclcheck', 'aclgenerator', 'nacaddr',
-           'packetfilter', 'port', 'silverpeak', 'speedway']
+           'packetfilter', 'port', 'speedway']
 
 __author__ = 'Paul (Tony) Watson (watson@gmail.com / watson@google.com)'
