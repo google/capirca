@@ -132,6 +132,7 @@ Ipset is a system inside the Linux kernel, which can very efficiently store and 
 The Ipset header designation follows the Iptables format above, but uses the target platform of 'ipset':
 {{{
 target:: ipset [INPUT|OUTPUT|FORWARD|custom] {ACCEPT|DROP} {truncatenames} {nostate} {inet|inet6}
+}}}
 
 == Terms Section ==
 
