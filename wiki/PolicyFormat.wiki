@@ -71,6 +71,12 @@ When _inet4_ or _inet6_ is specified, naming tokens with both IPv4 and IPv6 filt
 
 The default format is _inet4_, and is implied if not other argument is given.
 
+=== Cisco ASA ===
+The cisco header designation has the following format:
+{{{
+target:: ciscoasa [filter name]
+}}}
+TODO: add more documentation for this.
 
 === Iptables ===
 NOTE: Iptables produces output that must be passed, line by line, to the 'iptables/ip6tables' command line.  For 'iptables-restore' compatible output, please use the [PolicyFormat#Speedway Speedway] generator.
