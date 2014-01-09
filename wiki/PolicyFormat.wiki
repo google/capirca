@@ -126,6 +126,13 @@ target:: packetfilter {inet|inet6|mixed}
   * _inet6_: specifies that the resulting filter should only render IPv6 addresses.
   * _mixed_: specifies that the resulting filter should only render IPv4 and IPv6 addresses (default).
 
+=== Ipset ===
+Ipset is a system inside the Linux kernel, which can very efficiently store and match IPv4 and IPv6 addresses. This can be used to dramatically increase performance of iptables firewall.
+
+The Ipset header designation follows the Iptables format above, but uses the target platform of 'ipset':
+{{{
+target:: ipset [INPUT|OUTPUT|FORWARD|custom] {ACCEPT|DROP} {truncatenames} {nostate} {inet|inet6}
+
 == Terms Section ==
 
 Terms defines access control rules within a filter.  Once the filter is defined in the header sections, it is followed by one or more terms.  Terms are enclosed in brackets and use keywords to specify the functionality of a specific access control.
