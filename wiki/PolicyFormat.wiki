@@ -162,8 +162,8 @@ The following are a list of keywords that must be supported by all output genera
   * _expiration::_ stop rendering this term after specified date. [YYYY]-[MM]-[DD] 
   * _icmp-type::_ specify icmp-type code to match, see section [PolicyFormat#ICMP_TYPES ICMP TYPES] for list of valid arguments
   * _option::_ [established|tcp-established|sample|intial|rst|first-fragment]
-    * _established_ - only permit established connections, implements tcp-established for tcp and sets destination port to 1024- 65535 for udp if destination port is not defined.
-    * _tcp-established_ - only permit established tcp connections, based on statefull match or TCP flags. Not supported for other protocols.
+    * _established_ - only match established connections, implements tcp-established for tcp and sets destination port to 1024- 65535 for udp if destination port is not defined.
+    * _tcp-established_ - only match established tcp connections, based on statefull match or TCP flags. Not supported for other protocols.
     * _sample_ - not supported by all generators.  Samples traffic for netflow.
     * _initial_ - currently only supported by juniper generator.  Appends tcp-initial to the term.
     * _rst_ - currently only supported by juniper generator.  Appends "tcp-flags rst" to the term.
