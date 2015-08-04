@@ -240,8 +240,10 @@ class Term(aclgenerator.Term):
   def _GeneratePortStatement(self, ports):
     port_list = []
     for port_tuple in ports:
-      for port in port_tuple:
-        port_list.append(str(port))
+      if port_tuple[0]==port_tuple[1]:
+        port_list.append(str(port_tuple[0]))
+      else:
+        port_list.append(str(port_tuple[0])+':'+str(port_tuple[1]))
     return '{ %s }' % ' '.join(list(set(port_list)))
 
 
