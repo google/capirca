@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright 2013 Google Inc. All Rights Reserved.
+# Copyright 2015 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,14 +25,13 @@ performace of iptables firewall.
 
 __author__ = 'vklimovs@google.com (Vjaceslavs Klimovs)'
 
-from string import Template
-
+import string
 import iptables
 import nacaddr
 
 
 class Error(Exception):
-  pass
+  """Base error class."""
 
 
 class Term(iptables.Term):
@@ -43,77 +42,87 @@ class Term(iptables.Term):
   _POSTJUMP_FORMAT = None
   _PREJUMP_FORMAT = None
   _TERM_FORMAT = None
-  _COMMENT_FORMAT = Template('-A $filter -m comment --comment "$comment"')
-  _FILTER_TOP_FORMAT = Template('-A $filter')
+  _COMMENT_FORMAT = string.Template(
+      '-A $filter -m comment --comment "$comment"')
+  _FILTER_TOP_FORMAT = string.Template('-A $filter')
 
   def __init__(self, *args, **kwargs):
     super(Term, self).__init__(*args, **kwargs)
     # This stores tuples of set name and set contents, keyed by direction.
     # For example:
-    # { 'src': ('term_name', [ipaddr object, ipaddr object]),
-    #  'dst': ('term_name', [ipaddr object, ipaddr object]) }
-    self.addr_sets = dict()
+    # { 'src': ('set_name', [ipaddr object, ipaddr object]),
+    #   'dst': ('set_name', [ipaddr object, ipaddr object]) }
+    self.addr_sets = {}
 
-  def _CalculateAddresses(self, src_addr_list, src_ex_addr_list,
-                          dst_addr_list, dst_ex_addr_list):
-    """Calculate source and destination address list for a term.
+  def _CalculateAddresses(self, src_addr_list, src_addr_exclude_list,
+                          dst_addr_list, dst_addr_exclude_list):
+    """Calculates source and destination address list for a term.
 
     Since ipset is very efficient at matching large number of
-    addresses, we never return eny exclude addresses. Instead
+    addresses, we never return any exclude addresses. Instead
     least positive match is calculated for both source and destination
     addresses.
 
     For source and destination address list, three cases are possible.
-    First case is when there is no addresses. In that case we return
+    First case is when there are no addresses. In that case we return
     _all_ips.
     Second case is when there is strictly one address. In that case,
     we optimize by not generating a set, and it's then the only
     element of returned set.
-    Third case case is when there is more than one address in a set.
+    Third case is when there are more than one address in a set.
     In that case we generate a set and also return _all_ips. Note the
     difference to the first case where no set is actually generated.
 
     Args:
       src_addr_list: source address list of the term.
-      src_ex_addr_list: source address exclude list of the term.
+      src_addr_exclude_list: source address exclude list of the term.
       dst_addr_list: destination address list of the term.
-      dst_ex_addr_list: destination address exclude list of the term.
+      dst_addr_exclude_list: destination address exclude list of the term.
 
     Returns:
-      tuple containing source address list, source exclude address list,
-      destination address list, destination exclude address list in
+      tuple containing source address list, source address exclude list,
+      destination address list, destination address exclude list in
       that order.
 
     """
-    if not src_addr_list:
-      src_addr_list = [self._all_ips]
-    src_addr_list = [src_addr for src_addr in src_addr_list if
-                     src_addr.version == self.AF_MAP[self.af]]
-    if src_ex_addr_list:
-      src_ex_addr_list = [src_ex_addr for src_ex_addr in src_ex_addr_list if
-                          src_ex_addr.version == self.AF_MAP[self.af]]
-      src_addr_list = nacaddr.ExcludeAddrs(src_addr_list, src_ex_addr_list)
-    if len(src_addr_list) > 1:
-      set_name = self._GenerateSetName(self.term.name, 'src')
-      self.addr_sets['src'] = (set_name, src_addr_list)
-      src_addr_list = [self._all_ips]
-
-    if not dst_addr_list:
-      dst_addr_list = [self._all_ips]
-    dst_addr_list = [dst_addr for dst_addr in dst_addr_list if
-                     dst_addr.version == self.AF_MAP[self.af]]
-    if dst_ex_addr_list:
-      dst_ex_addr_list = [dst_ex_addr for dst_ex_addr in dst_ex_addr_list if
-                          dst_ex_addr.version == self.AF_MAP[self.af]]
-      dst_addr_list = nacaddr.ExcludeAddrs(dst_addr_list, dst_ex_addr_list)
-    if len(dst_addr_list) > 1:
-      set_name = self._GenerateSetName(self.term.name, 'dst')
-      self.addr_sets['dst'] = (set_name, dst_addr_list)
-      dst_addr_list = [self._all_ips]
+    target_af = self.AF_MAP[self.af]
+    src_addr_list = self._CalculateAddrList(src_addr_list,
+                                            src_addr_exclude_list, target_af,
+                                            'src')
+    dst_addr_list = self._CalculateAddrList(dst_addr_list,
+                                            dst_addr_exclude_list, target_af,
+                                            'dst')
     return (src_addr_list, [], dst_addr_list, [])
 
+  def _CalculateAddrList(self, addr_list, addr_exclude_list,
+                         target_af, direction):
+    """Calculates and stores address list for target AF and direction.
+
+    Args:
+      addr_list: address list.
+      addr_exclude_list: address exclude list of the term.
+      target_af: target address family.
+      direction: direction in which address list will be used.
+
+    Returns:
+      calculated address list.
+
+    """
+    if not addr_list:
+      addr_list = [self._all_ips]
+    addr_list = [addr for addr in addr_list if addr.version == target_af]
+    if addr_exclude_list:
+      addr_exclude_list = [addr_exclude for addr_exclude in addr_exclude_list if
+                           addr_exclude.version == target_af]
+      addr_list = nacaddr.ExcludeAddrs(addr_list, addr_exclude_list)
+    if len(addr_list) > 1:
+      set_name = self._GenerateSetName(self.term.name, direction)
+      self.addr_sets[direction] = (set_name, addr_list)
+      addr_list = [self._all_ips]
+    return addr_list
+
   def _GenerateAddressStatement(self, src_addr, dst_addr):
-    """Return the address section of an individual iptables rule.
+    """Returns the address section of an individual iptables rule.
 
     See _CalculateAddresses documentation. Three cases are possible here,
     and they map directly to cases in _CalculateAddresses.
@@ -125,8 +134,10 @@ class Term(iptables.Term):
     direction is present. That's when we return a set match.
 
     Args:
-      src_addr: source address of the rule.
-      dst_addr: destination address of the rule.
+      src_addr: ipaddr address or network object with source
+        address of the rule.
+      dst_addr: ipaddr address or network object with destination
+        address of the rule.
 
     Returns:
       tuple containing source and destination address statement, in
@@ -138,12 +149,14 @@ class Term(iptables.Term):
     if src_addr and dst_addr:
       if src_addr == self._all_ips:
         if 'src' in self.addr_sets:
-          src_addr_stmt = ('-m set --set %s src' % self.addr_sets['src'][0])
+          src_addr_stmt = ('-m set --match-set %s src' %
+                           self.addr_sets['src'][0])
       else:
         src_addr_stmt = '-s %s/%d' % (src_addr.ip, src_addr.prefixlen)
       if dst_addr == self._all_ips:
         if 'dst' in self.addr_sets:
-          dst_addr_stmt = ('-m set --set %s dst' % self.addr_sets['dst'][0])
+          dst_addr_stmt = ('-m set --match-set %s dst' %
+                           self.addr_sets['dst'][0])
       else:
         dst_addr_stmt = '-d %s/%d' % (dst_addr.ip, dst_addr.prefixlen)
     return (src_addr_stmt, dst_addr_stmt)
@@ -152,31 +165,37 @@ class Term(iptables.Term):
     if self.af == 'inet6':
       suffix += '-v6'
     if len(term_name) + len(suffix) + 1 > self._SET_MAX_LENGTH:
-      term_name = term_name[:self._SET_MAX_LENGTH -
-                            (len(term_name) + len(suffix) + 1)]
-    return term_name + '-' + suffix
+      set_name_max_lenth = self._SET_MAX_LENGTH - len(suffix) - 1
+      term_name = term_name[:set_name_max_lenth]
+    return '%s-%s' % (term_name, suffix)
 
 
 class Ipset(iptables.Iptables):
   """Ipset generator."""
   _PLATFORM = 'ipset'
   _SET_TYPE = 'hash:net'
-  _SUFFIX = '.ips'
+  SUFFIX = '.ips'
   _TERM = Term
+  _MARKER_BEGIN = '# begin:ipset-rules'
+  _MARKER_END = '# end:ipset-rules'
 
+  # TODO(vklimovs): some not trivial processing is happening inside this
+  # __str__, replace with explicit method
   def __str__(self):
     # Actual rendering happens in __str__, so it has to be called
     # before we do set specific part.
-    iptables_output = iptables.Iptables.__str__(self)
+    iptables_output = super(Ipset, self).__str__()
     output = []
+    output.append(self._MARKER_BEGIN)
     for (_, _, _, _, terms) in self.iptables_policies:
       for term in terms:
         output.extend(self._GenerateSetConfig(term))
+    output.append(self._MARKER_END)
     output.append(iptables_output)
     return '\n'.join(output)
 
   def _GenerateSetConfig(self, term):
-    """Generate set configuration for supplied term.
+    """Generates set configuration for supplied term.
 
     Args:
       term: input term.
@@ -187,14 +206,15 @@ class Ipset(iptables.Iptables):
     """
     output = []
     for direction in sorted(term.addr_sets, reverse=True):
-      set_hashsize = 2 ** len(term.addr_sets[direction][1]).bit_length()
-      set_maxelem = 2 ** len(term.addr_sets[direction][1]).bit_length()
+      set_name, addr_list = term.addr_sets[direction]
+      set_hashsize = 1 << len(addr_list).bit_length()
+      set_maxelem = set_hashsize
       output.append('create %s %s family %s hashsize %i maxelem %i' %
-                    (term.addr_sets[direction][0],
+                    (set_name,
                      self._SET_TYPE,
                      term.af,
                      set_hashsize,
                      set_maxelem))
-      for address in term.addr_sets[direction][1]:
-        output.append('add %s %s' % (term.addr_sets[direction][0], address))
+      for address in addr_list:
+        output.append('add %s %s' % (set_name, address))
     return output
