@@ -307,6 +307,7 @@ class ACLGenerator(object):
     self._TranslatePolicy(pol, exp_info)
 
   def _TranslatePolicy(self, pol, exp_info):
+    # pylint: disable=unused-argument
     """Translate policy contents to platform specific data structures."""
     raise Error('%s does not implement _TranslatePolicies()' % self._PLATFORM)
 
