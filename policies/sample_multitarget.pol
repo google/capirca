@@ -13,6 +13,7 @@ header {
   target:: ciscoasa asa_in
   target:: demo edge-inbound
   target:: arista edge-inbound
+  target:: brocade edge-inbound
 }
 
 #include 'policies/includes/untrusted-networks-blocking.inc'
