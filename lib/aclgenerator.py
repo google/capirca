@@ -27,58 +27,52 @@ import policy
 # generic error class
 class Error(Exception):
   """Base error class."""
-  pass
 
 
 class NoPlatformPolicyError(Error):
   """Raised when a policy is received that doesn't support this platform."""
-  pass
 
 
 class UnsupportedFilter(Error):
   """Raised when we see an inappropriate filter."""
-  pass
 
 
 class UnknownIcmpTypeError(Error):
   """Raised when we see an unknown icmp-type."""
-  pass
 
 
 class MismatchIcmpInetError(Error):
   """Raised when mistmatch between icmp/icmpv6 and inet/inet6."""
-  pass
 
 
 class EstablishedError(Error):
   """Raised when a term has established option with inappropriate protocol."""
-  pass
 
 
 class UnsupportedAF(Error):
   """Raised when provided an unsupported address family."""
-  pass
 
 
 class DuplicateTermError(Error):
   """Raised when duplication of term names are detected."""
-  pass
 
 
 class UnsupportedFilterError(Error):
   """Raised when we see an inappropriate filter."""
-  pass
+
+
+class UnsupportedTargetOption(Error):
+  """Raised when a filter has an impermissible default action specified."""
 
 
 class TermNameTooLongError(Error):
   """Raised when term named can not be abbreviated."""
-  pass
 
 
 class Term(object):
   """Generic framework for a generator Term."""
   ICMP_TYPE = policy.Term.ICMP_TYPE
-  PROTO_MAP = {'ip': 0,
+  PROTO_MAP = {'hop-by-hop': 0,
                'icmp': 1,
                'igmp': 2,
                'ggp': 3,
@@ -90,7 +84,7 @@ class Term(object):
                'rdp': 27,
                'ipv6': 41,
                'ipv6-route': 43,
-               'ipv6-frag': 44,
+               'fragment': 44,
                'rsvp': 46,
                'gre': 47,
                'esp': 50,
@@ -113,10 +107,22 @@ class Term(object):
   PROTO_MAP_BY_NUMBER = dict([(v, k) for (k, v) in PROTO_MAP.iteritems()])
   AF_MAP_BY_NUMBER = dict([(v, k) for (k, v) in AF_MAP.iteritems()])
 
-  NO_AF_LOG_FORMAT = Template('Term $term will not be rendered, as it has'
-                              ' $direction address match specified but no'
-                              ' $direction addresses of $af address family'
-                              ' are present.')
+  NO_AF_LOG_ADDR = Template('Term $term will not be rendered, as it has'
+                            ' $direction address match specified but no'
+                            ' $direction addresses of $af address family'
+                            ' are present.')
+
+  NO_AF_LOG_PROTO = Template('Term $term will not be rendered, as it has'
+                             ' $proto match specified but the ACL is of $af'
+                             ' address family.')
+
+  def __init__(self, term):
+    if term.protocol:
+      for protocol in term.protocol:
+        if (protocol not in self.PROTO_MAP and
+            protocol not in [str(p) for p in self.PROTO_MAP_BY_NUMBER]):
+          raise UnsupportedFilterError('Protocol(s) %s are not supported.'
+                                       % str(term.protocol))
 
   def NormalizeAddressFamily(self, af):
     """Convert (if necessary) address family name to numeric value.
@@ -208,6 +214,7 @@ class ACLGenerator(object):
                             'icmp_type',
                             'name',         # obj attribute, not keyword
                             'option',
+                            'owner',
                             'protocol',
                             'platform',
                             'platform_exclude',
@@ -265,7 +272,7 @@ class ACLGenerator(object):
     object.__init__(self)
 
     # The default list of valid keyword tokens for generators
-    self._VALID_KEYWORDS = self._REQUIRED_KEYWORDS.union(
+    self._valid_keywords = self._REQUIRED_KEYWORDS.union(
         self._OPTIONAL_SUPPORTED_KEYWORDS)
 
     self.policy = pol
@@ -286,13 +293,15 @@ class ACLGenerator(object):
               continue
           for el, val in term.__dict__.items():
             # Private attributes do not need to be valid keywords.
-            if (val and el not in self._VALID_KEYWORDS
+            if (val and el not in self._valid_keywords
                 and not el.startswith('flatten')):
               err.append(el)
           if err:
-            raise UnsupportedFilterError('%s %s %s %s %s %s' % ('\n', term.name,
-                'unsupported optional keywords for target', self._PLATFORM,
-                'in policy:', ' '.join(err)))
+            raise UnsupportedFilterError(
+                'Unsupported optional keyword(s): %s in term %s of policy %s '
+                'for platform %s' % (' '.join(err), term.name,
+                                     header.FilterName(self._PLATFORM),
+                                     self._PLATFORM))
         continue
 
     self._TranslatePolicy(pol, exp_info)
@@ -312,7 +321,7 @@ class ACLGenerator(object):
       protocols = set((self._DEFAULT_PROTOCOL,))
 
     # Check that the address family matches the protocols.
-    if not af in self._SUPPORTED_AF:
+    if af not in self._SUPPORTED_AF:
       raise UnsupportedAF('\nAddress family %s, found in %s, '
                           'unsupported by %s' % (af, term.name, self._PLATFORM))
     if af in self._FILTER_BLACKLIST:
@@ -378,19 +387,30 @@ class ACLGenerator(object):
                                 len(new_term)))
 
 
-def AddRepositoryTags(prefix=''):
+def AddRepositoryTags(prefix='', rid=True, date=True, revision=True):
   """Add repository tagging into the output.
 
   Args:
     prefix: comment delimiter, if needed, to appear before tags
+    rid: bool; True includes the revision Id: repository tag.
+    date: bool; True includes the Date: repository tag.
+    revision: bool; True includes the Revision: repository tag.
   Returns:
     list of text lines containing revision data
   """
   tags = []
+
+  # Format print the '$' into the RCS tags in order prevent the tags from
+  # being interpolated here.
   p4_id = '%sId:%s' % ('$', '$')
   p4_date = '%sDate:%s' % ('$', '$')
-  tags.append('%s%s' % (prefix, p4_id))
-  tags.append('%s%s' % (prefix, p4_date))
+  p4_revision = '%sRevision:%s' % ('$', '$')
+  if rid:
+    tags.append('%s%s' % (prefix, p4_id))
+  if date:
+    tags.append('%s%s' % (prefix, p4_date))
+  if revision:
+    tags.append('%s%s' % (prefix, p4_revision))
   return tags
 
 

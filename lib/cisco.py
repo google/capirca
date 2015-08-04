@@ -422,9 +422,9 @@ class Term(aclgenerator.Term):
             source_address,
             source_address_exclude)
       if not source_address:
-        logging.warn(self.NO_AF_LOG_FORMAT.substitute(term=self.term.name,
-                                                      direction='source',
-                                                      af=self.text_af))
+        logging.warn(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
+                                                    direction='source',
+                                                    af=self.text_af))
         return ''
     else:
       # source address not set
@@ -441,9 +441,9 @@ class Term(aclgenerator.Term):
             destination_address,
             destination_address_exclude)
       if not destination_address:
-        logging.warn(self.NO_AF_LOG_FORMAT.substitute(term=self.term.name,
-                                                      direction='destination',
-                                                      af=self.text_af))
+        logging.warn(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
+                                                    direction='destination',
+                                                    af=self.text_af))
         return ''
     else:
       # destination address not set

@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2010 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,6 +38,7 @@ class Term(aclgenerator.Term):
   _TERM_FORMAT = Template('-N $term')
   _COMMENT_FORMAT = Template('-A $term -m comment --comment "$comment"')
   _FILTER_TOP_FORMAT = Template('-A $term')
+  _LOG_FORMAT = Template('-j LOG --log-prefix $term')
   _ACTION_TABLE = {
       'accept': '-j ACCEPT',
       'deny': '-j DROP',
@@ -48,7 +47,7 @@ class Term(aclgenerator.Term):
       'next': '-j RETURN'
       }
   _PROTO_TABLE = {
-      'icmpv6': '-p icmpv6',
+      'icmpv6': '-p ipv6-icmp',
       'icmp': '-p icmp',
       'tcp': '-p tcp',
       'udp': '-p udp',
@@ -81,13 +80,14 @@ class Term(aclgenerator.Term):
     Args:
       term: A policy.Term object to represent in iptables.
       filter_name: The name of the filter chan to attach the term to.
-      trackstate: Specifies if conntrack should be used for new connections
+      trackstate: Specifies if conntrack should be used for new connections.
       filter_action: The default action of the filter.
       af: Which address family ('inet' or 'inet6') to apply the term to.
 
     Raises:
       UnsupportedFilterError: Filter is not supported.
     """
+    super(Term, self).__init__(term)
     self.trackstate = trackstate
     self.term = term  # term object
     self.filter = filter_name  # actual name of filter
@@ -97,7 +97,8 @@ class Term(aclgenerator.Term):
 
     if af == 'inet6':
       self._all_ips = nacaddr.IPv6('::/0')
-      self._ACTION_TABLE['reject'] = '-j REJECT --reject-with adm-prohibited'
+      self._ACTION_TABLE['reject'] = ('-j REJECT --reject-with '
+                                      'icmp6-adm-prohibited')
     else:
       self._all_ips = nacaddr.IPv4('0.0.0.0/0')
       self._ACTION_TABLE['reject'] = ('-j REJECT --reject-with '
@@ -120,9 +121,10 @@ class Term(aclgenerator.Term):
     # Don't render icmpv6 protocol terms under inet, or icmp under inet6
     if ((self.af == 'inet6' and 'icmp' in self.term.protocol) or
         (self.af == 'inet' and 'icmpv6' in self.term.protocol)):
-      ret_str.append('# Term %s' % self.term.name)
-      ret_str.append('# not rendered due to protocol/AF mismatch.')
-      return '\n'.join(ret_str)
+      logging.debug(self.NO_AF_LOG_PROTO.substitute(term=self.term.name,
+                                                    proto=self.term.protocol,
+                                                    af=self.af))
+      return ''
 
     # Term verbatim output - this will skip over most normal term
     # creation code by returning early. Warnings provided in policy.py
@@ -150,6 +152,7 @@ class Term(aclgenerator.Term):
           '- specify source or dest', '\nError in term:', self.term.name))
 
     # Create a new term
+    self._SetDefaultAction()
     if self._TERM_FORMAT:
       ret_str.append(self._TERM_FORMAT.substitute(term=self.term_name))
 
@@ -178,10 +181,6 @@ class Term(aclgenerator.Term):
                                                        term=self.term_name,
                                                        comment=str(line)))
 
-    # if terms does not specify action, use filter default action
-    if not self.term.action:
-      self.term.action[0].value = self.default_action
-
     # Unsupported configuration; in the case of 'accept' or 'next', we
     # skip the rule.  In other cases, we blow up (raise an exception)
     # to ensure that this is not considered valid configuration.
@@ -209,14 +208,14 @@ class Term(aclgenerator.Term):
          self.term.source_address, self.term.source_address_exclude,
          self.term.destination_address, self.term.destination_address_exclude)
     if not term_saddr:
-      logging.warn(self.NO_AF_LOG_FORMAT.substitute(term=self.term.name,
-                                                    direction='source',
-                                                    af=self.af))
+      logging.debug(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
+                                                   direction='source',
+                                                   af=self.af))
       return ''
     if not term_daddr:
-      logging.warn(self.NO_AF_LOG_FORMAT.substitute(term=self.term.name,
-                                                    direction='destination',
-                                                    af=self.af))
+      logging.debug(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
+                                                   direction='destination',
+                                                   af=self.af))
       return ''
 
     # ports
@@ -441,7 +440,7 @@ class Term(aclgenerator.Term):
 
     log_jump = ''
     if log_hits:
-      log_jump = '-j LOG --log-prefix %s ' % self.term.name
+      log_jump = self._LOG_FORMAT.substitute(term=self.term.name)
 
     if not options:
       options = []
@@ -450,6 +449,20 @@ class Term(aclgenerator.Term):
     # Don't drop protocol if we don't recognize it
     if protocol and not proto:
       proto = '-p %s' % str(protocol)
+
+    # TODO(vklimovs): generalize to all v6 special cases
+    # Use u32 module as named modules are not available
+    # everywhere.
+    if protocol == 'hop-by-hop':
+      proto = ''
+      # Select 4 bytes at offset 0x3, mask out all but
+      # last byte. That produces byte at position 7,
+      # Next Header. Compare to 0x0, Hop By Hop
+      options.append('-m u32 --u32 "0x3&0xff=0x0"')
+    if protocol == 'fragment':
+      proto = ''
+      # Ditto, but compare to 0x2c, 44, Fragment
+      options.append('-m u32 --u32 "0x3&0xff=0x2c"')
 
     # set conntrack state to NEW, unless policy requested "nostate"
     if self.trackstate:
@@ -477,7 +490,7 @@ class Term(aclgenerator.Term):
     if not icmp_type:
       icmp = ''
     elif str(protocol) == 'icmpv6':
-      icmp = '--icmpv6-type %s' % icmp_type
+      icmp = '-m icmp6 --icmpv6-type %s' % icmp_type
     else:
       icmp = '--icmp-type %s' % icmp_type
 
@@ -498,6 +511,19 @@ class Term(aclgenerator.Term):
           # this is a little hack to ensure single ports are listed before
           # any multiport specification.
           dport, sport = sport, dport
+        if str(protocol) == 'icmpv6':
+          # Due to a bug in ip6tables, iptables-save returns icmpv6 matches in
+          # order (address spec) (icmpv6 spec). Fake this using options
+          # datastructure.
+          options.extend((proto, icmp))
+          proto = ''
+          icmp = ''
+        if (str(self.af) == 'inet6' and
+            str(protocol) == 'all' and
+            'REJECT' in str(action)):
+          # Due to a bug in ip6tables, when -p all and -j REJECT, proto
+          # is being eaten
+          proto = ''
         for value in (proto, flags, sport, dport, icmp, src, dst,
                       ' '.join(options), source_int, destination_int):
           if value:
@@ -581,12 +607,18 @@ class Term(aclgenerator.Term):
         portstrings.append('-m multiport --%sports %s' % (direction,
                                                           ','.join(norm_ports)))
         norm_ports = []
-    if len(norm_ports) == 1:
-      portstrings.append('--%sport %s' % (direction, norm_ports[0]))
-    else:
-      portstrings.append('-m multiport --%sports %s' % (direction,
-                                                        ','.join(norm_ports)))
+    if norm_ports:
+      if len(norm_ports) == 1:
+        portstrings.append('--%sport %s' % (direction, norm_ports[0]))
+      else:
+        portstrings.append('-m multiport --%sports %s' %
+                           (direction, ','.join(norm_ports)))
     return portstrings
+
+  def _SetDefaultAction(self):
+    """If term does not specify action, use filter default action."""
+    if not self.term.action:
+      self.term.action[0].value = self.default_action
 
 
 class Iptables(aclgenerator.ACLGenerator):
@@ -598,6 +630,7 @@ class Iptables(aclgenerator.ACLGenerator):
   _RENDER_PREFIX = None
   _RENDER_SUFFIX = None
   _DEFAULTACTION_FORMAT = '-P %s %s'
+  _DEFAULTACTION_FORMAT_CUSTOM_CHAIN = '-N %s'
   _DEFAULT_ACTION = 'DROP'
   _TERM = Term
   _TERM_MAX_LENGTH = 24
@@ -615,6 +648,14 @@ class Iptables(aclgenerator.ACLGenerator):
                                       'source_interface',
                                       'source_prefix',       # skips these terms
                                      ])
+  _GOOD_FILTERS = ['INPUT', 'OUTPUT', 'FORWARD']
+
+  def _WarnIfCustomTarget(self, target):
+    """Emit a warning if a policy's default target is not a built-in chain."""
+    if target not in self._GOOD_FILTERS:
+      logging.warn('Filter is generating a non-standard chain that will not '
+                   'apply to traffic unless linked from INPUT, OUTPUT or '
+                   'FORWARD filters. New chain name is: %s', target)
 
   def _TranslatePolicy(self, pol, exp_info):
     """Translate a policy from objects into strings."""
@@ -624,7 +665,6 @@ class Iptables(aclgenerator.ACLGenerator):
 
     default_action = None
     good_default_actions = ['ACCEPT', 'DROP']
-    good_filters = ['INPUT', 'OUTPUT', 'FORWARD']
     good_afs = ['inet', 'inet6']
     good_options = ['nostate', 'abbreviateterms', 'truncateterms']
     all_protocols_stateful = True
@@ -637,10 +677,7 @@ class Iptables(aclgenerator.ACLGenerator):
       filter_options = header.FilterOptions(self._PLATFORM)[1:]
       filter_name = header.FilterName(self._PLATFORM)
 
-      if filter_name not in good_filters:
-        logging.warn('Filter is generating a non-standard chain that will not '
-                     'apply to traffic unless linked from INPUT, OUTPUT or '
-                     'FORWARD filters. New chain name is: %s', filter_name)
+      self._WarnIfCustomTarget(filter_name)
 
       # ensure all options after the filter name are expected
       for opt in filter_options:
@@ -712,6 +749,21 @@ class Iptables(aclgenerator.ACLGenerator):
       self.iptables_policies.append((header, filter_name, filter_type,
                                      default_action, new_terms))
 
+  def SetTarget(self, target, action=None):
+    """Sets policy's target and default action.
+
+    Args:
+      target: (string) target name
+      action: (string) default action, only valid if target is a built-in chain
+    """
+    # there is only one item in iptables_policies
+    pol = list(self.iptables_policies[0])
+    pol[1] = target
+    self._WarnIfCustomTarget(target)
+    if action:
+      pol[3] = action
+    self.iptables_policies[0] = tuple(pol)
+
   def __str__(self):
     target = []
     pretty_platform = '%s%s' % (self._PLATFORM[0].upper(), self._PLATFORM[1:])
@@ -735,15 +787,18 @@ class Iptables(aclgenerator.ACLGenerator):
       target.extend(aclgenerator.AddRepositoryTags('# '))
       target.append('# ' + filter_type)
 
-      # always specify the default filter states for speedway,
-      # if default action policy not specified for iptables, do nothing.
-      if self._PLATFORM == 'speedway':
-        if not default_action:
+      if filter_name in self._GOOD_FILTERS:
+        if default_action:
           target.append(self._DEFAULTACTION_FORMAT % (filter_name,
-                                                      self._DEFAULT_ACTION))
-      if default_action:
-        target.append(self._DEFAULTACTION_FORMAT % (filter_name,
-                                                    default_action))
+                                                      default_action))
+        elif self._PLATFORM == 'speedway':
+          # always specify the default filter states for speedway,
+          # if default action policy not specified for iptables, do nothing.
+          target.append(
+              self._DEFAULTACTION_FORMAT % (filter_name, self._DEFAULT_ACTION))
+      else:
+        # Custom chains have no concept of default policy.
+        target.append(self._DEFAULTACTION_FORMAT_CUSTOM_CHAIN % filter_name)
       # add the terms
       for term in terms:
         term_str = str(term)
