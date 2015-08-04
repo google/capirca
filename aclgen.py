@@ -36,6 +36,7 @@ from lib import policy
 
 # renderers
 from lib import arista
+from lib import aruba
 from lib import cisco
 from lib import ciscoasa
 from lib import iptables
@@ -108,9 +109,9 @@ def revision_tag_handler(fname, text):
 
 def render_filters(source_file, definitions_obj, shade_check, exp_info):
   count = 0
-  [(eacl, jcl, acl, asa, ipt, ips, pf, spd, spk, srx, dem)] = [
+  [(eacl, aacl, jcl, acl, asa, ipt, ips, pf, spd, spk, srx, dem)] = [
       (False, False, False, False, False, False, False, False, False, False,
-       False)]
+        False, False)]
 
   pol = policy.ParsePolicy(open(source_file).read(), definitions_obj,
                            shade_check=shade_check)
@@ -118,6 +119,8 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
   for header in pol.headers:
     if 'arista' in header.platforms:
       eacl = copy.deepcopy(pol)
+    if 'aruba' in header.platforms:
+      aacl = copy.deepcopy(pol)
     if 'juniper' in header.platforms:
       jcl = copy.deepcopy(pol)
     if 'cisco' in header.platforms:
@@ -142,6 +145,10 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
       dem = copy.deepcopy(pol)
   if eacl:
     fw = arista.Arista(eacl, exp_info)
+    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+    count += 1
+  if aacl:
+    fw = aruba.Aruba(aacl, exp_info)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
   if jcl:
