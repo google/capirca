@@ -19,6 +19,8 @@
 
 __author__ = 'msu@google.com (Martin Suess)'
 
+import collections
+import copy
 import aclgenerator
 import datetime
 import logging
@@ -28,12 +30,12 @@ class Error(Exception):
   """Base error class."""
 
 
-class UnsupportedActionError(Error):
-  """Raised when we see an unsupported action."""
+class DuplicateShortenedTableName(Error):
+  """Raised when a duplicate shortened table name is found."""
 
 
-class UnsupportedTargetOption(Error):
-  """Raised when we see an unsupported option."""
+class UnsupportedProtoError(Error):
+  """Raised when a protocol is not supported."""
 
 
 class Term(aclgenerator.Term):
@@ -47,6 +49,27 @@ class Term(aclgenerator.Term):
       'accept': 'pass',
       'deny': 'block drop',
       'reject': 'block return',
+      'next': 'pass',
+      }
+  # Moving the log keyword into an member variable allows subclasses to override
+  # it to support logging options outside of the scope of the capirca policy
+  # spec, e.g., on platform-specific options such as packetfilter's
+  # "log (all, to pflogN)" per-direction.
+  _LOG_TABLE = {
+      '': 'log',
+      'in': 'log',
+      'out': 'log',
+      }
+  _QUICK_TABLE = {
+      'accept': 'quick',
+      'deny': 'quick',
+      'reject': 'quick',
+      'next': '',
+      }
+  _DIRECTION_TABLE = {
+      '': '',
+      'in': 'in',
+      'out': 'out',
       }
   _TCP_FLAGS_TABLE = {
       'syn': 'S',
@@ -55,47 +78,69 @@ class Term(aclgenerator.Term):
       'rst': 'R',
       'urg': 'U',
       'psh': 'P',
-      'all': 'ALL',
+      'all': 'SAFRUP',
       'none': 'NONE',
       }
+  _PROTO_TABLE = {
+      'icmpv6': 'ipv6-icmp',
+      }
+  _UNSUPPORTED_PROTOS = ['hop-by-hop']
 
-  def __init__(self, term, filter_name, af='inet'):
+  def __init__(self, term, filter_name, stateful=True, af='inet', direction=''):
     """Setup a new term.
 
     Args:
       term: A policy.Term object to represent in packetfilter.
       filter_name: The name of the filter chan to attach the term to.
+      stateful: Whether to keep firewall state for the term.
       af: Which address family ('inet' or 'inet6') to apply the term to.
+      direction: What direction the term applies to ('in', 'out' or both).
 
     Raises:
       aclgenerator.UnsupportedFilterError: Filter is not supported.
     """
+    super(Term, self).__init__(term)
     self.term = term  # term object
     self.filter = filter_name  # actual name of filter
     self.options = []
     self.default_action = 'deny'
     self.af = af
+    self.stateful = stateful
+    self.direction = direction
 
   def __str__(self):
     """Render config output from this term object."""
+
+    # Verify platform specific terms. Skip whole term if platform does not
+    # match.
+    if self.term.platform:
+      if self._PLATFORM not in self.term.platform:
+        return ''
+    if self.term.platform_exclude:
+      if self._PLATFORM in self.term.platform_exclude:
+        return ''
+
     ret_str = []
+    self._SetDefaultAction()
 
     # Create a new term
     ret_str.append('\n# term %s' % self.term.name)
-    # append comments to output
-    for line in self.term.comment:
-      if not line:
-        continue
-      ret_str.append('# %s' % str(line))
 
-    # if terms does not specify action, use filter default action
-    if not self.term.action:
-      self.term.action[0].value = self.default_action
+    comments = aclgenerator.WrapWords(self.term.comment, 80)
+    # append comments to output
+    if comments and comments[0]:
+      for line in comments:
+        ret_str.append('# %s' % str(line))
+
     if str(self.term.action[0]) not in self._ACTION_TABLE:
       raise aclgenerator.UnsupportedFilterError('%s %s %s %s' % (
           '\n', self.term.name, self.term.action[0],
           'action not currently supported.'))
 
+    if self.direction and str(self.direction) not in self._DIRECTION_TABLE:
+      raise aclgenerator.UnsupportedFilterError('%s %s %s %s' % (
+          '\n', self.term.name, self.term.direction,
+          'direction not currently supported.'))
     # protocol
     if self.term.protocol:
       protocol = self.term.protocol
@@ -109,9 +154,9 @@ class Term(aclgenerator.Term):
     # source address
     term_saddrs = self._CheckAddressAf(self.term.source_address)
     if not term_saddrs:
-      logging.warn(self.NO_AF_LOG_FORMAT.substitute(term=self.term.name,
-                                                    direction='source',
-                                                    af=self.af))
+      logging.debug(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
+                                                   direction='source',
+                                                   af=self.af))
       return ''
     term_saddr = self._GenerateAddrStatement(
         term_saddrs, self.term.source_address_exclude)
@@ -119,9 +164,9 @@ class Term(aclgenerator.Term):
     # destination address
     term_daddrs = self._CheckAddressAf(self.term.destination_address)
     if not term_daddrs:
-      logging.warn(self.NO_AF_LOG_FORMAT.substitute(term=self.term.name,
-                                                    direction='destination',
-                                                    af=self.af))
+      logging.debug(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
+                                                   direction='destination',
+                                                   af=self.af))
       return ''
     term_daddr = self._GenerateAddrStatement(
         term_daddrs, self.term.destination_address_exclude)
@@ -141,7 +186,7 @@ class Term(aclgenerator.Term):
         af = self.af
       elif protocol == ['icmp']:
         af = 'inet'
-      elif protocol == ['icmp6']:
+      elif protocol == ['icmpv6']:
         af = 'inet6'
       else:
         raise aclgenerator.UnsupportedFilterError('%s %s %s' % (
@@ -151,16 +196,52 @@ class Term(aclgenerator.Term):
           self.term.icmp_type, protocol, af)
 
     # options
-    opts = [str(x) for x in self.term.option]
-    tcp_flags = []
-    for next_opt in opts:
-      # Iterate through flags table, and create list of tcp-flags to append
+    tcp_flags_set = []
+    tcp_flags_check = []
+    for next_opt in [str(x) for x in self.term.option]:
       for next_flag in self._TCP_FLAGS_TABLE:
         if next_opt.find(next_flag) == 0:
-          tcp_flags.append(self._TCP_FLAGS_TABLE.get(next_flag))
+          if protocol != ['tcp']:
+            raise aclgenerator.UnsupportedFilterError('%s %s %s' % (
+                '\n', self.term.name,
+                'tcp flags may only be specified with tcp protocol.'))
+          tcp_flags_set.append(self._TCP_FLAGS_TABLE.get(next_flag))
+          tcp_flags_check.append(self._TCP_FLAGS_TABLE.get(next_flag))
+
+    # If tcp-established is set, override any of the flags above with the
+    # S/SA flags.  Issue an error if flags are specified with 'established'.
+    for opt in [str(x) for x in self.term.option]:
+      if opt == 'established' or opt == 'tcp-established':
+        if tcp_flags_set or tcp_flags_check:
+          raise aclgenerator.UnsupportedFilterError('%s %s %s' % (
+              '\n', self.term.name,
+              'tcp flags may not be specified with tcp-established.'))
+        # We need to set 'flags A/A' for established regardless of whether or
+        # not we're stateful:
+        # - if we stateful, the default is 'flags S/SA' which prevent writing
+        # rules for reply packets.
+        # - if we're stateless, this is the only way to do it.
+        if not protocol or 'tcp' in protocol:
+          tcp_flags_set.append(self._TCP_FLAGS_TABLE.get('ack'))
+          tcp_flags_check.append(self._TCP_FLAGS_TABLE.get('ack'))
+
+    # The default behavior of pf is 'keep state flags S/SA'.  If we're not
+    # stateless, and if flags have not been specified explicitly via options,
+    # append that here.  Note that pf allows appending flags for udp and icmp;
+    # they are just ignored, as long as TCP is in the proto.  This lets you
+    # doing things like 'proto { tcp udp icmp } flags S/SA' and have the flags
+    # only applied to the tcp bits that match.  However, the policy description
+    # language prohibits setting flags on non-TCP, since it doesn't make sense
+    # on all platforms.
+    if ((not protocol or protocol == ['tcp']) and self.stateful
+        and not tcp_flags_set and not tcp_flags_check):
+      tcp_flags_set.append(self._TCP_FLAGS_TABLE.get('syn'))
+      tcp_flags_check.append(self._TCP_FLAGS_TABLE.get('syn'))
+      tcp_flags_check.append(self._TCP_FLAGS_TABLE.get('ack'))
 
     ret_str.extend(self._FormatPart(
-        self._ACTION_TABLE.get(str(self.term.action[0])),
+        self.term.action[0],
+        self.direction,
         self.term.logging,
         self.af,
         protocol,
@@ -168,10 +249,11 @@ class Term(aclgenerator.Term):
         source_port,
         term_daddr,
         destination_port,
-        tcp_flags,
+        tcp_flags_set,
+        tcp_flags_check,
         icmp_types,
         self.options,
-        ))
+        self.stateful,))
 
     return '\n'.join(str(v) for v in ret_str if v is not '')
 
@@ -188,14 +270,26 @@ class Term(aclgenerator.Term):
         af_addrs.append(addr)
     return af_addrs
 
-  def _FormatPart(self, action, log, af, proto, src_addr, src_port,
-                  dst_addr, dst_port, tcp_flags, icmp_types, options):
+  def _FormatPart(self, action, direction, log, af, proto, src_addr, src_port,
+                  dst_addr, dst_port, tcp_flags_set, tcp_flags_check,
+                  icmp_types, options, stateful):
     """Format the string which will become a single PF entry."""
-    line = ['%s' % action]
-    if log and 'true' in [str(l) for l in log]:
-      line.append('log')
+    line = ['%s' % self._ACTION_TABLE.get(action)]
 
-    line.append('quick')
+    if direction:
+      line.append(direction)
+
+    quick = self._QUICK_TABLE.get(action)
+    if quick:
+      line.append('%s' % quick)
+
+    if log:
+      logaction = self._LOG_TABLE.get(direction)
+      if logaction:
+        line.append(logaction)
+      else:
+        line.append('log')
+
     if af != 'mixed':
       line.append(af)
 
@@ -210,9 +304,9 @@ class Term(aclgenerator.Term):
     if dst_port:
       line.append('port %s' % dst_port)
 
-    if 'tcp' in proto and tcp_flags:
+    if tcp_flags_set and tcp_flags_check:
       line.append('flags')
-      line.append('/'.join(tcp_flags))
+      line.append('%s/%s' % (''.join(tcp_flags_set), ''.join(tcp_flags_check)))
 
     if 'icmp' in proto and icmp_types:
       type_strs = [str(icmp_type) for icmp_type in icmp_types]
@@ -223,26 +317,59 @@ class Term(aclgenerator.Term):
     if options:
       line.extend(options)
 
+    if not stateful:
+      line.append('no state')
+    elif action in ['accept', 'next']:
+      line.append('keep state')
+
     return [' '.join(line)]
 
   def _GenerateProtoStatement(self, protocols):
     proto = ''
     if protocols:
+      protocols = copy.deepcopy(protocols)
+      for i, proto in enumerate(protocols):
+        if proto in self._UNSUPPORTED_PROTOS:
+          raise UnsupportedProtoError
+        try:
+          protocols[i] = self._PROTO_TABLE[proto]
+        except KeyError:
+          pass
       proto = 'proto { %s }' % ' '.join(protocols)
     return proto
 
   def _GenerateAddrStatement(self, addrs, exclude_addrs):
-    addresses = [str(addr) for addr in addrs]
-    for exclude_addr in exclude_addrs:
-      addresses.append('!%s' % str(exclude_addr))
-    return '{ %s }' % ', '.join(addresses)
+    addresses = set()
+    if addrs != ['any']:
+      parent_token_set = set()
+      for addr in addrs:
+        parent_token_set.add(addr.parent_token)
+      for token in parent_token_set:
+        addresses.add('<%s>' % token[:31])
+    else:
+      addresses.add('any')
+    if exclude_addrs != ['any']:
+      parent_token_set = set()
+      for addr in exclude_addrs:
+        parent_token_set.add(addr.parent_token)
+      for token in parent_token_set:
+        addresses.add('!<%s>' % token[:31])
+    return '{ %s }' % ', '.join(sorted(addresses))
 
   def _GeneratePortStatement(self, ports):
     port_list = []
     for port_tuple in ports:
-      for port in port_tuple:
-        port_list.append(str(port))
-    return '{ %s }' % ' '.join(list(set(port_list)))
+      if port_tuple[0] == port_tuple[1]:
+        port_list.append(str(port_tuple[0]))
+      else:
+        port_list.append('%s:%s' % (port_tuple[0], port_tuple[1]))
+    return '{ %s }' % (
+        ' '.join(list(collections.OrderedDict.fromkeys(port_list))))
+
+  def _SetDefaultAction(self):
+    """If term does not specify action, use filter default action."""
+    if not self.term.action:
+      self.term.action[0].value = self.default_action
 
 
 class PacketFilter(aclgenerator.ACLGenerator):
@@ -252,33 +379,48 @@ class PacketFilter(aclgenerator.ACLGenerator):
   _DEFAULT_PROTOCOL = 'all'
   _SUFFIX = '.pf'
   _TERM = Term
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',
+  _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
+                                      'expiration',
                                       'logging',
                                       'routing_instance',
+                                      'qos',
                                      ])
 
   def _TranslatePolicy(self, pol, exp_info):
     self.pf_policies = []
+    self.address_book = {}
     current_date = datetime.date.today()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     good_afs = ['inet', 'inet6', 'mixed']
-    good_options = []
-    filter_type = None
+    good_options = ['in', 'out', 'nostate']
+    all_protocols_stateful = True
 
     for header, terms in pol.filters:
+      filter_type = None
       if self._PLATFORM not in header.platforms:
         continue
 
       filter_options = header.FilterOptions(self._PLATFORM)[1:]
       filter_name = header.FilterName(self._PLATFORM)
+      direction = ''
 
       # ensure all options after the filter name are expected
       for opt in filter_options:
         if opt not in good_afs + good_options:
-          raise UnsupportedTargetOption('%s %s %s %s' % (
+          raise aclgenerator.UnsupportedTargetOption('%s %s %s %s' % (
               '\nUnsupported option found in', self._PLATFORM,
               'target definition:', opt))
+
+      # pf will automatically add 'keep state flags S/SA' to all TCP connections
+      # by default.
+      if 'nostate' in filter_options:
+        all_protocols_stateful = False
+
+      if 'in' in filter_options:
+        direction = 'in'
+      elif 'out' in filter_options:
+        direction = 'out'
 
       # Check for matching af
       for address_family in good_afs:
@@ -290,17 +432,27 @@ class PacketFilter(aclgenerator.ACLGenerator):
                 filter_options))
           filter_type = address_family
       if filter_type is None:
-        filter_type = 'mixed'
+        filter_type = 'inet'
 
       # add the terms
       new_terms = []
       term_names = set()
+
       for term in terms:
         term.name = self.FixTermLength(term.name)
         if term.name in term_names:
           raise aclgenerator.DuplicateTermError(
               'You have a duplicate term: %s' % term.name)
-        term_names.add(term.name)
+        for source_addr in term.source_address:
+          if source_addr.parent_token not in self.address_book:
+            self.address_book[source_addr.parent_token] = set([source_addr])
+          else:
+            self.address_book[source_addr.parent_token].add(source_addr)
+        for dest_addr in term.destination_address:
+          if dest_addr.parent_token not in self.address_book:
+            self.address_book[dest_addr.parent_token] = set([dest_addr])
+          else:
+            self.address_book[dest_addr.parent_token].add(dest_addr)
 
         if not term:
           continue
@@ -314,15 +466,33 @@ class PacketFilter(aclgenerator.ACLGenerator):
                          'will not be rendered.', term.name, filter_name)
             continue
 
-        new_terms.append(self._TERM(term, filter_name, filter_type))
+        new_terms.append(self._TERM(term, filter_name, all_protocols_stateful,
+                                    filter_type, direction))
+      shortened_deduped_list = {}
 
+      for key in self.address_book:
+        if len(key) > 31:
+          name = key[:31]
+        else:
+          name = key
+        if name in shortened_deduped_list.keys():
+          raise DuplicateShortenedTableName(
+              'The shortened name %s has a collision.', name)
+        else:
+          shortened_deduped_list[name] = self.address_book[key]
+      self.address_book = shortened_deduped_list
       self.pf_policies.append((header, filter_name, filter_type, new_terms))
 
   def __str__(self):
     """Render the output of the PF policy into config."""
     target = []
     pretty_platform = '%s%s' % (self._PLATFORM[0].upper(), self._PLATFORM[1:])
-
+    # Create address table.
+    for name in sorted(self.address_book):
+      entries = ',\\\n'.join(str(x) for x in
+                             sorted(self.address_book[name], key=int))
+      target.append('table <%s> {%s}' % (name, entries))
+    # pylint: disable=unused-variable
     for (header, filter_name, filter_type, terms) in self.pf_policies:
       # Add comments for this filter
       target.append('# %s %s Policy' % (pretty_platform,
