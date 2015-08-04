@@ -35,6 +35,7 @@ from lib import naming
 from lib import policy
 
 # renderers
+from lib import arista
 from lib import cisco
 from lib import ciscoasa
 from lib import iptables
@@ -61,7 +62,7 @@ _parser.add_option('-s', '--shade_checking', help='Enable shade checking',
 _parser.add_option('-e', '--exp_info', type='int', action='store',
                    dest='exp_info', default=2,
                    help='Weeks in advance to notify that a term will expire')
-                   
+
 (FLAGS, args) = _parser.parse_args()
 
 
@@ -74,7 +75,7 @@ def load_and_render(base_dir, defs, shade_check, exp_info):
       rendered += load_and_render(fname, defs, shade_check, exp_info)
     elif fname.endswith('.pol'):
       #logging.debug('attempting to render_filters on fname %s', fname)
-      rendered += render_filters(fname, defs, shade_check, exp_info) 
+      rendered += render_filters(fname, defs, shade_check, exp_info)
   return rendered
 
 def filter_name(source, suffix):
@@ -104,16 +105,19 @@ def revision_tag_handler(fname, text):
       line = line.replace('$Date:$', '$Date: %s $' % timestamp)
     new_text.append(line)
   return '\n'.join(new_text)
-  
+
 def render_filters(source_file, definitions_obj, shade_check, exp_info):
   count = 0
-  [(jcl, acl, asa, ipt, ips, pf, spd, spk, srx, dem)] = [
-      (False, False, False, False, False, False, False, False, False, False)]
+  [(eacl, jcl, acl, asa, ipt, ips, pf, spd, spk, srx, dem)] = [
+      (False, False, False, False, False, False, False, False, False, False,
+       False)]
 
   pol = policy.ParsePolicy(open(source_file).read(), definitions_obj,
                            shade_check=shade_check)
 
   for header in pol.headers:
+    if 'arista' in header.platforms:
+      eacl = copy.deepcopy(pol)
     if 'juniper' in header.platforms:
       jcl = copy.deepcopy(pol)
     if 'cisco' in header.platforms:
@@ -136,6 +140,10 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
       srx = copy.deepcopy(unoptimized_pol)
     if 'demo' in header.platforms:
       dem = copy.deepcopy(pol)
+  if eacl:
+    fw = arista.Arista(eacl, exp_info)
+    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+    count += 1
   if jcl:
     fw = juniper.Juniper(jcl, exp_info)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
