@@ -2,7 +2,7 @@ Metadata-Version: 1.0
 Name: capirca
 Version: 1.0.0
 Summary: UNKNOWN
-Home-page: http://code.google.com/p/capirca/
+Home-page: https://github.com/google/capirca/
 Author: Google
 Author-email: watson@gmail.com
 License: Apache License, Version 2.0
@@ -15,4 +15,4 @@ Classifier: Operating System :: OS Independent
 Classifier: Topic :: Internet
 Classifier: Topic :: Software Development :: Libraries
 Classifier: Topic :: System :: Networking
-Classifier: Topic :: Security 
+Classifier: Topic :: Security

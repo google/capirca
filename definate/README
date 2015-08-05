@@ -1,16 +1,3 @@
-Definate is part of Capirca and is a system to develop and manage network
-definitions that can be used in Capirca policies.
-It was developed by Google for internal use, and is now open source.
-
-Project home page: http://code.google.com/p/capirca/
-
-Please send contributions to capirca-dev@googlegroups.com.
-
-Code should include unit tests and follow the Google Python style guide:
-http://code.google.com/p/soc/wiki/PythonStyleGuide
-
-================================================================================
-
 Definate Configuration File
 
 Global section
