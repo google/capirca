@@ -14,6 +14,7 @@ header {
   target:: demo edge-inbound
   target:: arista edge-inbound
   target:: brocade edge-inbound
+  target:: ciscoxr edge-inbound
 }
 
 #include 'policies/includes/untrusted-networks-blocking.inc'

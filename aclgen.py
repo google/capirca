@@ -40,6 +40,7 @@ from lib import aruba
 from lib import brocade
 from lib import cisco
 from lib import ciscoasa
+from lib import ciscoxr
 from lib import iptables
 from lib import ipset
 from lib import speedway
@@ -110,9 +111,9 @@ def revision_tag_handler(fname, text):
 
 def render_filters(source_file, definitions_obj, shade_check, exp_info):
   count = 0
-  [(eacl, aacl, bacl, jcl, acl, asa, ipt, ips, pf, spd, spk, srx, dem)] = [
-      (False, False, False, False, False, False, False, False, False, False,
-        False, False, False)]
+  [(eacl, aacl, bacl, jcl, acl, asa, xacl, ipt, ips, pf, spd, spk, srx,
+    dem)] = [(False, False, False, False, False, False, False, False, False,
+              False, False, False, False, False)]
 
   pol = policy.ParsePolicy(open(source_file).read(), definitions_obj,
                            shade_check=shade_check)
@@ -130,6 +131,8 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
       acl = copy.deepcopy(pol)
     if 'ciscoasa' in header.platforms:
       asa = copy.deepcopy(pol)
+    if 'ciscoxr' in header.platforms:
+      xacl = copy.deepcopy(pol)
     if 'iptables' in header.platforms:
       ipt = copy.deepcopy(pol)
     if 'ipset' in header.platforms:
@@ -168,6 +171,10 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
     count += 1
   if asa:
     fw = ciscoasa.CiscoASA(asa, exp_info)
+    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+    count += 1
+  if xacl:
+    fw = ciscoxr.CiscoXR(xacl, exp_info)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
   if ipt:
