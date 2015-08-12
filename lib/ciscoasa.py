@@ -67,7 +67,7 @@ class Term(aclgenerator.Term):
       if 'ciscoasa' in self.term.platform_exclude:
         return ''
 
-    ret_str = ['\n']
+    ret_str = ['']
 
     # Don't render icmpv6 protocol terms under inet, or icmp under inet6
     if ((self.af == 6 and 'icmp' in self.term.protocol) or
@@ -236,7 +236,8 @@ class Term(aclgenerator.Term):
 540: "uucp",
 43: "whois",
 80: "www",
-2049: "nfs"
+2049: "nfs",
+5060: "sip"
     }
     _ASA_PORTS_UDP = {
 512: "biff",
@@ -269,7 +270,8 @@ class Term(aclgenerator.Term):
 37: "time",
 513: "who",
 177: "xdmcp",
-2049: "nfs"
+2049: "nfs",
+5060: "sip"
     }
 
     _ASA_TYPES_ICMP = {
