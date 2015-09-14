@@ -38,6 +38,6 @@ setup(name='capirca',
                   'lib.iptables', 'lib.juniper', 'lib.junipersrx',
                   'lib.nacaddr', 'lib.policy', 'lib.naming', 'lib.aclcheck',
                   'lib.aclgenerator', 'lib.port', 'lib.demo', 'lib.speedway',
-                  'lib.ipset', 'lib.packetfilter',
+                  'lib.ipset', 'lib.packetfilter', 'lib.gce',
                   'third_party.ipaddr', 'third_party.ply.lex',
                   'third_party.ply.yacc'])

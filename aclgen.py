@@ -41,6 +41,7 @@ from lib import brocade
 from lib import cisco
 from lib import ciscoasa
 from lib import ciscoxr
+from lib import gce
 from lib import iptables
 from lib import ipset
 from lib import speedway
@@ -112,8 +113,8 @@ def revision_tag_handler(fname, text):
 def render_filters(source_file, definitions_obj, shade_check, exp_info):
   count = 0
   [(eacl, aacl, bacl, jcl, acl, asa, xacl, ipt, ips, pf, spd, spk, srx,
-    dem)] = [(False, False, False, False, False, False, False, False, False,
-              False, False, False, False, False)]
+    dem, gcefw)] = [(False, False, False, False, False, False, False, False,
+                     False, False, False, False, False, False, False)]
 
   pol = policy.ParsePolicy(open(source_file).read(), definitions_obj,
                            shade_check=shade_check)
@@ -133,6 +134,8 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
       asa = copy.deepcopy(pol)
     if 'ciscoxr' in header.platforms:
       xacl = copy.deepcopy(pol)
+    if 'gce' in header.platforms:
+      gcefw = copy.deepcopy(pol)
     if 'iptables' in header.platforms:
       ipt = copy.deepcopy(pol)
     if 'ipset' in header.platforms:
@@ -199,6 +202,10 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
     count += 1
   if dem:
     fw = demo.Demo(dem, exp_info)
+    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+    count += 1
+  if gcefw:
+    fw = gce.GCE(gcefw, exp_info)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
 

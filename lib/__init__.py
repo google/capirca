@@ -11,6 +11,7 @@
 # from capirca import naming
 # from capirca import policy
 # from capirca import cisco
+# from capirca import gce
 # from capirca import juniper
 # from capirca import iptables
 # from capirca import policyreader
@@ -26,6 +27,6 @@ __version__ = '1.0.0'
 
 __all__ = ['naming', 'policy', 'cisco', 'juniper', 'iptables',
            'policyreader', 'aclcheck', 'aclgenerator', 'nacaddr',
-           'packetfilter', 'port', 'speedway']
+           'packetfilter', 'port', 'speedway', 'gce']
 
 __author__ = 'Paul (Tony) Watson (watson@gmail.com / watson@google.com)'
