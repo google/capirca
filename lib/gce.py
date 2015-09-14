@@ -111,10 +111,11 @@ class Term(aclgenerator.Term):
     """
     if self.term.owner:
       self.term.comment.append('Owner: %s' % self.term.owner)
+    network = self.term.network or self._DEFAULT_NETWORK
     term_dict = {
-        'name': self.term.name,
+        'name': '%s-%s' % (network.split('/')[-1], self.term.name),
         'description': ' '.join(self.term.comment),
-        'network': self.term.network or self._DEFAULT_NETWORK,
+        'network': network,
         'allowed': [],
         }
     if self.term.source_tag:
