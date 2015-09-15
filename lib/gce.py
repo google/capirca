@@ -111,13 +111,15 @@ class Term(aclgenerator.Term):
     """
     if self.term.owner:
       self.term.comment.append('Owner: %s' % self.term.owner)
-    network = self.term.network or self._DEFAULT_NETWORK
     term_dict = {
-        'name': '%s-%s' % (network.split('/')[-1], self.term.name),
         'description': ' '.join(self.term.comment),
-        'network': network,
         'allowed': [],
+        'name': self.term.name,
         }
+    if self.term.network:
+      term_dict['network'] = self.term.network
+      term_dict['name'] = '%s-%s' % (
+          self.term.network.split('/')[-1], term_dict['name'])
     if self.term.source_tag:
       term_dict['sourceTags'] = self.term.source_tag
     if self.term.destination_tag:
@@ -191,10 +193,11 @@ class GCE(aclgenerator.ACLGenerator):
       filter_options = header.FilterOptions(self._PLATFORM)
       filter_name = header.FilterName(self._PLATFORM)
 
-      if not filter_options:
-        raise GceFirewallError(
-            'GCE filter arguments must specify a network.')
-      network = filter_options[0]
+      network = ''
+      if filter_options:
+        network = filter_options[0]
+      else:
+        logging.warn('GCE filter does not specify a network.')
 
       term_names = set()
       for term in terms:
