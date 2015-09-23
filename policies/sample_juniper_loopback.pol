@@ -12,12 +12,13 @@ term accept-icmp {
 
 term accept-traceroute {
   comment:: "Allow inbound traceroute from any source."
-  expiration:: 2001-12-31
   destination-port:: TRACEROUTE
   protocol:: udp
   counter:: inbound-traceroute
   policer:: rate-limit-to-router
   action:: accept
+  expiration:: 2001-12-31
+  owner:: jeff
 }
 
 term accept-bgp-requests {
@@ -157,6 +158,42 @@ term allow-tacacs-replies {
   option:: tcp-established
   counter:: tacacs-replies
   action:: accept
+}
+
+term allow-dns-fragments {
+  source-address:: ANY
+  source-exclude:: PUBLIC_NAT
+  destination-address:: GOOGLE_DNS
+  destination-port:: DNS
+  protocol:: tcp udp
+  option:: is-fragment
+  action:: accept
+}
+
+term ratelimit-large-dns {
+  destination-address:: GOOGLE_DNS
+  destination-port:: DNS
+  protocol:: udp
+  packet-length:: 500-5000
+  counter:: large-dns-counter
+  policer:: large-dns-policer
+  option:: sample
+  action:: next
+}
+
+term reject-large-dns {
+  destination-address:: GOOGLE_DNS
+  destination-port:: DNS
+  protocol:: udp
+  packet-length:: 500-5000
+  action:: reject
+}
+
+term reject-imap-requests {
+  destination-address:: MAIL_SERVERS
+  destination-port:: IMAP
+  protocol:: tcp
+  action:: reject-with-tcp-rst
 }
 
 term discard-default {
