@@ -49,6 +49,8 @@ from lib import juniper
 from lib import junipersrx
 from lib import packetfilter
 from lib import demo
+from lib import nsxv
+
 
 _parser = OptionParser()
 _parser.add_option('-d', '--def', dest='definitions',
@@ -113,8 +115,8 @@ def revision_tag_handler(fname, text):
 def render_filters(source_file, definitions_obj, shade_check, exp_info):
   count = 0
   [(eacl, aacl, bacl, jcl, acl, asa, xacl, ipt, ips, pf, spd, spk, srx,
-    dem, gcefw)] = [(False, False, False, False, False, False, False, False,
-                     False, False, False, False, False, False, False)]
+    dem, gcefw, nsx)] = [(False, False, False, False, False, False, False, False,
+                     False, False, False, False, False, False, False, False)]
 
   pol = policy.ParsePolicy(open(source_file).read(), definitions_obj,
                            shade_check=shade_check)
@@ -152,6 +154,9 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
       srx = copy.deepcopy(unoptimized_pol)
     if 'demo' in header.platforms:
       dem = copy.deepcopy(pol)
+    if 'nsxv' in header.platforms:
+      nsx = copy.deepcopy(pol)
+
   if eacl:
     fw = arista.Arista(eacl, exp_info)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
@@ -206,6 +211,10 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
     count += 1
   if gcefw:
     fw = gce.GCE(gcefw, exp_info)
+    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+    count += 1
+  if nsx:
+    fw = nsxv.Nsxv(nsx, exp_info)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
 
