@@ -88,6 +88,19 @@ inet: specifies that the resulting filter should only render IPv4 addresses.
 inet6: specifies that the resulting filter should only render IPv6 addresses.
 truncatenames: specifies to abbreviate term names if necessary (see lib/iptables.py: CheckTermLength? for abbreviation table)
 nostate: specifies to produce 'stateless' filter output (e.g. no connection tracking)
+
+NSX
+
+The nsx header designation has the following format:
+target:: nsxv {inet|inet6|mixed}
+
+inet: specifies that the resulting filter should only render IPv4 addresses.
+inet6: specifies that the resulting filter should only render IPv6 addresses.
+mixed: specifies that the resulting filter should only render IPv4 and IPv6 addresses.
+The default format is inet, and is implied if not other argument is given.
+(Required keywords option and verbatim are not supported in Nsx)
+
+
 Terms Section
 Terms defines access control rules within a filter. Once the filter is defined in the header sections, it is followed by one or more terms. Terms are enclosed in brackets and use keywords to specify the functionality of a specific access control.
 
