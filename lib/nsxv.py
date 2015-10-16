@@ -418,10 +418,13 @@ class Nsxv(aclgenerator.ACLGenerator):
       filter_options = header.FilterOptions(self._PLATFORM)
       filter_name = header.FilterName(self._PLATFORM)
 
-      # inet is the default filter type.
-      filter_type = 'inet'
+      # check for filter type
+      filter_type = ''
       if filter_options is not None and len(filter_options) > 0:
         filter_type = filter_options[0]
+      else:
+        raise UnsupportedNsxvAccessListError(
+            'Filter type is not provided for %s'  % (self._PLATFORM))
 
       # check if filter type is renderable
       if filter_type not in good_filters:
@@ -498,21 +501,35 @@ class Nsxv(aclgenerator.ACLGenerator):
 
     for (header, filter_name, filter_list, terms
         ) in self.nsxv_policies:
-      for filter_type in filter_list:
 
-        # add a header comment if one exists
-        section_name = ''
-        for comment in header.comment:
-          for line in comment.split('\n'):
-            section_name = '%s %s' % (section_name, line)
+      # add a header comment if one exists
+      section_name = ''
+      for comment in header.comment:
+        for line in comment.split('\n'):
+          section_name = '%s %s' % (section_name, line)
+
+      # getting section id
+      filter_options = header.FilterOptions(self._PLATFORM)
+      section_id = 0
+      if filter_options is not None and len(filter_options) > 1:
+        section_id  = filter_options[1]
+
+      # check section id value
+      if not section_id or section_id == 0:
+        logging.warn('WARNING: Section-id is 0. A new Section is created for%s. If there is any existing '
+                     'section, it will remain unreferenced and should be removed manually.', section_name)
         target.append('<section name="%s">' % (section_name.strip(' \t\n\r')))
+      else:
+        target.append('<section id="%s" name="%s">' % (section_id, section_name.strip(' \t\n\r')))
 
-        # now add the terms
-        for term in terms:
-          term_str = str(term)
-          if term_str:
-            target.append(term_str)
-        target.append('\n')
+
+
+      # now add the terms
+      for term in terms:
+        term_str = str(term)
+        if term_str:
+          target.append(term_str)
+      target.append('\n')
 
       # ensure that the header is always first
       target = target_header + target

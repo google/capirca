@@ -160,26 +160,10 @@ class TermTest(unittest.TestCase):
     pol = policy.ParsePolicy(nsxv_mocktest.MIXED_FILTER, self.defs, False)
     target = nsxv.Nsxv(pol, exp_info)
 
-    # parse the output and seperate sections and comment
-    section_tokens = str(target).split('<section')
-    sections = []
-
-    for sec in section_tokens :
-      section = sec.replace('name=','<section name=')
-      sections.append(section)
-    # parse the xml
-    # Checking comment tag
-    comment = sections[0]
-    if 'Id' not in comment:
-      self.fail('Id missing in xml comment in test_nsxv_str()')
-    if 'Date' not in comment:
-      self.fail('Date missing in xml comment in test_nsxv_str()')
-    if 'Revision' not in comment:
-      self.fail('Revision missing in xml comment in test_nsxv_str()')
-
-    root = ET.fromstring(sections[1])
+    #parse the xml and check the values
+    root = ET.fromstring(str(target))
     # check section name
-    section_name = {'name': 'Sample mixed NSXV filter'}
+    section_name = {'id': '1009', 'name': 'Sample mixed NSXV filter'}
     self.assertEqual(root.attrib, section_name)
     # check name and action
     self.assertEqual(root.find('./rule/name').text, 'accept-to-honestdns')
