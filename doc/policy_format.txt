@@ -92,13 +92,12 @@ nostate: specifies to produce 'stateless' filter output (e.g. no connection trac
 NSX
 
 The nsx header designation has the following format:
-target:: nsxv {inet|inet6|mixed}
+target:: nsxv {inet|inet6|mixed} [section-id]
 
 inet: specifies that the resulting filter should only render IPv4 addresses.
 inet6: specifies that the resulting filter should only render IPv6 addresses.
-mixed: specifies that the resulting filter should only render IPv4 and IPv6 addresses.
-The default format is inet, and is implied if not other argument is given.
-(Required keywords option and verbatim are not supported in Nsx)
+mixed: specifies that the resulting filter should render both IPv4 and IPv6 addresses.
+(Required keywords option and verbatim are not supported in NSX)
 
 
 Terms Section

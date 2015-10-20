@@ -30,12 +30,6 @@ from lib import nsxv
 import nsxv_mocktest
 
 
-class Error(Exception):
-  """Generic error class."""
-
-class TermNoActionError(Error):
-  """Error when no terms were found."""
-
 class NsxvFunctionalTest(unittest.TestCase):
   """
   Reads the policy and the output has the xml formed correctly with the tags and values
@@ -56,34 +50,17 @@ class NsxvFunctionalTest(unittest.TestCase):
   def runTest(self):
     pass
 
-  def test_nsxv_filter(self):
+  def test_nsxv_policy(self):
     pol = policy.ParsePolicy(nsxv_mocktest.POLICY, self.defs)
     exp_info = 2
     nsx = copy.deepcopy(pol)
     fw = nsxv.Nsxv(nsx, exp_info)
     output = str(fw)
 
-    # parse the output and seperate sections and comment
-    section_tokens = str(output).split('<section')
-    sections = []
-
-    for sec in section_tokens :
-      section = sec.replace('name=','<section name=')
-      sections.append(section)
-    # parse xml
-    # Checking comment tag
-    comment = sections[0]
-    if 'Id' not in comment:
-      self.fail('Id missing in xml comment in test_nsxv_str()')
-    if 'Date' not in comment:
-      self.fail('Date missing in xml comment in test_nsxv_str()')
-    if 'Revision' not in comment:
-      self.fail('Revision missing in xml comment in test_nsxv_str()')
-
     # parse the xml
-    root = ET.fromstring(sections[1])
+    root = ET.fromstring(output)
      # check section name
-    section_name = {'name': 'Sample NSXV filter'}
+    section_name = {'id': '1007', 'name': 'Sample NSXV filter'}
     self.assertEqual(root.attrib, section_name)
     # check name and action
     self.assertEqual(root.find('./rule/name').text, 'reject-imap-requests')
@@ -105,6 +82,50 @@ class NsxvFunctionalTest(unittest.TestCase):
     # check destination port
     destination_port = root.find('./rule/services/service/destinationPort').text
     self.assertEqual(destination_port, '143')
+
+  def test_nsxv_nosectiondid(self):
+    pol = policy.ParsePolicy(nsxv_mocktest.POLICY_NO_SECTION_ID, self.defs)
+    exp_info = 2
+    nsx = copy.deepcopy(pol)
+    fw = nsxv.Nsxv(nsx, exp_info)
+    output = str(fw)
+    # parse the xml
+    root = ET.fromstring(output)
+     # check section name
+    section_name = {'name': 'NSXV filter without section id'}
+    self.assertEqual(root.attrib, section_name)
+    # check name and action
+    self.assertEqual(root.find('./rule/name').text, 'accept-icmp')
+    self.assertEqual(root.find('./rule/action').text, 'allow')
+
+    #check protocol
+    protocol =  int(root.find('./rule/services/service/protocol').text)
+    self.assertEqual(protocol, 1)
+
+  def test_nsxv_nofiltertype(self):
+    def test_nofiltertype():
+      pol = policy.ParsePolicy(nsxv_mocktest.POLICY_NO_FILTERTYPE, self.defs)
+      exp_info = 2
+      nsx = copy.deepcopy(pol)
+      fw = nsxv.Nsxv(nsx, exp_info)
+    self.assertRaises(nsxv.UnsupportedNsxvAccessListError, test_nofiltertype)
+
+  def test_nsxv_incorrectfiltertype(self):
+    def test_incorrectfiltertype():
+      pol = policy.ParsePolicy(nsxv_mocktest.POLICY_INCORRECT_FILTERTYPE, self.defs)
+      exp_info = 2
+      nsx = copy.deepcopy(pol)
+      fw = nsxv.Nsxv(nsx, exp_info)
+    self.assertRaises(nsxv.UnsupportedNsxvAccessListError, test_incorrectfiltertype)
+
+  def test_nsxv_optionkywd(self):
+    def test_optionkywd():
+      pol = policy.ParsePolicy(nsxv_mocktest.POLICY_OPTION_KYWD, self.defs)
+      exp_info = 2
+      nsx = copy.deepcopy(pol)
+      fw = nsxv.Nsxv(nsx, exp_info)
+      output = str(fw)
+    self.assertRaises(nsxv.NsxvAclTermError, test_optionkywd)
 
   if __name__ == '__main__':
     unittest.main()
