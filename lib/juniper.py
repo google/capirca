@@ -275,7 +275,7 @@ class Term(aclgenerator.Term):
           config.Append('%s;%s' % (addr, self._Comment(addr)))
         config.Append('}')
       elif self.term.address:
-        logging.warn(self.NO_AF_LOG_FORMAT.substitute(term=self.term.name,
+        logging.warn(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
                                                       af=self.term_type))
         return ''
 
@@ -293,7 +293,7 @@ class Term(aclgenerator.Term):
               addr, self._Comment(addr, exclude=True)))
         config.Append('}')
       elif self.term.source_address:
-        logging.warn(self.NO_AF_LOG_FORMAT.substitute(term=self.term.name,
+        logging.warn(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
                                                       direction='source',
                                                       af=self.term_type))
         return ''
@@ -312,7 +312,7 @@ class Term(aclgenerator.Term):
               addr, self._Comment(addr, exclude=True)))
         config.Append('}')
       elif self.term.destination_address:
-        logging.warn(self.NO_AF_LOG_FORMAT.substitute(term=self.term.name,
+        logging.warn(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
                                                       direction='destination',
                                                       af=self.term_type))
         return ''
