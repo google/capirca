@@ -117,79 +117,69 @@ def revision_tag_handler(fname, text):
   return '\n'.join(new_text)
 
 
-def memoize(fn):
-    """Memoization decorator for functions taking one or more args."""
-
-    class memodict(dict):
-
-        def __init__(self, fn):
-            self.fn = fn
-
-        def __call__(self, *args):
-            return self[args]
-
-        def __missing__(self, key):
-            ret = self[key] = self.fn(*key)
-            return ret
-
-    return memodict(fn)
-
-
-@memoize
 def get_policy_obj(source_file, definitions_obj, optimize, shade_check):
-    if optimize:
-        return policy.ParsePolicy(open(source_file).read(), definitions_obj,
-                                  shade_check=shade_check)
-    else:
-        return policy.ParsePolicy(open(source_file).read(), definitions_obj,
-                                  optimize=False)
+  """Memoized call to parse policy by file name.
+
+  Returns parsed policy object.
+  """
+
+  return policy.CacheParseFile(source_file, definitions_obj, optimize,
+                               shade_check=shade_check)
 
 
 def render_filters(source_file, definitions_obj, shade_check, exp_info):
-  count = 0
+  """Render platform specfic filters for each target platform.
 
-  supported_targets = {'arista': {'optimized': True,
-                                  'renderer': arista.Arista},
-                       'aruba': {'optimized': True, 'renderer': aruba.Aruba},
-                       'brocade': {'optimized': True,
-                                   'renderer': brocade.Brocade},
-                       'juniper': {'optimized': True,
-                                   'renderer': juniper.Juniper},
-                       'junipersrx': {'optimized': False,
-                                      'renderer': junipersrx.JuniperSRX},
-                       'cisco': {'optimized': True, 'renderer': cisco.Cisco},
-                       'ciscoasa': {'optimized': True,
-                                    'renderer': ciscoasa.CiscoASA},
-                       'ciscoxr': {'optimized': True,
-                                   'renderer': ciscoxr.CiscoXR},
-                       'gce': {'optimized': True, 'renderer': gce.GCE},
-                       'iptables': {'optimized': True,
-                                    'renderer': iptables.Iptables},
-                       'ipset': {'optimized': True, 'renderer': ipset.Ipset},
-                       'packetfilter': {'optimized': True,
-                                        'renderer': packetfilter.PacketFilter},
-                       'speedway': {'optimized': True,
-                                    'renderer': speedway.Speedway},
-                       'srx': {'optimized': False,
-                               'renderer': junipersrx.JuniperSRX},
-                       'demo': {'optimized': True, 'renderer': demo.Demo},
-                       'nsxv': {'optimized': True, 'renderer': nsxv.Nsxv}, }
+  For each target specified in each header of the policy, use that
+  platforms renderer to render its platform specific filter, using its
+  own separate copy of the policy object and with optional, target
+  specific attributes such as optimization and expiration attributes.
 
+  Output the rendered filters for each target platform.
+  Return the rendered filter count.
+  """
+
+  supported_targets = {
+    'arista': {'optimized': True, 'renderer': arista.Arista},
+    'aruba': {'optimized': True, 'renderer': aruba.Aruba},
+    'brocade': {'optimized': True, 'renderer': brocade.Brocade},
+    'cisco': {'optimized': True, 'renderer': cisco.Cisco},
+    'ciscoasa': {'optimized': True, 'renderer': ciscoasa.CiscoASA},
+    'ciscoxr': {'optimized': True, 'renderer': ciscoxr.CiscoXR},
+    'demo': {'optimized': True, 'renderer': demo.Demo},
+    'gce': {'optimized': True, 'renderer': gce.GCE},
+    'ipset': {'optimized': True, 'renderer': ipset.Ipset},
+    'iptables': {'optimized': True, 'renderer': iptables.Iptables},
+    'juniper': {'optimized': True, 'renderer': juniper.Juniper},
+    'junipersrx': {'optimized': False, 'renderer': junipersrx.JuniperSRX},
+    'nsxv': {'optimized': True, 'renderer': nsxv.Nsxv},
+    'packetfilter': {'optimized': True, 'renderer': packetfilter.PacketFilter},
+    'speedway': {'optimized': True, 'renderer': speedway.Speedway},
+    'srx': {'optimized': False, 'renderer': junipersrx.JuniperSRX},
+  }
+
+  # Get a policy object from cache to determine headers within the policy file.
   pol = get_policy_obj(source_file, definitions_obj, True, shade_check)
+
+  # Keep track of how many filters get rendered.
+  count = 0
 
   for header in pol.headers:
     for target_platform in header.platforms:
+      this_platform = supported_targets.get(target_platform)
       # If header specifies an unsupported platform target then skip.
-      if not supported_targets.get(target_platform):
+      if not this_platform:
         continue
-      # Do output filter as per the policy.
-      pol = copy.deepcopy(
-        get_policy_obj(source_file, definitions_obj,
-                       supported_targets[target_platform]['optimized'],
-                       shade_check)
-                      )
-      fw = supported_targets[target_platform]['renderer'](pol, exp_info)
+      optimized = this_platform['optimized']
+      # Copy Policy Obj.
+      pol = copy.deepcopy(get_policy_obj(source_file, definitions_obj,
+                                         optimized, shade_check))
+      renderer = this_platform['renderer']
+      # Render.
+      fw = renderer(pol, exp_info)
+      # Output.
       do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+      # Count.
       count += 1
 
   return count

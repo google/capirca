@@ -19,6 +19,7 @@
 """
 
 import datetime
+from functools import wraps
 import os
 import sys
 
@@ -1730,6 +1731,23 @@ def p_error(p):
 # pylint: enable-msg=W0613,C6102,C6104,C6105,C6108,C6409
 
 
+def memoize(obj):
+  """Memoize decorator for objects that take args and or kwargs."""
+
+  cache = obj.cache = {}
+
+  @wraps(obj)
+  def memoizer(*args, **kwargs):
+    key = (args, tuple(zip(kwargs.iteritems())))
+    try:
+      return cache[key]
+    except KeyError:
+      value = obj(*args, **kwargs)
+      cache[key] = value
+      return value
+  return memoizer
+
+
 def _ReadFile(filename):
   """Read data from a file if it exists.
 
@@ -1811,6 +1829,19 @@ def ParseFile(filename, definitions=None, optimize=True, base_dir='',
   return p
 
 
+@memoize
+def CacheParseFile(*args, **kwargs):
+  """Same as ParseFile, but cached if possible.
+
+  If this was previously called with same args/kwargs, then just return
+  the previous result from cache.
+
+  See the ParseFile function for signature details.
+  """
+
+  return ParseFile(*args, **kwargs)
+
+
 def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
                 shade_check=False):
   """Parse the policy in 'data', optionally provide a naming object.
@@ -1821,7 +1852,7 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
     data: a string blob of policy data to parse.
     definitions: optional naming library definitions object.
     optimize: bool - whether to summarize networks and services.
-    base_dir: base path string to look for acls or include files.
+    base_dir: base path string to look for policies or include files.
     shade_check: bool - whether to raise an exception when a term is shaded.
 
   Returns:
@@ -1848,8 +1879,8 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
     return False
 
 
-# if you call this from the command line, you can specify a jcl file for it to
-# read.
+# If you call this from the command line, you can specify a policy file for it
+# to read.
 if __name__ == '__main__':
   ret = 0
   if len(sys.argv) > 1:

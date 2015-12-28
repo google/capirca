@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-"""Cisco generator."""
+"""Cisco IOS-XR filter renderer."""
 
 __author__ = 'robankeny@google.com (Robert Ankeny)'
 
