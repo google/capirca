@@ -27,7 +27,6 @@ import dircache
 import datetime
 from optparse import OptionParser
 import os
-import stat
 import logging
 
 # compiler imports
@@ -52,6 +51,7 @@ from lib import demo
 from lib import nsxv
 
 
+# pylint: disable=bad-indentation
 _parser = OptionParser()
 _parser.add_option('-d', '--def', dest='definitions',
                    help='definitions directory', default='./def')
@@ -60,7 +60,8 @@ _parser.add_option('-o', dest='output_directory', help='output directory',
 _parser.add_option('', '--poldir', dest='policy_directory',
                    help='policy directory (incompatible with -p)',
                    default='./policies')
-_parser.add_option('-p', '--pol', help='policy file (incompatible with poldir)',
+_parser.add_option('-p', '--pol',
+                   help='policy file (incompatible with poldir)',
                    dest='policy')
 _parser.add_option('--debug', help='enable debug-level logging', dest='debug')
 _parser.add_option('-s', '--shade_checking', help='Enable shade checking',
@@ -84,12 +85,14 @@ def load_and_render(base_dir, defs, shade_check, exp_info):
       rendered += render_filters(fname, defs, shade_check, exp_info)
   return rendered
 
+
 def filter_name(source, suffix):
   source = source.lstrip('./')
   o_dir = '/'.join([FLAGS.output_directory] + source.split('/')[1:-1])
   fname = '%s%s' % (".".join(os.path.basename(source).split('.')[0:-1]),
                     suffix)
   return os.path.join(o_dir, fname)
+
 
 def do_output_filter(filter_text, filter_file):
   if not os.path.isdir(os.path.dirname(filter_file)):
@@ -99,6 +102,7 @@ def do_output_filter(filter_text, filter_file):
     filter_text = revision_tag_handler(filter_file, filter_text)
     print 'writing %s' % filter_file
     output.write(filter_text)
+
 
 def revision_tag_handler(fname, text):
   # replace $Id:$ and $Date:$ tags with filename and date
@@ -112,113 +116,74 @@ def revision_tag_handler(fname, text):
     new_text.append(line)
   return '\n'.join(new_text)
 
-def render_filters(source_file, definitions_obj, shade_check, exp_info):
-  count = 0
-  [(eacl, aacl, bacl, jcl, acl, asa, xacl, ipt, ips, pf, spd, spk, srx,
-    dem, gcefw, nsx)] = [(False, False, False, False, False, False, False, False,
-                     False, False, False, False, False, False, False, False)]
 
-  pol = policy.ParsePolicy(open(source_file).read(), definitions_obj,
-                           shade_check=shade_check)
+def get_policy_obj(source_file, definitions_obj, optimize, shade_check):
+  """Memoized call to parse policy by file name.
+
+  Returns parsed policy object.
+  """
+
+  return policy.CacheParseFile(source_file, definitions_obj, optimize,
+                               shade_check=shade_check)
+
+
+def render_filters(source_file, definitions_obj, shade_check, exp_info):
+  """Render platform specfic filters for each target platform.
+
+  For each target specified in each header of the policy, use that
+  platforms renderer to render its platform specific filter, using its
+  own separate copy of the policy object and with optional, target
+  specific attributes such as optimization and expiration attributes.
+
+  Output the rendered filters for each target platform.
+  Return the rendered filter count.
+  """
+
+  supported_targets = {
+    'arista': {'optimized': True, 'renderer': arista.Arista},
+    'aruba': {'optimized': True, 'renderer': aruba.Aruba},
+    'brocade': {'optimized': True, 'renderer': brocade.Brocade},
+    'cisco': {'optimized': True, 'renderer': cisco.Cisco},
+    'ciscoasa': {'optimized': True, 'renderer': ciscoasa.CiscoASA},
+    'ciscoxr': {'optimized': True, 'renderer': ciscoxr.CiscoXR},
+    'demo': {'optimized': True, 'renderer': demo.Demo},
+    'gce': {'optimized': True, 'renderer': gce.GCE},
+    'ipset': {'optimized': True, 'renderer': ipset.Ipset},
+    'iptables': {'optimized': True, 'renderer': iptables.Iptables},
+    'juniper': {'optimized': True, 'renderer': juniper.Juniper},
+    'junipersrx': {'optimized': False, 'renderer': junipersrx.JuniperSRX},
+    'nsxv': {'optimized': True, 'renderer': nsxv.Nsxv},
+    'packetfilter': {'optimized': True, 'renderer': packetfilter.PacketFilter},
+    'speedway': {'optimized': True, 'renderer': speedway.Speedway},
+    'srx': {'optimized': False, 'renderer': junipersrx.JuniperSRX},
+  }
+
+  # Get a policy object from cache to determine headers within the policy file.
+  pol = get_policy_obj(source_file, definitions_obj, True, shade_check)
+
+  # Keep track of how many filters get rendered.
+  count = 0
 
   for header in pol.headers:
-    if 'arista' in header.platforms:
-      eacl = copy.deepcopy(pol)
-    if 'aruba' in header.platforms:
-      aacl = copy.deepcopy(pol)
-    if 'brocade' in header.platforms:
-      bacl = copy.deepcopy(pol)
-    if 'juniper' in header.platforms:
-      jcl = copy.deepcopy(pol)
-    if 'cisco' in header.platforms:
-      acl = copy.deepcopy(pol)
-    if 'ciscoasa' in header.platforms:
-      asa = copy.deepcopy(pol)
-    if 'ciscoxr' in header.platforms:
-      xacl = copy.deepcopy(pol)
-    if 'gce' in header.platforms:
-      gcefw = copy.deepcopy(pol)
-    if 'iptables' in header.platforms:
-      ipt = copy.deepcopy(pol)
-    if 'ipset' in header.platforms:
-      ips = copy.deepcopy(pol)
-    if 'packetfilter' in header.platforms:
-      pf = copy.deepcopy(pol)
-    if 'speedway' in header.platforms:
-      spd = copy.deepcopy(pol)
-    # SRX needs to be un-optimized for correct building of the address book
-    # entries.
-    if 'srx' in header.platforms:
-      unoptimized_pol = policy.ParsePolicy(open(source_file).read(),
-                                           definitions_obj, optimize=False)
-      srx = copy.deepcopy(unoptimized_pol)
-    if 'demo' in header.platforms:
-      dem = copy.deepcopy(pol)
-    if 'nsxv' in header.platforms:
-      nsx = copy.deepcopy(pol)
-
-  if eacl:
-    fw = arista.Arista(eacl, exp_info)
-    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
-    count += 1
-  if aacl:
-    fw = aruba.Aruba(aacl, exp_info)
-    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
-    count += 1
-  if bacl:
-    fw = brocade.Brocade(bacl, exp_info)
-    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
-    count += 1
-  if jcl:
-    fw = juniper.Juniper(jcl, exp_info)
-    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
-    count += 1
-  if acl:
-    fw = cisco.Cisco(acl, exp_info)
-    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
-    count += 1
-  if asa:
-    fw = ciscoasa.CiscoASA(asa, exp_info)
-    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
-    count += 1
-  if xacl:
-    fw = ciscoxr.CiscoXR(xacl, exp_info)
-    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
-    count += 1
-  if ipt:
-    fw = iptables.Iptables(ipt, exp_info)
-    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
-    count += 1
-  if ips:
-    fw = ipset.Ipset(ips, exp_info)
-    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
-    count += 1
-  if pf:
-    fw = packetfilter.PacketFilter(pf, exp_info)
-    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
-    count += 1
-  if spd:
-    fw = speedway.Speedway(spd, exp_info)
-    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
-    count += 1
-  if srx:
-    fw = junipersrx.JuniperSRX(srx, exp_info)
-    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
-    count += 1
-  if dem:
-    fw = demo.Demo(dem, exp_info)
-    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
-    count += 1
-  if gcefw:
-    fw = gce.GCE(gcefw, exp_info)
-    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
-    count += 1
-  if nsx:
-    fw = nsxv.Nsxv(nsx, exp_info)
-    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
-    count += 1
+    for target_platform in header.platforms:
+      this_platform = supported_targets.get(target_platform)
+      # If header specifies an unsupported platform target then skip.
+      if not this_platform:
+        continue
+      optimized = this_platform['optimized']
+      # Copy Policy Obj.
+      pol = copy.deepcopy(get_policy_obj(source_file, definitions_obj,
+                                         optimized, shade_check))
+      renderer = this_platform['renderer']
+      # Render.
+      fw = renderer(pol, exp_info)
+      # Output.
+      do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+      # Count.
+      count += 1
 
   return count
+
 
 def main():
   if not FLAGS.definitions:
@@ -241,16 +206,16 @@ def main():
 
 
 if __name__ == '__main__':
-  # some sanity checking
+  # Do some sanity checking.
   if FLAGS.policy_directory and FLAGS.policy:
-    # When parsing a single file, ignore default path of policy_directory
+    # When parsing a single file, ignore default path of policy_directory.
     FLAGS.policy_directory = False
   if not (FLAGS.policy_directory or FLAGS.policy):
     raise ValueError('must provide policy or policy_directive')
 
-  # enable debugging
+  # Set log level to DEBUG if debug option is specified.
   if FLAGS.debug:
     logging.basicConfig(level=logging.DEBUG)
 
-  # run run run run run away
+  # Start main program.
   main()
