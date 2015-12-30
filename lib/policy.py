@@ -37,6 +37,7 @@ _ACTIONS = set(('accept', 'deny', 'reject', 'next', 'reject-with-tcp-rst'))
 _LOGGING = set(('true', 'True', 'syslog', 'local', 'disable'))
 _OPTIMIZE = True
 _SHADE_CHECK = False
+_PRESERVE_TOKENS = False
 
 
 class Error(Exception):
@@ -112,7 +113,14 @@ def TranslatePorts(ports, protocols, term_name):
     term_name: name of current term, used for warning messages
 
   Returns:
-    ret_array: list of ports tuples such as [(25,25), (53,53), (1024,65535)]
+    If _PRESERVE_TOKENS is False,
+    ret_array: list of ports range tuples such as
+    [(25,25), (53,53), (1024,65535)].
+
+    If _PRESERVE_TOKENS is True,
+    ret_array: list of port range tuples with a 3rd item of dict
+    in the tuple, containing the service_name_protocol, thusly:
+    [(25,25,'SMTP_TCP'), (1024,65535,'HIGH_PORTS_TCP), ...]
 
   Note:
     Duplication will be taken care of in Term.CollapsePortList
@@ -129,12 +137,12 @@ def TranslatePorts(ports, protocols, term_name):
                      'consider splitting the protocols into separate terms!')
 
       for p in [x.split('-') for x in service_by_proto]:
-        if len(p) == 1:
-          ret_array.append((int(p[0]), int(p[0])))
+        if _PRESERVE_TOKENS:
+          svc_key = '%s_%s' % (port, proto.upper())
+          ret_array.append((int(p[0]), int(p[-1]), svc_key))
         else:
-          ret_array.append((int(p[0]), int(p[1])))
+          ret_array.append((int(p[0]), int(p[-1])))
   return ret_array
-
 
 # classes for storing the object types in the policy files.
 class Policy(object):
@@ -173,26 +181,17 @@ class Policy(object):
       # or at the very least, in some method under class Term()
       if term.translated:
         continue
-      if term.port:
-        term.port = TranslatePorts(term.port, term.protocol, term.name)
-        if not term.port:
-          raise TermPortProtocolError(
-              'no ports of the correct protocol for term %s' % (
-                  term.name))
-      if term.source_port:
-        term.source_port = TranslatePorts(term.source_port, term.protocol,
-                                          term.name)
-        if not term.source_port:
-          raise TermPortProtocolError(
-              'no source ports of the correct protocol for term %s' % (
-                  term.name))
-      if term.destination_port:
-        term.destination_port = TranslatePorts(term.destination_port,
-                                               term.protocol, term.name)
-        if not term.destination_port:
-          raise TermPortProtocolError(
-              'no destination ports of the correct protocol for term %s' % (
-                  term.name))
+      port_terms = (('port', 'ports'), ('source_port', 'source ports'),
+                    ('destination_port', 'destination ports'))
+      for port_term, port_english in port_terms:
+        has_port = getattr(term, port_term, None)
+        if has_port:
+          setattr(term, port_term, TranslatePorts(has_port, term.protocol,
+                                                  term.name))
+          if not getattr(term, port_term, None):
+            raise TermPortProtocolError(
+                'no %s of the correct protocol for term %s' % (
+                     port_english, term.name))
 
       # If argument is true, we optimize, otherwise just sort addresses
       term.AddressCleanup(_OPTIMIZE)
@@ -1808,7 +1807,7 @@ def _Preprocess(data, max_depth=5, base_dir=''):
 
 
 def ParseFile(filename, definitions=None, optimize=True, base_dir='',
-              shade_check=False):
+              shade_check=False, platform=None):
   """Parse the policy contained in file, optionally provide a naming object.
 
   Read specified policy file and parse into a policy object.
@@ -1819,13 +1818,14 @@ def ParseFile(filename, definitions=None, optimize=True, base_dir='',
     optimize: bool - whether to summarize networks and services.
     base_dir: base path string to look for acls or include files.
     shade_check: bool - whether to raise an exception when a term is shaded.
+    platform: string - target platform name.
 
   Returns:
     policy object.
   """
   data = _ReadFile(filename)
   p = ParsePolicy(data, definitions, optimize, base_dir=base_dir,
-                  shade_check=shade_check)
+                  shade_check=shade_check, platform=platform)
   return p
 
 
@@ -1843,7 +1843,7 @@ def CacheParseFile(*args, **kwargs):
 
 
 def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
-                shade_check=False):
+                shade_check=False, platform=None):
   """Parse the policy in 'data', optionally provide a naming object.
 
   Parse a blob of policy text into a policy object.
@@ -1854,6 +1854,7 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
     optimize: bool - whether to summarize networks and services.
     base_dir: base path string to look for policies or include files.
     shade_check: bool - whether to raise an exception when a term is shaded.
+    platform: string - target platform name.
 
   Returns:
     policy object.
@@ -1867,6 +1868,10 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
       globals()['_OPTIMIZE'] = False
     if shade_check:
       globals()['_SHADE_CHECK'] = True
+    if platform and platform == 'cisco':
+      globals()['_PRESERVE_TOKENS'] = True
+    else:
+      globals()['_PRESERVE_TOKENS'] = False
 
     lexer = lex.lex()
 

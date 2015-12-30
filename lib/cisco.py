@@ -200,49 +200,47 @@ class ObjectGroup(object):
   def __str__(self):
     ret_str = ['\n']
     addresses = {}
-    ports = {}
+    service_items = {}
 
     for term in self.terms:
-      # I don't have an easy way get the token name used in the pol file
-      # w/o reading the pol file twice (with some other library) or doing
-      # some other ugly hackery. Instead, the entire block of source and dest
-      # addresses for a given term is given a unique, computable name which
-      # is not related to the NETWORK.net token name.  that's what you get
-      # for using cisco, which has decided to implement its own meta language.
-
       # source address
       saddrs = term.GetAddressOfVersion('source_address', 4)
-      # check to see if we've already seen this address.
+      # check to see if we've already seen this address group.
       if saddrs and saddrs[0].parent_token not in addresses:
         addresses[saddrs[0].parent_token] = True
-        ret_str.append('object-group ip address %s' % saddrs[0].parent_token)
+        ret_str.append('object-group network %s' % saddrs[0].parent_token)
         for addr in saddrs:
           ret_str.append(' %s %s' % (addr.ip, addr.netmask))
         ret_str.append('exit\n')
 
       # destination address
       daddrs = term.GetAddressOfVersion('destination_address', 4)
-      # check to see if we've already seen this address
+      # check to see if we've already seen this address group.
       if daddrs and daddrs[0].parent_token not in addresses:
         addresses[daddrs[0].parent_token] = True
-        ret_str.append('object-group ip address %s' % daddrs[0].parent_token)
+        ret_str.append('object-group network %s' % daddrs[0].parent_token)
         for addr in term.GetAddressOfVersion('destination_address', 4):
           ret_str.append(' %s %s' % (addr.ip, addr.netmask))
         ret_str.append('exit\n')
 
-      # source port
-      for port in term.source_port + term.destination_port:
-        if not port:
+      # ports
+      # Get all the port service names from all the terms with ports.
+      for low_port, high_port, service_name in (
+          term.source_port + term.destination_port):
+        if not low_port:
           continue
-        port_key = '%s-%s' % (port[0], port[1])
-        if port_key not in ports:
-          ports[port_key] = True
-          ret_str.append('object-group ip port %s' % port_key)
-          if port[0] != port[1]:
-            ret_str.append(' range %d %d' % (port[0], port[1]))
-          else:
-            ret_str.append(' eq %d' % port[0])
-          ret_str.append('exit\n')
+        service_items.setdefault(service_name, set())
+        service_items[service_name].add((low_port, high_port))
+
+    # source port
+    for service_name, set_of_port_tuples in service_items.iteritems():
+      ret_str.append('object-group service %s' % service_name)
+      for low_port, high_port in set_of_port_tuples:
+        if low_port != high_port:
+          ret_str.append(' range %d %d' % (low_port, high_port))
+        else:
+          ret_str.append(' eq %d' % low_port)
+      ret_str.append('exit\n')
 
     return '\n'.join(ret_str)
 
@@ -263,12 +261,13 @@ class ObjectGroupTerm(aclgenerator.Term):
   """
   _PLATFORM = 'cisco'
   # Protocols should be emitted as integers rather than strings.
-  _PROTO_INT = True
+  _PROTO_INT = False
 
-  def __init__(self, term, filter_name):
+  def __init__(self, term, filter_name, proto_int):
     super(ObjectGroupTerm, self).__init__(term)
     self.term = term
     self.filter_name = filter_name
+    self.proto_int = proto_int
 
   def __str__(self):
     # Verify platform specific terms. Skip whole term if platform does not
@@ -280,8 +279,7 @@ class ObjectGroupTerm(aclgenerator.Term):
       if self._PLATFORM in self.term.platform_exclude:
         return ''
 
-    source_address_dict = {}
-    destination_address_dict = {}
+    address_dict = {}
 
     ret_str = ['\n']
     ret_str.append('remark %s' % self.term.name)
@@ -302,59 +300,67 @@ class ObjectGroupTerm(aclgenerator.Term):
     # protocol
     if not self.term.protocol:
       protocol = ['ip']
-    else:
+    elif self.proto_int:
       # pylint: disable=g-long-lambda
-      protocol = map(self.PROTO_MAP.get, self.term.protocol, self.term.protocol)
+      protocol = map(self.PROTO_MAP.get, self.term.protocol,
+                     self.term.protocol)
       # pylint: enable=g-long-lambda
+    else:
+      protocol = self.term.protocol
 
     # addresses
-    source_address = self.term.source_address
-    if not self.term.source_address:
-      source_address = [nacaddr.IPv4('0.0.0.0/0', token='ANY')]
-    source_address_dict[source_address[0].parent_token] = True
-
-    destination_address = self.term.destination_address
-    if not self.term.destination_address:
-      destination_address = [nacaddr.IPv4('0.0.0.0/0', token='ANY')]
-    destination_address_dict[destination_address[0].parent_token] = True
+    addresses = {'source': self.term.source_address,
+                 'destination': self.term.destination_address}
+    for address_designation, address in addresses.iteritems():
+      if address:
+        address_dict[address_designation] = ['object-group %s' % (
+            address[0].parent_token
+        )]
+      else:
+        address_dict[address_designation] = ['any']
     # ports
+    source_tokens_done = {}
+    dest_tokens_done = {}
     source_port = [()]
     destination_port = [()]
     if self.term.source_port:
-      source_port = self.term.source_port
+        source_port = self.term.source_port
     if self.term.destination_port:
-      destination_port = self.term.destination_port
-
-    for saddr in source_address:
-      for daddr in destination_address:
+        destination_port = self.term.destination_port
+    source_port = self.term.source_port or [()]
+    destination_port = self.term.destination_port or [()]
+    for saddr in address_dict['source']:
+      for daddr in address_dict['destination']:
         for sport in source_port:
+          if sport and sport[2] in source_tokens_done:
+            continue
+          if sport:
+            source_tokens_done[sport[2]] = True
           for dport in destination_port:
+            if dport and dport[2] in dest_tokens_done:
+              continue
+            dest_tokens_done[dport[2]] = True
             for proto in protocol:
               ret_str.append(
                   self._TermletToStr(_ACTION_TABLE.get(str(
-                      self.term.action[0])), proto, saddr, sport, daddr, dport))
+                      self.term.action[0])), proto, saddr, sport, daddr,
+                      dport))
 
     return '\n'.join(ret_str)
 
   def _TermletToStr(self, action, proto, saddr, sport, daddr, dport):
     """Output a portion of a cisco term/filter only, based on the 5-tuple."""
-    # fix addreses
-    if saddr:
-      saddr = 'addrgroup %s' % saddr
-    if daddr:
-      daddr = 'addrgroup %s' % daddr
     # fix ports
     if sport:
-      sport = 'portgroup %d-%d' % (sport[0], sport[1])
+      sport = 'object-group %s ' % (sport[2])
     else:
       sport = ''
     if dport:
-      dport = 'portgroup %d-%d' % (dport[0], dport[1])
+      dport = 'object-group %s' % (dport[2])
     else:
       dport = ''
 
-    return ' %s %s %s %s %s %s' % (
-        action, proto, saddr, sport, daddr, dport)
+    return ' %s %s %s %s%s %s' % (action, proto, saddr, sport, daddr, dport)
 
 
 class Term(aclgenerator.Term):
@@ -602,12 +608,24 @@ class Term(aclgenerator.Term):
       list of tuples
     """
     temporary_port_list = []
-    for low_port, high_port in port_list:
-      if low_port == high_port - 1:
-        temporary_port_list.append((low_port, low_port))
-        temporary_port_list.append((high_port, high_port))
+    for port_tuple in port_list:
+      low_port, high_port = port_tuple[0], port_tuple[1]
+      if len(port_tuple) == 3:
+        service_token = port_tuple[2]
       else:
-        temporary_port_list.append((low_port, high_port))
+        service_token = None
+      if low_port == high_port - 1:
+        if service_token:
+          temporary_port_list.append((low_port, low_port, service_token))
+          temporary_port_list.append((high_port, high_port, service_token))
+        else:
+          temporary_port_list.append((low_port, low_port))
+          temporary_port_list.append((high_port, high_port))
+      else:
+        if service_token:
+          temporary_port_list.append((low_port, high_port, service_token))
+        else:
+          temporary_port_list.append((low_port, high_port))
     return temporary_port_list
 
 
@@ -618,7 +636,7 @@ class Cisco(aclgenerator.ACLGenerator):
   _DEFAULT_PROTOCOL = 'ip'
   _SUFFIX = '.acl'
   # Protocols should be emitted as numbers.
-  _PROTO_INT = True
+  _PROTO_INT = False
 
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['address',
                                       'counter',
@@ -630,7 +648,7 @@ class Cisco(aclgenerator.ACLGenerator):
                                       'port',
                                       'qos',
                                       'routing_instance',
-                                     ])
+                                      ])
 
   def _TranslatePolicy(self, pol, exp_info):
     self.cisco_policies = []
@@ -707,7 +725,8 @@ class Cisco(aclgenerator.ACLGenerator):
             new_terms.append(Term(term, proto_int=self._PROTO_INT))
           elif next_filter == 'object-group':
             obj_target.AddTerm(term)
-            new_terms.append(ObjectGroupTerm(term, filter_name))
+            new_terms.append(ObjectGroupTerm(term, filter_name,
+                                             proto_int=self._PROTO_INT))
           elif next_filter == 'inet6':
             new_terms.append(Term(term, 6, proto_int=self._PROTO_INT))
 
@@ -756,7 +775,7 @@ class Cisco(aclgenerator.ACLGenerator):
     target_header = []
     target = []
     # add the p4 tags
-    target.extend(aclgenerator.AddRepositoryTags('! '))
+    target_header.extend(aclgenerator.AddRepositoryTags('! '))
 
     for (header, filter_name, filter_list, terms, obj_target
         ) in self.cisco_policies:
@@ -769,14 +788,12 @@ class Cisco(aclgenerator.ACLGenerator):
         # remove/re-create of the filter, otherwise config mode doesn't
         # know where to place these remarks in the configuration.
         if filter_type == 'standard' and filter_name.isdigit():
-          target.extend(
-              aclgenerator.AddRepositoryTags(
-                  'access-list %s remark ' % filter_name,
-                  date=False, revision=False))
+          comment_format = 'access-list %s remark ' % filter_name
         else:
-          target.extend(aclgenerator.AddRepositoryTags(
-              'remark ', date=False, revision=False))
-
+          comment_format = 'remark '
+        target.extend(aclgenerator.AddRepositoryTags(comment_format,
+                                                     date=False,
+                                                     revision=False))
         # add a header comment if one exists
         for comment in header.comment:
           for line in comment.split('\n'):
@@ -790,7 +807,7 @@ class Cisco(aclgenerator.ACLGenerator):
 
       if obj_target.valid:
         target = [str(obj_target)] + target
-      # ensure that the header is always first
-      target = target_header + target
       target += ['', 'exit', '']
+    # ensure that the header is always first
+    target = target_header + target
     return '\n'.join(target)
