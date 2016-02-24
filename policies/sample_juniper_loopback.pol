@@ -1,5 +1,5 @@
 header {
-  comment:: "Sample Juniper lookback filter"
+  comment:: "Sample Juniper loopback filter"
   target:: juniper LOOPBACK
 }
 
