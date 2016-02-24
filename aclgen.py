@@ -46,6 +46,7 @@ from lib import iptables
 from lib import ipset
 from lib import speedway
 from lib import juniper
+from lib import juniperfw
 from lib import junipersrx
 from lib import packetfilter
 from lib import demo
@@ -114,8 +115,8 @@ def revision_tag_handler(fname, text):
 
 def render_filters(source_file, definitions_obj, shade_check, exp_info):
   count = 0
-  [(eacl, aacl, bacl, jcl, acl, asa, xacl, ipt, ips, pf, spd, spk, srx,
-    dem, gcefw, nsx)] = [(False, False, False, False, False, False, False, False,
+  [(eacl, aacl, bacl, jfw, jcl, acl, asa, xacl, ipt, ips, pf, spd, spk, srx,
+    dem, gcefw, nsx)] = [(False, False, False, False, False, False, False, False, False,
                      False, False, False, False, False, False, False, False)]
 
   pol = policy.ParsePolicy(open(source_file).read(), definitions_obj,
@@ -130,6 +131,8 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
       bacl = copy.deepcopy(pol)
     if 'juniper' in header.platforms:
       jcl = copy.deepcopy(pol)
+    if 'juniperfw' in header.platforms:
+      jfw = copy.deepcopy(pol)
     if 'cisco' in header.platforms:
       acl = copy.deepcopy(pol)
     if 'ciscoasa' in header.platforms:
@@ -171,6 +174,10 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
     count += 1
   if jcl:
     fw = juniper.Juniper(jcl, exp_info)
+    do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+    count += 1
+  if jfw:
+    fw = juniperfw.Juniper(jfw, exp_info)
     do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
     count += 1
   if acl:
