@@ -12,6 +12,8 @@ LOOPBACK = 127.0.0.0/8  # loopback
 
 RFC_3330 = 169.254.0.0/16  # special use IPv4 addresses - netdeploy
 
+RFC_6598 = 100.64.0.0/10   # Shared Address Space
+
 LINKLOCAL = FE80::/10  # IPv6 link-local
 
 SITELOCAL = FEC0::/10    # Ipv6 Site-local
@@ -25,6 +27,7 @@ RESERVED = 0.0.0.0/8           # reserved
            RFC1918
            LOOPBACK
            RFC_3330
+           RFC_6598
            MULTICAST
            CLASS-E
            0000::/8            # reserved by IETF
