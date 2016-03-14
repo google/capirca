@@ -157,7 +157,7 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
     'packetfilter': {'optimized': True, 'renderer': packetfilter.PacketFilter},
     'speedway': {'optimized': True, 'renderer': speedway.Speedway},
     'srx': {'optimized': False, 'renderer': junipersrx.JuniperSRX},
-    'paloaltofw': {'optimized': False, 'renderer': paloaltofw.PaloAltoFW},
+    'paloalto': {'optimized': False, 'renderer': paloaltofw.PaloAltoFW},
   }
 
   # Get a policy object from cache to determine headers within the policy file.

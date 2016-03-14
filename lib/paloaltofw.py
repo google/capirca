@@ -70,10 +70,10 @@ class Term(aclgenerator.Term):
     # Verify platform specific terms. Skip whole term if platform does not
     # match.
     if self.term.platform:
-      if 'paloaltofw' not in self.term.platform:
+      if 'paloalto' not in self.term.platform:
         return ''
     if self.term.platform_exclude:
-      if 'paloaltofw' in self.term.platform_exclude:
+      if 'paloalto' in self.term.platform_exclude:
         return ''
     ret_str = []
 
@@ -263,7 +263,7 @@ class Rule():
       if term.protocol[0] == "icmp":
         self.options["application"].append("ping")
 
-    self.rules[term.name] = self.options
+    self.rules[str(self.options["from_zone"]) + "_2_" + str(self.options["to_zone"]) + "-" + term.name] = self.options
 
 
 
@@ -277,7 +277,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
        pol: policy.Policy object
   """
 
-  _PLATFORM = 'paloaltofw'
+  _PLATFORM = 'paloalto'
   _SUFFIX = '.xml'
   _SUPPORTED_AF = set(('inet',))
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',
@@ -493,14 +493,6 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           rules.append(self.INDENT * 10 + "<member>" + d + "</member>")
       rules.append(self.INDENT * 9 + "</destination>")
 
-      rules.append(self.INDENT * 9 + "<source-user>")
-      rules.append(self.INDENT * 10 + "<member>any</member>")
-      rules.append(self.INDENT * 9 + "</source-user>")
-
-      rules.append(self.INDENT * 9 + "<category>")
-      rules.append(self.INDENT * 10 + "<member>any</member>")
-      rules.append(self.INDENT * 9 + "</category>")
-
       rules.append(self.INDENT * 9 + "<service>")
       if options["service"] == []:
         rules.append(self.INDENT * 10 + "<member>any</member>")
@@ -508,10 +500,6 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
         for s in options["service"]:
           rules.append(self.INDENT * 10 + "<member>" + s + "</member>")
       rules.append(self.INDENT * 9 + "</service>")
-
-      rules.append(self.INDENT * 9 + "<hip-profiles>")
-      rules.append(self.INDENT * 10 + "<member>any</member>")
-      rules.append(self.INDENT * 9 + "</hip-profiles>")
 
       rules.append(self.INDENT * 9 + "<action>")
       rules.append(self.INDENT * 10 + "<member>" + options["action"] + "</member>")

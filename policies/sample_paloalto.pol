@@ -1,0 +1,68 @@
+################
+### RULEBASE ###
+################
+
+# NOTE: makes sure zone names correspond to those specified in your firewall setup
+
+header {
+  target:: paloalto from-zone Trust-L3 to-zone Trust-L3
+}
+
+term allow-ping-firewall{
+  destination-address:: FIREWALL_EXTERNAL
+  protocol:: icmp
+  action:: accept
+}
+
+term allow-https-firewall{
+  destination-address:: FIREWALL_EXTERNAL
+  destination-port:: HTTPS
+  protocol:: tcp
+  action:: accept
+}
+
+term allow-ssh-firewall{
+  destination-address:: FIREWALL_EXTERNAL
+  destination-port:: SSH
+  protocol:: tcp
+  action:: accept
+}
+
+
+header {
+  target:: paloalto from-zone Trust-L2 to-zone Trust-L2
+}
+
+term allow-icmp-pod{
+  source-address:: POD_L2
+  destination-address:: POD_L2
+  protocol:: icmp
+  action:: accept
+}
+
+term allow-ssh-pod{
+  source-address:: POD_L2
+  destination-address:: POD_L2
+  destination-port:: SSH
+  protocol:: tcp
+  action:: accept
+}
+
+header {
+  target:: paloalto from-zone Trust-L3 to-zone Untrust-L3
+}
+
+term allow-any-pod-2-internet{
+  source-address:: POD_L3
+  action:: accept
+}
+
+header {
+  target:: paloalto from-zone Untrust-L3 to-zone Trust-L3
+}
+
+term allow-ping-internet-2-firewall{
+  destination-address:: FIREWALL_EXTERNAL
+  protocol:: icmp
+  action:: accept
+}
