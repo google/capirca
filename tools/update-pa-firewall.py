@@ -7,8 +7,7 @@ __author__ = 'apoorva.dornadula@berkeley.edu (Apoorva Dornadula)'
 """ 
 NOTE:
 - command line arguments:
-	- Palo Alto Firewall username
-	- Palo Alto Firewall password
+	- Policy File (ex: policy.pol)
 	- URL (ex: https://192.168.10.1/api/)
 - reads services and security rules from a file called policy.xml 
   located in the same directory as this script
@@ -19,12 +18,21 @@ from xml.etree import ElementTree as etree
 
 
 def updateFirewall(url="https://192.168.10.1/api/"):
-	# Getting the username and password from the user
-	username = sys.argv[1]
-	password = sys.argv[2]
-	if len(sys.argv) > 3:
-		url = sys.argv[3]
+	# Checking command line arguments
+	if len(sys.argv) < 2:
+		print("You must enter the name of your policy file as a command line argument")
+		return	
 
+	# Getting the username and password from the user
+	username = raw_input("Enter username: ")
+	password = raw_input("Enter password: ")
+	
+	if len(sys.argv) == 2:
+		polFile = sys.argv[1]
+	elif len(sys.argv) == 3:
+		polFile = sys.argv[1]
+		url = sys.argv[2]
+	
 	# Auth and getting key
 	values = {"type":"keygen", "user":username, "password":password}
 
@@ -37,7 +45,7 @@ def updateFirewall(url="https://192.168.10.1/api/"):
 	key = keyTree.find(".//key").text	
 
 	# reading the new policy file for appropriate code
-	tree = etree.parse("policy.xml")
+	tree = etree.parse(polFile)
 
 	services = tree.find(".//devices/entry/vsys/entry/service")
 	if services is not None:
