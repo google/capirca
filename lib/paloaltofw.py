@@ -207,7 +207,7 @@ class Service():
     tup = str(ports)[1:-1]
     if tup[-1] == ",":
       tup = tup[:-1]
-    self.service_map[(ports, protocol)] = {"name": "service-" + protocol + "-" + tup.replace(", ","-")}
+    self.service_map[(ports, protocol)] = {"name": "service-" + protocol + "-" + tup.replace(", ","_").replace("'", "")}
 
 
 class Rule():
@@ -247,10 +247,12 @@ class Rule():
 
     if term.destination_port:
       ports = []
+      #import pdb; pdb.set_trace()
       for tup in term.destination_port:
-	for num in tup:
-	  if num not in ports:
-            ports.append(num)
+	if len(tup) > 1 and tup[0] != tup[1]:
+	  ports.append(str(tup[0]) + "-" + str(tup[1]))
+	else:
+	  ports.append(str(tup[0]))
       ports = tuple(ports)
 
       # check to see if this service already exists
@@ -452,7 +454,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       tup = str(k[0])[1:-1]
       if tup[-1] == ",":
         tup = tup[:-1]
-      service.append(self.INDENT * 9 + "<port>" + tup + "</port>")
+      service.append(self.INDENT * 9 + "<port>" + tup.replace("'","") + "</port>")
       service.append(self.INDENT * 8 + "</" + k[1] + ">")
       service.append(self.INDENT * 7 + "</protocol>")
       service.append(self.INDENT * 6 + "</entry>")
