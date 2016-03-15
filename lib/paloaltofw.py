@@ -207,7 +207,7 @@ class Service():
     tup = str(ports)[1:-1]
     if tup[-1] == ",":
       tup = tup[:-1]
-    self.service_map[(ports, protocol)] = {"name": "service-" + protocol + "-" + tup}
+    self.service_map[(ports, protocol)] = {"name": "service-" + protocol + "-" + tup.replace(", ","-")}
 
 
 class Rule():
@@ -248,7 +248,9 @@ class Rule():
     if term.destination_port:
       ports = []
       for tup in term.destination_port:
-        ports.append(tup[0])
+	for num in tup:
+	  if num not in ports:
+            ports.append(num)
       ports = tuple(ports)
 
       # check to see if this service already exists
