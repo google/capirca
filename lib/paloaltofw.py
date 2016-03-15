@@ -518,17 +518,6 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     rules.append(self.INDENT * 7 + "</rules>")
     rules.append(self.INDENT * 6 + "</security>")
 
-    # Default Deny:
-    rules.append(self.INDENT * 6 + "<default-security-rules>")
-    rules.append(self.INDENT * 7 + "<rules>")
-    rules.append(self.INDENT * 8 + '<entry name="intrazone-default">')
-    rules.append(self.INDENT * 9 + "<action>")
-    rules.append(self.INDENT * 10 + "<member>deny</member>")
-    rules.append(self.INDENT * 9 + "</action>")
-    rules.append(self.INDENT * 8 + "</entry>")
-    rules.append(self.INDENT * 7 + "</rules>")
-    rules.append(self.INDENT * 6 + "</default-security-rules>")
-
     rules.append(self.INDENT * 5 + "</rulebase>")
 
     end = []
