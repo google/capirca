@@ -263,7 +263,7 @@ class Rule():
       if term.protocol[0] == "icmp":
         self.options["application"].append("ping")
 
-    self.rules[str(self.options["from_zone"]) + "_2_" + str(self.options["to_zone"]) + "-" + term.name] = self.options
+    self.rules["-".join(self.options["from_zone"]) + "_2_" + "-".join(self.options["to_zone"]) + "-" + term.name] = self.options
 
 
 
