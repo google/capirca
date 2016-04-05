@@ -1,0 +1,4 @@
+*.pyc
+
+# Generated files
+filters/sample_*
