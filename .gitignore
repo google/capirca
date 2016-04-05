@@ -1,4 +1,5 @@
 *.pyc
+venv/
 
 # Generated files
 filters/sample_*
