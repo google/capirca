@@ -1,5 +1,8 @@
 *.pyc
 venv/
 
+# build output from 'python setup.py install'
+build/
+
 # Generated files
 filters/sample_*
