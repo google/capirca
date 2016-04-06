@@ -186,6 +186,17 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
 
 
 def main():
+  # Do some sanity checking.
+  if FLAGS.policy_directory and FLAGS.policy:
+    # When parsing a single file, ignore default path of policy_directory.
+    FLAGS.policy_directory = False
+  if not (FLAGS.policy_directory or FLAGS.policy):
+    raise ValueError('must provide policy or policy_directive')
+
+  # Set log level to DEBUG if debug option is specified.
+  if FLAGS.debug:
+    logging.basicConfig(level=logging.DEBUG)
+
   if not FLAGS.definitions:
     _parser.error('no definitions supplied')
   defs = naming.Naming(FLAGS.definitions)
@@ -206,16 +217,6 @@ def main():
 
 
 if __name__ == '__main__':
-  # Do some sanity checking.
-  if FLAGS.policy_directory and FLAGS.policy:
-    # When parsing a single file, ignore default path of policy_directory.
-    FLAGS.policy_directory = False
-  if not (FLAGS.policy_directory or FLAGS.policy):
-    raise ValueError('must provide policy or policy_directive')
-
-  # Set log level to DEBUG if debug option is specified.
-  if FLAGS.debug:
-    logging.basicConfig(level=logging.DEBUG)
 
   # Start main program.
   main()
