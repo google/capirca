@@ -28,6 +28,7 @@ import datetime
 from optparse import OptionParser
 import os
 import logging
+import sys
 
 # compiler imports
 from lib import naming
@@ -50,45 +51,48 @@ from lib import packetfilter
 from lib import demo
 from lib import nsxv
 
-
 # pylint: disable=bad-indentation
-_parser = OptionParser()
-_parser.add_option('-d', '--def', dest='definitions',
-                   help='definitions directory', default='./def')
-_parser.add_option('-o', dest='output_directory', help='output directory',
-                   default='./filters')
-_parser.add_option('', '--poldir', dest='policy_directory',
-                   help='policy directory (incompatible with -p)',
+
+def parse_args(command_line_args):
+  """Populate flags from the command-line arguments."""
+  _parser = OptionParser()
+  _parser.add_option('-d', '--def', dest='definitions',
+                     help='definitions directory', default='./def')
+  _parser.add_option('-o', dest='output_directory', help='output directory',
+                     default='./filters')
+  _parser.add_option('', '--poldir', dest='policy_directory',
+                     help='policy directory (incompatible with -p)',
                    default='./policies')
-_parser.add_option('-p', '--pol',
-                   help='policy file (incompatible with poldir)',
-                   dest='policy')
-_parser.add_option('--debug', help='enable debug-level logging', dest='debug')
-_parser.add_option('-s', '--shade_checking', help='Enable shade checking',
-                   action="store_true", dest="shade_check", default=False)
-_parser.add_option('-e', '--exp_info', type='int', action='store',
-                   dest='exp_info', default=2,
-                   help='Weeks in advance to notify that a term will expire')
+  _parser.add_option('-p', '--pol',
+                     help='policy file (incompatible with poldir)',
+                     dest='policy')
+  _parser.add_option('--debug', help='enable debug-level logging', dest='debug')
+  _parser.add_option('-s', '--shade_checking', help='Enable shade checking',
+                     action="store_true", dest="shade_check", default=False)
+  _parser.add_option('-e', '--exp_info', type='int', action='store',
+                     dest='exp_info', default=2,
+                     help='Weeks in advance to notify that a term will expire')
 
-(FLAGS, args) = _parser.parse_args()
+  flags, unused_args = _parser.parse_args(command_line_args)
+  return flags
 
 
-def load_and_render(base_dir, defs, shade_check, exp_info):
+def load_and_render(base_dir, defs, shade_check, exp_info, output_dir):
   rendered = 0
   for dirfile in dircache.listdir(base_dir):
     fname = os.path.join(base_dir, dirfile)
     #logging.debug('load_and_render working with fname %s', fname)
     if os.path.isdir(fname):
-      rendered += load_and_render(fname, defs, shade_check, exp_info)
+      rendered += load_and_render(fname, defs, shade_check, exp_info, output_dir)
     elif fname.endswith('.pol'):
       #logging.debug('attempting to render_filters on fname %s', fname)
-      rendered += render_filters(fname, defs, shade_check, exp_info)
+      rendered += render_filters(fname, defs, shade_check, exp_info, output_dir)
   return rendered
 
 
-def filter_name(source, suffix):
+def filter_name(source, suffix, output_directory):
   source = source.lstrip('./')
-  o_dir = '/'.join([FLAGS.output_directory] + source.split('/')[1:-1])
+  o_dir = '/'.join([output_directory] + source.split('/')[1:-1])
   fname = '%s%s' % (".".join(os.path.basename(source).split('.')[0:-1]),
                     suffix)
   return os.path.join(o_dir, fname)
@@ -127,7 +131,7 @@ def get_policy_obj(source_file, definitions_obj, optimize, shade_check):
                                shade_check=shade_check)
 
 
-def render_filters(source_file, definitions_obj, shade_check, exp_info):
+def render_filters(source_file, definitions_obj, shade_check, exp_info, output_dir):
   """Render platform specfic filters for each target platform.
 
   For each target specified in each header of the policy, use that
@@ -178,34 +182,16 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
       # Render.
       fw = renderer(pol, exp_info)
       # Output.
-      do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+      do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX, output_dir))
       # Count.
       count += 1
 
   return count
 
 
-def main():
-  if not FLAGS.definitions:
-    _parser.error('no definitions supplied')
-  defs = naming.Naming(FLAGS.definitions)
-  if not defs:
-    print 'problem loading definitions'
-    return
+def main(args):
+  FLAGS = parse_args(args)
 
-  count = 0
-  if FLAGS.policy_directory:
-    count = load_and_render(FLAGS.policy_directory, defs, FLAGS.shade_check,
-                            FLAGS.exp_info)
-
-  elif FLAGS.policy:
-    count = render_filters(FLAGS.policy, defs, FLAGS.shade_check,
-                           FLAGS.exp_info)
-
-  print '%d filters rendered' % count
-
-
-if __name__ == '__main__':
   # Do some sanity checking.
   if FLAGS.policy_directory and FLAGS.policy:
     # When parsing a single file, ignore default path of policy_directory.
@@ -217,5 +203,29 @@ if __name__ == '__main__':
   if FLAGS.debug:
     logging.basicConfig(level=logging.DEBUG)
 
+  if not FLAGS.definitions:
+    _parser.error('no definitions supplied')
+  defs = naming.Naming(FLAGS.definitions)
+  if not defs:
+    print 'problem loading definitions'
+    return
+
+  count = 0
+  if FLAGS.policy_directory:
+    count = load_and_render(FLAGS.policy_directory, defs, FLAGS.shade_check,
+                            FLAGS.exp_info, FLAGS.output_directory)
+
+  elif FLAGS.policy:
+    count = render_filters(FLAGS.policy, defs, FLAGS.shade_check,
+                           FLAGS.exp_info, FLAGS.output_directory)
+
+  print '%d filters rendered' % count
+
+
+if __name__ == '__main__':
+
   # Start main program.
-  main()
+  # Pass in command-line args (except for first entry, which is the script name).
+  # Note that OptionParser slices sys.argv in this way as well,
+  # ref https://docs.python.org/2/library/optparse.html.
+  main(sys.argv[1:])
