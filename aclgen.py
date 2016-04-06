@@ -28,6 +28,7 @@ import datetime
 from optparse import OptionParser
 import os
 import logging
+import sys
 
 # compiler imports
 from lib import naming
@@ -50,27 +51,30 @@ from lib import packetfilter
 from lib import demo
 from lib import nsxv
 
-
 # pylint: disable=bad-indentation
-_parser = OptionParser()
-_parser.add_option('-d', '--def', dest='definitions',
-                   help='definitions directory', default='./def')
-_parser.add_option('-o', dest='output_directory', help='output directory',
-                   default='./filters')
-_parser.add_option('', '--poldir', dest='policy_directory',
-                   help='policy directory (incompatible with -p)',
-                   default='./policies')
-_parser.add_option('-p', '--pol',
-                   help='policy file (incompatible with poldir)',
-                   dest='policy')
-_parser.add_option('--debug', help='enable debug-level logging', dest='debug')
-_parser.add_option('-s', '--shade_checking', help='Enable shade checking',
-                   action="store_true", dest="shade_check", default=False)
-_parser.add_option('-e', '--exp_info', type='int', action='store',
-                   dest='exp_info', default=2,
-                   help='Weeks in advance to notify that a term will expire')
 
-(FLAGS, args) = _parser.parse_args()
+def parse_args(command_line_args):
+  """Populate flags from the command-line arguments."""
+  _parser = OptionParser()
+  _parser.add_option('-d', '--def', dest='definitions',
+                     help='definitions directory', default='./def')
+  _parser.add_option('-o', dest='output_directory', help='output directory',
+                     default='./filters')
+  _parser.add_option('', '--poldir', dest='policy_directory',
+                     help='policy directory (incompatible with -p)',
+                   default='./policies')
+  _parser.add_option('-p', '--pol',
+                     help='policy file (incompatible with poldir)',
+                     dest='policy')
+  _parser.add_option('--debug', help='enable debug-level logging', dest='debug')
+  _parser.add_option('-s', '--shade_checking', help='Enable shade checking',
+                     action="store_true", dest="shade_check", default=False)
+  _parser.add_option('-e', '--exp_info', type='int', action='store',
+                     dest='exp_info', default=2,
+                     help='Weeks in advance to notify that a term will expire')
+
+  flags, unused_args = _parser.parse_args(command_line_args)
+  return flags
 
 
 def load_and_render(base_dir, defs, shade_check, exp_info, output_dir):
@@ -185,7 +189,9 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info, output_d
   return count
 
 
-def main():
+def main(args):
+  FLAGS = parse_args(args)
+
   # Do some sanity checking.
   if FLAGS.policy_directory and FLAGS.policy:
     # When parsing a single file, ignore default path of policy_directory.
@@ -219,4 +225,7 @@ def main():
 if __name__ == '__main__':
 
   # Start main program.
-  main()
+  # Pass in command-line args (except for first entry, which is the script name).
+  # Note that OptionParser slices sys.argv in this way as well,
+  # ref https://docs.python.org/2/library/optparse.html.
+  main(sys.argv[1:])
