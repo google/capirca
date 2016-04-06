@@ -73,22 +73,22 @@ _parser.add_option('-e', '--exp_info', type='int', action='store',
 (FLAGS, args) = _parser.parse_args()
 
 
-def load_and_render(base_dir, defs, shade_check, exp_info):
+def load_and_render(base_dir, defs, shade_check, exp_info, output_dir):
   rendered = 0
   for dirfile in dircache.listdir(base_dir):
     fname = os.path.join(base_dir, dirfile)
     #logging.debug('load_and_render working with fname %s', fname)
     if os.path.isdir(fname):
-      rendered += load_and_render(fname, defs, shade_check, exp_info)
+      rendered += load_and_render(fname, defs, shade_check, exp_info, output_dir)
     elif fname.endswith('.pol'):
       #logging.debug('attempting to render_filters on fname %s', fname)
-      rendered += render_filters(fname, defs, shade_check, exp_info)
+      rendered += render_filters(fname, defs, shade_check, exp_info, output_dir)
   return rendered
 
 
-def filter_name(source, suffix):
+def filter_name(source, suffix, output_directory):
   source = source.lstrip('./')
-  o_dir = '/'.join([FLAGS.output_directory] + source.split('/')[1:-1])
+  o_dir = '/'.join([output_directory] + source.split('/')[1:-1])
   fname = '%s%s' % (".".join(os.path.basename(source).split('.')[0:-1]),
                     suffix)
   return os.path.join(o_dir, fname)
@@ -127,7 +127,7 @@ def get_policy_obj(source_file, definitions_obj, optimize, shade_check):
                                shade_check=shade_check)
 
 
-def render_filters(source_file, definitions_obj, shade_check, exp_info):
+def render_filters(source_file, definitions_obj, shade_check, exp_info, output_dir):
   """Render platform specfic filters for each target platform.
 
   For each target specified in each header of the policy, use that
@@ -178,7 +178,7 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info):
       # Render.
       fw = renderer(pol, exp_info)
       # Output.
-      do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX))
+      do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX, output_dir))
       # Count.
       count += 1
 
@@ -207,11 +207,11 @@ def main():
   count = 0
   if FLAGS.policy_directory:
     count = load_and_render(FLAGS.policy_directory, defs, FLAGS.shade_check,
-                            FLAGS.exp_info)
+                            FLAGS.exp_info, FLAGS.output_directory)
 
   elif FLAGS.policy:
     count = render_filters(FLAGS.policy, defs, FLAGS.shade_check,
-                           FLAGS.exp_info)
+                           FLAGS.exp_info, FLAGS.output_directory)
 
   print '%d filters rendered' % count
 
