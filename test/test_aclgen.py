@@ -47,7 +47,15 @@ writing ./filters/sample_srx.srx
 22 filters rendered
 """
 
-    self.assertEquals(expected_output, self.iobuff.getvalue())
+    def subtract_list(lhs, rhs):
+      return '; '.join([el for el in lhs if el not in rhs])
+
+    expected = expected_output.split("\n")
+    actual = self.iobuff.getvalue().split("\n")
+    not_in_actual = subtract_list(expected, actual)
+    not_in_expected = subtract_list(actual, expected)
+    self.assertEqual('', not_in_actual, 'Not in actual: ' + not_in_actual)
+    self.assertEqual('', not_in_expected, 'Not in expected: ' + not_in_expected)
 
   def test_generate_single_policy(self):
     aclgen.main(['-p', 'policies/sample_cisco_lab.pol'])
