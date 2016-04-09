@@ -2,6 +2,7 @@ import unittest
 import sys
 import os
 import inspect
+import shutil
 from cStringIO import StringIO
 import filecmp
 
@@ -81,6 +82,35 @@ writing ./filters/sample_srx.srx
     self.assertIn('$Id:$', acl)
 
 
+class AclGen_filter_name_scenarios(unittest.TestCase):
+  """Ensure the output directory structure mirrors the input correctly.
+
+  See aclgen.filter_name for notes."""
+
+  def test_file_in_base_directory_is_output_to_output_dir(self):
+    s = aclgen.filter_name('/policy', '/policy/x.txt', '.out', '/output')
+    self.assertEqual(s, '/output/x.out')
+
+  def test_file_in_subdirectory_is_output_to_subdirectory(self):
+    s = aclgen.filter_name('/policy', '/policy/subdir/x.txt', '.out', '/output')
+    self.assertEqual(s, '/output/subdir/x.out')
+
+  def test_file_in_nested_subdir(self):
+    s = aclgen.filter_name('/policy', '/policy/sub/dir/x.txt', '.out', '/output/here')
+    self.assertEqual(s, '/output/here/sub/dir/x.out')
+
+  def test_relative_directory_structure_mirrored(self):
+    s = aclgen.filter_name('../policy', '../policy/subdir/x.txt', '.out', '/output')
+    self.assertEqual(s, '/output/subdir/x.out')
+
+  def test_empty_source_dir_ok(self):
+    s = aclgen.filter_name('', 'subdir/x.txt', '.out', '/output')
+    self.assertEqual(s, '/output/subdir/x.out')
+
+  def test_base_dir_must_match_start_of_source_file(self):
+    self.assertRaises(ValueError, aclgen.filter_name, 'A', 'B/C', 'suff', 'O')
+
+
 class AclGen_Characterization_Tests(unittest.TestCase):
   """Ensures base functionality works.  Uses data in
   characterization_data subfolder."""
@@ -96,9 +126,11 @@ class AclGen_Characterization_Tests(unittest.TestCase):
     self.empty_output_dir(self.output_dir)
 
   def empty_output_dir(self, d):
-    filelist = [ os.path.join(d, f) for f in os.listdir(d) ]
-    for f in filelist:
+    entries = [ os.path.join(d, f) for f in os.listdir(d)]
+    for f in [e for e in entries if os.path.isfile(e)]:
       os.remove(f)
+    for d in [e for e in entries if os.path.isdir(e)]:
+      shutil.rmtree(d)
 
   def tearDown(self):
     sys.stdout = sys.__stdout__
@@ -113,9 +145,6 @@ class AclGen_Characterization_Tests(unittest.TestCase):
     self.assertEquals([], dircmp.left_only, 'missing {0} in filters_expected'.format(dircmp.left_only))
     self.assertEquals([], dircmp.right_only, 'missing {0} in filters_actual'.format(dircmp.right_only))
     self.assertEquals([], dircmp.diff_files)
-
-  # TESTS:
-  # - handle nested policy directories
 
 def main():
     unittest.main()
