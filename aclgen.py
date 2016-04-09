@@ -94,7 +94,13 @@ def load_and_render(base_dir, defs, shade_check, exp_info, output_dir, add_revis
 
 def filter_name(source, suffix, output_directory):
   source = source.lstrip('./')
-  o_dir = '/'.join([output_directory] + source.split('/')[1:-1])
+
+  if os.path.abspath(output_directory) == output_directory:
+    # Use absolute output dir as-is.
+    o_dir = output_directory
+  else:
+    o_dir = '/'.join([output_directory] + source.split('/')[1:-1])
+
   fname = '%s%s' % (".".join(os.path.basename(source).split('.')[0:-1]),
                     suffix)
   return os.path.join(o_dir, fname)
