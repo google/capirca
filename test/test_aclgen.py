@@ -64,6 +64,20 @@ writing ./filters/sample_srx.srx
 """
     self.assertEquals(expected_output, self.iobuff.getvalue())
 
+  def test_can_suppress_adding_revision_tags(self):
+    curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    fpath = os.path.join(curr_dir, '..', 'filters', 'sample_cisco_lab.acl')
+
+    aclgen.main(['-p', 'policies/sample_cisco_lab.pol'])
+    with open(fpath, 'r') as f:
+      acl = f.read()
+    self.assertIn('$Id: ./filters/sample_cisco_lab.acl $', acl)
+
+    aclgen.main(['-p', 'policies/sample_cisco_lab.pol', '--no-rev-info'])
+    with open(fpath, 'r') as f:
+      acl = f.read()
+    self.assertIn('$Id:$', acl)
+
 
 
 def main():
