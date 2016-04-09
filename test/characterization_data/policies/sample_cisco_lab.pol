@@ -1,0 +1,51 @@
+header {
+  comment:: "Denies all traffic to internal IPs except established tcp replies."
+  comment:: "Also denies access to certain public allocations."
+
+  comment:: "Ideal for some internal lab/testing types of subnets that are"
+  comment:: "not well trusted, but allowing internal users to access."
+
+  comment:: "Apply to ingress interface (to filter traffic coming from lab)"
+  target:: cisco allowtointernet
+}
+
+term accept-dhcp {
+  comment:: "Optional - allow forwarding of DHCP requests."
+  destination-port:: DHCP
+  protocol:: udp
+  action:: accept
+}
+
+term accept-to-honestdns {
+  comment:: "Allow name resolution using honestdns."
+  destination-address:: GOOGLE_DNS
+  destination-port:: DNS
+  protocol:: udp
+  action:: accept
+}
+
+term accept-tcp-replies {
+  comment:: "Allow tcp replies to internal hosts."
+  destination-address:: INTERNAL
+  protocol:: tcp
+  option:: tcp-established
+  action:: accept
+}
+
+term deny-to-internal {
+  comment:: "Deny access to rfc1918/internal."
+  destination-address:: INTERNAL
+  action:: deny
+}
+
+term deny-to-specific_hosts {
+  comment:: "Deny access to specified public."
+  destination-address:: WEB_SERVERS MAIL_SERVERS
+  action:: deny
+}
+
+term default-permit {
+  comment:: "Allow what's left."
+  action:: accept
+}
+

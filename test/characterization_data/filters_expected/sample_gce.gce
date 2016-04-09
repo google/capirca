@@ -1,0 +1,80 @@
+[
+  {
+    "description": "Allow SSH access to all instances from company.",
+    "sourceRanges": [
+      "200.1.1.3/32"
+    ],
+    "network": "global/networks/default",
+    "name": "default-test-ssh",
+    "allowed": [
+      {
+        "IPProtocol": "tcp",
+        "ports": [
+          "22"
+        ]
+      }
+    ]
+  },
+  {
+    "network": "global/networks/default",
+    "sourceRanges": [
+      "0.0.0.0/0"
+    ],
+    "name": "default-test-web",
+    "targetTags": [
+      "webserver"
+    ],
+    "allowed": [
+      {
+        "IPProtocol": "tcp",
+        "ports": [
+          "80"
+        ]
+      }
+    ],
+    "description": "Allow HTTP/S to instances with webserver tag."
+  },
+  {
+    "description": "Allow ICMP from company.",
+    "sourceRanges": [
+      "200.1.1.3/32"
+    ],
+    "network": "global/networks/default",
+    "name": "default-test-icmp",
+    "allowed": [
+      {
+        "IPProtocol": "icmp"
+      }
+    ]
+  },
+  {
+    "description": "Allow all GCE network internal traffic.",
+    "sourceRanges": [
+      "10.0.0.0/8",
+      "172.16.0.0/12",
+      "192.168.0.0/16"
+    ],
+    "network": "global/networks/default",
+    "name": "default-test-internal-tcp",
+    "allowed": [
+      {
+        "IPProtocol": "tcp"
+      }
+    ]
+  },
+  {
+    "description": "Allow all GCE network internal traffic.",
+    "sourceRanges": [
+      "10.0.0.0/8",
+      "172.16.0.0/12",
+      "192.168.0.0/16"
+    ],
+    "network": "global/networks/default",
+    "name": "default-test-internal-udp",
+    "allowed": [
+      {
+        "IPProtocol": "udp"
+      }
+    ]
+  }
+]

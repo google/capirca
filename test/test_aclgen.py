@@ -1,7 +1,9 @@
 import unittest
 import sys
 import os
+import inspect
 from cStringIO import StringIO
+import filecmp
 
 import aclgen
 
@@ -79,6 +81,41 @@ writing ./filters/sample_srx.srx
     self.assertIn('$Id:$', acl)
 
 
+class AclGen_Characterization_Tests(unittest.TestCase):
+  """Ensures base functionality works.  Uses data in
+  characterization_data subfolder."""
+
+  def setUp(self):
+    # Capture output during tests.
+    self.iobuff = StringIO()
+    sys.stderr = sys.stdout = self.iobuff
+
+    curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    self.test_dir = os.path.join(curr_dir, 'characterization_data')
+    self.output_dir = os.path.join(self.test_dir, 'filters_actual')
+    self.empty_output_dir(self.output_dir)
+
+  def empty_output_dir(self, d):
+    filelist = [ os.path.join(d, f) for f in os.listdir(d) ]
+    for f in filelist:
+      os.remove(f)
+
+  def tearDown(self):
+    sys.stdout = sys.__stdout__
+    sys.stderr = sys.__stderr__
+
+  def test_characterization(self):
+    def make_path(x): return os.path.join(self.test_dir, x)
+    def_dir, pol_dir, expected_dir = map(make_path, ('def', 'policies', 'filters_expected'))
+    aclgen.main(['-d', def_dir, '--poldir', pol_dir, '-o', self.output_dir, '--no-rev-info'])
+
+    dircmp = filecmp.dircmp(self.output_dir, expected_dir)
+    self.assertEquals([], dircmp.left_only, 'missing {0} in filters_expected'.format(dircmp.left_only))
+    self.assertEquals([], dircmp.right_only, 'missing {0} in filters_actual'.format(dircmp.right_only))
+    self.assertEquals([], dircmp.diff_files)
+
+  # TESTS:
+  # - handle nested policy directories
 
 def main():
     unittest.main()

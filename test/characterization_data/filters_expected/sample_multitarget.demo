@@ -1,0 +1,118 @@
+Header {
+    Name: edge-inbound {
+        Type: inet 
+        Comment: this is a sample edge input filter that generates
+        Comment: multiple output formats.
+        Family type: none
+    }
+    Term: deny-from-bogons{
+  
+         #COMMENTS
+         #this is a sample edge input filter with a very very very long and
+         #multi-line comment that
+         #also has multiple entries.
+  
+         Source IP's
+         0.0.0.0/8
+         192.0.0.0/24
+         192.0.2.0/24
+         198.18.0.0/15
+         198.51.100.0/24
+         203.0.113.0/24
+         224.0.0.0/3
+  
+         Action: discard all traffic
+    }
+ 
+    Term: deny-from-reserved{
+  
+         Source IP's
+         0.0.0.0/8
+         10.0.0.0/8
+         100.64.0.0/10
+         127.0.0.0/8
+         169.254.0.0/16
+         172.16.0.0/12
+         192.168.0.0/16
+         224.0.0.0/3
+  
+         Action: discard all traffic
+    }
+ 
+    Term: deny-to-rfc1918{
+  
+         Destination IP's
+         10.0.0.0/8
+         172.16.0.0/12
+         192.168.0.0/16
+  
+         Action: discard all traffic
+    }
+ 
+    Term: permit-mail-services{
+  
+         Destination IP's
+         200.1.1.4/31
+  
+         Destination Ports
+         25 465 587 995 
+  
+         Protocol
+         tcp
+  
+         Action: allow all traffic
+    }
+ 
+    Term: permit-web-services{
+  
+         Destination IP's
+         200.1.1.1/32
+         200.1.1.2/32
+  
+         Destination Ports
+         80 443 
+  
+         Protocol
+         tcp
+  
+         Action: allow all traffic
+    }
+ 
+    Term: permit-tcp-established{
+  
+         Destination IP's
+         200.1.1.1/32
+         200.1.1.2/31
+         200.1.1.4/31
+  
+         Protocol
+         tcp
+  
+         Options
+         tcp-established
+  
+         Action: allow all traffic
+    }
+ 
+    Term: permit-udp-established{
+  
+         Source ports
+         1024-65535
+  
+         Destination IP's
+         200.1.1.1/32
+         200.1.1.2/31
+         200.1.1.4/31
+  
+         Protocol
+         udp
+  
+         Action: allow all traffic
+    }
+ 
+    Term: default-deny{
+  
+         Action: discard all traffic
+    }
+ 
+}

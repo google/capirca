@@ -1,0 +1,69 @@
+#
+# This is an example policy for capirca
+#
+header {
+  comment:: "this is a sample edge input filter that generates"
+  comment:: "multiple output formats."
+  # NOTES: iptables produces filter 'lines' that must be used as args to the
+  # '$ iptables' cmd, while Speedway produces stateful iptables filters
+  # compatible with iptables-restore (most people will prefer speedway)
+  target:: juniper edge-inbound inet
+  target:: cisco edge-inbound mixed
+  target:: speedway INPUT
+  target:: ciscoasa asa_in
+  target:: demo edge-inbound
+  target:: arista edge-inbound
+  target:: brocade edge-inbound
+  target:: ciscoxr edge-inbound
+}
+
+#include 'policies/includes/untrusted-networks-blocking.inc'
+
+term permit-mail-services {
+  destination-address:: MAIL_SERVERS
+  protocol:: tcp
+  destination-port:: MAIL_SERVICES
+  action:: accept
+}
+
+term permit-web-services {
+  destination-address:: WEB_SERVERS
+  protocol:: tcp
+  destination-port:: WEB_SERVICES
+  action:: accept
+}
+
+term permit-tcp-established {
+  destination-address:: MAIL_SERVERS WEB_SERVERS PUBLIC_NAT
+  protocol:: tcp
+  option:: tcp-established
+  action:: accept
+}
+
+term permit-udp-established {
+  destination-address:: MAIL_SERVERS WEB_SERVERS PUBLIC_NAT
+  protocol:: udp
+  source-port:: HIGH_PORTS
+  action:: accept
+}
+
+term default-deny {
+  action:: deny
+}
+
+header {
+  comment:: "this is a sample output filter"
+  target:: juniper edge-outbound
+  target:: cisco edge-outbound mixed
+  target:: speedway OUTPUT
+  target:: ciscoasa asa_out
+}
+
+term deny-to-bad-destinations {
+  destination-address:: RFC1918 BOGON RESERVED
+  action:: deny
+}
+
+term default-accept {
+  action:: accept
+}
