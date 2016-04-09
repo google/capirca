@@ -103,7 +103,6 @@ def do_output_filter(filter_text, filter_file):
     os.makedirs(os.path.dirname(filter_file))
   output = open(filter_file, 'w')
   if output:
-    filter_text = revision_tag_handler(filter_file, filter_text)
     print 'writing %s' % filter_file
     output.write(filter_text)
 
@@ -181,8 +180,11 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info, output_d
       renderer = this_platform['renderer']
       # Render.
       fw = renderer(pol, exp_info)
+
       # Output.
-      do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX, output_dir))
+      filter_file = filter_name(source_file, fw._SUFFIX, output_dir)
+      filter_text = revision_tag_handler(filter_file, str(fw))
+      do_output_filter(filter_text, filter_file)
       # Count.
       count += 1
 
