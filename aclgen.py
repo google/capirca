@@ -211,50 +211,19 @@ def _do_render_filters(base_dir, source_file, definitions_obj, shade_check, exp_
   Return the rendered filter count.
   """
 
-  supported_targets = {
-    'arista': {'optimized': True, 'renderer': arista.Arista},
-    'aruba': {'optimized': True, 'renderer': aruba.Aruba},
-    'brocade': {'optimized': True, 'renderer': brocade.Brocade},
-    'cisco': {'optimized': True, 'renderer': cisco.Cisco},
-    'ciscoasa': {'optimized': True, 'renderer': ciscoasa.CiscoASA},
-    'ciscoxr': {'optimized': True, 'renderer': ciscoxr.CiscoXR},
-    'demo': {'optimized': True, 'renderer': demo.Demo},
-    'gce': {'optimized': True, 'renderer': gce.GCE},
-    'ipset': {'optimized': True, 'renderer': ipset.Ipset},
-    'iptables': {'optimized': True, 'renderer': iptables.Iptables},
-    'juniper': {'optimized': True, 'renderer': juniper.Juniper},
-    'junipersrx': {'optimized': False, 'renderer': junipersrx.JuniperSRX},
-    'nsxv': {'optimized': True, 'renderer': nsxv.Nsxv},
-    'packetfilter': {'optimized': True, 'renderer': packetfilter.PacketFilter},
-    'speedway': {'optimized': True, 'renderer': speedway.Speedway},
-    'srx': {'optimized': False, 'renderer': junipersrx.JuniperSRX},
-  }
-
   # Get a policy object from cache to determine headers within the policy file.
   pol = get_policy_obj(source_file, definitions_obj, True, shade_check)
 
-  # Keep track of how many filters get rendered.
   count = 0
 
   for header in pol.headers:
-    for target_platform in header.platforms:
-      this_platform = supported_targets.get(target_platform)
-      # If header specifies an unsupported platform target then skip.
-      if not this_platform:
-        continue
-      optimized = this_platform['optimized']
-      # Copy Policy Obj.
-      pol = copy.deepcopy(get_policy_obj(source_file, definitions_obj,
-                                         optimized, shade_check))
-      renderer = this_platform['renderer']
-      # Render.
-      fw = renderer(pol, exp_info)
+    for platform in header.platforms:
 
-      # Output.
+      fw = create_filter_for_platform(platform, source_file, definitions_obj, shade_check, exp_info)
+
       filter_file = filter_name(base_dir, source_file, fw._SUFFIX, output_dir)
       filter_text = str(fw)
       do_output_filter(filter_text, filter_file)
-      # Count.
       count += 1
 
   return count
