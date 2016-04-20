@@ -76,6 +76,19 @@ def parse_args(command_line_args):
                      help='Weeks in advance to notify that a term will expire')
 
   flags, unused_args = _parser.parse_args(command_line_args)
+
+  if flags.debug:
+    logging.basicConfig(level=logging.DEBUG)
+
+  # Checks:
+  if flags.policy_directory and flags.policy:
+    # When parsing a single file, ignore default path of policy_directory.
+    flags.policy_directory = False
+  if not (flags.policy_directory or flags.policy):
+    raise ValueError('must provide policy or policy_directive')
+  if not flags.definitions:
+    raise ValueError('no definitions supplied')
+
   return flags
 
 
@@ -228,20 +241,6 @@ def _do_render_filters(base_dir, source_file, definitions_obj, shade_check, exp_
 
 def main(args):
   FLAGS = parse_args(args)
-
-  # Do some sanity checking.
-  if FLAGS.policy_directory and FLAGS.policy:
-    # When parsing a single file, ignore default path of policy_directory.
-    FLAGS.policy_directory = False
-  if not (FLAGS.policy_directory or FLAGS.policy):
-    raise ValueError('must provide policy or policy_directive')
-
-  # Set log level to DEBUG if debug option is specified.
-  if FLAGS.debug:
-    logging.basicConfig(level=logging.DEBUG)
-
-  if not FLAGS.definitions:
-    _parser.error('no definitions supplied')
   defs = naming.Naming(FLAGS.definitions)
   if not defs:
     print 'problem loading definitions'
