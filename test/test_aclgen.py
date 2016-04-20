@@ -7,6 +7,7 @@ from cStringIO import StringIO
 import filecmp
 
 import aclgen
+from lib import naming
 
 class Test_AclGen(unittest.TestCase):
 
@@ -97,7 +98,7 @@ class AclGen_filter_name_scenarios(unittest.TestCase):
     self.assertRaises(ValueError, aclgen.filter_name, 'A', 'B/C', 'suff', 'O')
 
 
-class AclGen_Characterization_Tests(unittest.TestCase):
+class AclGen_Characterization_Test_Base(unittest.TestCase):
   """Ensures base functionality works.  Uses data in
   characterization_data subfolder."""
 
@@ -125,6 +126,9 @@ class AclGen_Characterization_Tests(unittest.TestCase):
     sys.stdout = sys.__stdout__
     sys.stderr = sys.__stderr__
 
+
+class AclGen_Characterization_Tests(AclGen_Characterization_Test_Base):
+
   def test_characterization(self):
     def_dir, pol_dir, expected_dir = map(self.testpath, ('def', 'policies', 'filters_expected'))
     aclgen.main(['-d', def_dir, '--poldir', pol_dir, '-o', self.output_dir])
@@ -133,6 +137,23 @@ class AclGen_Characterization_Tests(unittest.TestCase):
     self.assertEquals([], dircmp.left_only, 'missing {0} in filters_expected'.format(dircmp.left_only))
     self.assertEquals([], dircmp.right_only, 'missing {0} in filters_actual'.format(dircmp.right_only))
     self.assertEquals([], dircmp.diff_files)
+
+
+class AclGen_Create_filter_for_target(AclGen_Characterization_Test_Base):
+  """Given a policy, generate filter text for a particular target."""
+
+  def test_can_generate_filter_from_policy_for_specified_platform(self):
+    src = self.testpath('policies', 'sample_cisco_lab.pol')
+    definitions = naming.Naming(self.testpath('def'))
+    actual_filter = aclgen.create_filter_for_platform('cisco', src, definitions, False, 2)
+    with open(self.testpath('filters_expected', 'sample_cisco_lab.acl'), 'r') as f:
+      expected_filter = f.read()
+    self.assertEquals(actual_filter, expected_filter)
+
+  def test_generating_filter_for_missing_platform_throws(self):
+    with self.assertRaises(ValueError):
+      aclgen.create_filter_for_platform('missing', '', None, False, 2)
+
 
 def main():
     unittest.main()

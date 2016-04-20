@@ -156,6 +156,45 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info, output_d
   base_dir = os.path.dirname(os.path.abspath(source_file))
   return _do_render_filters(base_dir, source_file, definitions_obj, shade_check, exp_info, output_dir)
 
+
+def create_filter_for_platform(platform, source_file, definitions_obj, shade_check, exp_info):
+  """Render platform specific filter for a policy.
+
+  Use the platform's renderer to render its filter, using its
+  own separate copy of the policy object and with optional, target
+  specific attributes such as optimization."""
+
+  supported_targets = {
+    'arista': {'optimized': True, 'renderer': arista.Arista},
+    'aruba': {'optimized': True, 'renderer': aruba.Aruba},
+    'brocade': {'optimized': True, 'renderer': brocade.Brocade},
+    'cisco': {'optimized': True, 'renderer': cisco.Cisco},
+    'ciscoasa': {'optimized': True, 'renderer': ciscoasa.CiscoASA},
+    'ciscoxr': {'optimized': True, 'renderer': ciscoxr.CiscoXR},
+    'demo': {'optimized': True, 'renderer': demo.Demo},
+    'gce': {'optimized': True, 'renderer': gce.GCE},
+    'ipset': {'optimized': True, 'renderer': ipset.Ipset},
+    'iptables': {'optimized': True, 'renderer': iptables.Iptables},
+    'juniper': {'optimized': True, 'renderer': juniper.Juniper},
+    'junipersrx': {'optimized': False, 'renderer': junipersrx.JuniperSRX},
+    'nsxv': {'optimized': True, 'renderer': nsxv.Nsxv},
+    'packetfilter': {'optimized': True, 'renderer': packetfilter.PacketFilter},
+    'speedway': {'optimized': True, 'renderer': speedway.Speedway},
+    'srx': {'optimized': False, 'renderer': junipersrx.JuniperSRX},
+  }
+
+  this_platform = supported_targets.get(platform)
+  if this_platform is None:
+    raise ValueError('unsupported platform {0}'.format(platform))
+
+  optimized = this_platform['optimized']
+  pol = copy.deepcopy(get_policy_obj(source_file, definitions_obj,
+                                     optimized, shade_check))
+  renderer = this_platform['renderer']
+  fw = renderer(pol, exp_info)
+  return str(fw)
+
+
 def _do_render_filters(base_dir, source_file, definitions_obj, shade_check, exp_info, output_dir):
   """Render platform specfic filters for each target platform.
 
