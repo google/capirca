@@ -145,7 +145,8 @@ class AclGen_Create_filter_for_target(AclGen_Characterization_Test_Base):
   def test_can_generate_filter_from_policy_for_specified_platform(self):
     src = self.testpath('policies', 'sample_cisco_lab.pol')
     definitions = naming.Naming(self.testpath('def'))
-    actual_filter = aclgen.create_filter_for_platform('cisco', src, definitions, False, 2)
+    fw = aclgen.create_filter_for_platform('cisco', src, definitions, False, 2)
+    actual_filter = str(fw)
     with open(self.testpath('filters_expected', 'sample_cisco_lab.acl'), 'r') as f:
       expected_filter = f.read()
     self.assertEquals(actual_filter, expected_filter)

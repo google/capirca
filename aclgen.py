@@ -191,8 +191,7 @@ def create_filter_for_platform(platform, source_file, definitions_obj, shade_che
   pol = copy.deepcopy(get_policy_obj(source_file, definitions_obj,
                                      optimized, shade_check))
   renderer = this_platform['renderer']
-  fw = renderer(pol, exp_info)
-  return str(fw)
+  return renderer(pol, exp_info)
 
 
 def _do_render_filters(base_dir, source_file, definitions_obj, shade_check, exp_info, output_dir):
