@@ -108,8 +108,11 @@ class AclGen_Characterization_Tests(unittest.TestCase):
 
     curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     self.test_dir = os.path.join(curr_dir, 'characterization_data')
-    self.output_dir = os.path.join(self.test_dir, 'filters_actual')
+    self.output_dir = self.testpath('filters_actual')
     self.empty_output_dir(self.output_dir)
+
+  def testpath(self, *args):
+    return os.path.join(self.test_dir, *args)
 
   def empty_output_dir(self, d):
     entries = [ os.path.join(d, f) for f in os.listdir(d)]
@@ -123,8 +126,7 @@ class AclGen_Characterization_Tests(unittest.TestCase):
     sys.stderr = sys.__stderr__
 
   def test_characterization(self):
-    def make_path(x): return os.path.join(self.test_dir, x)
-    def_dir, pol_dir, expected_dir = map(make_path, ('def', 'policies', 'filters_expected'))
+    def_dir, pol_dir, expected_dir = map(self.testpath, ('def', 'policies', 'filters_expected'))
     aclgen.main(['-d', def_dir, '--poldir', pol_dir, '-o', self.output_dir])
 
     dircmp = filecmp.dircmp(self.output_dir, expected_dir)
