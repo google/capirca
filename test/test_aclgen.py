@@ -67,20 +67,6 @@ writing ./filters/sample_srx.srx
 """
     self.assertEquals(expected_output, self.iobuff.getvalue())
 
-  def test_can_suppress_adding_revision_tags(self):
-    curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    fpath = os.path.join(curr_dir, '..', 'filters', 'sample_cisco_lab.acl')
-
-    aclgen.main(['-p', 'policies/sample_cisco_lab.pol'])
-    with open(fpath, 'r') as f:
-      acl = f.read()
-    self.assertIn('$Id: ./filters/sample_cisco_lab.acl $', acl)
-
-    aclgen.main(['-p', 'policies/sample_cisco_lab.pol', '--no-rev-info'])
-    with open(fpath, 'r') as f:
-      acl = f.read()
-    self.assertIn('$Id:$', acl)
-
 
 class AclGen_filter_name_scenarios(unittest.TestCase):
   """Ensure the output directory structure mirrors the input correctly.
@@ -139,7 +125,7 @@ class AclGen_Characterization_Tests(unittest.TestCase):
   def test_characterization(self):
     def make_path(x): return os.path.join(self.test_dir, x)
     def_dir, pol_dir, expected_dir = map(make_path, ('def', 'policies', 'filters_expected'))
-    aclgen.main(['-d', def_dir, '--poldir', pol_dir, '-o', self.output_dir, '--no-rev-info'])
+    aclgen.main(['-d', def_dir, '--poldir', pol_dir, '-o', self.output_dir])
 
     dircmp = filecmp.dircmp(self.output_dir, expected_dir)
     self.assertEquals([], dircmp.left_only, 'missing {0} in filters_expected'.format(dircmp.left_only))

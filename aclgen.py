@@ -69,8 +69,6 @@ def parse_args(command_line_args):
   _parser.add_option('--debug', help='enable debug-level logging', dest='debug')
   _parser.add_option('-s', '--shade_checking', help='Enable shade checking',
                      action="store_true", dest="shade_check", default=False)
-  _parser.add_option('', '--no-rev-info', help='Suppress revision information',
-                     action="store_false", dest="add_revision_info", default=True)
   _parser.add_option('-e', '--exp_info', type='int', action='store',
                      dest='exp_info', default=2,
                      help='Weeks in advance to notify that a term will expire')
@@ -92,19 +90,19 @@ def parse_args(command_line_args):
   return flags
 
 
-def load_and_render(base_dir, defs, shade_check, exp_info, output_dir, add_revision_info):
-  return _do_load_and_render(base_dir, base_dir, defs, shade_check, exp_info, output_dir, add_revision_info)
+def load_and_render(base_dir, defs, shade_check, exp_info, output_dir):
+  return _do_load_and_render(base_dir, base_dir, defs, shade_check, exp_info, output_dir)
 
-def _do_load_and_render(base_dir, curr_dir, defs, shade_check, exp_info, output_dir, add_revision_info):
+def _do_load_and_render(base_dir, curr_dir, defs, shade_check, exp_info, output_dir):
   rendered = 0
   for dirfile in dircache.listdir(curr_dir):
     fname = os.path.join(curr_dir, dirfile)
     #logging.debug('load_and_render working with fname %s', fname)
     if os.path.isdir(fname):
-      rendered += _do_load_and_render(base_dir, fname, defs, shade_check, exp_info, output_dir, add_revision_info)
+      rendered += _do_load_and_render(base_dir, fname, defs, shade_check, exp_info, output_dir)
     elif fname.endswith('.pol'):
       #logging.debug('attempting to render_filters on fname %s', fname)
-      rendered += _do_render_filters(base_dir, fname, defs, shade_check, exp_info, output_dir, add_revision_info)
+      rendered += _do_render_filters(base_dir, fname, defs, shade_check, exp_info, output_dir)
   return rendered
 
 
@@ -144,19 +142,6 @@ def do_output_filter(filter_text, filter_file):
     output.write(filter_text)
 
 
-def revision_tag_handler(fname, text):
-  # replace $Id:$ and $Date:$ tags with filename and date
-  timestamp = datetime.datetime.now().strftime('%Y/%m/%d')
-  new_text = []
-  for line in text.split('\n'):
-    if '$Id:$' in line:
-      line = line.replace('$Id:$', '$Id: %s $' % fname)
-    if '$Date:$' in line:
-      line = line.replace('$Date:$', '$Date: %s $' % timestamp)
-    new_text.append(line)
-  return '\n'.join(new_text)
-
-
 def get_policy_obj(source_file, definitions_obj, optimize, shade_check):
   """Memoized call to parse policy by file name.
 
@@ -167,11 +152,11 @@ def get_policy_obj(source_file, definitions_obj, optimize, shade_check):
                                shade_check=shade_check)
 
 
-def render_filters(source_file, definitions_obj, shade_check, exp_info, output_dir, add_revision_info):
+def render_filters(source_file, definitions_obj, shade_check, exp_info, output_dir):
   base_dir = os.path.dirname(os.path.abspath(source_file))
-  return _do_render_filters(base_dir, source_file, definitions_obj, shade_check, exp_info, output_dir, add_revision_info)
+  return _do_render_filters(base_dir, source_file, definitions_obj, shade_check, exp_info, output_dir)
 
-def _do_render_filters(base_dir, source_file, definitions_obj, shade_check, exp_info, output_dir, add_revision_info):
+def _do_render_filters(base_dir, source_file, definitions_obj, shade_check, exp_info, output_dir):
   """Render platform specfic filters for each target platform.
 
   For each target specified in each header of the policy, use that
@@ -230,8 +215,6 @@ def _do_render_filters(base_dir, source_file, definitions_obj, shade_check, exp_
       # Output.
       filter_file = filter_name(base_dir, source_file, fw._SUFFIX, output_dir)
       filter_text = str(fw)
-      if add_revision_info:
-        filter_text = revision_tag_handler(filter_file, filter_text)
       do_output_filter(filter_text, filter_file)
       # Count.
       count += 1
@@ -249,11 +232,11 @@ def main(args):
   count = 0
   if FLAGS.policy_directory:
     count = load_and_render(FLAGS.policy_directory, defs, FLAGS.shade_check,
-                            FLAGS.exp_info, FLAGS.output_directory, FLAGS.add_revision_info)
+                            FLAGS.exp_info, FLAGS.output_directory)
 
   elif FLAGS.policy:
     count = render_filters(FLAGS.policy, defs, FLAGS.shade_check,
-                           FLAGS.exp_info, FLAGS.output_directory, FLAGS.add_revision_info)
+                           FLAGS.exp_info, FLAGS.output_directory)
 
   print '%d filters rendered' % count
 
