@@ -108,7 +108,7 @@ class AclGen_Characterization_Test_Base(unittest.TestCase):
     sys.stderr = sys.stdout = self.iobuff
 
     curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    self.test_dir = os.path.join(curr_dir, 'characterization_data')
+    self.test_dir = os.path.join(curr_dir, '..', 'characterization_data')
     self.output_dir = self.testpath('filters_actual')
     if not os.path.exists(self.output_dir):
       os.makedirs(self.output_dir)
