@@ -110,6 +110,8 @@ class AclGen_Characterization_Test_Base(unittest.TestCase):
     curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     self.test_dir = os.path.join(curr_dir, 'characterization_data')
     self.output_dir = self.testpath('filters_actual')
+    if not os.path.exists(self.output_dir):
+      os.makedirs(self.output_dir)
     self.empty_output_dir(self.output_dir)
 
   def testpath(self, *args):
