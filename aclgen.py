@@ -89,8 +89,18 @@ def parse_args(command_line_args):
 
   return flags
 
+def _create_defs(defs_directory):
+  """Creates naming.Naming object using the contents of the supplied directory."""
+  if not os.path.exists(defs_directory):
+    msg = 'missing defs directory {0}'.format(defs_directory)
+    raise ValueError(msg)
+  defs = naming.Naming(defs_directory)
+  if not defs:
+    raise ValueError('problem loading definitions')
+  return defs
 
-def load_and_render(base_dir, defs, shade_check, exp_info, output_dir):
+def load_and_render(base_dir, defs_directory, shade_check, exp_info, output_dir):
+  defs = _create_defs(defs_directory)
   return _do_load_and_render(base_dir, base_dir, defs, shade_check, exp_info, output_dir)
 
 def _do_load_and_render(base_dir, curr_dir, defs, shade_check, exp_info, output_dir):
@@ -152,9 +162,10 @@ def get_policy_obj(source_file, definitions_obj, optimize, shade_check):
                                shade_check=shade_check)
 
 
-def render_filters(source_file, definitions_obj, shade_check, exp_info, output_dir):
+def render_filters(source_file, defs_directory, shade_check, exp_info, output_dir):
+  defs = _create_defs(defs_directory)
   base_dir = os.path.dirname(os.path.abspath(source_file))
-  return _do_render_filters(base_dir, source_file, definitions_obj, shade_check, exp_info, output_dir)
+  return _do_render_filters(base_dir, source_file, defs, shade_check, exp_info, output_dir)
 
 
 def create_filter_for_platform(platform, source_file, definitions_obj, shade_check, exp_info):
@@ -236,18 +247,14 @@ def _do_render_filters(base_dir, source_file, definitions_obj, shade_check, exp_
 
 def main(args):
   FLAGS = parse_args(args)
-  defs = naming.Naming(FLAGS.definitions)
-  if not defs:
-    print 'problem loading definitions'
-    return
 
   count = 0
   if FLAGS.policy_directory:
-    count = load_and_render(FLAGS.policy_directory, defs, FLAGS.shade_check,
+    count = load_and_render(FLAGS.policy_directory, FLAGS.definitions, FLAGS.shade_check,
                             FLAGS.exp_info, FLAGS.output_directory)
 
   elif FLAGS.policy:
-    count = render_filters(FLAGS.policy, defs, FLAGS.shade_check,
+    count = render_filters(FLAGS.policy, FLAGS.definitions, FLAGS.shade_check,
                            FLAGS.exp_info, FLAGS.output_directory)
 
   print '%d filters rendered' % count

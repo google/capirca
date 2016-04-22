@@ -130,6 +130,14 @@ class AclGen_Characterization_Test_Base(unittest.TestCase):
     sys.stderr = sys.__stderr__
 
 
+class AclGen_Arguments_Tests(AclGen_Characterization_Test_Base):
+
+  def test_missing_defs_folder_raises_error(self):
+    def_dir, pol_dir, expected_dir = map(self.testpath, ('def', 'policies', 'filters_expected'))
+    with self.assertRaises(ValueError):
+      aclgen.main(['-d', 'missing_dir', '--poldir', pol_dir, '-o', self.output_dir])
+
+
 class AclGen_Characterization_Tests(AclGen_Characterization_Test_Base):
 
   def test_characterization(self):
