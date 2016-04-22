@@ -59,6 +59,10 @@ class ParseError(Error):
   """ParseError in the input."""
 
 
+class HeaderDuplicateTargetPlatformError(Error):
+  """Same target platform added to Header, resulting in ambiguity for options."""
+
+
 class TermAddressExclusionError(Error):
   """Excluded address block is not contained in the accepted address block."""
 
@@ -1173,8 +1177,13 @@ class Header(object):
 
     Args:
       obj: of type VarType.COMMENT or Target
+
+    Raises:
+      HeaderDuplicateTargetPlatformError: When the same platform is added as a target.
     """
     if type(obj) == Target:
+      if obj.platform in self.platforms:
+        raise HeaderDuplicateTargetPlatformError('duplicate platform {0}'.format(obj.platform))
       self.target.append(obj)
     elif obj.var_type == VarType.COMMENT:
       self.comment.append(str(obj))

@@ -17,6 +17,11 @@ class Test_Header(unittest.TestCase):
         self.assertEqual(h.platforms, ['cisco', 'juniper'])
         self.assertEqual(h.FilterOptions('cisco'), ['some', 'options'])
 
+    def test_cannot_add_same_target_more_than_once(self):
+        """FilterOptions returns the first match by platform,
+        so adding the same platform to the headers is an error."""
+        with self.assertRaises(policy.HeaderDuplicateTargetPlatformError):
+            self.header.AddObject(policy.Target(['cisco', 'other_options']))
 
 class Test_Policy(unittest.TestCase):
 
