@@ -59,6 +59,10 @@ class ParseError(Error):
   """ParseError in the input."""
 
 
+class PolicyTargetPlatformInvalidError(Error):
+  """Attempt to generate an ACL for a platform not specified in policy header should fail."""
+
+
 class HeaderDuplicateTargetPlatformError(Error):
   """Same target platform added to Header, resulting in ambiguity for options."""
 

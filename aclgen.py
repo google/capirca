@@ -185,11 +185,16 @@ def create_filter_for_platform(platform, source_file, definitions_obj, shade_che
 
   this_platform = supported_targets.get(platform)
   if this_platform is None:
-    raise ValueError('unsupported platform {0}'.format(platform))
+    raise policy.PolicyTargetPlatformInvalidError('unsupported platform {0}'.format(platform))
 
   optimized = this_platform['optimized']
   pol = copy.deepcopy(get_policy_obj(source_file, definitions_obj,
                                      optimized, shade_check))
+
+  if platform not in pol.platforms:
+    msg = 'platform {0} not in policy targets {1}'.format(platform, pol.platforms)
+    raise policy.PolicyTargetPlatformInvalidError(msg)
+
   renderer = this_platform['renderer']
   return renderer(pol, exp_info)
 
