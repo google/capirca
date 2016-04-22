@@ -89,30 +89,40 @@ def parse_args(command_line_args):
 
   return flags
 
+_memoized_defs = {}
 def _create_defs(defs_directory):
-  """Creates naming.Naming object using the contents of the supplied directory."""
+  """Creates naming.Naming object using the contents of the supplied directory.
+
+  The created defs object is memoized so that the public API of this module
+  can be restricted to strings and ints, versus domain objects.  This promotes
+  use of this module for other clients."""
+
+  if defs_directory in _memoized_defs:
+    return _memoized_defs[defs_directory]
+
   if not os.path.exists(defs_directory):
     msg = 'missing defs directory {0}'.format(defs_directory)
     raise ValueError(msg)
   defs = naming.Naming(defs_directory)
   if not defs:
     raise ValueError('problem loading definitions')
+
+  _memoized_defs[defs_directory] = defs
   return defs
 
 def load_and_render(base_dir, defs_directory, shade_check, exp_info, output_dir):
-  defs = _create_defs(defs_directory)
-  return _do_load_and_render(base_dir, base_dir, defs, shade_check, exp_info, output_dir)
+  return _do_load_and_render(base_dir, base_dir, defs_directory, shade_check, exp_info, output_dir)
 
-def _do_load_and_render(base_dir, curr_dir, defs, shade_check, exp_info, output_dir):
+def _do_load_and_render(base_dir, curr_dir, defs_directory, shade_check, exp_info, output_dir):
   rendered = 0
   for dirfile in dircache.listdir(curr_dir):
     fname = os.path.join(curr_dir, dirfile)
     #logging.debug('load_and_render working with fname %s', fname)
     if os.path.isdir(fname):
-      rendered += _do_load_and_render(base_dir, fname, defs, shade_check, exp_info, output_dir)
+      rendered += _do_load_and_render(base_dir, fname, defs_directory, shade_check, exp_info, output_dir)
     elif fname.endswith('.pol'):
       #logging.debug('attempting to render_filters on fname %s', fname)
-      rendered += _do_render_filters(base_dir, fname, defs, shade_check, exp_info, output_dir)
+      rendered += _do_render_filters(base_dir, fname, defs_directory, shade_check, exp_info, output_dir)
   return rendered
 
 
@@ -152,23 +162,22 @@ def do_output_filter(filter_text, filter_file):
     output.write(filter_text)
 
 
-def get_policy_obj(source_file, definitions_obj, optimize, shade_check):
+def get_policy_obj(source_file, defs_directory, optimize, shade_check):
   """Memoized call to parse policy by file name.
 
   Returns parsed policy object.
   """
-
+  definitions_obj = _create_defs(defs_directory)
   return policy.CacheParseFile(source_file, definitions_obj, optimize,
                                shade_check=shade_check)
 
 
 def render_filters(source_file, defs_directory, shade_check, exp_info, output_dir):
-  defs = _create_defs(defs_directory)
   base_dir = os.path.dirname(os.path.abspath(source_file))
-  return _do_render_filters(base_dir, source_file, defs, shade_check, exp_info, output_dir)
+  return _do_render_filters(base_dir, source_file, defs_directory, shade_check, exp_info, output_dir)
 
 
-def create_filter_for_platform(platform, source_file, definitions_obj, shade_check, exp_info):
+def create_filter_for_platform(platform, source_file, defs_directory, shade_check, exp_info):
   """Render platform specific filter for a policy.
 
   Use the platform's renderer to render its filter, using its
@@ -199,7 +208,7 @@ def create_filter_for_platform(platform, source_file, definitions_obj, shade_che
     raise policy.PolicyTargetPlatformInvalidError('unsupported platform {0}'.format(platform))
 
   optimized = this_platform['optimized']
-  pol = copy.deepcopy(get_policy_obj(source_file, definitions_obj,
+  pol = copy.deepcopy(get_policy_obj(source_file, defs_directory,
                                      optimized, shade_check))
 
   if platform not in pol.platforms:
@@ -210,7 +219,7 @@ def create_filter_for_platform(platform, source_file, definitions_obj, shade_che
   return renderer(pol, exp_info)
 
 
-def _do_render_filters(base_dir, source_file, definitions_obj, shade_check, exp_info, output_dir):
+def _do_render_filters(base_dir, source_file, defs_directory, shade_check, exp_info, output_dir):
   """Render platform specfic filters for each target platform.
 
   For each target specified in each header of the policy, use that
@@ -228,14 +237,14 @@ def _do_render_filters(base_dir, source_file, definitions_obj, shade_check, exp_
   """
 
   # Get a policy object from cache to determine headers within the policy file.
-  pol = get_policy_obj(source_file, definitions_obj, True, shade_check)
+  pol = get_policy_obj(source_file, defs_directory, True, shade_check)
 
   count = 0
 
   for header in pol.headers:
     for platform in header.platforms:
 
-      fw = create_filter_for_platform(platform, source_file, definitions_obj, shade_check, exp_info)
+      fw = create_filter_for_platform(platform, source_file, defs_directory, shade_check, exp_info)
 
       filter_file = filter_name(base_dir, source_file, fw._SUFFIX, output_dir)
       filter_text = str(fw)

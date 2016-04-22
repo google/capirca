@@ -7,7 +7,6 @@ from cStringIO import StringIO
 import filecmp
 
 import aclgen
-from lib import naming
 from lib import policy
 
 class Test_AclGen(unittest.TestCase):
@@ -155,7 +154,7 @@ class AclGen_Create_filter_for_target(AclGen_Characterization_Test_Base):
 
   def test_can_generate_filter_from_policy_for_specified_platform(self):
     src = self.testpath('policies', 'sample_cisco_lab.pol')
-    definitions = naming.Naming(self.testpath('def'))
+    definitions = self.testpath('def')
     fw = aclgen.create_filter_for_platform('cisco', src, definitions, False, 2)
     actual_filter = str(fw)
     with open(self.testpath('filters_expected', 'sample_cisco_lab.acl'), 'r') as f:
@@ -168,7 +167,7 @@ class AclGen_Create_filter_for_target(AclGen_Characterization_Test_Base):
 
   def test_cannot_generate_filter_from_policy_for_platform_different_from_policy_header(self):
     src = self.testpath('policies', 'sample_cisco_lab.pol')
-    definitions = naming.Naming(self.testpath('def'))
+    definitions = self.testpath('def')
     with self.assertRaises(policy.PolicyTargetPlatformInvalidError):
       aclgen.create_filter_for_platform('juniper', src, definitions, False, 2)
 
