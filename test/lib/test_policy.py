@@ -25,8 +25,8 @@ class Test_Header(unittest.TestCase):
 
 class Test_Policy(unittest.TestCase):
 
-    def make_header_and_terms(self):
-        target = policy.Target(['cisco', 'some', 'options'])
+    def make_header_and_terms(self, platform):
+        target = policy.Target([platform, 'some', 'options'])
         h = policy.Header()
         h.AddObject(target)
         a = policy.VarType(policy.VarType.ACTION, 'accept')
@@ -34,17 +34,18 @@ class Test_Policy(unittest.TestCase):
         return (h, terms)
 
     def setUp(self):
-        h, terms = self.make_header_and_terms()
+        h, terms = self.make_header_and_terms('cisco')
         self.policy = policy.Policy(h, terms)
-        self.override = policy.Target(['override', 'override_opts', 'here'])
 
-    def assertPlatformsEquals(self, expected_platforms):
-        # Note the platforms is an array of arrays:
-        # a policy can have multiple headers, which in turn
-        # have multiple targets (and platforms).
-        actual_platforms = [h.platforms for h in self.policy.headers]
-        self.assertEqual(actual_platforms, expected_platforms)
+    def test_can_get_platforms(self):
+        self.assertEqual(['cisco'], self.policy.platforms)
 
+    def test_multiple_platforms_in_multiple_headers_returns_unique_platforms(self):
+        h, terms = self.make_header_and_terms('other')
+        self.policy.AddFilter(h, terms)
+        h, terms = self.make_header_and_terms('cisco')
+        self.policy.AddFilter(h, terms)
+        self.assertEqual(['cisco', 'other'], self.policy.platforms)
 
 def main():
     unittest.main()

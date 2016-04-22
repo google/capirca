@@ -214,6 +214,20 @@ class Policy(object):
     """
     return [x[0] for x in self.filters]
 
+  @property
+  def platforms(self):
+    """Returns platforms from each of the headers.
+
+    Returns:
+      array of unique strings."""
+    ret = set()
+    for h in self.headers:
+      for t in h.target:
+        ret.add(t.platform)
+    ret = list(ret)
+    ret.sort()
+    return ret
+
   def _DetectShading(self, terms):
     """Finds terms which are shaded (impossible to reach).
 
