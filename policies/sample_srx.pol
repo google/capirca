@@ -1,6 +1,3 @@
-#
-# This is an example policy for capirca.
-#
 header {
   comment:: "this is a sample policy to generate Juniper SRX filter"
   comment:: "from zone Untrust to zone DMZ."
