@@ -1252,20 +1252,20 @@ def __translate_terms(terms):
       if term.translated:
         continue
       if term.port:
-        term.port = TranslatePorts(term.port, term.protocol, term.name)
+        term.port = __translate_ports(term.port, term.protocol, term.name)
         if not term.port:
           raise TermPortProtocolError(
               'no ports of the correct protocol for term %s' % (
                   term.name))
       if term.source_port:
-        term.source_port = TranslatePorts(term.source_port, term.protocol,
+        term.source_port = __translate_ports(term.source_port, term.protocol,
                                           term.name)
         if not term.source_port:
           raise TermPortProtocolError(
               'no source ports of the correct protocol for term %s' % (
                   term.name))
       if term.destination_port:
-        term.destination_port = TranslatePorts(term.destination_port,
+        term.destination_port = __translate_ports(term.destination_port,
                                                term.protocol, term.name)
         if not term.destination_port:
           raise TermPortProtocolError(
@@ -1278,7 +1278,7 @@ def __translate_terms(terms):
       term.SanityCheck()
       term.translated = True
 
-def TranslatePorts(ports, protocols, term_name):
+def __translate_ports(ports, protocols, term_name):
   """Return all ports of all protocols requested.
 
   Args:
