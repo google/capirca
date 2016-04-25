@@ -33,6 +33,7 @@ import sys
 # compiler imports
 from lib import naming
 from lib import policy
+from lib import policyparser
 
 # renderers
 from lib import arista
@@ -168,7 +169,7 @@ def get_policy_obj(source_file, defs_directory, optimize, shade_check):
   Returns parsed policy object.
   """
   definitions_obj = _create_defs(defs_directory)
-  return policy.CacheParseFile(source_file, definitions_obj, optimize,
+  return policyparser.CacheParseFile(source_file, definitions_obj, optimize,
                                shade_check=shade_check)
 
 
