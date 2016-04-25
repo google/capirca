@@ -1298,12 +1298,17 @@ def p_header_spec(p):
                   | """
   if len(p) > 1:
     if type(p[1]) == Header:
-      p[1].AddObject(p[2])
+      __add_header_vartype_obj(p[1], p[2])
       p[0] = p[1]
     else:
       p[0] = Header()
-      p[0].AddObject(p[2])
+      __add_header_vartype_obj(p[0], p[2])
 
+def __add_header_vartype_obj(header, obj):
+  if type(obj) == Target:
+    header.target.append(obj)
+  else:
+    header.comment.append(str(obj))
 
 # we may want to change this at some point if we want to be clever with things
 # like being able to set a default input/output policy for iptables policies.
