@@ -157,7 +157,7 @@ def TranslatePorts(ports, protocols, term_name):
 class Policy(object):
   """The policy object contains everything found in a given policy file."""
 
-  def __init__(self, header, terms, optimize, shade_check):
+  def __init__(self, header, terms, shade_check):
     """Initiator for the Policy object.
 
     Args:
@@ -168,9 +168,6 @@ class Policy(object):
       terms: list __main__.Term. an array of Term objects which must be rendered
         in each of the rendered acls.
 
-      optimize: True/False: if addresses and ports should be collapsed for
-        this Policy.
-
       shade_check: True/False: if terms should be checked for shading.
 
     Attributes:
@@ -178,7 +175,6 @@ class Policy(object):
     """
     self.filters = []
 
-    self.optimize = optimize
     self.shade_check = shade_check
 
     self.AddFilter(header, terms)
@@ -1276,7 +1272,7 @@ def p_target(p):
       p[1].AddFilter(p[2], p[3])
       p[0] = p[1]
     else:
-      p[0] = Policy(p[2], p[3], _OPTIMIZE, _SHADE_CHECK)
+      p[0] = Policy(p[2], p[3], _SHADE_CHECK)
 
 
 def __translate_terms(terms):
