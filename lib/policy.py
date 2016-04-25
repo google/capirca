@@ -186,7 +186,6 @@ class Policy(object):
   def AddFilter(self, header, terms):
     """Add another header & filter."""
     self.filters.append((header, terms))
-    self._TranslateTerms(terms)
     if self.shade_check:
       self._DetectShading(terms)
 
@@ -1307,12 +1306,50 @@ def p_target(p):
   """ target : target header terms
              | """
   if len(p) > 1:
+    terms = p[3]
+    __translate_terms(terms)
     if type(p[1]) is Policy:
       p[1].AddFilter(p[2], p[3])
       p[0] = p[1]
     else:
       p[0] = Policy(p[2], p[3], _OPTIMIZE, _SHADE_CHECK)
 
+
+def __translate_terms(terms):
+    """."""
+    if not terms:
+      raise NoTermsError('no terms found')
+    for term in terms:
+      # TODO(pmoody): this probably belongs in Term.SanityCheck(),
+      # or at the very least, in some method under class Term()
+      if term.translated:
+        continue
+      if term.port:
+        term.port = TranslatePorts(term.port, term.protocol, term.name)
+        if not term.port:
+          raise TermPortProtocolError(
+              'no ports of the correct protocol for term %s' % (
+                  term.name))
+      if term.source_port:
+        term.source_port = TranslatePorts(term.source_port, term.protocol,
+                                          term.name)
+        if not term.source_port:
+          raise TermPortProtocolError(
+              'no source ports of the correct protocol for term %s' % (
+                  term.name))
+      if term.destination_port:
+        term.destination_port = TranslatePorts(term.destination_port,
+                                               term.protocol, term.name)
+        if not term.destination_port:
+          raise TermPortProtocolError(
+              'no destination ports of the correct protocol for term %s' % (
+                  term.name))
+
+      # If argument is true, we optimize, otherwise just sort addresses
+      term.AddressCleanup(_OPTIMIZE)
+
+      term.SanityCheck()
+      term.translated = True
 
 def p_header(p):
   """ header : HEADER '{' header_spec '}' """
