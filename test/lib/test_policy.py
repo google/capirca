@@ -29,8 +29,9 @@ class Test_Policy(unittest.TestCase):
         target = policy.Target([platform, 'some', 'options'])
         h = policy.Header()
         h.AddObject(target)
-        a = policy.VarType(policy.VarType.ACTION, 'accept')
-        terms = [policy.Term(a)]
+        t = policy.Term()
+        t.action.append('accept')
+        terms = [t]
         return (h, terms)
 
     def setUp(self):

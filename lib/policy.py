@@ -335,7 +335,7 @@ class Term(object):
                   },
               }
 
-  def __init__(self, obj):
+  def __init__(self):
     self.name = None
 
     self.action = []
@@ -385,10 +385,6 @@ class Term(object):
     self.flattened_addr = None
     self.flattened_saddr = None
     self.flattened_daddr = None
-
-    # AddObject touches variables which might not have been initialized
-    # further up so this has to be at the end.
-    self.AddObject(obj)
 
   def __contains__(self, other):
     """Determine if other term is contained in this term."""
@@ -1486,10 +1482,12 @@ def p_term_spec(p):
                 | """
   if len(p) > 1:
     if type(p[1]) == Term:
-      p[1].AddObject(p[2])
+      __add_term_vartype_obj(p[1], p[2])
       p[0] = p[1]
     else:
-      p[0] = Term(p[2])
+      t = Term()
+      p[0] = t
+      __add_term_vartype_obj(t, p[2])
 
 
 def __add_term_vartype_obj(term, obj):
