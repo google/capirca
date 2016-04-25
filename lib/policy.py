@@ -1492,6 +1492,134 @@ def p_term_spec(p):
       p[0] = Term(p[2])
 
 
+def __add_term_vartype_obj(term, obj):
+  """Add an object of unknown type to this term.
+
+  Args:
+    obj: single or list of either
+      [Address, Port, Option, Protocol, Counter, Action, Comment, Expiration]
+
+  Raises:
+    InvalidTermActionError: if the action defined isn't an accepted action.
+      eg, action:: godofoobar
+    TermObjectTypeError: if AddObject is called with an object it doesn't
+      understand.
+    InvalidTermLoggingError: when a option is set for logging not known.
+  """
+  if type(obj) is list:
+    for x in obj:
+      # do we have a list of addresses?
+      # expanded address fields consolidate naked address fields with
+      # saddr/daddr.
+      if x.var_type is VarType.SADDRESS:
+        saddr = DEFINITIONS.GetNetAddr(x.value)
+        term.source_address.extend(saddr)
+      elif x.var_type is VarType.DADDRESS:
+        daddr = DEFINITIONS.GetNetAddr(x.value)
+        term.destination_address.extend(daddr)
+      elif x.var_type is VarType.ADDRESS:
+        addr = DEFINITIONS.GetNetAddr(x.value)
+        term.address.extend(addr)
+      # do we have address excludes?
+      elif x.var_type is VarType.SADDREXCLUDE:
+        saddr_exclude = DEFINITIONS.GetNetAddr(x.value)
+        term.source_address_exclude.extend(saddr_exclude)
+      elif x.var_type is VarType.DADDREXCLUDE:
+        daddr_exclude = DEFINITIONS.GetNetAddr(x.value)
+        term.destination_address_exclude.extend(daddr_exclude)
+      elif x.var_type is VarType.ADDREXCLUDE:
+        addr_exclude = DEFINITIONS.GetNetAddr(x.value)
+        term.address_exclude.extend(addr_exclude)
+      # do we have a list of ports?
+      elif x.var_type is VarType.PORT:
+        term.port.append(x.value)
+      elif x.var_type is VarType.SPORT:
+        term.source_port.append(x.value)
+      elif x.var_type is VarType.DPORT:
+        term.destination_port.append(x.value)
+      # do we have a list of protocols?
+      elif x.var_type is VarType.PROTOCOL:
+        term.protocol.append(x.value)
+      # do we have a list of protocol-exceptions?
+      elif x.var_type is VarType.PROTOCOL_EXCEPT:
+        term.protocol_except.append(x.value)
+      # do we have a list of options?
+      elif x.var_type is VarType.OPTION:
+        term.option.append(x.value)
+      elif x.var_type is VarType.PRINCIPALS:
+        term.principals.append(x.value)
+      elif x.var_type is VarType.SPFX:
+        term.source_prefix.append(x.value)
+      elif x.var_type is VarType.DPFX:
+        term.destination_prefix.append(x.value)
+      elif x.var_type is VarType.ETHER_TYPE:
+        term.ether_type.append(x.value)
+      elif x.var_type is VarType.TRAFFIC_TYPE:
+        term.traffic_type.append(x.value)
+      elif x.var_type is VarType.PRECEDENCE:
+        term.precedence.append(x.value)
+      elif x.var_type is VarType.PLATFORM:
+        term.platform.append(x.value)
+      elif x.var_type is VarType.PLATFORMEXCLUDE:
+        term.platform_exclude.append(x.value)
+      elif x.var_type is VarType.STAG:
+        term.source_tag.append(x.value)
+      elif x.var_type is VarType.DTAG:
+        term.destination_tag.append(x.value)
+      else:
+        raise TermObjectTypeError(
+            '%s isn\'t a type I know how to deal with (contains \'%s\')' % (
+                type(x), x.value))
+  else:
+    # stupid no switch statement in python
+    if obj.var_type is VarType.COMMENT:
+      term.comment.append(str(obj))
+    elif obj.var_type is VarType.OWNER:
+      term.owner = obj.value
+    elif obj.var_type is VarType.EXPIRATION:
+      term.expiration = obj.value
+    elif obj.var_type is VarType.LOSS_PRIORITY:
+      term.loss_priority = obj.value
+    elif obj.var_type is VarType.ROUTING_INSTANCE:
+      term.routing_instance = obj.value
+    elif obj.var_type is VarType.PRECEDENCE:
+      term.precedence = obj.value
+    elif obj.var_type is VarType.VERBATIM:
+      term.verbatim.append(obj)
+    elif obj.var_type is VarType.ACTION:
+      if str(obj) not in _ACTIONS:
+        raise InvalidTermActionError('%s is not a valid action' % obj)
+      term.action.append(obj.value)
+    elif obj.var_type is VarType.COUNTER:
+      term.counter = obj
+    elif obj.var_type is VarType.ICMP_TYPE:
+      term.icmp_type.extend(obj.value)
+    elif obj.var_type is VarType.LOGGING:
+      if str(obj) not in _LOGGING:
+        raise InvalidTermLoggingError('%s is not a valid logging option' %
+                                      obj)
+      term.logging.append(obj)
+    # police man, tryin'a take you jail
+    elif obj.var_type is VarType.POLICER:
+      term.policer = obj.value
+    # qos?
+    elif obj.var_type is VarType.QOS:
+      term.qos = obj.value
+    elif obj.var_type is VarType.PACKET_LEN:
+      term.packet_length = obj.value
+    elif obj.var_type is VarType.FRAGMENT_OFFSET:
+      term.fragment_offset = obj.value
+    elif obj.var_type is VarType.SINTERFACE:
+      term.source_interface = obj.value
+    elif obj.var_type is VarType.DINTERFACE:
+      term.destination_interface = obj.value
+    elif obj.var_type is VarType.TIMEOUT:
+      term.timeout = obj.value
+    else:
+      raise TermObjectTypeError(
+          '%s isn\'t a type I know how to deal with' % (type(obj)))
+
+
 def p_routinginstance_spec(p):
   """ routinginstance_spec : ROUTING_INSTANCE ':' ':' STRING """
   p[0] = VarType(VarType.ROUTING_INSTANCE, p[4])
