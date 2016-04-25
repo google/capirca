@@ -120,39 +120,6 @@ class ShadingError(Error):
 
 
 #pp
-def TranslatePorts(ports, protocols, term_name):
-  """Return all ports of all protocols requested.
-
-  Args:
-    ports: list of ports, eg ['SMTP', 'DNS', 'HIGH_PORTS']
-    protocols: list of protocols, eg ['tcp', 'udp']
-    term_name: name of current term, used for warning messages
-
-  Returns:
-    ret_array: list of ports tuples such as [(25,25), (53,53), (1024,65535)]
-
-  Note:
-    Duplication will be taken care of in Term.CollapsePortList
-  """
-  ret_array = []
-  for proto in protocols:
-    for port in ports:
-      service_by_proto = DEFINITIONS.GetServiceByProto(port, proto)
-      if not service_by_proto:
-        logging.warn('%s %s %s %s %s %s%s %s', 'Term', term_name,
-                     'has service', port, 'which is not defined with protocol',
-                     proto,
-                     ', but will be permitted. Unless intended, you should',
-                     'consider splitting the protocols into separate terms!')
-
-      for p in [x.split('-') for x in service_by_proto]:
-        if len(p) == 1:
-          ret_array.append((int(p[0]), int(p[0])))
-        else:
-          ret_array.append((int(p[0]), int(p[1])))
-  return ret_array
-
-
 # classes for storing the object types in the policy files.
 class Policy(object):
   """The policy object contains everything found in a given policy file."""
@@ -1310,6 +1277,39 @@ def __translate_terms(terms):
 
       term.SanityCheck()
       term.translated = True
+
+def TranslatePorts(ports, protocols, term_name):
+  """Return all ports of all protocols requested.
+
+  Args:
+    ports: list of ports, eg ['SMTP', 'DNS', 'HIGH_PORTS']
+    protocols: list of protocols, eg ['tcp', 'udp']
+    term_name: name of current term, used for warning messages
+
+  Returns:
+    ret_array: list of ports tuples such as [(25,25), (53,53), (1024,65535)]
+
+  Note:
+    Duplication will be taken care of in Term.CollapsePortList
+  """
+  ret_array = []
+  for proto in protocols:
+    for port in ports:
+      service_by_proto = DEFINITIONS.GetServiceByProto(port, proto)
+      if not service_by_proto:
+        logging.warn('%s %s %s %s %s %s%s %s', 'Term', term_name,
+                     'has service', port, 'which is not defined with protocol',
+                     proto,
+                     ', but will be permitted. Unless intended, you should',
+                     'consider splitting the protocols into separate terms!')
+
+      for p in [x.split('-') for x in service_by_proto]:
+        if len(p) == 1:
+          ret_array.append((int(p[0]), int(p[0])))
+        else:
+          ret_array.append((int(p[0]), int(p[1])))
+  return ret_array
+
 
 def p_header(p):
   """ header : HEADER '{' header_spec '}' """
