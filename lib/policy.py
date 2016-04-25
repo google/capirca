@@ -1076,6 +1076,31 @@ class Header(object):
     elif obj.var_type == VarType.COMMENT:
       self.comment.append(str(obj))
 
+  def __set_target(self, value):
+    self.__target = value
+
+  def __get_target(self):
+    """Check all target platforms for duplicates (which will break other methods).
+
+    Note: other methods for protecting against duplicates are possible.  Preferable
+    would be to check for duplicates at the time of self.target.append(potential_dup),
+    but that would require subclassing list (inadvisable), or creating a new container
+    class (much code for little benefit).  Adding a self.add_target(t) is also possible,
+    but that means that all clients need to know about the new method, which deviates
+    from the existing code standard of straight member access.
+
+    Raises:
+      HeaderDuplicateTargetPlatformError if duplicate found."""
+    platforms = map(lambda x: x.platform, self.__target)
+    dups = set([x for x in platforms if platforms.count(x) > 1])
+    if len(dups) > 0:
+      msg = 'Duplicate platforms {0}'.format(', '.join(dups))
+      raise HeaderDuplicateTargetPlatformError(msg)
+    return self.__target
+
+  target = property(__get_target, __set_target)
+  """Public API method, adds data checks."""
+
   @property
   def platforms(self):
     """The platform targets of this particular header."""
