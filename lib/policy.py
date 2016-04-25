@@ -1900,14 +1900,17 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
     policy object.
   """
   try:
+    global DEFINITIONS
+    global _OPTIMIZE
+    global _SHADE_CHECK
+
     if definitions:
-      globals()['DEFINITIONS'] = definitions
+      DEFINITIONS = definitions
     else:
-      globals()['DEFINITIONS'] = naming.Naming(DEFAULT_DEFINITIONS)
-    if not optimize:
-      globals()['_OPTIMIZE'] = False
-    if shade_check:
-      globals()['_SHADE_CHECK'] = True
+      DEFINITIONS = naming.Naming(DEFAULT_DEFINITIONS)
+
+    _OPTIMIZE = optimize
+    _SHADE_CHECK = shade_check
 
     lexer = lex.lex()
 
