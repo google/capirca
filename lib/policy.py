@@ -189,42 +189,6 @@ class Policy(object):
     if self.shade_check:
       self._DetectShading(terms)
 
-  def _TranslateTerms(self, terms):
-    """."""
-    if not terms:
-      raise NoTermsError('no terms found')
-    for term in terms:
-      # TODO(pmoody): this probably belongs in Term.SanityCheck(),
-      # or at the very least, in some method under class Term()
-      if term.translated:
-        continue
-      if term.port:
-        term.port = TranslatePorts(term.port, term.protocol, term.name)
-        if not term.port:
-          raise TermPortProtocolError(
-              'no ports of the correct protocol for term %s' % (
-                  term.name))
-      if term.source_port:
-        term.source_port = TranslatePorts(term.source_port, term.protocol,
-                                          term.name)
-        if not term.source_port:
-          raise TermPortProtocolError(
-              'no source ports of the correct protocol for term %s' % (
-                  term.name))
-      if term.destination_port:
-        term.destination_port = TranslatePorts(term.destination_port,
-                                               term.protocol, term.name)
-        if not term.destination_port:
-          raise TermPortProtocolError(
-              'no destination ports of the correct protocol for term %s' % (
-                  term.name))
-
-      # If argument is true, we optimize, otherwise just sort addresses
-      term.AddressCleanup(self.optimize)
-
-      term.SanityCheck()
-      term.translated = True
-
   @property
   def headers(self):
     """Returns the headers from each of the configured filters.
