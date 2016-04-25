@@ -1374,7 +1374,7 @@ def __add_term_vartype_obj(term, obj):
   Raises:
     InvalidTermActionError: if the action defined isn't an accepted action.
       eg, action:: godofoobar
-    TermObjectTypeError: if AddObject is called with an object it doesn't
+    TermObjectTypeError: if __add_term_vartype_obj is called with an object it doesn't
       understand.
     InvalidTermLoggingError: when a option is set for logging not known.
   """
