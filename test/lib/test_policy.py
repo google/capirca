@@ -45,7 +45,7 @@ class Test_Policy(unittest.TestCase):
 
     def setUp(self):
         h, terms = self.make_header_and_terms('cisco')
-        self.policy = policy.Policy(h, terms)
+        self.policy = policy.Policy(h, terms, True, True)
 
     def test_can_get_platforms(self):
         self.assertEqual(['cisco'], self.policy.platforms)

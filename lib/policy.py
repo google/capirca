@@ -148,7 +148,7 @@ def TranslatePorts(ports, protocols, term_name):
 class Policy(object):
   """The policy object contains everything found in a given policy file."""
 
-  def __init__(self, header, terms):
+  def __init__(self, header, terms, optimize, shade_check):
     """Initiator for the Policy object.
 
     Args:
@@ -159,17 +159,26 @@ class Policy(object):
       terms: list __main__.Term. an array of Term objects which must be rendered
         in each of the rendered acls.
 
+      optimize: True/False: if addresses and ports should be collapsed for
+        this Policy.
+
+      shade_check: True/False: if terms should be checked for shading.
+
     Attributes:
       filters: list of tuples containing (header, terms).
     """
     self.filters = []
+
+    self.optimize = optimize
+    self.shade_check = shade_check
+
     self.AddFilter(header, terms)
 
   def AddFilter(self, header, terms):
     """Add another header & filter."""
     self.filters.append((header, terms))
     self._TranslateTerms(terms)
-    if _SHADE_CHECK:
+    if self.shade_check:
       self._DetectShading(terms)
 
   def _TranslateTerms(self, terms):
@@ -203,9 +212,8 @@ class Policy(object):
                   term.name))
 
       # If argument is true, we optimize, otherwise just sort addresses
-      term.AddressCleanup(_OPTIMIZE)
-      # Reset _OPTIMIZE global to default value
-      globals()['_OPTIMIZE'] = True
+      term.AddressCleanup(self.optimize)
+
       term.SanityCheck()
       term.translated = True
 
@@ -245,8 +253,6 @@ class Policy(object):
     Raises:
       ShadingError: When a term is impossible to reach.
     """
-    # Reset _OPTIMIZE global to default value
-    globals()['_SHADE_CHECK'] = False
     shading_errors = []
     for index, term in enumerate(terms):
       for prior_index in xrange(index):
@@ -1293,7 +1299,7 @@ def p_target(p):
       p[1].AddFilter(p[2], p[3])
       p[0] = p[1]
     else:
-      p[0] = Policy(p[2], p[3])
+      p[0] = Policy(p[2], p[3], _OPTIMIZE, _SHADE_CHECK)
 
 
 def p_header(p):
