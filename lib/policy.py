@@ -1,3 +1,4 @@
+#bb
 #!/usr/bin/python
 #
 # Copyright 2011 Google Inc. All Rights Reserved.
@@ -27,6 +28,9 @@ import logging
 import nacaddr
 import naming
 
+#rr
+#REM import policy
+#REM from policy import Policy, Header, Target, Term
 from third_party.ply import lex
 from third_party.ply import yacc
 
@@ -39,10 +43,12 @@ _OPTIMIZE = True
 _SHADE_CHECK = False
 
 
+#bb
 class Error(Exception):
   """Generic error class."""
 
 
+#rr
 class FileNotFoundError(Error):
   """Policy file unable to be read."""
 
@@ -59,6 +65,7 @@ class ParseError(Error):
   """ParseError in the input."""
 
 
+#pp
 class PolicyTargetPlatformInvalidError(Error):
   """Attempt to generate an ACL for a platform not specified in policy header should fail."""
 
@@ -67,6 +74,7 @@ class HeaderDuplicateTargetPlatformError(Error):
   """Same target platform added to Header, resulting in ambiguity for options."""
 
 
+#rr
 class TermAddressExclusionError(Error):
   """Excluded address block is not contained in the accepted address block."""
 
@@ -111,6 +119,7 @@ class ShadingError(Error):
   """Error when a term is shaded by a prior term."""
 
 
+#pp
 def TranslatePorts(ports, protocols, term_name):
   """Return all ports of all protocols requested.
 
@@ -999,6 +1008,7 @@ class Term(object):
     return True
 
 
+#rr
 class VarType(object):
   """Generic object meant to store lots of basic policy types."""
 
@@ -1059,6 +1069,7 @@ class VarType(object):
     return self.var_type == other.var_type and self.value == other.value
 
 
+#pp
 class Header(object):
   """The header of the policy file contains the targets and a global comment."""
 
@@ -1153,6 +1164,7 @@ class Target(object):
     return not self.__eq__(other)
 
 
+#rr
 # Lexing/Parsing starts here
 tokens = (
     'ACTION',
