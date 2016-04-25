@@ -1060,22 +1060,6 @@ class Header(object):
     self.target = []
     self.comment = []
 
-  def AddObject(self, obj):
-    """Add and object to the Header.
-
-    Args:
-      obj: of type VarType.COMMENT or Target
-
-    Raises:
-      HeaderDuplicateTargetPlatformError: When the same platform is added as a target.
-    """
-    if type(obj) == Target:
-      if obj.platform in self.platforms:
-        raise HeaderDuplicateTargetPlatformError('duplicate platform {0}'.format(obj.platform))
-      self.target.append(obj)
-    elif obj.var_type == VarType.COMMENT:
-      self.comment.append(str(obj))
-
   def __set_target(self, value):
     self.__target = value
 
