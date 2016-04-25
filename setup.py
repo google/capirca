@@ -13,34 +13,38 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+from setuptools import setup, find_packages
 
-from distutils.core import setup
+def find_data_files(source):
+  result = []
+  for directory, _, files in os.walk(source):
+    files = [os.path.join(directory, x) for x in files]
+    result.append((directory, files))
 
-setup(name='capirca',
-      maintainer='Google',
-      maintainer_email='capirca-dev@googlegroups.com',
-      version='1.109',
-      url='https://github.com/google/capirca/',
-      license='Apache License, Version 2.0',
-      classifiers=[
-          'Development Status :: 5 - Production/Stable',
-          'Intended Audience :: Developers',
-          'License :: OSI Approved :: Apache Software License',
-          'Operating System :: OS Independent',
-          'Topic :: Internet',
-          'Topic :: Software Development :: Libraries',
-          'Topic :: Security'],
-      py_modules=['aclgen', 'definate', 'definate.generator',
-                  'definate.generator_factory', 'definate.dns_generator',
-                  'definate.filter_factory', 'definate.global_filter',
-                  'definate.file_filter', 'definate.definition_filter',
-                  'definate.yaml_validator', 'lib.arista', 'lib.aruba',
-                  'lib.brocade','lib.cisco', 'lib.ciscoasa',
-                  'lib.ciscoxr','lib.gce','lib.ipset',
-                  'lib.iptables', 'lib.juniper', 'lib.junipersrx',
-                  'lib.nacaddr', 'lib.policy', 'lib.policyreader',
-                  'lib.naming', 'lib.nsxv','lib.aclcheck',
-                  'lib.aclgenerator', 'lib.port', 'lib.demo', 'lib.speedway',
-                  'lib.ipset', 'lib.packetfilter', 'lib.gce',
-                  'third_party.ipaddr', 'third_party.ply.lex',
-                  'third_party.ply.yacc'])
+  return result
+data_files = (["aclcheck_cmdline.py", "aclgen.py", "definate.py"] +
+              find_data_files("def") +
+              find_data_files("definate") +
+              find_data_files("doc") +
+              find_data_files("filter") +
+              find_data_files("lib") +
+              find_data_files("policies") +
+              find_data_files("test") +
+              find_data_files("tests") +
+              find_data_files("third_party") +
+              find_data_files("tools"))
+
+setup(
+    name='capirca',
+    version='1.109',
+    description='Capirca',
+    license='Apache License, Version 2.0',
+    url='https://github.com/google/capirca/',
+    packages=find_packages(),
+    zip_safe=False,
+    include_package_data=True,
+    data_files=data_files,
+    install_requires=[
+      'python-gflags']
+)
