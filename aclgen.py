@@ -69,8 +69,8 @@ class AclGen(object):
     can be restricted to strings and ints, versus domain objects.  This promotes
     use of this module for other clients."""
 
-    if defs_directory in _memoized_defs:
-      return _memoized_defs[defs_directory]
+    if defs_directory in self._memoized_defs:
+      return self._memoized_defs[defs_directory]
 
     if not os.path.exists(defs_directory):
       msg = 'missing defs directory {0}'.format(defs_directory)
@@ -79,11 +79,11 @@ class AclGen(object):
     if not defs:
       raise ValueError('problem loading definitions')
 
-    _memoized_defs[defs_directory] = defs
+    self._memoized_defs[defs_directory] = defs
     return defs
 
   def load_and_render(self, base_dir, defs_directory, shade_check, exp_info, output_dir):
-    return _do_load_and_render(base_dir, base_dir, defs_directory, shade_check, exp_info, output_dir)
+    return self._do_load_and_render(base_dir, base_dir, defs_directory, shade_check, exp_info, output_dir)
 
   def _do_load_and_render(self, base_dir, curr_dir, defs_directory, shade_check, exp_info, output_dir):
     rendered = 0
@@ -91,10 +91,10 @@ class AclGen(object):
       fname = os.path.join(curr_dir, dirfile)
       #logging.debug('load_and_render working with fname %s', fname)
       if os.path.isdir(fname):
-        rendered += _do_load_and_render(base_dir, fname, defs_directory, shade_check, exp_info, output_dir)
+        rendered += self._do_load_and_render(base_dir, fname, defs_directory, shade_check, exp_info, output_dir)
       elif fname.endswith('.pol'):
         #logging.debug('attempting to render_filters on fname %s', fname)
-        rendered += _do_render_filters(base_dir, fname, defs_directory, shade_check, exp_info, output_dir)
+        rendered += self._do_render_filters(base_dir, fname, defs_directory, shade_check, exp_info, output_dir)
     return rendered
 
   @staticmethod
@@ -139,14 +139,14 @@ class AclGen(object):
 
     Returns parsed policy object.
     """
-    definitions_obj = _create_defs(defs_directory)
+    definitions_obj = self._create_defs(defs_directory)
     return policyparser.CacheParseFile(source_file, definitions_obj, optimize,
                                  shade_check=shade_check)
 
 
   def render_filters(self, source_file, defs_directory, shade_check, exp_info, output_dir):
     base_dir = os.path.dirname(os.path.abspath(source_file))
-    return _do_render_filters(base_dir, source_file, defs_directory, shade_check, exp_info, output_dir)
+    return self._do_render_filters(base_dir, source_file, defs_directory, shade_check, exp_info, output_dir)
 
 
   def create_filter_for_platform(self, platform, source_file, defs_directory, shade_check, exp_info):
@@ -180,7 +180,7 @@ class AclGen(object):
       raise policy.PolicyTargetPlatformInvalidError('unsupported platform {0}'.format(platform))
 
     optimized = this_platform['optimized']
-    pol = copy.deepcopy(get_policy_obj(source_file, defs_directory,
+    pol = copy.deepcopy(self.get_policy_obj(source_file, defs_directory,
                                        optimized, shade_check))
 
     if platform not in pol.platforms:
@@ -209,18 +209,18 @@ class AclGen(object):
     """
 
     # Get a policy object from cache to determine headers within the policy file.
-    pol = get_policy_obj(source_file, defs_directory, True, shade_check)
+    pol = self.get_policy_obj(source_file, defs_directory, True, shade_check)
 
     count = 0
 
     for header in pol.headers:
       for platform in header.platforms:
 
-        fw = create_filter_for_platform(platform, source_file, defs_directory, shade_check, exp_info)
+        fw = self.create_filter_for_platform(platform, source_file, defs_directory, shade_check, exp_info)
 
-        filter_file = filter_name(base_dir, source_file, fw._SUFFIX, output_dir)
+        filter_file = AclGen.filter_name(base_dir, source_file, fw._SUFFIX, output_dir)
         filter_text = str(fw)
-        do_output_filter(filter_text, filter_file)
+        self.do_output_filter(filter_text, filter_file)
         count += 1
 
     return count
