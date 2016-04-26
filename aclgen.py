@@ -430,13 +430,15 @@ def _do_render_filters(base_dir, source_file, defs_directory, shade_check, exp_i
 def main(args):
   FLAGS = parse_args(args)
 
+  gen = AclGen()
+
   count = 0
   if FLAGS.policy_directory:
-    count = load_and_render(FLAGS.policy_directory, FLAGS.definitions, FLAGS.shade_check,
+    count = gen.load_and_render(FLAGS.policy_directory, FLAGS.definitions, FLAGS.shade_check,
                             FLAGS.exp_info, FLAGS.output_directory)
 
   elif FLAGS.policy:
-    count = render_filters(FLAGS.policy, FLAGS.definitions, FLAGS.shade_check,
+    count = gen.render_filters(FLAGS.policy, FLAGS.definitions, FLAGS.shade_check,
                            FLAGS.exp_info, FLAGS.output_directory)
 
   print '%d filters rendered' % count
