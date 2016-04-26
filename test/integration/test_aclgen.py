@@ -148,6 +148,25 @@ class AclGen_Characterization_Tests(AclGen_Characterization_Test_Base):
     self.assertEquals([], dircmp.right_only, 'missing {0} in filters_actual'.format(dircmp.right_only))
     self.assertEquals([], dircmp.diff_files)
 
+  def test_can_make_direct_API_call_to_load_and_render(self):
+    """Existing clients may have been making calls directly
+    to aclgen.load_and_render, double-checking it still works."""
+    def_dir, pol_dir, expected_dir = map(self.testpath, ('def', 'policies', 'filters_expected'))
+    aclgen.load_and_render(pol_dir, def_dir, False, 2, self.output_dir)
+
+    dircmp = filecmp.dircmp(self.output_dir, expected_dir)
+    self.assertEquals([], dircmp.left_only, 'missing {0} in filters_expected'.format(dircmp.left_only))
+    self.assertEquals([], dircmp.right_only, 'missing {0} in filters_actual'.format(dircmp.right_only))
+    self.assertEquals([], dircmp.diff_files)
+
+  def test_can_make_direct_API_call_to_render_filters(self):
+    """Existing clients may have been making calls directly
+    to aclgen.render_filters, double-checking it still works."""
+    def_dir, pol_dir, expected_dir = map(self.testpath, ('def', 'policies', 'filters_expected'))
+    src = os.path.join(pol_dir, 'sample_cisco_lab.pol')
+    aclgen.render_filters(src, def_dir, False, 2, self.output_dir)
+    # If we get here, assume all is OK.
+
 
 class AclGen_Create_filter_for_target(AclGen_Characterization_Test_Base):
   """Given a policy, generate filter text for a particular target."""
