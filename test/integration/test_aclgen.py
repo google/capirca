@@ -7,6 +7,7 @@ from cStringIO import StringIO
 import filecmp
 
 import aclgen
+from aclgen import AclGen
 from lib import policy
 
 class Test_AclGen(unittest.TestCase):
@@ -75,27 +76,27 @@ class AclGen_filter_name_scenarios(unittest.TestCase):
   See aclgen.filter_name for notes."""
 
   def test_file_in_base_directory_is_output_to_output_dir(self):
-    s = aclgen.filter_name('/policy', '/policy/x.txt', '.out', '/output')
+    s = AclGen.filter_name('/policy', '/policy/x.txt', '.out', '/output')
     self.assertEqual(s, '/output/x.out')
 
   def test_file_in_subdirectory_is_output_to_subdirectory(self):
-    s = aclgen.filter_name('/policy', '/policy/subdir/x.txt', '.out', '/output')
+    s = AclGen.filter_name('/policy', '/policy/subdir/x.txt', '.out', '/output')
     self.assertEqual(s, '/output/subdir/x.out')
 
   def test_file_in_nested_subdir(self):
-    s = aclgen.filter_name('/policy', '/policy/sub/dir/x.txt', '.out', '/output/here')
+    s = AclGen.filter_name('/policy', '/policy/sub/dir/x.txt', '.out', '/output/here')
     self.assertEqual(s, '/output/here/sub/dir/x.out')
 
   def test_relative_directory_structure_mirrored(self):
-    s = aclgen.filter_name('../policy', '../policy/subdir/x.txt', '.out', '/output')
+    s = AclGen.filter_name('../policy', '../policy/subdir/x.txt', '.out', '/output')
     self.assertEqual(s, '/output/subdir/x.out')
 
   def test_empty_source_dir_ok(self):
-    s = aclgen.filter_name('', 'subdir/x.txt', '.out', '/output')
+    s = AclGen.filter_name('', 'subdir/x.txt', '.out', '/output')
     self.assertEqual(s, '/output/subdir/x.out')
 
   def test_base_dir_must_match_start_of_source_file(self):
-    self.assertRaises(ValueError, aclgen.filter_name, 'A', 'B/C', 'suff', 'O')
+    self.assertRaises(ValueError, AclGen.filter_name, 'A', 'B/C', 'suff', 'O')
 
 
 class AclGen_Characterization_Test_Base(unittest.TestCase):
@@ -174,21 +175,24 @@ class AclGen_Create_filter_for_target(AclGen_Characterization_Test_Base):
   def test_can_generate_filter_from_policy_for_specified_platform(self):
     src = self.testpath('policies', 'sample_cisco_lab.pol')
     definitions = self.testpath('def')
-    fw = aclgen.create_filter_for_platform('cisco', src, definitions, False, 2)
+    a = AclGen()
+    fw = a.create_filter_for_platform('cisco', src, definitions, False, 2)
     actual_filter = str(fw)
     with open(self.testpath('filters_expected', 'sample_cisco_lab.acl'), 'r') as f:
       expected_filter = f.read()
     self.assertEquals(actual_filter, expected_filter)
 
   def test_generating_filter_for_missing_platform_throws(self):
+    a = AclGen()
     with self.assertRaises(policy.PolicyTargetPlatformInvalidError):
-      aclgen.create_filter_for_platform('missing', '', None, False, 2)
+      a.create_filter_for_platform('missing', '', None, False, 2)
 
   def test_cannot_generate_filter_from_policy_for_platform_different_from_policy_header(self):
+    a = AclGen()
     src = self.testpath('policies', 'sample_cisco_lab.pol')
     definitions = self.testpath('def')
     with self.assertRaises(policy.PolicyTargetPlatformInvalidError):
-      aclgen.create_filter_for_platform('juniper', src, definitions, False, 2)
+      a.create_filter_for_platform('juniper', src, definitions, False, 2)
 
 
 def main():

@@ -262,110 +262,21 @@ def parse_args(command_line_args):
 
   return flags
 
-_memoized_defs = {}
-def _create_defs(defs_directory):
-  """Creates naming.Naming object using the contents of the supplied directory.
-
-  The created defs object is memoized so that the public API of this module
-  can be restricted to strings and ints, versus domain objects.  This promotes
-  use of this module for other clients."""
-
-  if defs_directory in _memoized_defs:
-    return _memoized_defs[defs_directory]
-
-  if not os.path.exists(defs_directory):
-    msg = 'missing defs directory {0}'.format(defs_directory)
-    raise ValueError(msg)
-  defs = naming.Naming(defs_directory)
-  if not defs:
-    raise ValueError('problem loading definitions')
-
-  _memoized_defs[defs_directory] = defs
-  return defs
 
 def load_and_render(base_dir, defs_directory, shade_check, exp_info, output_dir):
   aclgen = AclGen()
   return aclgen.load_and_render(base_dir, defs_directory, shade_check, exp_info, output_dir)
 
-def _do_load_and_render(base_dir, curr_dir, defs_directory, shade_check, exp_info, output_dir):
-  rendered = 0
-  for dirfile in dircache.listdir(curr_dir):
-    fname = os.path.join(curr_dir, dirfile)
-    #logging.debug('load_and_render working with fname %s', fname)
-    if os.path.isdir(fname):
-      rendered += _do_load_and_render(base_dir, fname, defs_directory, shade_check, exp_info, output_dir)
-    elif fname.endswith('.pol'):
-      #logging.debug('attempting to render_filters on fname %s', fname)
-      rendered += _do_render_filters(base_dir, fname, defs_directory, shade_check, exp_info, output_dir)
-  return rendered
-
-
 def filter_name(base_dir, source, suffix, output_directory):
   return AclGen.filter_name(base_dir, source, suffix, output_directory)
-
-
-def do_output_filter(filter_text, filter_file):
-  if not os.path.isdir(os.path.dirname(filter_file)):
-    os.makedirs(os.path.dirname(filter_file))
-  output = open(filter_file, 'w')
-  if output:
-    print 'writing %s' % filter_file
-    output.write(filter_text)
-
-
-def get_policy_obj(source_file, defs_directory, optimize, shade_check):
-  """Memoized call to parse policy by file name.
-
-  Returns parsed policy object.
-  """
-  definitions_obj = _create_defs(defs_directory)
-  return policyparser.CacheParseFile(source_file, definitions_obj, optimize,
-                               shade_check=shade_check)
-
 
 def render_filters(source_file, defs_directory, shade_check, exp_info, output_dir):
   aclgen = AclGen()
   return aclgen.render_filters(source_file, defs_directory, shade_check, exp_info, output_dir)
 
-
 def create_filter_for_platform(platform, source_file, defs_directory, shade_check, exp_info):
   aclgen = AclGen()
   return aclgen.create_filter_for_platform(platform, source_file, defs_directory, shade_check, exp_info)
-
-
-def _do_render_filters(base_dir, source_file, defs_directory, shade_check, exp_info, output_dir):
-  """Render platform specfic filters for each target platform.
-
-  For each target specified in each header of the policy, use that
-  platforms renderer to render its platform specific filter, using its
-  own separate copy of the policy object and with optional, target
-  specific attributes such as optimization and expiration attributes.
-
-  `base_dir` is the base dir of the policy file `source_file`.  It is
-  required here to calculate relative path from the `base_dir` to the
-  `source_file`.  This relative path is appended to the `output_dir`
-  so that files are appropriately placed when written.
-
-  Output the rendered filters for each target platform.
-  Return the rendered filter count.
-  """
-
-  # Get a policy object from cache to determine headers within the policy file.
-  pol = get_policy_obj(source_file, defs_directory, True, shade_check)
-
-  count = 0
-
-  for header in pol.headers:
-    for platform in header.platforms:
-
-      fw = create_filter_for_platform(platform, source_file, defs_directory, shade_check, exp_info)
-
-      filter_file = filter_name(base_dir, source_file, fw._SUFFIX, output_dir)
-      filter_text = str(fw)
-      do_output_filter(filter_text, filter_file)
-      count += 1
-
-  return count
 
 
 def main(args):
