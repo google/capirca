@@ -54,6 +54,235 @@ from lib import nsxv
 
 # pylint: disable=bad-indentation
 
+
+class AclGen(object):
+  """ACL generation object.
+
+  Given inputs, generates ACLs to output stream or filesystem.
+  """
+
+  def __init__(self,
+               policy_directory,
+               definitions_directory,
+               output_directory,
+               shade_check = False,
+               expiry_info = 2):
+    """Constructor.
+
+    Args:
+      policy_directory: string, path to the policies
+      definitions_directory: string, path to the definitions
+      output_directory: string, base directory for generated ACLs
+      shade_check: True/False, whether or not to do a shade check
+      expiry_info: int, expiry weeks.
+    """
+
+    self.policy_directory = policy_directory
+    self.definitions_directory = definitions_directory
+    self.output_directory = output_directory
+    self.shade_check = shade_check
+    self.expiry_info = expiry_info
+
+    # A naming.Naming object created with self._create_defs()
+    self.__memoized_defs = None
+
+  def _create_defs(self):
+    """Creates naming.Naming object using the contents of the supplied directory.
+
+    The created defs object is memoized so that the public API of this module
+    can be restricted to strings and ints, versus domain objects.  This promotes
+    use of this module for other clients."""
+
+    if self.__memoized_defs is not None:
+      return self.__memoized_defs
+
+    if not os.path.exists(self.definitions_directory):
+      msg = 'missing defs directory {0}'.format(self.definitions_directory)
+      raise ValueError(msg)
+    self.__memoized_defs = naming.Naming(self.definitions_directory)
+    if not self.__memoized_defs:
+      raise ValueError('problem loading definitions')
+
+    return self.__memoized_defs
+
+  def load_and_render(self):
+    return self._do_load_and_render(self.policy_directory, self.policy_directory)
+
+  def _do_load_and_render(self, base_dir, curr_dir):
+    rendered = 0
+    for dirfile in dircache.listdir(curr_dir):
+      fname = os.path.join(curr_dir, dirfile)
+      #logging.debug('load_and_render working with fname %s', fname)
+      if os.path.isdir(fname):
+        rendered += self._do_load_and_render(base_dir, fname)
+      elif fname.endswith('.pol'):
+        #logging.debug('attempting to render_filters on fname %s', fname)
+        rendered += self._do_render_filters(base_dir, fname)
+    return rendered
+
+  @staticmethod
+  def filter_name(base_dir, source, suffix, output_directory):
+    """Create an output filename for the filter.
+
+    The output filename is such that the directory structure
+    of `output_directory` matches the directory structure of
+    the `source` relative to the `base_dir`.  For example,
+    with the following:
+
+    - `base_dir` = 'hi/there/'
+    - source = 'hi/there/SOME/file.txt'
+    - suffix = '.suff'
+    - output_directory 'newlocation'
+
+    the returned directory would be
+
+      'newlocation/SOME/file.suff.'
+    """
+    abs_source = os.path.abspath(source)
+    abs_base = os.path.abspath(base_dir) + '/'
+    if not abs_source.startswith(abs_base):
+      raise ValueError('{0} is not in base dir {1}'.format(abs_source, abs_base))
+    rel_from_base = abs_source.replace(abs_base, '')
+    reldir, fname = os.path.split(rel_from_base)
+    fname = '%s%s' % ('.'.join(fname.split('.')[0:-1]), suffix)
+    return os.path.join(output_directory, reldir, fname)
+
+
+  def do_output_filter(self, filter_text, filter_file):
+    if not os.path.isdir(os.path.dirname(filter_file)):
+      os.makedirs(os.path.dirname(filter_file))
+    output = open(filter_file, 'w')
+    if output:
+      print 'writing %s' % filter_file
+      output.write(filter_text)
+
+
+  def get_policy_obj(self, source_file, optimize):
+    """Memoized call to parse policy by file name.
+
+    Returns parsed policy object.
+    """
+    definitions_obj = self._create_defs()
+    return policyparser.CacheParseFile(source_file, definitions_obj, optimize, shade_check=self.shade_check)
+
+
+  def render_filters(self, source_file):
+    base_dir = os.path.dirname(os.path.abspath(source_file))
+    return self._do_render_filters(base_dir, source_file)
+
+
+  def create_filter_for_platform(self, platform, source_file):
+    """Render platform specific filter for a policy.
+
+    Use the platform's renderer to render its filter, using its
+    own separate copy of the policy object and with optional, target
+    specific attributes such as optimization."""
+
+    supported_targets = {
+      'arista': {'optimized': True, 'renderer': arista.Arista},
+      'aruba': {'optimized': True, 'renderer': aruba.Aruba},
+      'brocade': {'optimized': True, 'renderer': brocade.Brocade},
+      'cisco': {'optimized': True, 'renderer': cisco.Cisco},
+      'ciscoasa': {'optimized': True, 'renderer': ciscoasa.CiscoASA},
+      'ciscoxr': {'optimized': True, 'renderer': ciscoxr.CiscoXR},
+      'demo': {'optimized': True, 'renderer': demo.Demo},
+      'gce': {'optimized': True, 'renderer': gce.GCE},
+      'ipset': {'optimized': True, 'renderer': ipset.Ipset},
+      'iptables': {'optimized': True, 'renderer': iptables.Iptables},
+      'juniper': {'optimized': True, 'renderer': juniper.Juniper},
+      'junipersrx': {'optimized': False, 'renderer': junipersrx.JuniperSRX},
+      'nsxv': {'optimized': True, 'renderer': nsxv.Nsxv},
+      'packetfilter': {'optimized': True, 'renderer': packetfilter.PacketFilter},
+      'speedway': {'optimized': True, 'renderer': speedway.Speedway},
+      'srx': {'optimized': False, 'renderer': junipersrx.JuniperSRX},
+    }
+
+    this_platform = supported_targets.get(platform)
+    if this_platform is None:
+      raise policy.PolicyTargetPlatformInvalidError('unsupported platform {0}'.format(platform))
+
+    optimized = this_platform['optimized']
+    pol = copy.deepcopy(self.get_policy_obj(source_file, optimized))
+
+    if platform not in pol.platforms:
+      msg = 'platform {0} not in policy targets {1}'.format(platform, pol.platforms)
+      raise policy.PolicyTargetPlatformInvalidError(msg)
+
+    renderer = this_platform['renderer']
+    return renderer(pol, self.expiry_info)
+
+
+  def _do_render_filters(self, base_dir, source_file):
+    """Render platform specfic filters for each target platform.
+
+    For each target specified in each header of the policy, use that
+    platforms renderer to render its platform specific filter, using its
+    own separate copy of the policy object and with optional, target
+    specific attributes such as optimization and expiration attributes.
+
+    `base_dir` is the base dir of the policy file `source_file`.  It is
+    required here to calculate relative path from the `base_dir` to the
+    `source_file`.  This relative path is appended to the `output_dir`
+    so that files are appropriately placed when written.
+
+    Output the rendered filters for each target platform.
+    Return the rendered filter count.
+    """
+
+    # Get a policy object from cache to determine headers within the policy file.
+    pol = self.get_policy_obj(source_file, True)
+
+    count = 0
+
+    for header in pol.headers:
+      for platform in header.platforms:
+
+        fw = self.create_filter_for_platform(platform, source_file)
+
+        filter_file = AclGen.filter_name(base_dir, source_file, fw._SUFFIX, self.output_directory)
+        filter_text = str(fw)
+        self.do_output_filter(filter_text, filter_file)
+        count += 1
+
+    return count
+
+
+########
+# Backwards compatibility wrappers of AclGen methods.
+
+def load_and_render(base_dir, defs_directory, shade_check, exp_info, output_dir):
+  aclgen = AclGen(policy_directory = base_dir,
+                  definitions_directory = defs_directory,
+                  output_directory = output_dir,
+                  shade_check = shade_check,
+                  expiry_info = exp_info)
+  return aclgen.load_and_render()
+
+def filter_name(base_dir, source, suffix, output_directory):
+  return AclGen.filter_name(base_dir, source, suffix, output_directory)
+
+def render_filters(source_file, defs_directory, shade_check, exp_info, output_dir):
+  p, f = os.path.split(source_file)
+  aclgen = AclGen(policy_directory = p,
+                  definitions_directory = defs_directory,
+                  output_directory = output_dir,
+                  shade_check = shade_check,
+                  expiry_info = exp_info)
+  return aclgen.render_filters(source_file)
+
+def create_filter_for_platform(platform, source_file, defs_directory, shade_check, exp_info):
+  p, f = os.path.split(source_file)
+  aclgen = AclGen(policy_directory = p,
+                  definitions_directory = defs_directory,
+                  output_directory = None,
+                  shade_check = shade_check,
+                  expiry_info = exp_info)
+  return aclgen.create_filter_for_platform(platform, source_file)
+
+
+########
+# Main
+
 def parse_args(command_line_args):
   """Populate flags from the command-line arguments."""
   _parser = OptionParser()
@@ -90,182 +319,22 @@ def parse_args(command_line_args):
 
   return flags
 
-_memoized_defs = {}
-def _create_defs(defs_directory):
-  """Creates naming.Naming object using the contents of the supplied directory.
-
-  The created defs object is memoized so that the public API of this module
-  can be restricted to strings and ints, versus domain objects.  This promotes
-  use of this module for other clients."""
-
-  if defs_directory in _memoized_defs:
-    return _memoized_defs[defs_directory]
-
-  if not os.path.exists(defs_directory):
-    msg = 'missing defs directory {0}'.format(defs_directory)
-    raise ValueError(msg)
-  defs = naming.Naming(defs_directory)
-  if not defs:
-    raise ValueError('problem loading definitions')
-
-  _memoized_defs[defs_directory] = defs
-  return defs
-
-def load_and_render(base_dir, defs_directory, shade_check, exp_info, output_dir):
-  return _do_load_and_render(base_dir, base_dir, defs_directory, shade_check, exp_info, output_dir)
-
-def _do_load_and_render(base_dir, curr_dir, defs_directory, shade_check, exp_info, output_dir):
-  rendered = 0
-  for dirfile in dircache.listdir(curr_dir):
-    fname = os.path.join(curr_dir, dirfile)
-    #logging.debug('load_and_render working with fname %s', fname)
-    if os.path.isdir(fname):
-      rendered += _do_load_and_render(base_dir, fname, defs_directory, shade_check, exp_info, output_dir)
-    elif fname.endswith('.pol'):
-      #logging.debug('attempting to render_filters on fname %s', fname)
-      rendered += _do_render_filters(base_dir, fname, defs_directory, shade_check, exp_info, output_dir)
-  return rendered
-
-
-def filter_name(base_dir, source, suffix, output_directory):
-  """Create an output filename for the filter.
-
-  The output filename is such that the directory structure
-  of `output_directory` matches the directory structure of
-  the `source` relative to the `base_dir`.  For example,
-  with the following:
-
-  - `base_dir` = 'hi/there/'
-  - source = 'hi/there/SOME/file.txt'
-  - suffix = '.suff'
-  - output_directory 'newlocation'
-
-  the returned directory would be
-
-    'newlocation/SOME/file.suff.'
-  """
-  abs_source = os.path.abspath(source)
-  abs_base = os.path.abspath(base_dir) + '/'
-  if not abs_source.startswith(abs_base):
-    raise ValueError('{0} is not in base dir {1}'.format(abs_source, abs_base))
-  rel_from_base = abs_source.replace(abs_base, '')
-  reldir, fname = os.path.split(rel_from_base)
-  fname = '%s%s' % ('.'.join(fname.split('.')[0:-1]), suffix)
-  return os.path.join(output_directory, reldir, fname)
-
-
-def do_output_filter(filter_text, filter_file):
-  if not os.path.isdir(os.path.dirname(filter_file)):
-    os.makedirs(os.path.dirname(filter_file))
-  output = open(filter_file, 'w')
-  if output:
-    print 'writing %s' % filter_file
-    output.write(filter_text)
-
-
-def get_policy_obj(source_file, defs_directory, optimize, shade_check):
-  """Memoized call to parse policy by file name.
-
-  Returns parsed policy object.
-  """
-  definitions_obj = _create_defs(defs_directory)
-  return policyparser.CacheParseFile(source_file, definitions_obj, optimize,
-                               shade_check=shade_check)
-
-
-def render_filters(source_file, defs_directory, shade_check, exp_info, output_dir):
-  base_dir = os.path.dirname(os.path.abspath(source_file))
-  return _do_render_filters(base_dir, source_file, defs_directory, shade_check, exp_info, output_dir)
-
-
-def create_filter_for_platform(platform, source_file, defs_directory, shade_check, exp_info):
-  """Render platform specific filter for a policy.
-
-  Use the platform's renderer to render its filter, using its
-  own separate copy of the policy object and with optional, target
-  specific attributes such as optimization."""
-
-  supported_targets = {
-    'arista': {'optimized': True, 'renderer': arista.Arista},
-    'aruba': {'optimized': True, 'renderer': aruba.Aruba},
-    'brocade': {'optimized': True, 'renderer': brocade.Brocade},
-    'cisco': {'optimized': True, 'renderer': cisco.Cisco},
-    'ciscoasa': {'optimized': True, 'renderer': ciscoasa.CiscoASA},
-    'ciscoxr': {'optimized': True, 'renderer': ciscoxr.CiscoXR},
-    'demo': {'optimized': True, 'renderer': demo.Demo},
-    'gce': {'optimized': True, 'renderer': gce.GCE},
-    'ipset': {'optimized': True, 'renderer': ipset.Ipset},
-    'iptables': {'optimized': True, 'renderer': iptables.Iptables},
-    'juniper': {'optimized': True, 'renderer': juniper.Juniper},
-    'junipersrx': {'optimized': False, 'renderer': junipersrx.JuniperSRX},
-    'nsxv': {'optimized': True, 'renderer': nsxv.Nsxv},
-    'packetfilter': {'optimized': True, 'renderer': packetfilter.PacketFilter},
-    'speedway': {'optimized': True, 'renderer': speedway.Speedway},
-    'srx': {'optimized': False, 'renderer': junipersrx.JuniperSRX},
-  }
-
-  this_platform = supported_targets.get(platform)
-  if this_platform is None:
-    raise policy.PolicyTargetPlatformInvalidError('unsupported platform {0}'.format(platform))
-
-  optimized = this_platform['optimized']
-  pol = copy.deepcopy(get_policy_obj(source_file, defs_directory,
-                                     optimized, shade_check))
-
-  if platform not in pol.platforms:
-    msg = 'platform {0} not in policy targets {1}'.format(platform, pol.platforms)
-    raise policy.PolicyTargetPlatformInvalidError(msg)
-
-  renderer = this_platform['renderer']
-  return renderer(pol, exp_info)
-
-
-def _do_render_filters(base_dir, source_file, defs_directory, shade_check, exp_info, output_dir):
-  """Render platform specfic filters for each target platform.
-
-  For each target specified in each header of the policy, use that
-  platforms renderer to render its platform specific filter, using its
-  own separate copy of the policy object and with optional, target
-  specific attributes such as optimization and expiration attributes.
-
-  `base_dir` is the base dir of the policy file `source_file`.  It is
-  required here to calculate relative path from the `base_dir` to the
-  `source_file`.  This relative path is appended to the `output_dir`
-  so that files are appropriately placed when written.
-
-  Output the rendered filters for each target platform.
-  Return the rendered filter count.
-  """
-
-  # Get a policy object from cache to determine headers within the policy file.
-  pol = get_policy_obj(source_file, defs_directory, True, shade_check)
-
-  count = 0
-
-  for header in pol.headers:
-    for platform in header.platforms:
-
-      fw = create_filter_for_platform(platform, source_file, defs_directory, shade_check, exp_info)
-
-      filter_file = filter_name(base_dir, source_file, fw._SUFFIX, output_dir)
-      filter_text = str(fw)
-      do_output_filter(filter_text, filter_file)
-      count += 1
-
-  return count
-
 
 def main(args):
   FLAGS = parse_args(args)
 
+  gen = AclGen(policy_directory = FLAGS.policy_directory,
+               definitions_directory = FLAGS.definitions,
+               output_directory = FLAGS.output_directory,
+               shade_check = FLAGS.shade_check,
+               expiry_info = FLAGS.exp_info)
+
   count = 0
   if FLAGS.policy_directory:
-    count = load_and_render(FLAGS.policy_directory, FLAGS.definitions, FLAGS.shade_check,
-                            FLAGS.exp_info, FLAGS.output_directory)
+    count = gen.load_and_render()
 
   elif FLAGS.policy:
-    count = render_filters(FLAGS.policy, FLAGS.definitions, FLAGS.shade_check,
-                           FLAGS.exp_info, FLAGS.output_directory)
+    count = gen.render_filters(FLAGS.policy)
 
   print '%d filters rendered' % count
 
