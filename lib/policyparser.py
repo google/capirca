@@ -321,8 +321,6 @@ def __translate_terms(terms):
     if not terms:
       raise NoTermsError('no terms found')
     for term in terms:
-      # TODO(pmoody): this probably belongs in Term.SanityCheck(),
-      # or at the very least, in some method under class Term()
       if term.translated:
         continue
       if term.port:
