@@ -247,6 +247,42 @@ class AclGen(object):
     return count
 
 
+########
+# Backwards compatibility wrappers of AclGen methods.
+
+def load_and_render(base_dir, defs_directory, shade_check, exp_info, output_dir):
+  aclgen = AclGen(policy_directory = base_dir,
+                  definitions_directory = defs_directory,
+                  output_directory = output_dir,
+                  shade_check = shade_check,
+                  expiry_info = exp_info)
+  return aclgen.load_and_render()
+
+def filter_name(base_dir, source, suffix, output_directory):
+  return AclGen.filter_name(base_dir, source, suffix, output_directory)
+
+def render_filters(source_file, defs_directory, shade_check, exp_info, output_dir):
+  p, f = os.path.split(source_file)
+  aclgen = AclGen(policy_directory = p,
+                  definitions_directory = defs_directory,
+                  output_directory = output_dir,
+                  shade_check = shade_check,
+                  expiry_info = exp_info)
+  return aclgen.render_filters(source_file)
+
+def create_filter_for_platform(platform, source_file, defs_directory, shade_check, exp_info):
+  p, f = os.path.split(source_file)
+  aclgen = AclGen(policy_directory = p,
+                  definitions_directory = defs_directory,
+                  output_directory = None,
+                  shade_check = shade_check,
+                  expiry_info = exp_info)
+  return aclgen.create_filter_for_platform(platform, source_file)
+
+
+########
+# Main
+
 def parse_args(command_line_args):
   """Populate flags from the command-line arguments."""
   _parser = OptionParser()
@@ -282,36 +318,6 @@ def parse_args(command_line_args):
     raise ValueError('no definitions supplied')
 
   return flags
-
-
-def load_and_render(base_dir, defs_directory, shade_check, exp_info, output_dir):
-  aclgen = AclGen(policy_directory = base_dir,
-                  definitions_directory = defs_directory,
-                  output_directory = output_dir,
-                  shade_check = shade_check,
-                  expiry_info = exp_info)
-  return aclgen.load_and_render()
-
-def filter_name(base_dir, source, suffix, output_directory):
-  return AclGen.filter_name(base_dir, source, suffix, output_directory)
-
-def render_filters(source_file, defs_directory, shade_check, exp_info, output_dir):
-  p, f = os.path.split(source_file)
-  aclgen = AclGen(policy_directory = p,
-                  definitions_directory = defs_directory,
-                  output_directory = output_dir,
-                  shade_check = shade_check,
-                  expiry_info = exp_info)
-  return aclgen.render_filters(source_file)
-
-def create_filter_for_platform(platform, source_file, defs_directory, shade_check, exp_info):
-  p, f = os.path.split(source_file)
-  aclgen = AclGen(policy_directory = p,
-                  definitions_directory = defs_directory,
-                  output_directory = None,
-                  shade_check = shade_check,
-                  expiry_info = exp_info)
-  return aclgen.create_filter_for_platform(platform, source_file)
 
 
 def main(args):
