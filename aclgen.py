@@ -83,8 +83,9 @@ class AclGen(object):
     self.shade_check = shade_check
     self.expiry_info = expiry_info
 
+    # A naming.Naming object created with self._create_defs()
+    self.__memoized_defs = None
 
-  _memoized_defs = {}
   def _create_defs(self):
     """Creates naming.Naming object using the contents of the supplied directory.
 
@@ -92,18 +93,17 @@ class AclGen(object):
     can be restricted to strings and ints, versus domain objects.  This promotes
     use of this module for other clients."""
 
-    if self.definitions_directory in self._memoized_defs:
-      return self._memoized_defs[self.definitions_directory]
+    if self.__memoized_defs is not None:
+      return self.__memoized_defs
 
     if not os.path.exists(self.definitions_directory):
       msg = 'missing defs directory {0}'.format(self.definitions_directory)
       raise ValueError(msg)
-    defs = naming.Naming(self.definitions_directory)
-    if not defs:
+    self.__memoized_defs = naming.Naming(self.definitions_directory)
+    if not self.__memoized_defs:
       raise ValueError('problem loading definitions')
 
-    self._memoized_defs[self.definitions_directory] = defs
-    return defs
+    return self.__memoized_defs
 
   def load_and_render(self):
     return self._do_load_and_render(self.policy_directory, self.policy_directory)
