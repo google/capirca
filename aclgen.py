@@ -85,39 +85,39 @@ class AclGen(object):
 
 
   _memoized_defs = {}
-  def _create_defs(self, defs_directory):
+  def _create_defs(self):
     """Creates naming.Naming object using the contents of the supplied directory.
 
     The created defs object is memoized so that the public API of this module
     can be restricted to strings and ints, versus domain objects.  This promotes
     use of this module for other clients."""
 
-    if defs_directory in self._memoized_defs:
-      return self._memoized_defs[defs_directory]
+    if self.definitions_directory in self._memoized_defs:
+      return self._memoized_defs[self.definitions_directory]
 
-    if not os.path.exists(defs_directory):
-      msg = 'missing defs directory {0}'.format(defs_directory)
+    if not os.path.exists(self.definitions_directory):
+      msg = 'missing defs directory {0}'.format(self.definitions_directory)
       raise ValueError(msg)
-    defs = naming.Naming(defs_directory)
+    defs = naming.Naming(self.definitions_directory)
     if not defs:
       raise ValueError('problem loading definitions')
 
-    self._memoized_defs[defs_directory] = defs
+    self._memoized_defs[self.definitions_directory] = defs
     return defs
 
-  def load_and_render(self, base_dir, defs_directory, shade_check, exp_info, output_dir):
-    return self._do_load_and_render(base_dir, base_dir, defs_directory, shade_check, exp_info, output_dir)
+  def load_and_render(self):
+    return self._do_load_and_render(self.policy_directory, self.policy_directory)
 
-  def _do_load_and_render(self, base_dir, curr_dir, defs_directory, shade_check, exp_info, output_dir):
+  def _do_load_and_render(self, base_dir, curr_dir):
     rendered = 0
     for dirfile in dircache.listdir(curr_dir):
       fname = os.path.join(curr_dir, dirfile)
       #logging.debug('load_and_render working with fname %s', fname)
       if os.path.isdir(fname):
-        rendered += self._do_load_and_render(base_dir, fname, defs_directory, shade_check, exp_info, output_dir)
+        rendered += self._do_load_and_render(base_dir, fname)
       elif fname.endswith('.pol'):
         #logging.debug('attempting to render_filters on fname %s', fname)
-        rendered += self._do_render_filters(base_dir, fname, defs_directory, shade_check, exp_info, output_dir)
+        rendered += self._do_render_filters(base_dir, fname)
     return rendered
 
   @staticmethod
@@ -157,22 +157,21 @@ class AclGen(object):
       output.write(filter_text)
 
 
-  def get_policy_obj(self, source_file, defs_directory, optimize, shade_check):
+  def get_policy_obj(self, source_file, optimize):
     """Memoized call to parse policy by file name.
 
     Returns parsed policy object.
     """
-    definitions_obj = self._create_defs(defs_directory)
-    return policyparser.CacheParseFile(source_file, definitions_obj, optimize,
-                                 shade_check=shade_check)
+    definitions_obj = self._create_defs()
+    return policyparser.CacheParseFile(source_file, definitions_obj, optimize, shade_check=self.shade_check)
 
 
-  def render_filters(self, source_file, defs_directory, shade_check, exp_info, output_dir):
+  def render_filters(self, source_file):
     base_dir = os.path.dirname(os.path.abspath(source_file))
-    return self._do_render_filters(base_dir, source_file, defs_directory, shade_check, exp_info, output_dir)
+    return self._do_render_filters(base_dir, source_file)
 
 
-  def create_filter_for_platform(self, platform, source_file, defs_directory, shade_check, exp_info):
+  def create_filter_for_platform(self, platform, source_file):
     """Render platform specific filter for a policy.
 
     Use the platform's renderer to render its filter, using its
@@ -203,18 +202,17 @@ class AclGen(object):
       raise policy.PolicyTargetPlatformInvalidError('unsupported platform {0}'.format(platform))
 
     optimized = this_platform['optimized']
-    pol = copy.deepcopy(self.get_policy_obj(source_file, defs_directory,
-                                       optimized, shade_check))
+    pol = copy.deepcopy(self.get_policy_obj(source_file, optimized))
 
     if platform not in pol.platforms:
       msg = 'platform {0} not in policy targets {1}'.format(platform, pol.platforms)
       raise policy.PolicyTargetPlatformInvalidError(msg)
 
     renderer = this_platform['renderer']
-    return renderer(pol, exp_info)
+    return renderer(pol, self.expiry_info)
 
 
-  def _do_render_filters(self, base_dir, source_file, defs_directory, shade_check, exp_info, output_dir):
+  def _do_render_filters(self, base_dir, source_file):
     """Render platform specfic filters for each target platform.
 
     For each target specified in each header of the policy, use that
@@ -232,16 +230,16 @@ class AclGen(object):
     """
 
     # Get a policy object from cache to determine headers within the policy file.
-    pol = self.get_policy_obj(source_file, defs_directory, True, shade_check)
+    pol = self.get_policy_obj(source_file, True)
 
     count = 0
 
     for header in pol.headers:
       for platform in header.platforms:
 
-        fw = self.create_filter_for_platform(platform, source_file, defs_directory, shade_check, exp_info)
+        fw = self.create_filter_for_platform(platform, source_file)
 
-        filter_file = AclGen.filter_name(base_dir, source_file, fw._SUFFIX, output_dir)
+        filter_file = AclGen.filter_name(base_dir, source_file, fw._SUFFIX, self.output_directory)
         filter_text = str(fw)
         self.do_output_filter(filter_text, filter_file)
         count += 1
@@ -292,7 +290,7 @@ def load_and_render(base_dir, defs_directory, shade_check, exp_info, output_dir)
                   output_directory = output_dir,
                   shade_check = shade_check,
                   expiry_info = exp_info)
-  return aclgen.load_and_render(base_dir, defs_directory, shade_check, exp_info, output_dir)
+  return aclgen.load_and_render()
 
 def filter_name(base_dir, source, suffix, output_directory):
   return AclGen.filter_name(base_dir, source, suffix, output_directory)
@@ -304,7 +302,7 @@ def render_filters(source_file, defs_directory, shade_check, exp_info, output_di
                   output_directory = output_dir,
                   shade_check = shade_check,
                   expiry_info = exp_info)
-  return aclgen.render_filters(source_file, defs_directory, shade_check, exp_info, output_dir)
+  return aclgen.render_filters(source_file)
 
 def create_filter_for_platform(platform, source_file, defs_directory, shade_check, exp_info):
   p, f = os.path.split(source_file)
@@ -313,7 +311,7 @@ def create_filter_for_platform(platform, source_file, defs_directory, shade_chec
                   output_directory = None,
                   shade_check = shade_check,
                   expiry_info = exp_info)
-  return aclgen.create_filter_for_platform(platform, source_file, defs_directory, shade_check, exp_info)
+  return aclgen.create_filter_for_platform(platform, source_file)
 
 
 def main(args):
@@ -327,12 +325,10 @@ def main(args):
 
   count = 0
   if FLAGS.policy_directory:
-    count = gen.load_and_render(FLAGS.policy_directory, FLAGS.definitions, FLAGS.shade_check,
-                            FLAGS.exp_info, FLAGS.output_directory)
+    count = gen.load_and_render()
 
   elif FLAGS.policy:
-    count = gen.render_filters(FLAGS.policy, FLAGS.definitions, FLAGS.shade_check,
-                           FLAGS.exp_info, FLAGS.output_directory)
+    count = gen.render_filters(FLAGS.policy)
 
   print '%d filters rendered' % count
 

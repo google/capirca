@@ -181,7 +181,7 @@ class AclGen_Create_filter_for_target(AclGen_Characterization_Test_Base):
     src = self.testpath('policies', 'sample_cisco_lab.pol')
     definitions = self.testpath('def')
     a = self.get_acl_gen()
-    fw = a.create_filter_for_platform('cisco', src, definitions, False, 2)
+    fw = a.create_filter_for_platform('cisco', src)
     actual_filter = str(fw)
     with open(self.testpath('filters_expected', 'sample_cisco_lab.acl'), 'r') as f:
       expected_filter = f.read()
@@ -190,14 +190,14 @@ class AclGen_Create_filter_for_target(AclGen_Characterization_Test_Base):
   def test_generating_filter_for_missing_platform_throws(self):
     a = self.get_acl_gen()
     with self.assertRaises(policy.PolicyTargetPlatformInvalidError):
-      a.create_filter_for_platform('missing', '', None, False, 2)
+      a.create_filter_for_platform('missing', '')
 
   def test_cannot_generate_filter_from_policy_for_platform_different_from_policy_header(self):
     a = self.get_acl_gen()
     src = self.testpath('policies', 'sample_cisco_lab.pol')
     definitions = self.testpath('def')
     with self.assertRaises(policy.PolicyTargetPlatformInvalidError):
-      a.create_filter_for_platform('juniper', src, definitions, False, 2)
+      a.create_filter_for_platform('juniper', src)
 
 
 def main():
