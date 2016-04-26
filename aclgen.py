@@ -61,6 +61,29 @@ class AclGen(object):
   Given inputs, generates ACLs to output stream or filesystem.
   """
 
+  def __init__(self,
+               policy_directory,
+               definitions_directory,
+               output_directory,
+               shade_check = False,
+               expiry_info = 2):
+    """Constructor.
+
+    Args:
+      policy_directory: string, path to the policies
+      definitions_directory: string, path to the definitions
+      output_directory: string, base directory for generated ACLs
+      shade_check: True/False, whether or not to do a shade check
+      expiry_info: int, expiry weeks.
+    """
+
+    self.policy_directory = policy_directory
+    self.definitions_directory = definitions_directory
+    self.output_directory = output_directory
+    self.shade_check = shade_check
+    self.expiry_info = expiry_info
+
+
   _memoized_defs = {}
   def _create_defs(self, defs_directory):
     """Creates naming.Naming object using the contents of the supplied directory.
@@ -264,25 +287,43 @@ def parse_args(command_line_args):
 
 
 def load_and_render(base_dir, defs_directory, shade_check, exp_info, output_dir):
-  aclgen = AclGen()
+  aclgen = AclGen(policy_directory = base_dir,
+                  definitions_directory = defs_directory,
+                  output_directory = output_dir,
+                  shade_check = shade_check,
+                  expiry_info = exp_info)
   return aclgen.load_and_render(base_dir, defs_directory, shade_check, exp_info, output_dir)
 
 def filter_name(base_dir, source, suffix, output_directory):
   return AclGen.filter_name(base_dir, source, suffix, output_directory)
 
 def render_filters(source_file, defs_directory, shade_check, exp_info, output_dir):
-  aclgen = AclGen()
+  p, f = os.path.split(source_file)
+  aclgen = AclGen(policy_directory = p,
+                  definitions_directory = defs_directory,
+                  output_directory = output_dir,
+                  shade_check = shade_check,
+                  expiry_info = exp_info)
   return aclgen.render_filters(source_file, defs_directory, shade_check, exp_info, output_dir)
 
 def create_filter_for_platform(platform, source_file, defs_directory, shade_check, exp_info):
-  aclgen = AclGen()
+  p, f = os.path.split(source_file)
+  aclgen = AclGen(policy_directory = p,
+                  definitions_directory = defs_directory,
+                  output_directory = None,
+                  shade_check = shade_check,
+                  expiry_info = exp_info)
   return aclgen.create_filter_for_platform(platform, source_file, defs_directory, shade_check, exp_info)
 
 
 def main(args):
   FLAGS = parse_args(args)
 
-  gen = AclGen()
+  gen = AclGen(policy_directory = FLAGS.policy_directory,
+               definitions_directory = FLAGS.definitions,
+               output_directory = FLAGS.output_directory,
+               shade_check = FLAGS.shade_check,
+               expiry_info = FLAGS.exp_info)
 
   count = 0
   if FLAGS.policy_directory:
