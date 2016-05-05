@@ -69,6 +69,8 @@ def parse_args(command_line_args):
   _parser.add_option('--debug', help='enable debug-level logging', dest='debug')
   _parser.add_option('-s', '--shade_checking', help='Enable shade checking',
                      action="store_true", dest="shade_check", default=False)
+  _parser.add_option('', '--no-rev-info', help='Suppress revision information',
+                     action="store_false", dest="add_revision_info", default=True)
   _parser.add_option('-e', '--exp_info', type='int', action='store',
                      dest='exp_info', default=2,
                      help='Weeks in advance to notify that a term will expire')
@@ -77,25 +79,47 @@ def parse_args(command_line_args):
   return flags
 
 
-def load_and_render(base_dir, defs, shade_check, exp_info, output_dir):
+def load_and_render(base_dir, defs, shade_check, exp_info, output_dir, add_revision_info):
+  return _do_load_and_render(base_dir, base_dir, defs, shade_check, exp_info, output_dir, add_revision_info)
+
+def _do_load_and_render(base_dir, curr_dir, defs, shade_check, exp_info, output_dir, add_revision_info):
   rendered = 0
-  for dirfile in dircache.listdir(base_dir):
-    fname = os.path.join(base_dir, dirfile)
+  for dirfile in dircache.listdir(curr_dir):
+    fname = os.path.join(curr_dir, dirfile)
     #logging.debug('load_and_render working with fname %s', fname)
     if os.path.isdir(fname):
-      rendered += load_and_render(fname, defs, shade_check, exp_info, output_dir)
+      rendered += _do_load_and_render(base_dir, fname, defs, shade_check, exp_info, output_dir, add_revision_info)
     elif fname.endswith('.pol'):
       #logging.debug('attempting to render_filters on fname %s', fname)
-      rendered += render_filters(fname, defs, shade_check, exp_info, output_dir)
+      rendered += _do_render_filters(base_dir, fname, defs, shade_check, exp_info, output_dir, add_revision_info)
   return rendered
 
 
-def filter_name(source, suffix, output_directory):
-  source = source.lstrip('./')
-  o_dir = '/'.join([output_directory] + source.split('/')[1:-1])
-  fname = '%s%s' % (".".join(os.path.basename(source).split('.')[0:-1]),
-                    suffix)
-  return os.path.join(o_dir, fname)
+def filter_name(base_dir, source, suffix, output_directory):
+  """Create an output filename for the filter.
+
+  The output filename is such that the directory structure
+  of `output_directory` matches the directory structure of
+  the `source` relative to the `base_dir`.  For example,
+  with the following:
+
+  - `base_dir` = 'hi/there/'
+  - source = 'hi/there/SOME/file.txt'
+  - suffix = '.suff'
+  - output_directory 'newlocation'
+
+  the returned directory would be
+
+    'newlocation/SOME/file.suff.'
+  """
+  abs_source = os.path.abspath(source)
+  abs_base = os.path.abspath(base_dir) + '/'
+  if not abs_source.startswith(abs_base):
+    raise ValueError('{0} is not in base dir {1}'.format(abs_source, abs_base))
+  rel_from_base = abs_source.replace(abs_base, '')
+  reldir, fname = os.path.split(rel_from_base)
+  fname = '%s%s' % ('.'.join(fname.split('.')[0:-1]), suffix)
+  return os.path.join(output_directory, reldir, fname)
 
 
 def do_output_filter(filter_text, filter_file):
@@ -103,7 +127,6 @@ def do_output_filter(filter_text, filter_file):
     os.makedirs(os.path.dirname(filter_file))
   output = open(filter_file, 'w')
   if output:
-    filter_text = revision_tag_handler(filter_file, filter_text)
     print 'writing %s' % filter_file
     output.write(filter_text)
 
@@ -131,13 +154,22 @@ def get_policy_obj(source_file, definitions_obj, optimize, shade_check):
                                shade_check=shade_check)
 
 
-def render_filters(source_file, definitions_obj, shade_check, exp_info, output_dir):
+def render_filters(source_file, definitions_obj, shade_check, exp_info, output_dir, add_revision_info):
+  base_dir = os.path.dirname(os.path.abspath(source_file))
+  return _do_render_filters(base_dir, source_file, definitions_obj, shade_check, exp_info, output_dir, add_revision_info)
+
+def _do_render_filters(base_dir, source_file, definitions_obj, shade_check, exp_info, output_dir, add_revision_info):
   """Render platform specfic filters for each target platform.
 
   For each target specified in each header of the policy, use that
   platforms renderer to render its platform specific filter, using its
   own separate copy of the policy object and with optional, target
   specific attributes such as optimization and expiration attributes.
+
+  `base_dir` is the base dir of the policy file `source_file`.  It is
+  required here to calculate relative path from the `base_dir` to the
+  `source_file`.  This relative path is appended to the `output_dir`
+  so that files are appropriately placed when written.
 
   Output the rendered filters for each target platform.
   Return the rendered filter count.
@@ -181,8 +213,13 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info, output_d
       renderer = this_platform['renderer']
       # Render.
       fw = renderer(pol, exp_info)
+
       # Output.
-      do_output_filter(str(fw), filter_name(source_file, fw._SUFFIX, output_dir))
+      filter_file = filter_name(base_dir, source_file, fw._SUFFIX, output_dir)
+      filter_text = str(fw)
+      if add_revision_info:
+        filter_text = revision_tag_handler(filter_file, filter_text)
+      do_output_filter(filter_text, filter_file)
       # Count.
       count += 1
 
@@ -213,11 +250,11 @@ def main(args):
   count = 0
   if FLAGS.policy_directory:
     count = load_and_render(FLAGS.policy_directory, defs, FLAGS.shade_check,
-                            FLAGS.exp_info, FLAGS.output_directory)
+                            FLAGS.exp_info, FLAGS.output_directory, FLAGS.add_revision_info)
 
   elif FLAGS.policy:
     count = render_filters(FLAGS.policy, defs, FLAGS.shade_check,
-                           FLAGS.exp_info, FLAGS.output_directory)
+                           FLAGS.exp_info, FLAGS.output_directory, FLAGS.add_revision_info)
 
   print '%d filters rendered' % count
 
