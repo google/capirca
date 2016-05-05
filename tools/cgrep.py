@@ -11,7 +11,7 @@
 #   To find the difference and union of tokens 'FOO' and 'BAR' use
 #   $ cgrep.py -c FOO BAR
 #
-__author__ = "watson@google.com (Tony Watson)"
+
 
 import sys
 sys.path.append('../')

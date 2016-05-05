@@ -17,7 +17,7 @@
 
 """Brocade generator."""
 
-__author__ = 'ryanshea@google.com (Ryan Shea)'
+
 
 import cisco
 

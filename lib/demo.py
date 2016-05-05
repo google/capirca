@@ -16,7 +16,7 @@
 #
 """Demo generator for capirca."""
 
-__author__ = 'robankeny@google.com (Robert Ankeny)'
+
 
 
 import datetime

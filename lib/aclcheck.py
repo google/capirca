@@ -17,7 +17,7 @@
 
 """Check where hosts, ports and protocols are matched in a capirca policy."""
 
-__author__ = 'watson@google.com (Tony Watson)'
+
 
 import logging
 import sys

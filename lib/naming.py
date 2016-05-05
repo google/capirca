@@ -46,7 +46,7 @@ DNS = 53/tcp
 
 """
 
-__author__ = 'watson@google.com (Tony Watson)'
+
 
 import glob
 

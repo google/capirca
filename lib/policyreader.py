@@ -26,7 +26,7 @@ TODO: This library is currently incomplete, and does not allow access to
       every argument of a policy term.
 """
 
-__author__ = 'watson@google.com (Tony Watson)'
+
 
 import naming
 

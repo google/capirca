@@ -17,7 +17,7 @@
 
 """A subclass of the ipaddr library that includes comments for ipaddr objects."""
 
-__author__ = 'watson@google.com (Tony Watson)'
+
 
 from third_party import ipaddr
 

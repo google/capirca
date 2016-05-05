@@ -20,7 +20,7 @@
 BETA: This only generates netdestination lists for hosts.
 """
 
-__author__ = 'cburgoyne@google.com (Chris Burgoyne)'
+
 
 
 import aclgenerator

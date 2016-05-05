@@ -29,4 +29,4 @@ __all__ = ['naming', 'policy', 'cisco', 'juniper', 'iptables',
            'policyreader', 'aclcheck', 'aclgenerator', 'nacaddr',
            'packetfilter', 'port', 'speedway', 'gce']
 
-__author__ = 'Paul (Tony) Watson (watson@gmail.com / watson@google.com)'
+

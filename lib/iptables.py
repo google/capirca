@@ -15,7 +15,7 @@
 
 """Iptables generator."""
 
-__author__ = 'watson@google.com (Tony Watson)'
+
 
 import datetime
 import logging

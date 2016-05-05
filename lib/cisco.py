@@ -18,7 +18,7 @@
 """Cisco generator."""
 
 __author__ = 'pmoody@google.com (Peter Moody)'
-__author__ = 'watson@google.com (Tony Watson)'
+
 
 import datetime
 import logging

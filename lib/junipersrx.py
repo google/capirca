@@ -18,7 +18,7 @@
 """SRX generator."""
 # pylint: disable-msg=W0231
 
-__author__ = 'robankeny@google.com (Robert Ankeny)'
+
 
 import collections
 import datetime

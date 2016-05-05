@@ -17,7 +17,7 @@
 
 """Common library for network ports and protocol handling."""
 
-__author__ = 'watson@google.com (Tony Watson)'
+
 
 
 class Error(Exception):

@@ -4,7 +4,7 @@
 
 """Cisco ASA renderer."""
 
-__author__ = 'antony@slac.stanford.edu (Antonio Ceseracciu)'
+
 
 import datetime
 import socket

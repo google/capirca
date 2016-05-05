@@ -19,7 +19,7 @@
    This is a subclass of Iptables library.  The primary difference is
    that this library produced 'iptable-restore' compatible output."""
 
-__author__ = 'watson@google.com (Tony Watson)'
+
 
 from string import Template
 import iptables

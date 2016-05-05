@@ -17,7 +17,7 @@
 
 """Command line interface to aclcheck library."""
 
-__author__ = 'watson@google.com (Tony Watson)'
+
 
 from optparse import OptionParser
 import sys

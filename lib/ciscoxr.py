@@ -17,7 +17,7 @@
 
 """Cisco IOS-XR filter renderer."""
 
-__author__ = 'robankeny@google.com (Robert Ankeny)'
+
 
 import cisco
 

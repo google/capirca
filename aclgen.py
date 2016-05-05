@@ -19,7 +19,7 @@
 # juniper firewall filters.
 
 
-__author__ = 'watson@google.com (Tony Watson)'
+
 
 # system imports
 import copy
