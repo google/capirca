@@ -34,6 +34,7 @@ import sys
 from lib import naming
 from lib import policy
 from lib import policyparser
+from lib import yamlpolicyparser
 
 # renderers
 from lib import arista
@@ -66,7 +67,8 @@ class AclGen(object):
                definitions_directory,
                output_directory,
                shade_check = False,
-               expiry_info = 2):
+               expiry_info = 2,
+               policy_format = 'capirca'):
     """Constructor.
 
     Args:
@@ -82,6 +84,17 @@ class AclGen(object):
     self.output_directory = output_directory
     self.shade_check = shade_check
     self.expiry_info = expiry_info
+
+    format_dict = {
+      'yml': ('.yml', yamlpolicyparser),
+      'capirca': ('.pol', policyparser)
+    }
+    valid_formats = format_dict.keys()
+    if policy_format not in valid_formats:
+      raise ValueError('invalid format ' + policy_format)
+    tup = format_dict[policy_format]
+    self.policy_file_extension = tup[0]
+    self.policyparser_module = tup[1]
 
     # A naming.Naming object created with self._create_defs()
     self.__memoized_defs = None
@@ -115,7 +128,7 @@ class AclGen(object):
       #logging.debug('load_and_render working with fname %s', fname)
       if os.path.isdir(fname):
         rendered += self._do_load_and_render(base_dir, fname)
-      elif fname.endswith('.pol'):
+      elif fname.endswith(self.policy_file_extension):
         #logging.debug('attempting to render_filters on fname %s', fname)
         rendered += self._do_render_filters(base_dir, fname)
     return rendered
@@ -156,14 +169,13 @@ class AclGen(object):
       print 'writing %s' % filter_file
       output.write(filter_text)
 
-
   def get_policy_obj(self, source_file, optimize):
     """Memoized call to parse policy by file name.
 
     Returns parsed policy object.
     """
     definitions_obj = self._create_defs()
-    return policyparser.CacheParseFile(source_file, definitions_obj, optimize, base_dir=self.policy_directory, shade_check=self.shade_check)
+    return self.policyparser_module.CacheParseFile(source_file, definitions_obj, optimize, base_dir=self.policy_directory, shade_check=self.shade_check)
 
 
   def render_filters(self, source_file):
@@ -231,7 +243,6 @@ class AclGen(object):
 
     # Get a policy object from cache to determine headers within the policy file.
     pol = self.get_policy_obj(source_file, True)
-
     count = 0
 
     for header in pol.headers:
@@ -296,6 +307,9 @@ def parse_args(command_line_args):
   _parser.add_option('-p', '--pol',
                      help='policy file (incompatible with poldir)',
                      dest='policy')
+  _parser.add_option('', '--format', dest='policy_format',
+                     help='policy file format (yml or capirca)',
+                     default = 'capirca')
   _parser.add_option('--debug', help='enable debug-level logging', dest='debug')
   _parser.add_option('-s', '--shade_checking', help='Enable shade checking',
                      action="store_true", dest="shade_check", default=False)
@@ -317,6 +331,11 @@ def parse_args(command_line_args):
   if not flags.definitions:
     raise ValueError('no definitions supplied')
 
+  valid_formats = ('yml', 'capirca')
+  if flags.policy_format not in valid_formats:
+    msg = 'invalid --format; allowed values are ({0})'
+    msg = msg.format(', '.join(valid_formats))
+    raise ValueError(msg)
   return flags
 
 
@@ -327,7 +346,9 @@ def main(args):
                definitions_directory = FLAGS.definitions,
                output_directory = FLAGS.output_directory,
                shade_check = FLAGS.shade_check,
-               expiry_info = FLAGS.exp_info)
+               expiry_info = FLAGS.exp_info,
+               policy_format = FLAGS.policy_format
+  )
 
   count = 0
   if FLAGS.policy_directory:
