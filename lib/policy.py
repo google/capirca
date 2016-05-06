@@ -863,6 +863,7 @@ class Header(object):
   def __init__(self):
     self.target = []
     self.comment = []
+    self.Name = None
 
   def __set_target(self, value):
     self.__target = value
@@ -909,7 +910,7 @@ class Header(object):
     return []
 
   def FilterName(self, platform):
-    """Given a filter_type, return the filter name.
+    """Returns self.Name if set, or given a filter_type, return the filter name.
 
     Args:
       platform: string
@@ -919,7 +920,10 @@ class Header(object):
 
     Notes:
       !! Deprecated in favor of Header.FilterOptions(platform) !!
+      # TODO fix: remove this deprecated function.
     """
+    if self.Name is not None:
+      return self.Name
     for target in self.target:
       if target.platform == platform:
         if target.options:
