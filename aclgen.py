@@ -163,7 +163,7 @@ class AclGen(object):
     Returns parsed policy object.
     """
     definitions_obj = self._create_defs()
-    return policyparser.CacheParseFile(source_file, definitions_obj, optimize, shade_check=self.shade_check)
+    return policyparser.CacheParseFile(source_file, definitions_obj, optimize, base_dir=self.policy_directory, shade_check=self.shade_check)
 
 
   def render_filters(self, source_file):
