@@ -1,0 +1,20 @@
+name: sample
+address-family: ipv4
+
+targets:
+  - ipset OUTPUT DROP
+
+terms:
+
+  - name: deny-to-reserved
+    destination-address: RESERVED
+    action: deny
+
+  - name: deny-to-bogons
+    destination-address: RESERVED
+    action: deny
+
+  - name: allow-web-to-mail
+    source-address: WEB_SERVERS
+    destination-address: MAIL_SERVERS
+    action: accept
