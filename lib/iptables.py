@@ -675,7 +675,7 @@ class Iptables(aclgenerator.ACLGenerator):
         continue
 
       filter_options = header.FilterOptions(self._PLATFORM)[1:]
-      filter_name = header.FilterName(self._PLATFORM)
+      filter_name = header.FilterOptions(self._PLATFORM)[0]
 
       self._WarnIfCustomTarget(filter_name)
 
@@ -775,7 +775,7 @@ class Iptables(aclgenerator.ACLGenerator):
         ) in self.iptables_policies:
       # Add comments for this filter
       target.append('# %s %s Policy' % (pretty_platform,
-                                        header.FilterName(self._PLATFORM)))
+                                        header.FilterOptions(self._PLATFORM)[0]))
 
       # reformat long text comments, if needed
       comments = aclgenerator.WrapWords(header.comment, 70)
