@@ -39,6 +39,10 @@ class HeaderDuplicateTargetPlatformError(Error):
   """Same target platform added to Header, resulting in ambiguity for options."""
 
 
+class TermInvalidIcmpType(Error):
+  """Error when a term has invalid icmp-types specified."""
+
+
 # classes for storing the object types in the policy files.
 class Policy(object):
   """The policy object contains everything found in a given policy file."""
