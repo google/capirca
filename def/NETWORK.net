@@ -7,7 +7,7 @@ RFC1918 = 10.0.0.0/8      # non-public
 
 INTERNAL = RFC1918
 
-LOOPBACK = 127.0.0.0/8  # loopback
+LOOPBACK = 127.0.0.1/32  # loopback
            ::1/128       # ipv6 loopback
 
 RFC_3330 = 169.254.0.0/16  # special use IPv4 addresses - netdeploy
