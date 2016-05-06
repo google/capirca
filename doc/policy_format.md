@@ -1,22 +1,48 @@
 # Introduction
 
-The access control policy describes the desired network security policy through the use of a high-level language that uses keywords and tokens. Tokens are derived from the naming libraries import of definition files.
+The access control policy describes the desired network security
+policy through the use of a high-level language that uses keywords and
+tokens. Tokens are derived from the naming libraries import of
+definition files.
+
+Policies can be written in two formats:
+
+* the original Capirca-style custom grammar, which is parsed by
+  [PLY](https://github.com/dabeaz/ply), a Python implementation of lex
+  and yacc.
+* YAML
+
+This document describes the Caprirca grammar.  Most of what is written
+here is applicable for the YAML grammar as well, differences are
+discussed in the [YAML policy file format](./policy_format_yml.md)
+documentation.
 
 # Basic Policy File Format
 
-A policy file consists of one or more filters, with each filter containing one or more terms. Each term specifies basic network filter information, such as addresses, ports, protocols and actions.
+A policy file consists of one or more filters, with each filter
+containing one or more terms. Each term specifies basic network filter
+information, such as addresses, ports, protocols and actions.
 
-A policy file consists of one or more header sections, with each header section being followed by one or more terms.
+A policy file consists of one or more header sections, with each
+header section being followed by one or more terms.
 
-A header section is typically used to specify a filter for a given direction, such as an INPUT filter on Iptables. A second header section will typically be included in the policy to specify the OUTPUT filter.
+A header section is typically used to specify a filter for a given
+direction, such as an INPUT filter on Iptables. A second header
+section will typically be included in the policy to specify the OUTPUT
+filter.
 
-In addition, the policy language support "include files" which inject the text from the included file into the policy at the specified location. For more details, see the Includes section.
+In addition, the policy language support "include files" which inject
+the text from the included file into the policy at the specified
+location. For more details, see the Includes section.
 
 ## Header Section
 
-Each filter is identified with a header section. The header section is used to define the type of filter, a descriptor or name, direction (if applicable) and format (ipv4/ipv6).
+Each filter is identified with a header section. The header section is
+used to define the type of filter, a descriptor or name, direction (if
+applicable) and format (ipv4/ipv6).
 
-For example, the following simple header defines a filter that can generate output for 'juniper', 'cisco' and 'iptables' formats.
+For example, the following simple header defines a filter that can
+generate output for 'juniper', 'cisco' and 'iptables' formats.
 
 ```
 header {
@@ -28,13 +54,23 @@ header {
 }
 ```
 
-Notice that the first target has 2 arguments: "juniper" and "edge_filter". The first argument specifies that the filter can be rendered for Juniper JCLs, and that the output filter should be called "edge_filter".
+Notice that the first target has 2 arguments: "juniper" and
+"edge_filter". The first argument specifies that the filter can be
+rendered for Juniper JCLs, and that the output filter should be called
+"edge_filter".
 
-The second target also has 2 arguments: "speedway" and "INPUT". Since Speedway/Iptables has specific inherent filters, such as INPUT, OUTPUT and FORWARD, the target specification for iptables usually points to one of these filters although a custom chain can be specified (usually for combining with other filters rules through the use of a jump from one of the default filters)
+The second target also has 2 arguments: "speedway" and "INPUT". Since
+Speedway/Iptables has specific inherent filters, such as INPUT, OUTPUT
+and FORWARD, the target specification for iptables usually points to
+one of these filters although a custom chain can be specified (usually
+for combining with other filters rules through the use of a jump from
+one of the default filters)
 
-Likewise, the 4th target, "cisco" simply specifies the name of the access control list to be generated.
+Likewise, the 4th target, "cisco" simply specifies the name of the
+access control list to be generated.
 
-Each target platform may have different possible arguments, which are detailed in the following subsections.
+Each target platform may have different possible arguments, which are
+detailed in the following subsections.
 
 ### Juniper
 
@@ -45,13 +81,16 @@ target:: juniper [filter name] {inet|inet6|bridge}
 ```
 
 * filter name: defines the name of the juniper filter.
-* inet: specifies the output should be for IPv4 only filters. This is the default format.
+* inet: specifies the output should be for IPv4 only filters. This is
+  the default format.
 * inet6: specifies the output be for IPv6 only filters.
 * bridge: specifies the output should render a Juniper bridge filter.
 
-When inet4 or inet6 is specified, naming tokens with both IPv4 and IPv6 filters will be rendered using only the specified addresses.
+When inet4 or inet6 is specified, naming tokens with both IPv4 and
+IPv6 filters will be rendered using only the specified addresses.
 
-The default format is inet4, and is implied if not other argument is given.
+The default format is inet4, and is implied if not other argument is
+given.
 
 ### Cisco
 
@@ -62,19 +101,28 @@ target:: cisco [filter name] {extended|standard|object-group|inet6|mixed}
 ```
 
 * filter name: defines the name or number of the cisco filter.
-* extended: specifies that the output should be an extended access list, and the filter name * should be non-numeric. This is the default option.
-* standard: specifies that the output should be a standard access list, and the filter name * should be numeric and in the range of 1-99.
-* object-group: specifies this is a cisco extended access list, and that object-groups should be used for ports and addresses.
+* extended: specifies that the output should be an extended access
+  list, and the filter name should be non-numeric. This is the
+  default option.
+* standard: specifies that the output should be a standard access
+  list, and the filter name * should be numeric and in the range of
+  1-99.
+* object-group: specifies this is a cisco extended access list, and
+  that object-groups should be used for ports and addresses.
 * inet6: specifies the output be for IPv6 only filters.
 * mixed: specifies output will include both IPv6 and IPv4 filters.
 
-When inet4 or inet6 is specified, naming tokens with both IPv4 and IPv6 filters will be rendered using only the specified addresses.
+When inet4 or inet6 is specified, naming tokens with both IPv4 and
+IPv6 filters will be rendered using only the specified addresses.
 
-The default format is inet4, and is implied if not other argument is given.
+The default format is inet4, and is implied if not other argument is
+given.
 
 ### Iptables
 
-NOTE: Iptables produces output that must be passed, line by line, to the 'iptables/ip6tables' command line. For 'iptables-restore' compatible output, please use the Speedway generator.
+NOTE: Iptables produces output that must be passed, line by line, to
+the 'iptables/ip6tables' command line. For 'iptables-restore'
+compatible output, please use the Speedway generator.
 
 The Iptables header designation has the following format:
 
@@ -85,17 +133,26 @@ target:: iptables [INPUT|OUTPUT|FORWARD|custom] {ACCEPT|DROP} {truncatenames} {n
 * INPUT: apply the terms to the input filter.
 * OUTPUT: apply the terms to the output filter.
 * FORWARD: apply the terms to the forwarding filter.
-* custom: create the terms under a custom filter name, which must then be linked/jumped to from one of the default filters (e.g. iptables -A input -j custom)
-* ACCEPT: specifies that the default policy on the filter should be 'accept'.
-* DROP: specifies that the default policy on the filter should be to 'drop'.
-* inet: specifies that the resulting filter should only render IPv4 addresses.
-* inet6: specifies that the resulting filter should only render IPv6 addresses.
-* truncatenames: specifies to abbreviate term names if necessary (see lib/iptables.py:CheckTermLength for abbreviation table)
-* nostate: specifies to produce 'stateless' filter output (e.g. no connection tracking)
+* custom: create the terms under a custom filter name, which must then
+  be linked/jumped to from one of the default filters (e.g. iptables
+  -A input -j custom)
+* ACCEPT: specifies that the default policy on the filter should be
+  'accept'.
+* DROP: specifies that the default policy on the filter should be to
+  'drop'.
+* inet: specifies that the resulting filter should only render IPv4
+  addresses.
+* inet6: specifies that the resulting filter should only render IPv6
+  addresses.
+* truncatenames: specifies to abbreviate term names if necessary (see
+  lib/iptables.py:CheckTermLength for abbreviation table)
+* nostate: specifies to produce 'stateless' filter output (e.g. no
+  connection tracking)
 
 ### Speedway
 
-NOTE: Speedway produces Iptables filtering output that is suitable for passing to the 'iptables-restore' command.
+NOTE: Speedway produces Iptables filtering output that is suitable for
+passing to the 'iptables-restore' command.
 
 The Speedway header designation has the following format:
 
@@ -106,13 +163,21 @@ target:: speedway [INPUT|OUTPUT|FORWARD|custom] {ACCEPT|DROP} {truncatenames} {n
 * INPUT: apply the terms to the input filter.
 * OUTPUT: apply the terms to the output filter.
 * FORWARD: apply the terms to the forwarding filter.
-* custom: create the terms under a custom filter name, which must then be linked/jumped to from one of the default filters (e.g. iptables -A input -j custom)
-* ACCEPT: specifies that the default policy on the filter should be 'accept'.
-* DROP: specifies that the default policy on the filter should be to 'drop'.
-* inet: specifies that the resulting filter should only render IPv4 addresses.
-* inet6: specifies that the resulting filter should only render IPv6 addresses.
-* truncatenames: specifies to abbreviate term names if necessary (see lib/iptables.py:CheckTermLength for abbreviation table)
-* nostate: specifies to produce 'stateless' filter output (e.g. no connection tracking)
+* custom: create the terms under a custom filter name, which must then
+  be linked/jumped to from one of the default filters (e.g. iptables
+  -A input -j custom)
+* ACCEPT: specifies that the default policy on the filter should be
+  'accept'.
+* DROP: specifies that the default policy on the filter should be to
+  'drop'.
+* inet: specifies that the resulting filter should only render IPv4
+  addresses.
+* inet6: specifies that the resulting filter should only render IPv6
+  addresses.
+* truncatenames: specifies to abbreviate term names if necessary (see
+  lib/iptables.py:CheckTermLength for abbreviation table)
+* nostate: specifies to produce 'stateless' filter output (e.g. no
+  connection tracking)
 
 ### NSX
 
@@ -124,21 +189,36 @@ target:: nsxv {inet|inet6|mixed} [section-id]
 
 * inet: specifies that the resulting filter should only render IPv4 addresses.
 * inet6: specifies that the resulting filter should only render IPv6 addresses.
-* mixed: specifies that the resulting filter should render both IPv4 and IPv6 addresses.
-(Required keywords option and verbatim are not supported in NSX)
+* mixed: specifies that the resulting filter should render both IPv4
+and IPv6 addresses.  (Required keywords option and verbatim are not
+supported in NSX)
 
 
 ## Terms Section
 
-Terms defines access control rules within a filter. Once the filter is defined in the header sections, it is followed by one or more terms. Terms are enclosed in brackets and use keywords to specify the functionality of a specific access control.
+Terms defines access control rules within a filter. Once the filter is
+defined in the header sections, it is followed by one or more
+terms. Terms are enclosed in brackets and use keywords to specify the
+functionality of a specific access control.
 
-A term section begins with the keyword `term`, followed by a term name. Opening and closing brackets follow, which include the keywords and tokens to define the matching and action of the access control term.
+A term section begins with the keyword `term`, followed by a term
+name. Opening and closing brackets follow, which include the keywords
+and tokens to define the matching and action of the access control
+term.
 
-The keywords fall into two categories, those are are required to be supported by all output generators, and those that are optionally supported by each generator. Optional keywords are intended to provide additional flexibility when developing policies on a single target platform.
+The keywords fall into two categories, those are are required to be
+supported by all output generators, and those that are optionally
+supported by each generator. Optional keywords are intended to provide
+additional flexibility when developing policies on a single target
+platform.
 
 NOTE: Some generators may silently ignore optional keyword tokens which they do not support.
 
-WARNING: When developing filters that are intended to be rendered across multiple generators (cisco, iptables & juniper for example) it is strongly recommended to only use required keyword tokens in the policy terms. This will help ensure each platform's rendered filter will contain compatible security policies.
+WARNING: When developing filters that are intended to be rendered
+across multiple generators (cisco, iptables & juniper for example) it
+is strongly recommended to only use required keyword tokens in the
+policy terms. This will help ensure each platform's rendered filter
+will contain compatible security policies.
 
 ### Keywords
 
@@ -186,7 +266,9 @@ The following are keywords that can be optionally supported by output generators
 
 ### Term Examples
 
-The following are examples of how to construct a term, and assumes that naming definition tokens used have been defined in the definitions files.
+The following are examples of how to construct a term, and assumes
+that naming definition tokens used have been defined in the
+definitions files.
 
 #### Block incoming bogons and spoofed traffic:
 
@@ -223,7 +305,12 @@ term permit-dns-tcp-replies {
 
 #### Permit All Corporate Networks, Except New York, to FTP Server:
 
-This will "subtract" the CORP_NYC_NETBLOCK from the CORP_NETBLOCKS token. For example, assume CORP_NETBLOCKS includes 200.0.0.0/20, and CORP_NYC_NETBLOCK is defined as 200.2.0.0/24. The source-exclude will remove the NYC netblock from the permitted source addresses. If the excluded address is not contained with the source address, nothing is changed.
+This will "subtract" the CORP_NYC_NETBLOCK from the CORP_NETBLOCKS
+token. For example, assume CORP_NETBLOCKS includes 200.0.0.0/20, and
+CORP_NYC_NETBLOCK is defined as 200.2.0.0/24. The source-exclude will
+remove the NYC netblock from the permitted source addresses. If the
+excluded address is not contained with the source address, nothing is
+changed.
 
 ```
 term allow-inbound-ftp-from-corp {
@@ -237,9 +324,13 @@ term allow-inbound-ftp-from-corp {
 
 ### Includes
 
-The policy language supports the use of `#include` statements. An include can be used to avoid duplication of commonly used text, such as a group of terms that permit or block specific types of traffic.
+The policy language supports the use of `#include` statements. An
+include can be used to avoid duplication of commonly used text, such
+as a group of terms that permit or block specific types of traffic.
 
-An include directive will result in the contents of the included file being injected into the current policy at the exact location of the include directive.
+An include directive will result in the contents of the included file
+being injected into the current policy at the exact location of the
+include directive.
 
 The include directive has the following format:
 
@@ -247,11 +338,15 @@ The include directive has the following format:
 #include '/includes/untrusted-networks-blocking.inc'
 ```
 
-The .inc file extension and "include" directory path are not required, but typically used to help differentiate from typical policy files.
+The .inc file extension and "include" directory path are not required,
+but typically used to help differentiate from typical policy files.
 
 # Example Policy File
 
-Below is an example policy file for a Juniper target platform. It contains two filters, each with a handful of terms. This examples assumes that the network and service naming definition tokens have been defined.
+Below is an example policy file for a Juniper target platform. It
+contains two filters, each with a handful of terms. This examples
+assumes that the network and service naming definition tokens have
+been defined.
 
 ```
 header {
@@ -309,7 +404,8 @@ term default-accept {
 
 # ICMP TYPES
 
-The following are the list of icmp-type specifications which can be used with the 'icmp-type::' policy token.
+The following are the list of icmp-type specifications which can be
+used with the 'icmp-type::' policy token.
 
 ```
 IPv4
