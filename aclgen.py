@@ -47,6 +47,7 @@ from lib import ipset
 from lib import speedway
 from lib import juniper
 from lib import junipersrx
+from lib import paloaltofw
 from lib import packetfilter
 from lib import demo
 from lib import nsxv
@@ -159,6 +160,7 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info, output_d
     'packetfilter': {'optimized': True, 'renderer': packetfilter.PacketFilter},
     'speedway': {'optimized': True, 'renderer': speedway.Speedway},
     'srx': {'optimized': False, 'renderer': junipersrx.JuniperSRX},
+    'paloalto': {'optimized': False, 'renderer': paloaltofw.PaloAltoFW},
   }
 
   # Get a policy object from cache to determine headers within the policy file.
