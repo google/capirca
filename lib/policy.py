@@ -27,8 +27,8 @@ import logging
 import nacaddr
 import naming
 
-from third_party.ply import lex
-from third_party.ply import yacc
+from ply import lex
+from ply import yacc
 
 
 DEFINITIONS = None
