@@ -81,10 +81,6 @@ class TermNoActionError(Error):
   """Error when a term hasn't defined an action."""
 
 
-class TermInvalidIcmpType(Error):
-  """Error when a term has invalid icmp-types specified."""
-
-
 class InvalidTermActionError(Error):
   """Error when an action is invalid."""
 

@@ -8,3 +8,4 @@ build/
 filters/sample_*
 def/AUTOGEN.net
 test/characterization_data/filters_actual
+test/yaml_policies/filters_actual
