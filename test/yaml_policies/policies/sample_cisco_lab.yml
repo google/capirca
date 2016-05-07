@@ -1,9 +1,6 @@
 name: allowtointernet
 address-family: ipv4
 
-# TODO docs: add notes about YML format.
-# refs: http://stackoverflow.com/questions/3790454/in-yaml-how-do-i-break-a-string-over-multiple-lines
-
 comment: |-
   Denies all traffic to internal IPs except established tcp replies.
   Also denies access to certain public allocations.
@@ -11,11 +8,8 @@ comment: |-
   not well trusted, but allowing internal users to access.
   Apply to ingress interface (to filter traffic coming from lab)
 
-# TODO docs: some things should be stored as arrays.
 targets:
   - cisco
-
-# TODO docs: specify which elements can be stored as comma-delimited strings
 
 terms:
 
