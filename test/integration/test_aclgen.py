@@ -185,7 +185,12 @@ class AclGen_Create_filter_for_target(AclGen_Characterization_Test_Base):
     actual_filter = str(fw)
     with open(self.testpath('filters_expected', 'sample_cisco_lab.acl'), 'r') as f:
       expected_filter = f.read()
-    self.assertEquals(actual_filter, expected_filter)
+
+    # If different, save for manual check.
+    if (actual_filter != expected_filter):
+      with open(self.testpath('filters_actual', 'sample_cisco_lab.acl'), 'w') as f:
+        f.write(actual_filter)
+    self.assertEqual(actual_filter, expected_filter)
 
   def test_generating_filter_for_missing_platform_throws(self):
     a = self.get_acl_gen()
