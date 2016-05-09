@@ -386,7 +386,7 @@ class Term(aclgenerator.Term):
       if self._PLATFORM in self.term.platform_exclude:
         return ''
 
-    ret_str = ['']
+    ret_str = ['\n']
 
     # Don't render icmpv6 protocol terms under inet, or icmp under inet6
     if (
@@ -873,6 +873,9 @@ class Cisco(aclgenerator.ACLGenerator):
   def __str__(self):
     target_header = []
     target = []
+    # add the p4 tags
+    target.extend(aclgenerator.AddRepositoryTags('! '))
+
     for (header, filter_name, filter_list, terms, obj_target
         ) in self.cisco_policies:
       for filter_type in filter_list:
@@ -896,7 +899,6 @@ class Cisco(aclgenerator.ACLGenerator):
         for comment in header.comment:
           for line in comment.split('\n'):
             target.append(' remark %s' % line)
-        target.append(' remark Filter type is %s' % (filter_type))
 
         # now add the terms
         for term in terms:

@@ -67,7 +67,7 @@ class Term(aclgenerator.Term):
       if 'ciscoasa' in self.term.platform_exclude:
         return ''
 
-    ret_str = ['']
+    ret_str = ['\n']
 
     # Don't render icmpv6 protocol terms under inet, or icmp under inet6
     if ((self.af == 6 and 'icmp' in self.term.protocol) or
