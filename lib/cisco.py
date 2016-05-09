@@ -301,11 +301,6 @@ class ObjectGroupTerm(aclgenerator.Term):
     # protocol
     if not self.term.protocol:
       protocol = ['ip']
-    else:
-      pass
-      # pylint: disable=g-long-lambda
-      #protocol = map(self.PROTO_MAP.get, self.term.protocol, self.term.protocol)
-      # pylint: enable=g-long-lambda
 
     # addresses
     source_address = self.term.source_address
@@ -422,11 +417,6 @@ class Term(aclgenerator.Term):
         protocol = ['ip']
     elif self.term.protocol == ['hop-by-hop']:
       protocol = ['hbh']
-    elif self.proto_int:
-      pass
-      # pylint: disable=g-long-lambda
-      #protocol = map(self.PROTO_MAP.get, self.term.protocol, self.term.protocol)
-      # pylint: enable=g-long-lambda
     else:
       protocol = self.term.protocol
     # source address
