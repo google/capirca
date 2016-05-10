@@ -43,6 +43,7 @@ from lib import brocade
 from lib import cisco
 from lib import ciscoasa
 from lib import ciscoxr
+from lib import cisconx
 from lib import gce
 from lib import iptables
 from lib import ipset
@@ -197,6 +198,7 @@ class AclGen(object):
       'cisco': {'optimized': True, 'renderer': cisco.Cisco},
       'ciscoasa': {'optimized': True, 'renderer': ciscoasa.CiscoASA},
       'ciscoxr': {'optimized': True, 'renderer': ciscoxr.CiscoXR},
+      'cisconx': {'optimized': True, 'renderer':cisconx.CiscoNX},
       'demo': {'optimized': True, 'renderer': demo.Demo},
       'gce': {'optimized': True, 'renderer': gce.GCE},
       'ipset': {'optimized': True, 'renderer': ipset.Ipset},

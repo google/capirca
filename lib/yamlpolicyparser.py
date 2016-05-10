@@ -116,7 +116,7 @@ class YamlPolicyParser(object):
       family = { 'ipv4': 'inet', 'ipv6': 'inet6' }
       ret.extend([family[addressfamily]])
       ret.extend(ta[1:])
-    elif ta[0] in ('demo', 'arista', 'brocade', 'ciscoxr', 'packetfilter'):
+    elif ta[0] in ('demo', 'arista', 'brocade', 'ciscoxr', 'cisconx', 'packetfilter'):
       ret = [ta[0], name]
       ret.extend(ta[1:])
     elif ta[0] in ('gce', 'ipset', 'speedway', 'ciscoasa', 'srx'):

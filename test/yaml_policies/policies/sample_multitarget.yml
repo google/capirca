@@ -18,6 +18,7 @@ targets:
   - arista
   - brocade
   - ciscoxr
+  - cisconx
 
 terms:
 
