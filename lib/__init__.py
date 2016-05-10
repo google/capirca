@@ -23,9 +23,9 @@
 # from capirca import speedway
 #
 
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 
-__all__ = ['naming', 'policy', 'cisco', 'juniper', 'iptables',
+__all__ = ['naming', 'policy', 'cisco', 'cisconx', 'juniper', 'iptables',
            'policyparser', 'yamlpolicyparser',
            'policyreader', 'aclcheck', 'aclgenerator', 'nacaddr',
            'packetfilter', 'port', 'speedway', 'gce']
