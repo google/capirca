@@ -120,14 +120,15 @@ def revision_tag_handler(fname, text):
   return '\n'.join(new_text)
 
 
-def get_policy_obj(source_file, definitions_obj, optimize, shade_check):
+def get_policy_obj(source_file, definitions_obj, optimize, shade_check,
+                  platform=None):
   """Memoized call to parse policy by file name.
 
   Returns parsed policy object.
   """
 
   return policy.CacheParseFile(source_file, definitions_obj, optimize,
-                               shade_check=shade_check)
+                               shade_check=shade_check, platform=platform)
 
 
 def render_filters(source_file, definitions_obj, shade_check, exp_info, output_dir):
@@ -176,7 +177,8 @@ def render_filters(source_file, definitions_obj, shade_check, exp_info, output_d
       optimized = this_platform['optimized']
       # Copy Policy Obj.
       pol = copy.deepcopy(get_policy_obj(source_file, definitions_obj,
-                                         optimized, shade_check))
+                                         optimized, shade_check,
+                                         target_platform))
       renderer = this_platform['renderer']
       # Render.
       fw = renderer(pol, exp_info)
