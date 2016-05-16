@@ -104,9 +104,10 @@ class AclGen_Characterization_Test_Base(unittest.TestCase):
   characterization_data subfolder."""
 
   def setUp(self):
-    # Capture output during tests.
-    self.iobuff = StringIO()
-    sys.stderr = sys.stdout = self.iobuff
+    # Ignore output during tests.
+    logger = logging.getLogger()
+    logger.level = logging.CRITICAL
+    logger.addHandler(logging.NullHandler())
 
     curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     self.test_dir = os.path.join(curr_dir, '..', 'characterization_data')
@@ -124,10 +125,6 @@ class AclGen_Characterization_Test_Base(unittest.TestCase):
       os.remove(f)
     for d in [e for e in entries if os.path.isdir(e)]:
       shutil.rmtree(d)
-
-  def tearDown(self):
-    sys.stdout = sys.__stdout__
-    sys.stderr = sys.__stderr__
 
 
 class AclGen_Arguments_Tests(AclGen_Characterization_Test_Base):
