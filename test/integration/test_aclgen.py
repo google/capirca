@@ -1,5 +1,6 @@
 import unittest
 import sys
+import logging
 import os
 import inspect
 import shutil
@@ -10,18 +11,17 @@ import aclgen
 from aclgen import AclGen
 from lib import policy
 
+
 class Test_AclGen(unittest.TestCase):
 
   def setUp(self):
-    # Capture output during tests.
     self.iobuff = StringIO()
-    sys.stdout = self.iobuff
-    nullstream = open(os.devnull,'wb')
-    sys.stderr = nullstream
+    logger = logging.getLogger(aclgen.REPORTING_LOGGER)
+    logger.level = logging.DEBUG
+    self.s = logging.StreamHandler(self.iobuff)
+    self.s.level = logging.DEBUG
+    logger.addHandler(self.s)
 
-  def tearDown(self):
-    sys.stdout = sys.__stdout__
-    sys.stderr = sys.__stderr__
 
   def test_smoke_test_generates_successfully_with_no_args(self):
     aclgen.main([])
