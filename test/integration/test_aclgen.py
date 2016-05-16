@@ -1,5 +1,6 @@
 import unittest
 import sys
+import logging
 import os
 import inspect
 import shutil
@@ -10,18 +11,17 @@ import aclgen
 from aclgen import AclGen
 from lib import policy
 
+
 class Test_AclGen(unittest.TestCase):
 
   def setUp(self):
-    # Capture output during tests.
     self.iobuff = StringIO()
-    sys.stdout = self.iobuff
-    nullstream = open(os.devnull,'wb')
-    sys.stderr = nullstream
+    logger = logging.getLogger(aclgen.REPORTING_LOGGER)
+    logger.level = logging.DEBUG
+    self.s = logging.StreamHandler(self.iobuff)
+    self.s.level = logging.DEBUG
+    logger.addHandler(self.s)
 
-  def tearDown(self):
-    sys.stdout = sys.__stdout__
-    sys.stderr = sys.__stderr__
 
   def test_smoke_test_generates_successfully_with_no_args(self):
     aclgen.main([])
@@ -104,9 +104,10 @@ class AclGen_Characterization_Test_Base(unittest.TestCase):
   characterization_data subfolder."""
 
   def setUp(self):
-    # Capture output during tests.
-    self.iobuff = StringIO()
-    sys.stderr = sys.stdout = self.iobuff
+    # Ignore output during tests.
+    logger = logging.getLogger()
+    logger.level = logging.CRITICAL
+    logger.addHandler(logging.NullHandler())
 
     curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     self.test_dir = os.path.join(curr_dir, '..', 'characterization_data')
@@ -124,10 +125,6 @@ class AclGen_Characterization_Test_Base(unittest.TestCase):
       os.remove(f)
     for d in [e for e in entries if os.path.isdir(e)]:
       shutil.rmtree(d)
-
-  def tearDown(self):
-    sys.stdout = sys.__stdout__
-    sys.stderr = sys.__stderr__
 
 
 class AclGen_Arguments_Tests(AclGen_Characterization_Test_Base):
@@ -148,6 +145,11 @@ class AclGen_Characterization_Tests(AclGen_Characterization_Test_Base):
     self.assertEquals([], dircmp.left_only, 'missing {0} in filters_expected'.format(dircmp.left_only))
     self.assertEquals([], dircmp.right_only, 'missing {0} in filters_actual'.format(dircmp.right_only))
     self.assertEquals([], dircmp.diff_files)
+
+  def test_characterization_with_debug_flag_sanity_check(self):
+    def_dir, pol_dir, expected_dir = map(self.testpath, ('def', 'policies', 'filters_expected'))
+    aclgen.main(['-d', def_dir, '--poldir', pol_dir, '-o', self.output_dir, '--debug'])
+    # Sanity check to ensure runs only - if we reach here assume ok.
 
   def test_can_make_direct_API_call_to_load_and_render(self):
     """Existing clients may have been making calls directly

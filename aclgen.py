@@ -56,6 +56,8 @@ from lib import nsxv
 
 # pylint: disable=bad-indentation
 
+REPORTING_LOGGER = 'aclgen_reporting'
+"""Logger name for reporting the rendered files as they're output."""
 
 class AclGen(object):
   """ACL generation object.
@@ -99,6 +101,9 @@ class AclGen(object):
 
     # A naming.Naming object created with self._create_defs()
     self.__memoized_defs = None
+
+    self.logger = logging.getLogger(__name__)
+    self.reporting_logger = logging.getLogger(REPORTING_LOGGER)
 
   def _create_defs(self):
     """Creates naming.Naming object using the contents of the supplied directory.
@@ -167,7 +172,7 @@ class AclGen(object):
       os.makedirs(os.path.dirname(filter_file))
     output = open(filter_file, 'w')
     if output:
-      print 'writing %s' % filter_file
+      self.reporting_logger.info('writing %s' % filter_file)
       output.write(filter_text)
 
   def get_policy_obj(self, source_file, optimize):
@@ -312,7 +317,8 @@ def parse_args(command_line_args):
   _parser.add_option('', '--format', dest='policy_format',
                      help='policy file format (yml or capirca)',
                      default = 'capirca')
-  _parser.add_option('--debug', help='enable debug-level logging', dest='debug')
+  _parser.add_option('--debug', help='enable debug-level logging',
+                     action='store_true', dest='debug', default=False)
   _parser.add_option('-s', '--shade_checking', help='Enable shade checking',
                      action="store_true", dest="shade_check", default=False)
   _parser.add_option('-e', '--exp_info', type='int', action='store',
@@ -359,7 +365,7 @@ def main(args):
   elif FLAGS.policy:
     count = gen.render_filters(FLAGS.policy)
 
-  print '%d filters rendered' % count
+  logging.getLogger(REPORTING_LOGGER).info('%d filters rendered', count)
 
 
 if __name__ == '__main__':

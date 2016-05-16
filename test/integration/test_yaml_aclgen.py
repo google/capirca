@@ -1,4 +1,5 @@
 import unittest
+import logging
 import sys
 import os
 import inspect
@@ -14,9 +15,10 @@ class YAML_AclGen_Characterization_Test_Base(unittest.TestCase):
   """Tests of aclgen.py, using the YAML parser."""
 
   def setUp(self):
-    # Capture output during tests.
-    self.iobuff = StringIO()
-    sys.stderr = sys.stdout = self.iobuff
+    # Ignore output during tests.
+    logger = logging.getLogger()
+    logger.level = logging.CRITICAL
+    logger.addHandler(logging.NullHandler())
 
     curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     self.test_dir = os.path.join(curr_dir, '..', 'yaml_policies')
@@ -35,9 +37,6 @@ class YAML_AclGen_Characterization_Test_Base(unittest.TestCase):
     for d in [e for e in entries if os.path.isdir(e)]:
       shutil.rmtree(d)
 
-  def tearDown(self):
-    sys.stdout = sys.__stdout__
-    sys.stderr = sys.__stderr__
 
 class YAML_AclGen_Tests(YAML_AclGen_Characterization_Test_Base):
 
