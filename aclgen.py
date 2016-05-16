@@ -317,7 +317,8 @@ def parse_args(command_line_args):
   _parser.add_option('', '--format', dest='policy_format',
                      help='policy file format (yml or capirca)',
                      default = 'capirca')
-  _parser.add_option('--debug', help='enable debug-level logging', dest='debug')
+  _parser.add_option('--debug', help='enable debug-level logging',
+                     action='store_true', dest='debug', default=False)
   _parser.add_option('-s', '--shade_checking', help='Enable shade checking',
                      action="store_true", dest="shade_check", default=False)
   _parser.add_option('-e', '--exp_info', type='int', action='store',

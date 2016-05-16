@@ -146,6 +146,11 @@ class AclGen_Characterization_Tests(AclGen_Characterization_Test_Base):
     self.assertEquals([], dircmp.right_only, 'missing {0} in filters_actual'.format(dircmp.right_only))
     self.assertEquals([], dircmp.diff_files)
 
+  def test_characterization_with_debug_flag_sanity_check(self):
+    def_dir, pol_dir, expected_dir = map(self.testpath, ('def', 'policies', 'filters_expected'))
+    aclgen.main(['-d', def_dir, '--poldir', pol_dir, '-o', self.output_dir, '--debug'])
+    # Sanity check to ensure runs only - if we reach here assume ok.
+
   def test_can_make_direct_API_call_to_load_and_render(self):
     """Existing clients may have been making calls directly
     to aclgen.load_and_render, double-checking it still works."""
