@@ -119,7 +119,7 @@ class Naming(object):
     self.unseen_networks = {}
     if naming_file and naming_type:
       filename = os.path.sep.join([naming_dir, naming_file])
-      file_handle = gfile.GFile(filename, 'r')
+      file_handle = open(filename, 'r')
       self._ParseFile(file_handle, naming_type)
     elif naming_dir:
       self._Parse(naming_dir, 'services')
