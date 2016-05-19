@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2015 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,10 +18,9 @@
 BETA: This only generates netdestination lists for hosts.
 """
 
+__author__ = 'cburgoyne@google.com (Chris Burgoyne)'
 
-
-
-import aclgenerator
+from lib import aclgenerator
 
 
 class Error(Exception):
@@ -84,7 +81,7 @@ class Aruba(aclgenerator.ACLGenerator):
   """An Aruba policy object."""
 
   _PLATFORM = 'aruba'
-  _SUFFIX = '.aruba'
+  SUFFIX = '.aruba'
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['address'])
 
   def _TranslatePolicy(self, pol, exp_info):

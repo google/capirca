@@ -1,5 +1,3 @@
-#!/usr/bin/python2.4
-#
 # Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,9 +24,9 @@ TODO: This library is currently incomplete, and does not allow access to
       every argument of a policy term.
 """
 
+__author__ = 'watson@google.com (Tony Watson)'
 
-
-import naming
+from lib import naming
 
 
 class FileOpenError(Exception):

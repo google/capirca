@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2015 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,15 +15,9 @@
 
 """Brocade generator."""
 
+__author__ = 'ryanshea@google.com (Ryan Shea)'
 
-
-import cisco
-
-
-class Term(cisco.Term):
-  """A single ACL Term."""
-
-  _PLATFORM = 'brocade'
+from lib import cisco
 
 
 class Brocade(cisco.Cisco):
@@ -36,6 +28,7 @@ class Brocade(cisco.Cisco):
   """
 
   _PLATFORM = 'brocade'
-  _SUFFIX = '.bacl'
+  SUFFIX = '.bacl'
   # Protocols should be emitted as they were in the policy (names).
   _PROTO_INT = False
+  _TERM_REMARK = False

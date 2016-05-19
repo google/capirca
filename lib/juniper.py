@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,15 +13,18 @@
 # limitations under the License.
 #
 
+"""Juniper JCL generator."""
+
 __author__ = ['pmoody@google.com (Peter Moody)',
               'watson@google.com (Tony Watson)']
 
 
 import datetime
-import logging
 
-import aclgenerator
-import nacaddr
+from lib import aclgenerator
+from lib import nacaddr
+from lib import summarizer
+import logging
 
 
 # generic error class
@@ -52,6 +53,14 @@ class PrecedenceError(Error):
 
 
 class JuniperIndentationError(Error):
+  pass
+
+
+class JuniperNextIpError(Error):
+  pass
+
+
+class JuniperMultipleTerminatingActionError(Error):
   pass
 
 
@@ -112,12 +121,13 @@ class Term(aclgenerator.Term):
     term_type: the address family for the term, one of "inet", "inet6",
       or "bridge"
   """
+  _PLATFORM = 'juniper'
   _DEFAULT_INDENT = 12
-  _ACTIONS = {'accept': 'accept',
-              'deny': 'discard',
-              'reject': 'reject',
-              'next': 'next term',
-              'reject-with-tcp-rst': 'reject tcp-reset'}
+  ACTIONS = {'accept': 'accept',
+             'deny': 'discard',
+             'reject': 'reject',
+             'next': 'next term',
+             'reject-with-tcp-rst': 'reject tcp-reset'}
 
   # the following lookup table is used to map between the various types of
   # filters the juniper generator can render.  As new differences are
@@ -147,9 +157,11 @@ class Term(aclgenerator.Term):
                            'protocol-except': 'ip-protocol-except',
                            'tcp-est': 'tcp-flags "(ack|rst)"'}}
 
-  def __init__(self, term, term_type):
+  def __init__(self, term, term_type, enable_dsmo):
+    super(Term, self).__init__(term)
     self.term = term
     self.term_type = term_type
+    self.enable_dsmo = enable_dsmo
 
     if term_type not in self._TERM_TYPE:
       raise ValueError('Unknown Filter Type: %s' % term_type)
@@ -164,22 +176,21 @@ class Term(aclgenerator.Term):
     # Verify platform specific terms. Skip whole term if platform does not
     # match.
     if self.term.platform:
-      if 'juniper' not in self.term.platform:
+      if self._PLATFORM not in self.term.platform:
         return ''
     if self.term.platform_exclude:
-      if 'juniper' in self.term.platform_exclude:
+      if self._PLATFORM in self.term.platform_exclude:
         return ''
 
     config = Config(indent=self._DEFAULT_INDENT)
     from_str = []
-
     # Don't render icmpv6 protocol terms under inet, or icmp under inet6
     if ((self.term_type == 'inet6' and 'icmp' in self.term.protocol) or
         (self.term_type == 'inet' and 'icmpv6' in self.term.protocol)):
-      config.Append('/* Term %s' % self.term.name)
-      config.Append('** not rendered due to protocol/AF mismatch.')
-      config.Append('*/')
-      return str(config)
+      logging.debug(self.NO_AF_LOG_PROTO.substitute(term=self.term.name,
+                                                    proto=self.term.protocol,
+                                                    af=self.term_type))
+      return ''
 
     # comment
     # this deals just fine with multi line comments, but we could probably
@@ -198,7 +209,7 @@ class Term(aclgenerator.Term):
     # code.  Warning generated from policy.py if appropriate.
     if self.term.verbatim:
       for next_term in self.term.verbatim:
-        if next_term.value[0] == 'juniper':
+        if next_term.value[0] == self._PLATFORM:
           config.Append(str(next_term.value[1]), verbatim=True)
       return str(config)
 
@@ -249,17 +260,21 @@ class Term(aclgenerator.Term):
 
     # a default action term doesn't have any from { clause
     has_match_criteria = (self.term.address or
+                          self.term.dscp_except or
+                          self.term.dscp_match or
                           self.term.destination_address or
-                          self.term.destination_prefix or
                           self.term.destination_port or
+                          self.term.destination_prefix or
+                          self.term.forwarding_class or
+                          self.term.ether_type or
+                          self.term.next_ip or
+                          self.term.port or
                           self.term.precedence or
                           self.term.protocol or
                           self.term.protocol_except or
-                          self.term.port or
                           self.term.source_address or
-                          self.term.source_prefix or
                           self.term.source_port or
-                          self.term.ether_type or
+                          self.term.source_prefix or
                           self.term.traffic_type)
 
     if has_match_criteria:
@@ -269,53 +284,98 @@ class Term(aclgenerator.Term):
 
       # address
       address = self.term.GetAddressOfVersion('address', term_af)
+      if self.enable_dsmo:
+        address = summarizer.Summarize(address)
+
       if address:
         config.Append('%s {' % family_keywords['addr'])
         for addr in address:
-          config.Append('%s;%s' % (addr, self._Comment(addr)))
+          if self.enable_dsmo:
+            config.Append('%s/%s;' % summarizer.ToDottedQuad(addr,
+                                                             nondsm=True))
+          else:
+            for comment in self._Comment(addr):
+              config.Append('%s' % comment)
+            config.Append('%s;' % addr)
         config.Append('}')
       elif self.term.address:
-        logging.warn(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
-                                                      af=self.term_type))
+        logging.debug(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
+                                                     af=self.term_type))
         return ''
 
       # source address
-      source_address, source_address_exclude = self._MinimizePrefixes(
-          self.term.GetAddressOfVersion('source_address', term_af),
-          self.term.GetAddressOfVersion('source_address_exclude', term_af))
+      src_addr = self.term.GetAddressOfVersion('source_address', term_af)
+      src_addr_ex = self.term.GetAddressOfVersion('source_address_exclude',
+                                                  term_af)
+      if self.enable_dsmo:
+        src_addr = summarizer.Summarize(src_addr)
+        src_addr_ex = summarizer.Summarize(src_addr_ex)
+      else:
+        src_addr, src_addr_ex = self._MinimizePrefixes(src_addr, src_addr_ex)
 
-      if source_address:
+      if src_addr:
         config.Append('%s {' % family_keywords['saddr'])
-        for addr in source_address:
-          config.Append('%s;%s' % (addr, self._Comment(addr)))
-        for addr in source_address_exclude:
-          config.Append('%s except;%s' % (
-              addr, self._Comment(addr, exclude=True)))
+        for addr in src_addr:
+          if self.enable_dsmo:
+            config.Append('%s/%s;' % summarizer.ToDottedQuad(addr,
+                                                             nondsm=True))
+          else:
+            for comment in self._Comment(addr):
+              config.Append('%s' % comment)
+            config.Append('%s;' % addr)
+        for addr in src_addr_ex:
+          if self.enable_dsmo:
+            config.Append('%s/%s except;' %
+                          summarizer.ToDottedQuad(addr, nondsm=True))
+          else:
+            for comment in self._Comment(addr, exclude=True):
+              config.Append('%s' % comment)
+            config.Append('%s except;' % addr)
         config.Append('}')
       elif self.term.source_address:
-        logging.warn(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
-                                                      direction='source',
-                                                      af=self.term_type))
+        logging.debug(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
+                                                     direction='source',
+                                                     af=self.term_type))
         return ''
 
       # destination address
-      destination_address, destination_address_exclude = self._MinimizePrefixes(
-          self.term.GetAddressOfVersion('destination_address', term_af),
-          self.term.GetAddressOfVersion('destination_address_exclude', term_af))
+      dst_addr = self.term.GetAddressOfVersion('destination_address', term_af)
+      dst_addr_ex = self.term.GetAddressOfVersion('destination_address_exclude',
+                                                  term_af)
+      if self.enable_dsmo:
+        dst_addr = summarizer.Summarize(dst_addr)
+        dst_addr_ex = summarizer.Summarize(dst_addr_ex)
+      else:
+        dst_addr, dst_addr_ex = self._MinimizePrefixes(dst_addr, dst_addr_ex)
 
-      if destination_address:
+      if dst_addr:
         config.Append('%s {' % family_keywords['daddr'])
-        for addr in destination_address:
-          config.Append('%s;%s' % (addr, self._Comment(addr)))
-        for addr in destination_address_exclude:
-          config.Append('%s except;%s' % (
-              addr, self._Comment(addr, exclude=True)))
+        for addr in dst_addr:
+          if self.enable_dsmo:
+            config.Append('%s/%s;' % summarizer.ToDottedQuad(addr,
+                                                             nondsm=True))
+          else:
+            for comment in self._Comment(addr):
+              config.Append('%s' % comment)
+            config.Append('%s;' % addr)
+        for addr in dst_addr_ex:
+          if self.enable_dsmo:
+            config.Append('%s/%s except;' %
+                          summarizer.ToDottedQuad(addr, nondsm=True))
+          else:
+            for comment in self._Comment(addr, exclude=True):
+              config.Append('%s' % comment)
+            config.Append('%s except;' % addr)
         config.Append('}')
       elif self.term.destination_address:
-        logging.warn(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
-                                                      direction='destination',
-                                                      af=self.term_type))
+        logging.debug(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
+                                                     direction='destination',
+                                                     af=self.term_type))
         return ''
+
+      # forwarding-class
+      if self.term.forwarding_class:
+        config.Append('forwarding-class %s;' % self.term.forwarding_class)
 
       # source prefix list
       if self.term.source_prefix:
@@ -333,11 +393,14 @@ class Term(aclgenerator.Term):
 
       # protocol
       if self.term.protocol:
+        # both are supported on JunOS, but only icmp6 is supported
+        # on SRX loopback stateless filter
         config.Append(family_keywords['protocol'] +
                       ' ' + self._Group(self.term.protocol))
 
       # protocol
       if self.term.protocol_except:
+        # same as above
         config.Append(family_keywords['protocol-except'] + ' '
                       + self._Group(self.term.protocol_except))
 
@@ -394,47 +457,144 @@ class Term(aclgenerator.Term):
                                   (precedence, self.term.name))
         config.Append('precedence %s' % self._Group(sorted(policy_precedences)))
 
+      # DSCP Match
+      if self.term.dscp_match:
+        if self.term_type == 'inet6':
+          config.Append('traffic-class [ %s ];' % (
+              ' '.join(self.term.dscp_match)))
+        else:
+          config.Append('dscp [ %s ];' % ' '.join(self.term.dscp_match))
+
+      # DSCP Except
+      if self.term.dscp_except:
+        if self.term_type == 'inet6':
+          config.Append('traffic-class-except [ %s ];' % (
+              ' '.join(self.term.dscp_except)))
+        else:
+          config.Append('dscp-except [ %s ];' % ' '.join(self.term.dscp_except))
+
       config.Append('}')  # end from { ... }
 
     ####
     # ACTIONS go below here
     ####
-    config.Append('then {')
-    # logging
-    if self.term.logging:
-      for log_target in self.term.logging:
-        if str(log_target) == 'local':
-          config.Append('log;')
-        else:
-          config.Append('syslog;')
 
-    if self.term.routing_instance:
-      config.Append('routing-instance %s;' % self.term.routing_instance)
-
-    if self.term.counter:
-      config.Append('count %s;' % self.term.counter)
-
-    if self.term.policer:
-      config.Append('policer %s;' % self.term.policer)
-
-    if self.term.qos:
-      config.Append('forwarding-class %s;' % self.term.qos)
-
-    if self.term.loss_priority:
-      config.Append('loss-priority %s;' % self.term.loss_priority)
-
-    for action in self.extra_actions:
-      config.Append(action + ';')
-
-    # If there is a routing-instance defined, skip reject/accept/etc actions.
+    # If the action is only one line, include it in the same line as "then "
+    # statement.
+    # For example, if the action is only accept, it should be:
+    # "then accept;" rather than:
+    # "then {
+    #     accept;
+    # }"
+    #
+    unique_actions = set(self.extra_actions)
     if not self.term.routing_instance:
-      for action in self.term.action:
-        config.Append(self._ACTIONS.get(action) + ';')
+      unique_actions.update(self.term.action)
+    if len(unique_actions) <= 1:
+      for action in [self.term.logging, self.term.routing_instance,
+                     self.term.counter, self.term.policer, self.term.qos,
+                     self.term.loss_priority, self.term.dscp_set,
+                     self.term.next_ip]:
+        if action:
+          try:
+            unique_actions.update(action)
+          except TypeError:
+            unique_actions.add(action)
+          if len(unique_actions) > 1:
+            break
 
-    config.Append('}')  # end then{...}
+    if len(unique_actions) == 1:
+      # b/21795531: Juniper device treats a set of IPv4 actions differently
+      # than any other actions.
+      # For example, if the term is in IPv4 and the action is only discard,
+      # it should be:
+      # "then {
+      #     discard;
+      # }" rather than:
+      # "then discard;"
+      current_action = self.ACTIONS.get(unique_actions.pop(), 'next_ip')
+      if (self.term_type == 'inet' and
+          current_action in ['discard', 'reject', 'reject tcp-reset']
+         ) or (self.term_type == 'inet6' and current_action in
+               ['reject', 'reject tcp-reset']):
+        config.Append('then {')
+        config.Append('%s;' % current_action)
+        config.Append('}')
+      elif current_action == 'next_ip':
+        self.NextIpCheck(self.term.next_ip, self.term.name)
+        config.Append('then {')
+        if self.term.next_ip[0].version == 4:
+          config.Append('next-ip %s;' % str(self.term.next_ip[0]))
+        else:
+          config.Append('next-ip6 %s;' % str(self.term.next_ip[0]))
+        config.Append('}')
+      else:
+        config.Append('then %s;' % current_action)
+    elif len(unique_actions) > 1:
+      config.Append('then {')
+      # logging
+      if self.term.logging:
+        for log_target in self.term.logging:
+          if str(log_target) == 'local':
+            config.Append('log;')
+          else:
+            config.Append('syslog;')
+
+      if self.term.routing_instance:
+        config.Append('routing-instance %s;' % self.term.routing_instance)
+
+      if self.term.counter:
+        config.Append('count %s;' % self.term.counter)
+
+      oid_length = 128
+      if self.term.policer:
+        config.Append('policer %s;' % self.term.policer)
+        if len(self.term.policer) > oid_length:
+          logging.warn('WARNING: %s is longer than %d bytes. Due to limitation'
+                       ' in JUNOS, OIDs longer than %dB can cause SNMP '
+                       'timeout issues.',
+                       self.term.policer, oid_length, oid_length)
+
+      if self.term.qos:
+        config.Append('forwarding-class %s;' % self.term.qos)
+
+      if self.term.loss_priority:
+        config.Append('loss-priority %s;' % self.term.loss_priority)
+      if self.term.next_ip:
+        self.NextIpCheck(self.term.next_ip, self.term.name)
+        if self.term.next_ip[0].version == 4:
+          config.Append('next-ip %s;' % str(self.term.next_ip[0]))
+        else:
+          config.Append('next-ip6 %s;' % str(self.term.next_ip[0]))
+      for action in self.extra_actions:
+        config.Append(action + ';')
+
+      # If there is a routing-instance defined, skip reject/accept/etc actions.
+      if not self.term.routing_instance:
+        for action in self.term.action:
+          config.Append(self.ACTIONS.get(action) + ';')
+
+      # DSCP SET
+      if self.term.dscp_set:
+        if self.term_type == 'inet6':
+          config.Append('traffic-class %s;' % self.term.dscp_set)
+        else:
+          config.Append('dscp %s;' % self.term.dscp_set)
+
+      config.Append('}')  # end then{...}
+
     config.Append('}')  # end term accept-foo-to-bar { ... }
 
     return str(config)
+
+  @staticmethod
+  def NextIpCheck(next_ip, term_name):
+    if len(next_ip) > 1:
+      raise JuniperNextIpError('The following term has more '
+                               'than one next IP value: %s' % term_name)
+    if next_ip[0].numhosts > 1:
+      raise JuniperNextIpError('The following term has a subnet '
+                               'instead of a host: %s' % term_name)
 
   def _MinimizePrefixes(self, include, exclude):
     """Calculate a minimal set of prefixes for Juniper match conditions.
@@ -477,10 +637,10 @@ class Term(aclgenerator.Term):
     indentation = 0
     if exclude:
       # len('1.1.1.1/32 except;') == 21
-      indentation = 21 + self._DEFAULT_INDENT + len(str(addr))
+      indentation = 21 + self._DEFAULT_INDENT
     else:
       # len('1.1.1.1/32;') == 14
-      indentation = 14 + self._DEFAULT_INDENT + len(str(addr))
+      indentation = 14 + self._DEFAULT_INDENT
 
     # length_eol is the width of the line; b/c of the addition of the space
     # and the /* characters, it needs to be a little less than the actual width
@@ -525,7 +685,7 @@ class Term(aclgenerator.Term):
     else:
       # should we be paying attention to any other addr type?
       logging.debug('Ignoring non IPv4 or IPv6 address: %s', addr)
-    return '\n'.join(rval)
+    return rval
 
   def _Group(self, group):
     """If 1 item return it, else return [ item1 item2 ].
@@ -549,7 +709,7 @@ class Term(aclgenerator.Term):
         string: either the lower()'ed string or the ports, hyphenated
                 if they're a range, or by itself if it's not.
       """
-      if isinstance(el, str):
+      if isinstance(el, str) or isinstance(el, unicode):
         return el.lower()
       elif isinstance(el, int):
         return str(el)
@@ -579,16 +739,22 @@ class Juniper(aclgenerator.ACLGenerator):
   _PLATFORM = 'juniper'
   _DEFAULT_PROTOCOL = 'ip'
   _SUPPORTED_AF = set(('inet', 'inet6', 'bridge'))
-  _SUFFIX = '.jcl'
+  _TERM = Term
+  SUFFIX = '.jcl'
 
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['address',
                                       'counter',
                                       'destination_prefix',
+                                      'dscp_except',
+                                      'dscp_match',
+                                      'dscp_set',
                                       'ether_type',
                                       'expiration',
+                                      'forwarding_class',
                                       'fragment_offset',
                                       'logging',
                                       'loss_priority',
+                                      'next_ip',
                                       'owner',
                                       'packet_length',
                                       'policer',
@@ -603,7 +769,7 @@ class Juniper(aclgenerator.ACLGenerator):
 
   def _TranslatePolicy(self, pol, exp_info):
     self.juniper_policies = []
-    current_date = datetime.date.today()
+    current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     for header, terms in pol.filters:
@@ -613,14 +779,15 @@ class Juniper(aclgenerator.ACLGenerator):
       filter_options = header.FilterOptions(self._PLATFORM)
       filter_name = header.FilterName(self._PLATFORM)
 
-      # Checks if the non-interface-specific option was specified.
-      # I'm assuming that it will be specified as maximum one time, and
-      # don't check for more appearances of the word in the options.
+      # Check for the position independent options and remove them from
+      # the list.
       interface_specific = 'not-interface-specific' not in filter_options[1:]
+      enable_dsmo = 'enable_dsmo' in filter_options[1:]
 
-      # Remove the option so that it is not confused with a filter type
       if not interface_specific:
         filter_options.remove('not-interface-specific')
+      if enable_dsmo:
+        filter_options.remove('enable_dsmo')
 
       # default to inet4 filters
       filter_type = 'inet'
@@ -649,7 +816,7 @@ class Juniper(aclgenerator.ACLGenerator):
                          'will not be rendered.', term.name, filter_name)
             continue
 
-        new_terms.append(Term(term, filter_type))
+        new_terms.append(self._TERM(term, filter_type, enable_dsmo))
 
       self.juniper_policies.append((header, filter_name, filter_type,
                                     interface_specific, new_terms))

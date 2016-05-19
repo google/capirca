@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2012 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +19,9 @@ __author__ = 'msu@google.com (Martin Suess)'
 
 import collections
 import copy
-import aclgenerator
 import datetime
+
+from lib import aclgenerator
 import logging
 
 
@@ -377,7 +376,7 @@ class PacketFilter(aclgenerator.ACLGenerator):
 
   _PLATFORM = 'packetfilter'
   _DEFAULT_PROTOCOL = 'all'
-  _SUFFIX = '.pf'
+  SUFFIX = '.pf'
   _TERM = Term
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
                                       'expiration',
@@ -389,7 +388,7 @@ class PacketFilter(aclgenerator.ACLGenerator):
   def _TranslatePolicy(self, pol, exp_info):
     self.pf_policies = []
     self.address_book = {}
-    current_date = datetime.date.today()
+    current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     good_afs = ['inet', 'inet6', 'mixed']

@@ -1,6 +1,4 @@
-#!/usr/bin/python
-#
-# Copyright 2011 Google Inc. All Rights Reserved
+# Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,13 +15,12 @@
 
 """Check where hosts, ports and protocols are matched in a capirca policy."""
 
-
+__author__ = 'watson@google.com (Tony Watson)'
 
 import logging
-import sys
-import nacaddr
-import policy
-import port
+from lib import nacaddr
+from lib import policy
+from lib import port
 
 
 class Error(Exception):

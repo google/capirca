@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +15,7 @@
 
 """Common library for network ports and protocol handling."""
 
-
+__author__ = 'watson@google.com (Tony Watson)'
 
 
 class Error(Exception):
@@ -34,7 +32,7 @@ class BadPortRange(Error):
 
 def Port(port):
   """Sanitize a port value.
-   
+
   Args:
     port: a port value
 

@@ -1,5 +1,3 @@
-#!/usr/bin/python2.4
-#
 # Copyright 2011 Google Inc. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,15 +12,13 @@
 # limitations under the License.
 #
 
-"""Speedway iptables generator.
 
-   This is a subclass of Iptables library.  The primary difference is
-   that this library produced 'iptable-restore' compatible output."""
+"""Speedway iptables generator.  This is a subclass of Iptables lib."""
 
-
+__author__ = 'watson@google.com (Tony Watson)'
 
 from string import Template
-import iptables
+from lib import iptables
 
 
 class Error(Exception):
@@ -41,7 +37,7 @@ class Speedway(iptables.Iptables):
 
   _PLATFORM = 'speedway'
   _DEFAULT_PROTOCOL = 'all'
-  _SUFFIX = '.ipt'
+  SUFFIX = '.ipt'
 
   _RENDER_PREFIX = '*filter'
   _RENDER_SUFFIX = 'COMMIT'

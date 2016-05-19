@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2015 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +29,7 @@ import json
 import logging
 import re
 
-import aclgenerator
+from lib import aclgenerator
 
 
 class Error(Exception):
@@ -54,7 +52,8 @@ class Term(aclgenerator.Term):
                'ah': 51,
                'sctp': 132,
               }
-  _TERM_ADDRESS_LIMIT = 200
+  # Restrict the number of terms to 256. Proto supports up to 256
+  _TERM_ADDRESS_LIMIT = 256
 
   # Firewall rule name has to match specific RE:
   # The first character must be a lowercase letter, and all following characters
@@ -69,12 +68,15 @@ class Term(aclgenerator.Term):
     if self.term.action and self.term.action[0] != 'accept':
       raise GceFirewallError(
           'GCE firewall action must be "accept".')
-    if (self.term.source_address_exclude
-        or self.term.destination_address
+    if (self.term.destination_address
         or self.term.destination_address_exclude):
       raise GceFirewallError(
           'GCE firewall does not support destination addresses or address '
           'excludes.')
+    if self.term.source_address_exclude and not self.term.source_address:
+      raise GceFirewallError(
+          'GCE firewall does not support address exclusions without a source '
+          'address list.')
     if self.term.icmp_type:
       raise GceFirewallError(
           'ICMP Type specifications are not permissible in GCE firewalls.')
@@ -91,6 +93,12 @@ class Term(aclgenerator.Term):
     if self.term.source_port:
       raise GceFirewallError(
           'GCE firewall does not support source port restrictions.')
+    if self.term.source_address_exclude and self.term.source_address:
+      self.term.FlattenAll()
+      if not self.term.source_address:
+        raise GceFirewallError(
+            'GCE firewall rule no longer contains any source addresses after '
+            'the prefixes in source_address_exclude were removed.')
 
   def __str__(self):
     """Convert term to a string."""
@@ -127,6 +135,11 @@ class Term(aclgenerator.Term):
 
     rules = []
     saddrs = self.term.GetAddressOfVersion('source_address', 4)
+
+    if not self.term.protocol:
+      raise GceFirewallError(
+          'GCE firewall rule contains no protocol, it must be specified.')
+
     # Each rule can only contain one protocol.
     for proto in self.term.protocol:
       dest = {
@@ -144,7 +157,7 @@ class Term(aclgenerator.Term):
             ports.append('%d-%d' % (start, end))
       proto_dict['allowed'].append(dest)
 
-      # There's an undocumented limit of ~200 addresses each term can contain.
+      # There's a limit of 256 addresses each term can contain.
       # If we're above that limit, we're breaking it down in more terms.
       if saddrs:
         source_addr_chunks = [
@@ -171,7 +184,7 @@ class GCE(aclgenerator.ACLGenerator):
   """A GCE firewall policy object."""
 
   _PLATFORM = 'gce'
-  _SUFFIX = '.gce'
+  SUFFIX = '.gce'
   _SUPPORTED_AF = set(('inet'))
   # Supported is 63 but we need to account for dynamic updates when the term
   # is rendered (which can add proto and a counter).
@@ -183,7 +196,7 @@ class GCE(aclgenerator.ACLGenerator):
   def _TranslatePolicy(self, pol, exp_info):
     self.gce_policies = []
 
-    current_date = datetime.date.today()
+    current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     for header, terms in pol.filters:
@@ -222,6 +235,14 @@ class GCE(aclgenerator.ACLGenerator):
 
   def __str__(self):
     target = []
+
     for term in self.gce_policies:
       target.extend(term.ConvertToDict())
-    return json.dumps(target, indent=2, separators=(',', ': '))
+
+    out = '%s\n%s\n\n' % ('\n'.join(aclgenerator.AddRepositoryTags('# ')),
+                          json.dumps(target,
+                                     indent=2,
+                                     separators=(',', ': '),
+                                     sort_keys=True))
+
+    return out

@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,10 +14,12 @@
 #
 """Demo generator for capirca."""
 
-
+__author__ = 'robankeny@google.com (Robert Ankeny)'
 
 
 import datetime
+import logging
+
 from lib import aclgenerator
 
 
@@ -39,7 +39,7 @@ class Term(aclgenerator.Term):
               'reject-with-tcp-rst': 'reset'
              }
 
-  def __init__ (self, term, term_type):
+  def __init__(self, term, term_type):
     self.term = term
     self.term_type = term_type
 
@@ -55,10 +55,10 @@ class Term(aclgenerator.Term):
 
     ret_str = []
 
-    #NAME
+    # NAME
     ret_str.append(' ' * 4 + 'Term: '+self.term.name+'{')
 
-    #COMMENTS
+    # COMMENTS
     if self.term.comment:
       ret_str.append(' ')
       ret_str.append(' ' * 8 + '#COMMENTS')
@@ -66,7 +66,7 @@ class Term(aclgenerator.Term):
         for line in comment.split('\n'):
           ret_str.append(' ' * 8 + '#'+line)
 
-    #SOURCE ADDRESS
+    # SOURCE ADDRESS
     source_address = self.term.GetAddressOfVersion(
         'source_address', self.AF_MAP.get(self.term_type))
     source_address_exclude = self.term.GetAddressOfVersion(
@@ -77,20 +77,20 @@ class Term(aclgenerator.Term):
       for saddr in source_address:
         ret_str.append(' ' * 8 + str(saddr))
 
-    #SOURCE ADDRESS EXCLUDE
+    # SOURCE ADDRESS EXCLUDE
     if source_address_exclude:
       ret_str.append(' ')
       ret_str.append(' ' * 8 + 'Excluded Source IP\'s')
       for ex in source_address:
         ret_str.append(' ' * 8 + str(ex))
 
-    #SOURCE PORT
+    # SOURCE PORT
     if self.term.source_port:
       ret_str.append(' ')
       ret_str.append(' ' * 8 + 'Source ports')
       ret_str.append(' ' * 8 + self._Group(self.term.source_port))
 
-    #DESTINATION
+    # DESTINATION
     destination_address = self.term.GetAddressOfVersion(
         'destination_address', self.AF_MAP.get(self.term_type))
     destination_address_exclude = self.term.GetAddressOfVersion(
@@ -101,33 +101,33 @@ class Term(aclgenerator.Term):
       for daddr in destination_address:
         ret_str.append(' ' * 8 + str(daddr))
 
-    #DESINATION ADDRESS EXCLUDE
+    # DESINATION ADDRESS EXCLUDE
     if destination_address_exclude:
       ret_str.append(' ')
       ret_str.append(' ' * 8 + 'Excluded Destination IP\'s')
       for ex in destination_address_exclude:
         ret_str.append(' ' * 8 + str(ex))
 
-    #DESTINATION PORT
+    # DESTINATION PORT
     if self.term.destination_port:
       ret_str.append(' ')
       ret_str.append(' ' * 8 + 'Destination Ports')
       ret_str.append(' ' * 8 + self._Group(self.term.destination_port))
 
-    #PROTOCOL
+    # PROTOCOL
     if self.term.protocol:
       ret_str.append(' ')
       ret_str.append(' ' * 8 + 'Protocol')
       ret_str.append(' ' * 8 + self._Group(self.term.protocol))
 
-    #OPTION
+    # OPTION
     if self.term.option:
       ret_str.append(' ')
       ret_str.append(' ' * 8 + 'Options')
       for option in self.term.option:
         ret_str.append(' ' * 8 + option)
 
-    #ACTION
+    # ACTION
     for action in self.term.action:
       ret_str.append(' ')
       ret_str.append(' ' * 8 + 'Action: '
@@ -165,7 +165,7 @@ class Demo(aclgenerator.ACLGenerator):
        pol: policy.Policy object
      Steps to implement this library
      1) Import library in aclgen.py
-     2) Create a 3 letter entry in the table in the render_filters 
+     2) Create a 3 letter entry in the table in the render_filters
           function for the demo library and set it to False
      3) In the for header in policy.headers: use the previous entry
           to add an if statement to create a deep copy of the
@@ -187,7 +187,7 @@ class Demo(aclgenerator.ACLGenerator):
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
     self.demo_policies = []
     for header, terms in pol.filters:
-      if not self._PLATFORM in header.platforms:
+      if self._PLATFORM not in header.platforms:
         continue
       filter_options = header.FilterOptions('demo')
       filter_name = filter_options[0]
@@ -236,6 +236,7 @@ class Demo(aclgenerator.ACLGenerator):
 
 class Error(Exception):
   pass
+
 
 class DemoFilterError(Error):
   pass

@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,16 +15,18 @@
 
 """Cisco generator."""
 
-__author__ = 'pmoody@google.com (Peter Moody)'
+__author__ = ['pmoody@google.com (Peter Moody)',
+              'watson@google.com (Tony Watson)']
 
 
 import datetime
-import logging
 import re
 
-from third_party import ipaddr
-import aclgenerator
-import nacaddr
+from lib import aclgenerator
+from lib import nacaddr
+from lib import summarizer
+import ipaddr
+import logging
 
 
 _ACTION_TABLE = {
@@ -51,16 +51,20 @@ class StandardAclTermError(Error):
   """Raised when there is a problem in a standard access list."""
 
 
+class ExtendedACLTermError(Error):
+  """Raised when there is a problem in an extended access list."""
+
+
 class TermStandard(object):
   """A single standard ACL Term."""
 
-  _PLATFORM = 'cisco'
-
-  def __init__(self, term, filter_name):
+  def __init__(self, term, filter_name, platform='cisco'):
     self.term = term
     self.filter_name = filter_name
+    self.platform = platform
     self.options = []
     self.logstring = ''
+    self.dscpstring = ''
     # sanity checking for standard acls
     if self.term.protocol:
       raise StandardAclTermError(
@@ -89,15 +93,20 @@ class TermStandard(object):
           'may not implemented on all IOS versions', self.filter_name,
           self.term.name)
       self.logstring = ' log'
+    if self.term.dscp_match:
+      logging.warn(
+          'WARNING: dscp-match is set in filter %s, term %s and may not be '
+          'implemented on all IOS version', self.filter_name, self.term_name)
+      self.dscpstring = ' dscp' + self.term_dscp_match
 
   def __str__(self):
     # Verify platform specific terms. Skip whole term if platform does not
     # match.
     if self.term.platform:
-      if self._PLATFORM not in self.term.platform:
+      if self.platform not in self.term.platform:
         return ''
     if self.term.platform_exclude:
-      if self._PLATFORM in self.term.platform_exclude:
+      if self.platform in self.term.platform_exclude:
         return ''
 
     ret_str = []
@@ -106,7 +115,7 @@ class TermStandard(object):
     # code by returning early.  Warnings provided in policy.py.
     if self.term.verbatim:
       for next_verbatim in self.term.verbatim:
-        if next_verbatim.value[0] == self._PLATFORM:
+        if next_verbatim.value[0] == self.platform:
           ret_str.append(str(next_verbatim.value[1]))
         return '\n'.join(ret_str)
 
@@ -126,20 +135,24 @@ class TermStandard(object):
       if v4_addresses:
         for addr in v4_addresses:
           if addr.prefixlen == 32:
-            ret_str.append('access-list %s %s %s%s' % (self.filter_name,
-                                                       action,
-                                                       addr.ip,
-                                                       self.logstring))
+            ret_str.append('access-list %s %s %s%s%s' % (self.filter_name,
+                                                         action,
+                                                         addr.ip,
+                                                         self.logstring,
+                                                         self.dscpstring))
           else:
-            ret_str.append('access-list %s %s %s %s%s' % (self.filter_name,
-                                                          action,
-                                                          addr.network,
-                                                          addr.hostmask,
-                                                          self.logstring))
+            ret_str.append('access-list %s %s %s %s%s%s' % (self.filter_name,
+                                                            action,
+                                                            addr.network,
+                                                            addr.hostmask,
+                                                            self.logstring,
+                                                            self.dscpstring))
       else:
-        ret_str.append('access-list %s %s %s%s' % (self.filter_name, action,
-                                                   'any', self.logstring))
-
+        ret_str.append('access-list %s %s %s%s%s' % (self.filter_name,
+                                                     action,
+                                                     'any',
+                                                     self.logstring,
+                                                     self.dscpstring))
     else:
       ret_str.append('remark ' + self.term.name)
       comment_max_width = 70
@@ -152,12 +165,21 @@ class TermStandard(object):
       if v4_addresses:
         for addr in v4_addresses:
           if addr.prefixlen == 32:
-            ret_str.append(' %s host %s%s' % (action, addr.ip, self.logstring))
+            ret_str.append(' %s host %s%s%s' % (action,
+                                                addr.ip,
+                                                self.logstring,
+                                                self.dscpstring))
           else:
-            ret_str.append(' %s %s %s%s' % (action, addr.network,
-                                            addr.hostmask, self.logstring))
+            ret_str.append(' %s %s %s%s%s' % (action,
+                                              addr.network,
+                                              addr.hostmask,
+                                              self.logstring,
+                                              self.dscpstring))
       else:
-        ret_str.append(' %s %s%s' % (action, 'any', self.logstring))
+        ret_str.append(' %s %s%s%s' % (action,
+                                       'any',
+                                       self.logstring,
+                                       self.dscpstring))
 
     return '\n'.join(ret_str)
 
@@ -168,13 +190,13 @@ class ObjectGroup(object):
   since the ports don't store the token name information, we have
   to fudge their names.  ports will be written out like
 
-    object-group ip port <low_port>-<high_port>
+    object-group port <low_port>-<high_port>
       range <low-port> <high-port>
     exit
 
   where as the addressess can be written as
 
-    object-group ip address first-term-source-address
+    object-group address ipv4 first-term-source-address
       172.16.0.0
       172.20.0.0 255.255.0.0
       172.22.0.0 255.128.0.0
@@ -199,7 +221,8 @@ class ObjectGroup(object):
 
   def __str__(self):
     ret_str = ['\n']
-    addresses = {}
+    # netgroups will contain two-tuples of group name string and family int.
+    netgroups = set()
     ports = {}
 
     for term in self.terms:
@@ -210,34 +233,32 @@ class ObjectGroup(object):
       # is not related to the NETWORK.net token name.  that's what you get
       # for using cisco, which has decided to implement its own meta language.
 
-      # source address
-      saddrs = term.GetAddressOfVersion('source_address', 4)
-      # check to see if we've already seen this address.
-      if saddrs and saddrs[0].parent_token not in addresses:
-        addresses[saddrs[0].parent_token] = True
-        ret_str.append('object-group ip address %s' % saddrs[0].parent_token)
-        for addr in saddrs:
-          ret_str.append(' %s %s' % (addr.ip, addr.netmask))
-        ret_str.append('exit\n')
+      # Create network object-groups
+      addr_type = ('source_address', 'destination_address')
+      addr_family = (4, 6)
 
-      # destination address
-      daddrs = term.GetAddressOfVersion('destination_address', 4)
-      # check to see if we've already seen this address
-      if daddrs and daddrs[0].parent_token not in addresses:
-        addresses[daddrs[0].parent_token] = True
-        ret_str.append('object-group ip address %s' % daddrs[0].parent_token)
-        for addr in term.GetAddressOfVersion('destination_address', 4):
-          ret_str.append(' %s %s' % (addr.ip, addr.netmask))
-        ret_str.append('exit\n')
+      for source_or_dest in addr_type:
+        for family in addr_family:
+          addrs = term.GetAddressOfVersion(source_or_dest, family)
+          if addrs:
+            net_def_name = addrs[0].parent_token
+            # We have addresses for this family and have not already seen it.
+            if (net_def_name, family) not in netgroups:
+              netgroups.add((net_def_name, family))
+              ret_str.append('object-group network ipv%d %s' % (
+                  family, net_def_name))
+              for addr in addrs:
+                ret_str.append(' %s/%s' % (addr.ip, addr.prefixlen))
+              ret_str.append('exit\n')
 
-      # source port
+      # Create port object-groups
       for port in term.source_port + term.destination_port:
         if not port:
           continue
         port_key = '%s-%s' % (port[0], port[1])
         if port_key not in ports:
           ports[port_key] = True
-          ret_str.append('object-group ip port %s' % port_key)
+          ret_str.append('object-group port %s' % port_key)
           if port[0] != port[1]:
             ret_str.append(' range %d %d' % (port[0], port[1]))
           else:
@@ -261,28 +282,27 @@ class ObjectGroupTerm(aclgenerator.Term):
   where first-term-source-address, ANY and 179-179 are defined elsewhere
   in the acl.
   """
-  _PLATFORM = 'cisco'
   # Protocols should be emitted as integers rather than strings.
   _PROTO_INT = True
 
-  def __init__(self, term, filter_name):
+  def __init__(self, term, filter_name, platform='cisco'):
     super(ObjectGroupTerm, self).__init__(term)
     self.term = term
     self.filter_name = filter_name
+    self.platform = platform
 
   def __str__(self):
     # Verify platform specific terms. Skip whole term if platform does not
     # match.
     if self.term.platform:
-      if self._PLATFORM not in self.term.platform:
+      if self.platform not in self.term.platform:
         return ''
     if self.term.platform_exclude:
-      if self._PLATFORM in self.term.platform_exclude:
+      if self.platform in self.term.platform_exclude:
         return ''
 
-    source_address_dict = {}
-    destination_address_dict = {}
-
+    source_address_set = set()
+    destination_address_set = set()
     ret_str = ['\n']
     ret_str.append('remark %s' % self.term.name)
     comment_max_width = 70
@@ -310,13 +330,13 @@ class ObjectGroupTerm(aclgenerator.Term):
     # addresses
     source_address = self.term.source_address
     if not self.term.source_address:
-      source_address = [nacaddr.IPv4('0.0.0.0/0', token='ANY')]
-    source_address_dict[source_address[0].parent_token] = True
+      source_address = [nacaddr.IPv4('0.0.0.0/0', token='any')]
+    source_address_set.add(source_address[0].parent_token)
 
     destination_address = self.term.destination_address
     if not self.term.destination_address:
-      destination_address = [nacaddr.IPv4('0.0.0.0/0', token='ANY')]
-    destination_address_dict[destination_address[0].parent_token] = True
+      destination_address = [nacaddr.IPv4('0.0.0.0/0', token='any')]
+    destination_address_set.add(destination_address[0].parent_token)
     # ports
     source_port = [()]
     destination_port = [()]
@@ -325,8 +345,8 @@ class ObjectGroupTerm(aclgenerator.Term):
     if self.term.destination_port:
       destination_port = self.term.destination_port
 
-    for saddr in source_address:
-      for daddr in destination_address:
+    for saddr in source_address_set:
+      for daddr in destination_address_set:
         for sport in source_port:
           for dport in destination_port:
             for proto in protocol:
@@ -338,35 +358,37 @@ class ObjectGroupTerm(aclgenerator.Term):
 
   def _TermletToStr(self, action, proto, saddr, sport, daddr, dport):
     """Output a portion of a cisco term/filter only, based on the 5-tuple."""
-    # fix addreses
-    if saddr:
-      saddr = 'addrgroup %s' % saddr
-    if daddr:
-      daddr = 'addrgroup %s' % daddr
+    # Empty addr/port destinations should emit 'any'
+    if saddr and saddr != 'any':
+      saddr = 'net-group %s' % saddr
+    if daddr and daddr != 'any':
+      daddr = 'net-group %s' % daddr
     # fix ports
     if sport:
-      sport = 'portgroup %d-%d' % (sport[0], sport[1])
+      sport = 'port-group %d-%d' % (sport[0], sport[1])
     else:
       sport = ''
     if dport:
-      dport = 'portgroup %d-%d' % (dport[0], dport[1])
+      dport = 'port-group %d-%d' % (dport[0], dport[1])
     else:
       dport = ''
 
-    return ' %s %s %s %s %s %s' % (
-        action, proto, saddr, sport, daddr, dport)
+    return (' %s %s %s %s %s %s' % (
+        action, proto, saddr, sport, daddr, dport)).rstrip()
 
 
 class Term(aclgenerator.Term):
   """A single ACL Term."""
 
-  _PLATFORM = 'cisco'
-
-  def __init__(self, term, af=4, proto_int=True):
+  def __init__(self, term, af=4, proto_int=True, enable_dsmo=False,
+               term_remark=True, platform='cisco'):
     super(Term, self).__init__(term)
     self.term = term
     self.proto_int = proto_int
     self.options = []
+    self.enable_dsmo = enable_dsmo
+    self.term_remark = term_remark
+    self.platform = platform
     # Our caller should have already verified the address family.
     assert af in (4, 6)
     self.af = af
@@ -379,10 +401,10 @@ class Term(aclgenerator.Term):
     # Verify platform specific terms. Skip whole term if platform does not
     # match.
     if self.term.platform:
-      if self._PLATFORM not in self.term.platform:
+      if self.platform not in self.term.platform:
         return ''
     if self.term.platform_exclude:
-      if self._PLATFORM in self.term.platform_exclude:
+      if self.platform in self.term.platform_exclude:
         return ''
 
     ret_str = ['\n']
@@ -395,18 +417,19 @@ class Term(aclgenerator.Term):
                                                     af=self.text_af))
       return ''
 
-    ret_str.append('remark ' + self.term.name)
+    if self.term_remark:
+      ret_str.append('remark ' + self.term.name)
     if self.term.owner:
       self.term.comment.append('Owner: %s' % self.term.owner)
     for comment in self.term.comment:
       for line in comment.split('\n'):
-        ret_str.append('remark ' + str(line)[:100])
+        ret_str.append('remark ' + str(line)[:100].rstrip())
 
     # Term verbatim output - this will skip over normal term creation
     # code by returning early.  Warnings provided in policy.py.
     if self.term.verbatim:
       for next_verbatim in self.term.verbatim:
-        if next_verbatim.value[0] == self._PLATFORM:
+        if next_verbatim.value[0] == self.platform:
           ret_str.append(str(next_verbatim.value[1]))
         return '\n'.join(ret_str)
 
@@ -438,6 +461,8 @@ class Term(aclgenerator.Term):
                                                      direction='source',
                                                      af=self.text_af))
         return ''
+      if self.enable_dsmo:
+        source_address = summarizer.Summarize(source_address)
     else:
       # source address not set
       source_address = ['any']
@@ -457,6 +482,8 @@ class Term(aclgenerator.Term):
                                                      direction='destination',
                                                      af=self.text_af))
         return ''
+      if self.enable_dsmo:
+        destination_address = summarizer.Summarize(destination_address)
     else:
       # destination address not set
       destination_address = ['any']
@@ -479,6 +506,14 @@ class Term(aclgenerator.Term):
     # logging
     if self.term.logging:
       self.options.append('log')
+
+    # dscp; unlike srx, cisco only supports single, non-except values
+    if self.term.dscp_match:
+      if len(self.term.dscp_match) > 1:
+        raise ExtendedAclTermError(
+            'Extended ACLs cannot specify more than one dscp match value')
+      else:
+        self.options.append('dscp %s' % ' '.join(self.term.dscp_match))
 
     # icmp-types
     icmp_types = ['']
@@ -546,6 +581,11 @@ class Term(aclgenerator.Term):
         daddr = '%s' % (daddr.with_prefixlen)
       else:
         daddr = 'host %s' % (daddr.ip)
+    # DSMO enabled
+    if type(saddr) is tuple:
+      saddr = '%s %s' % summarizer.ToDottedQuad(saddr, negate=True)
+    if type(daddr) is tuple:
+      daddr = '%s %s' % summarizer.ToDottedQuad(daddr, negate=True)
 
     # fix ports
     if not sport:
@@ -616,12 +656,14 @@ class Cisco(aclgenerator.ACLGenerator):
 
   _PLATFORM = 'cisco'
   _DEFAULT_PROTOCOL = 'ip'
-  _SUFFIX = '.acl'
+  SUFFIX = '.acl'
   # Protocols should be emitted as numbers.
   _PROTO_INT = True
+  _TERM_REMARK = True
 
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['address',
                                       'counter',
+                                      'dscp_match',
                                       'expiration',
                                       'logging',
                                       'loss_priority',
@@ -634,7 +676,7 @@ class Cisco(aclgenerator.ACLGenerator):
 
   def _TranslatePolicy(self, pol, exp_info):
     self.cisco_policies = []
-    current_date = datetime.date.today()
+    current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     # a mixed filter outputs both ipv4 and ipv6 acls in the same output file
@@ -702,12 +744,17 @@ class Cisco(aclgenerator.ACLGenerator):
           # render terms based on filter type
           if next_filter == 'standard':
             # keep track of sequence numbers across terms
-            new_terms.append(TermStandard(term, filter_name))
+            new_terms.append(TermStandard(term, filter_name, self._PLATFORM))
           elif next_filter == 'extended':
-            new_terms.append(Term(term, proto_int=self._PROTO_INT))
+            enable_dsmo = (len(filter_options) > 2 and
+                           filter_options[2] == 'enable_dsmo')
+            new_terms.append(
+                Term(term, proto_int=self._PROTO_INT, enable_dsmo=enable_dsmo,
+                     term_remark=self._TERM_REMARK, platform=self._PLATFORM))
           elif next_filter == 'object-group':
             obj_target.AddTerm(term)
-            new_terms.append(ObjectGroupTerm(term, filter_name))
+            obj_group_term = ObjectGroupTerm(term, filter_name)
+            new_terms.append(obj_group_term)
           elif next_filter == 'inet6':
             new_terms.append(Term(term, 6, proto_int=self._PROTO_INT))
 

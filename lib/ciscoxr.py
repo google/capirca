@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,9 +15,9 @@
 
 """Cisco IOS-XR filter renderer."""
 
+__author__ = 'robankeny@google.com (Robert Ankeny)'
 
-
-import cisco
+from lib import cisco
 
 
 class CiscoXR(cisco.Cisco):
@@ -27,7 +25,7 @@ class CiscoXR(cisco.Cisco):
 
   _PLATFORM = 'ciscoxr'
   _DEFAULT_PROTOCOL = 'ip'
-  _SUFFIX = '.xacl'
+  SUFFIX = '.xacl'
 
   def _AppendTargetByFilterType(self, filter_name, filter_type):
     """Takes in the filter name and type and appends headers.
