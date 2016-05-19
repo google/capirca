@@ -75,6 +75,7 @@ class AclCheck(object):
                proto='any',
               ):
 
+    logging.debug('aclcheck __init__')
     self.pol_obj = pol
     self.proto = proto
 
@@ -204,9 +205,9 @@ class AclCheck(object):
         last_filter = next.filter
         text.append('  filter: ' + next.filter)
       if next.possibles:
-        text.append(' ' * 10 + 'term: ' + next.term + ' (possible match)')
+        text.append(' ' * 10 + 'term: ' + str(next.term) + ' (possible match)')
       else:
-        text.append(' ' * 10 + 'term: ' + next.term)
+        text.append(' ' * 10 + 'term: ' + str(next.term))
       if next.possibles:
         text.append(' ' * 16 + next.action + ' if ' + str(next.possibles))
       else:
