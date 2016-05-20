@@ -4,11 +4,6 @@
 network:
 
   RFC1918:
-    # NOTE: this is written as split across two lines intentionally,
-    # since this file's format is _slightly_ different from regular
-    # YAML (that is, arrays can be specified in a single line of
-    # comma-separated values).  This RFC1918 entry as written actually
-    # defines three values: the /8, /12, and /16 networks.
     - 10.0.0.0/8         [non-public]
     - 172.16.0.0/12      [non-public]
     - 192.168.0.0/16     [non-public]
