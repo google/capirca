@@ -7,7 +7,7 @@ import inspect
 from lib import policy
 from lib import yamlpolicyparser
 from lib.yamlpolicyparser import YamlPolicyParser
-from lib.naming import Naming
+from lib.yamlnaming import YamlNaming
 
 
 class Target_Tests(unittest.TestCase):
@@ -89,8 +89,7 @@ class YamlParser_Test(unittest.TestCase):
     with open(yml, 'r') as f:
         self.test_policy = f.read()
 
-    # TODO fix: refactor/characterization tests for Naming object.
-    self.definitions = Naming(os.path.join(self.base_dir, 'def'))
+    self.definitions = YamlNaming(os.path.join(self.base_dir, 'def'))
 
     self.parser = YamlPolicyParser(self.definitions, True)
 
