@@ -374,6 +374,12 @@ class Term(aclgenerator.Term):
 class PacketFilter(aclgenerator.ACLGenerator):
   """Generates filters and terms from provided policy object."""
 
+  # Table names can be at most 31 characters long.
+  # Names longer than this length will be truncated.
+  # A simple logic is implemented in order to look for
+  # possible duplicates after truncation.
+  _TABLE_NAME_MAX_LENGTH = 31
+
   _PLATFORM = 'packetfilter'
   _DEFAULT_PROTOCOL = 'all'
   SUFFIX = '.pf'
@@ -470,8 +476,8 @@ class PacketFilter(aclgenerator.ACLGenerator):
       shortened_deduped_list = {}
 
       for key in self.address_book:
-        if len(key) > 31:
-          name = key[:31]
+        if len(key) > self._TABLE_NAME_MAX_LENGTH:
+          name = key[:self._TABLE_NAME_MAX_LENGTH]
         else:
           name = key
         if name in shortened_deduped_list.keys():
