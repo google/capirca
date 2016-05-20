@@ -32,6 +32,7 @@ import sys
 
 # compiler imports
 from lib import naming
+from lib import yamlnaming
 from lib import policy
 from lib import policyparser
 from lib import yamlpolicyparser
@@ -89,8 +90,8 @@ class AclGen(object):
     self.expiry_info = expiry_info
 
     format_dict = {
-      'yml': ('.yml', yamlpolicyparser),
-      'capirca': ('.pol', policyparser)
+      'yml': ('.yml', yamlpolicyparser, yamlnaming.YamlNaming),
+      'capirca': ('.pol', policyparser, naming.Naming)
     }
     valid_formats = format_dict.keys()
     if policy_format not in valid_formats:
@@ -98,6 +99,7 @@ class AclGen(object):
     tup = format_dict[policy_format]
     self.policy_file_extension = tup[0]
     self.policyparser_module = tup[1]
+    self.definitions_class = tup[2]
 
     # A naming.Naming object created with self._create_defs()
     self.__memoized_defs = None
@@ -106,7 +108,7 @@ class AclGen(object):
     self.reporting_logger = logging.getLogger(REPORTING_LOGGER)
 
   def _create_defs(self):
-    """Creates naming.Naming object using the contents of the supplied directory.
+    """Creates definitions object using the contents of the supplied directory.
 
     The created defs object is memoized so that the public API of this module
     can be restricted to strings and ints, versus domain objects.  This promotes
@@ -118,7 +120,7 @@ class AclGen(object):
     if not os.path.exists(self.definitions_directory):
       msg = 'missing defs directory {0}'.format(self.definitions_directory)
       raise ValueError(msg)
-    self.__memoized_defs = naming.Naming(self.definitions_directory)
+    self.__memoized_defs = self.definitions_class(self.definitions_directory)
     if not self.__memoized_defs:
       raise ValueError('problem loading definitions')
 
