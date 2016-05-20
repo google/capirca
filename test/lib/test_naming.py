@@ -83,6 +83,18 @@ class Naming_Characterization_Tests(unittest.TestCase):
             actual = self.naming.GetNetAddr(net)
             self.assertEqual(actual, map(lib.nacaddr.IPv4, expected))
 
+    def test_GetNet_adds_metadata_to_address(self):
+        """The metadata (comments, etc) is used during ACL generation."""
+        def to_s(a):
+            return ','.join([str(a), a.text, a.token, a.parent_token])
+        actual = map(to_s, self.naming.GetNetAddr('INTERNAL'))
+        expected = [
+            '10.0.0.0/8,non-public,RFC1918,INTERNAL',
+            '172.16.0.0/12,non-public,RFC1918,INTERNAL',
+            '192.168.0.0/16,non-public,RFC1918,INTERNAL'
+        ]
+        self.assertEqual(actual, expected)
+
     def test_GetNet_raises_if_unknown(self):
         with self.assertRaises(lib.naming.UndefinedAddressError):
             self.naming.GetNetAddr('SOME_UNDEFINED_TOKEN')
