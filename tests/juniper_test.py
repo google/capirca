@@ -229,6 +229,12 @@ term minimize-prefix-list {
   action:: accept
 }
 """
+GOOD_TERM_V6_HOP_LIMIT = """
+term good-term-v6-hl {
+  hop-limit:: 25
+  action:: accept
+}
+"""
 GOOD_TERM_20_V6 = """
 term good-term-20-v6 {
   protocol-except:: icmpv6
@@ -479,6 +485,14 @@ class JuniperTest(unittest.TestCase):
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('interface-specific;' in output, output)
+
+  def testHopLimit(self):
+    self.mox.ReplayAll()
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 +
+                                             GOOD_TERM_V6_HOP_LIMIT,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.failUnless('hop-limit 25;' in output, output)
 
   def testProtocolExcept(self):
     self.mox.ReplayAll()

@@ -56,6 +56,13 @@ header {
   target:: gce global/networks/default
 }
 """
+HEADER_V6 = """
+header {
+  comment:: "this is a test inet6 acl"
+  comment:: "this is another comment"
+  target:: juniper test-filter inet6
+}
+"""
 INCLUDE_STATEMENT = """
 #include "/tmp/y.inc"
 """
@@ -318,6 +325,18 @@ term good-term-35 {
   next-ip:: NEXT_IP
 }
 """
+GOOD_TERM_V6_1 = """
+term good-term-v6-1 {
+  hop-limit:: 5
+  action:: accept
+}
+"""
+GOOD_TERM_V6_2 = """
+term good-term-v6-1 {
+  hop-limit:: 5-7
+  action:: accept
+}
+"""
 TERM_SUPER_1 = """
 term term-super {
   source-address:: PROD
@@ -513,6 +532,22 @@ class PolicyTest(unittest.TestCase):
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertEquals(str(terms[0].protocol[0]), '1')
+
+  def testHopLimitSingle(self):
+    pol = HEADER_V6 + GOOD_TERM_V6_1
+    self.mox.ReplayAll()
+    ret = policy.ParsePolicy(pol, self.naming)
+    self.assertEqual(len(ret.filters), 1)
+    _, terms = ret.filters[0]
+    self.assertEquals(str(terms[0].hop_limit[0]), '5')
+
+  def testHopLimitRange(self):
+    pol = HEADER_V6 + GOOD_TERM_V6_2
+    self.mox.ReplayAll()
+    ret = policy.ParsePolicy(pol, self.naming)
+    self.assertEqual(len(ret.filters), 1)
+    _, terms = ret.filters[0]
+    self.assertEquals(str(terms[0].hop_limit[2]), '7')
 
   def testBadPortProtocols(self):
     pol = HEADER + BAD_TERM_3

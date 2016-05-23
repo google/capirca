@@ -378,6 +378,7 @@ class Term(object):
     # juniper specific.
     self.packet_length = None
     self.fragment_offset = None
+    self.hop_limit = None
     self.icmp_type = []
     self.ether_type = []
     self.traffic_type = []
@@ -539,6 +540,19 @@ class Term(object):
         ofo = [int(x) for x in other.fragment_offset.split('-')]
         if sfo[0] < ofo[0] or sorted(sfo[1:]) > sorted(ofo[1:]):
           return False
+      else:
+        return False
+    if self.hop_limit:
+      # hop_limit looks like 'integer-integer' or just, 'integer'
+      shl = [int(x) for x in self.hop_limit.split('-')]
+      if other.hop_limit:
+        ohl = [int(x) for x in other.hop_limit.split('-')]
+        if shl[0] < ohl[0]:
+          return False
+        shll, ohll = shl[1:2], ohl[1:2]
+        if shll and ohll:
+          if shl[0] > ohl[0]:
+            return False
       else:
         return False
     if self.packet_length:
@@ -709,6 +723,8 @@ class Term(object):
     if self.packet_length != other.packet_length:
       return False
     if self.fragment_offset != other.fragment_offset:
+      return False
+    if self.hop_limit != other.hop_limit:
       return False
     if sorted(self.icmp_type) != sorted(other.icmp_type):
       return False
@@ -972,6 +988,8 @@ class Term(object):
         self.packet_length = obj.value
       elif obj.var_type is VarType.FRAGMENT_OFFSET:
         self.fragment_offset = obj.value
+      elif obj.var_type is VarType.HOP_LIMIT:
+        self.hop_limit = obj.value
       elif obj.var_type is VarType.SINTERFACE:
         self.source_interface = obj.value
       elif obj.var_type is VarType.DINTERFACE:
@@ -1271,6 +1289,7 @@ class VarType(object):
   STAG = 44
   DTAG = 45
   NEXT_IP = 46
+  HOP_LIMIT = 47
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1447,6 +1466,7 @@ tokens = (
     'EXPIRATION',
     'FORWARDING_CLASS',
     'FRAGMENT_OFFSET',
+    'HOP_LIMIT',
     'APPLY_GROUPS',
     'APPLY_GROUPS_EXCEPT',
     'HEADER',
@@ -1505,6 +1525,7 @@ reserved = {
     'expiration': 'EXPIRATION',
     'forwarding-class': 'FORWARDING_CLASS',
     'fragment-offset': 'FRAGMENT_OFFSET',
+    'hop-limit': 'HOP_LIMIT',
     'apply-groups': 'APPLY_GROUPS',
     'apply-groups-except': 'APPLY_GROUPS_EXCEPT',
     'header': 'HEADER',
@@ -1665,6 +1686,7 @@ def p_term_spec(p):
                 | term_spec expiration_spec
                 | term_spec forwarding_class_spec
                 | term_spec fragment_offset_spec
+                | term_spec hop_limit_spec
                 | term_spec icmp_type_spec
                 | term_spec interface_spec
                 | term_spec logging_spec
@@ -1742,6 +1764,15 @@ def p_fragment_offset_spec(p):
     p[0] = VarType(VarType.FRAGMENT_OFFSET, str(p[4]))
   else:
     p[0] = VarType(VarType.FRAGMENT_OFFSET, str(p[4]) + '-' + str(p[6]))
+
+
+def p_hop_limit_spec(p):
+  """ hop_limit_spec : HOP_LIMIT ':' ':' INTEGER
+                     | HOP_LIMIT ':' ':' INTEGER '-' INTEGER """
+  if len(p) == 5:
+    p[0] = VarType(VarType.HOP_LIMIT, str(p[4]))
+  else:
+    p[0] = VarType(VarType.HOP_LIMIT, str(p[4]) + '-' + str(p[6]))
 
 
 def p_one_or_more_dscps(p):

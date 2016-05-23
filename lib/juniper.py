@@ -265,8 +265,9 @@ class Term(aclgenerator.Term):
                           self.term.destination_address or
                           self.term.destination_port or
                           self.term.destination_prefix or
-                          self.term.forwarding_class or
                           self.term.ether_type or
+                          self.term.forwarding_class or
+                          self.term.hop_limit or
                           self.term.next_ip or
                           self.term.port or
                           self.term.precedence or
@@ -472,6 +473,11 @@ class Term(aclgenerator.Term):
               ' '.join(self.term.dscp_except)))
         else:
           config.Append('dscp-except [ %s ];' % ' '.join(self.term.dscp_except))
+
+      if self.term.hop_limit:
+        # Only generate a hop-limit if inet6, inet4 has not hop-limit.
+        if self.term_type == 'inet6':
+          config.Append('hop-limit %s;' % (self.term.hop_limit))
 
       config.Append('}')  # end from { ... }
 
@@ -752,6 +758,7 @@ class Juniper(aclgenerator.ACLGenerator):
                                       'expiration',
                                       'forwarding_class',
                                       'fragment_offset',
+                                      'hop_limit',
                                       'logging',
                                       'loss_priority',
                                       'next_ip',
