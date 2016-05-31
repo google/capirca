@@ -19,7 +19,7 @@ from lib import ciscoxr
 from lib import nacaddr
 from lib import naming
 from lib import policy
-import mox
+import mock
 
 GOOD_HEADER_1 = """
 header {
@@ -65,31 +65,31 @@ EXP_INFO = 2
 class CiscoXRTest(unittest.TestCase):
 
   def setUp(self):
-    self.mox = mox.Mox()
-    self.naming = self.mox.CreateMock(naming.Naming)
-
-  def tearDown(self):
-    self.mox.VerifyAll()
-    self.mox.UnsetStubs()
+    self.naming = mock.create_autospec(naming.Naming)
 
   def testStandardTermHost(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('10.1.1.1/32')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
+
     pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                              self.naming)
     acl = ciscoxr.CiscoXR(pol, EXP_INFO)
     expected = 'ipv4 access-list test-filter'
     self.failUnless(expected in str(acl), '[%s]' % str(acl))
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+
   def testStandardTermHostIPv6(self):
-    self.naming.GetNetAddr('SOME_HOST2').AndReturn([nacaddr.IP('2001::3/128')])
-    self.naming.GetServiceByProto('HTTP', 'tcp').AndReturn(['80'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('2001::3/128')]
+    self.naming.GetServiceByProto.return_value = ['80']
+
     pol = policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_2,
                              self.naming)
     acl = ciscoxr.CiscoXR(pol, EXP_INFO)
     expected = 'ipv6 access-list ipv6-test-filter'
     self.failUnless(expected in str(acl), '[%s]' % str(acl))
+
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST2')
+    self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
 
 if __name__ == '__main__':
   unittest.main()

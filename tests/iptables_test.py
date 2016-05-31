@@ -23,7 +23,7 @@ from lib import iptables
 from lib import nacaddr
 from lib import naming
 from lib import policy
-import mox
+import mock
 
 GOOD_HEADER_1 = """
 header {
@@ -411,23 +411,11 @@ class FakeTerm(object):
 class AclCheckTest(unittest.TestCase):
 
   def setUp(self):
-    self.mox = mox.Mox()
-    self.naming = self.mox.CreateMock(naming.Naming)
+    self.naming = mock.create_autospec(naming.Naming)
 
-  def tearDown(self):
-    self.mox.VerifyAll()
-    self.mox.UnsetStubs()
-    self.mox.ResetAll()
-
-  def testChainFilter(self):
-    self.mox.StubOutWithMock(iptables.logging, 'warn')
+  @mock.patch.object(iptables.logging, 'warn')
+  def testChainFilter(self, mock_warn):
     filter_name = 'foobar_chain'
-    # create mock to ensure we warn about non-standard chain
-    iptables.logging.warn('Filter is generating a non-standard chain that will '
-                          'not apply to traffic unless linked from INPUT, '
-                          'OUTPUT or FORWARD filters. New chain name is: %s',
-                          filter_name)
-    self.mox.ReplayAll()
     pol = policy.ParsePolicy(CHAIN_HEADER_1 + GOOD_TERM_1, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
@@ -436,14 +424,18 @@ class AclCheckTest(unittest.TestCase):
     # is the term named appropriately?
     self.failUnless('-N f_good-term-1' in result)
 
+    mock_warn.assert_called_once_with(
+        'Filter is generating a non-standard chain that will '
+        'not apply to traffic unless linked from INPUT, '
+        'OUTPUT or FORWARD filters. New chain name is: %s',
+        filter_name)
+
   def testUnsupportedTargetOption(self):
-    self.mox.ReplayAll()
     pol = policy.ParsePolicy(BAD_HEADER_3 + GOOD_TERM_1, self.naming)
     self.assertRaises(iptables.UnsupportedTargetOption,
                       iptables.Iptables, pol, EXP_INFO)
 
   def testGoodPolicy(self):
-    self.mox.ReplayAll()
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_1,
                                                self.naming), EXP_INFO)
     result = str(acl)
@@ -456,7 +448,6 @@ class AclCheckTest(unittest.TestCase):
                     'did not find append for good-term-1.')
 
   def testCustomChain(self):
-    self.mox.ReplayAll()
     acl = iptables.Iptables(policy.ParsePolicy(NON_STANDARD_CHAIN + GOOD_TERM_1,
                                                self.naming), EXP_INFO)
     result = str(acl).split('\n')
@@ -464,7 +455,6 @@ class AclCheckTest(unittest.TestCase):
     self.failIf('-P foo' in result, 'chain foo may not have a policy set.')
 
   def testChainNoTarget(self):
-    self.mox.ReplayAll()
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_5 + GOOD_TERM_1,
                                                self.naming), EXP_INFO)
     result = str(acl).split('\n')
@@ -477,7 +467,6 @@ class AclCheckTest(unittest.TestCase):
                   'attempting to create a built-in chain.')
 
   def testCustomChainNoTarget(self):
-    self.mox.ReplayAll()
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_6 + GOOD_TERM_1,
                                                self.naming), EXP_INFO)
     result = str(acl).split('\n')
@@ -493,12 +482,11 @@ class AclCheckTest(unittest.TestCase):
     # In this test, we should get fewer lines of output by performing
     # early return jumps on excluded addresses.
     #
-    self.naming.GetNetAddr('INTERNAL').InAnyOrder().AndReturn(
-        [nacaddr.IPv4('10.0.0.0/8')])
-    self.naming.GetNetAddr('OOB_NET').InAnyOrder().AndReturn(
-        [nacaddr.IPv4('10.0.0.0/24')])
-    self.naming.GetServiceByProto('HTTP', 'tcp').AndReturn(['80'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IPv4('10.0.0.0/8')],
+        [nacaddr.IPv4('10.0.0.0/24')]]
+    self.naming.GetServiceByProto.return_value = ['80']
+
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
                                                self.naming), EXP_INFO)
     result = str(acl)
@@ -510,22 +498,31 @@ class AclCheckTest(unittest.TestCase):
     self.failUnless('--sport 80 -s 10.0.0.0/8' in result,
                     'expected source address 10.0.0.0/8 not accepted.')
 
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('INTERNAL'),
+        mock.call('OOB_NET')])
+    self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
+
   def testExcludeAddressesPolicy(self):
     #
     # In this test, we should get fewer lines of output from excluding
     # addresses from the specified destination.
     #
-    self.naming.GetNetAddr('INTERNAL').InAnyOrder().AndReturn(
-        [nacaddr.IPv4('10.0.0.0/8')])
-    self.naming.GetNetAddr('OOB_NET').InAnyOrder().AndReturn(
-        [nacaddr.IPv4('10.128.0.0/9'), nacaddr.IPv4('10.64.0.0/10')])
-    self.naming.GetServiceByProto('HTTP', 'tcp').AndReturn(['80'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IPv4('10.0.0.0/8')],
+        [nacaddr.IPv4('10.128.0.0/9'), nacaddr.IPv4('10.64.0.0/10')]]
+    self.naming.GetServiceByProto.return_value = ['80']
+
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
                                                self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('--sport 80 -s 10.0.0.0/10' in result,
                     'expected source address 10.0.0.0/10 not accepted.')
+
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('INTERNAL'),
+        mock.call('OOB_NET')])
+    self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
 
   def testAddExcludeSourceForLengthPolicy(self):
     #
@@ -543,10 +540,9 @@ class AclCheckTest(unittest.TestCase):
       address = nacaddr.IPv4(10 * 256 * 256 * 256 + i * 256)
       dest_range.append(address.supernet(7))  # Grow to /25
 
-    self.naming.GetNetAddr('SOME_SOURCE').InAnyOrder().AndReturn(source_range)
-    self.naming.GetNetAddr('SOME_DEST').InAnyOrder().AndReturn(dest_range)
-    self.naming.GetServiceByProto('HTTP', 'tcp').AndReturn(['80'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.side_effect = [source_range, dest_range]
+    self.naming.GetServiceByProto.return_value = ['80']
+
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_9,
                                                self.naming), EXP_INFO)
     result = str(acl)
@@ -565,6 +561,11 @@ class AclCheckTest(unittest.TestCase):
         re.search('--sport 80 -d 10.0.1.0/25 [^\n]* -j ACCEPT', result),
         'expected destination addresss 10.0.1.0/25 accepted:\n' + result)
 
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('SOME_SOURCE'),
+        mock.call('SOME_DEST')])
+    self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
+
   def testAddExcludeDestForLengthPolicy(self):
     #
     # In this test, we should generate fewer lines of output by
@@ -581,10 +582,9 @@ class AclCheckTest(unittest.TestCase):
       address = nacaddr.IPv4(10 * 256 * 256 * 256 + i * 256 * 256)
       dest_range.append(address.supernet(15))  # Grow to /17
 
-    self.naming.GetNetAddr('SOME_SOURCE').InAnyOrder().AndReturn(source_range)
-    self.naming.GetNetAddr('SOME_DEST').InAnyOrder().AndReturn(dest_range)
-    self.naming.GetServiceByProto('HTTP', 'tcp').AndReturn(['80'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.side_effect = [source_range, dest_range]
+    self.naming.GetServiceByProto.return_value = ['80']
+
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_9,
                                                self.naming), EXP_INFO)
     result = str(acl)
@@ -603,9 +603,14 @@ class AclCheckTest(unittest.TestCase):
         re.search('--sport 80 -s 10.0.1.0/25 [^\n]* -j ACCEPT', result),
         'expected destination addresss 10.0.1.0/25 accepted:\n' + result)
 
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('SOME_SOURCE'),
+        mock.call('SOME_DEST')])
+    self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
+
   def testOptions(self):
-    self.naming.GetServiceByProto('HTTP', 'tcp').AndReturn(['80'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['80']
+
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_3,
                                                self.naming), EXP_INFO)
     result = str(acl)
@@ -616,6 +621,8 @@ class AclCheckTest(unittest.TestCase):
     self.failUnless(
         '-m state --state ESTABLISHED,RELATED' in result,
         'missing or incorrect state information.')
+
+    self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
 
   def testRejectReset(self):
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + REJECT_TERM1,
@@ -802,7 +809,6 @@ class AclCheckTest(unittest.TestCase):
                       pol, EXP_INFO)
 
   def testTermNameConflict(self):
-    self.mox.ReplayAll()
     pol = policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_1 +
                              GOOD_TERM_1 + GOOD_TERM_1, self.naming)
     self.assertRaises(aclgenerator.DuplicateTermError,
@@ -810,8 +816,8 @@ class AclCheckTest(unittest.TestCase):
 
   def testMultiPort(self):
     ports = [str(x) for x in range(1, 29, 2)]
-    self.naming.GetServiceByProto('FOURTEEN_PORTS', 'tcp').AndReturn(ports)
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ports
+
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_MULTIPORT,
                                                self.naming), EXP_INFO)
     self.failUnless('-m multiport --sports %s' % ','.join(ports) in str(acl),
@@ -820,48 +826,54 @@ class AclCheckTest(unittest.TestCase):
     self.failIf('-m multiport --dports  -d' in str(acl),
                 'invalid multiport syntax produced.')
 
+    self.naming.GetServiceByProto.assert_called_once_with(
+            'FOURTEEN_PORTS', 'tcp')
+
   def testMultiPortWithRanges(self):
     ports = [str(x) for x in 1, 3, 5, 7, 9, 11, 13, 15, 17, '19-21', '23-25',
              '27-29']
-    self.naming.GetServiceByProto('FIFTEEN_PORTS_WITH_RANGES',
-                                  'tcp').AndReturn(ports)
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ports
+
     acl = iptables.Iptables(policy.ParsePolicy(
         GOOD_HEADER_1 + GOOD_MULTIPORT_RANGE, self.naming), EXP_INFO)
     expected = '-m multiport --dports %s' % ','.join(ports).replace('-', ':')
     self.failUnless(expected in str(acl),
                     'multiport module not used as expected.')
 
-  def testMultiportSwap(self):
-    self.naming.GetServiceByProto('HTTP', 'tcp').InAnyOrder().AndReturn(['80'])
-    self.naming.GetServiceByProto('HTTPS', 'tcp').InAnyOrder(
-        ).AndReturn(['443'])
-    self.naming.GetServiceByProto('SSH', 'tcp').InAnyOrder().AndReturn(['22'])
+    self.naming.GetServiceByProto.assert_called_once_with(
+            'FIFTEEN_PORTS_WITH_RANGES', 'tcp')
 
-    self.mox.ReplayAll()
+  def testMultiportSwap(self):
+    self.naming.GetServiceByProto.side_effect = [['80'], ['443'], ['22']]
+
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + MULTIPORT_SWAP,
                                                self.naming), EXP_INFO)
     expected = '--dport 22 -m multiport --sports 80,443'
     self.failUnless(expected in str(acl),
                     'failing to move single port before multiport values.')
 
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('HTTP', 'tcp'),
+        mock.call('HTTPS', 'tcp'),
+        mock.call('SSH', 'tcp')])
+
   def testMultiportLargePortCount(self):
     ports = [str(x) for x in range(1, 71, 2)]
-    self.naming.GetServiceByProto('LOTS_OF_PORTS', 'tcp').AndReturn(ports)
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ports
+
     acl = iptables.Iptables(policy.ParsePolicy(
         GOOD_HEADER_1 + LARGE_MULTIPORT, self.naming), EXP_INFO)
     self.failUnless('-m multiport --dports 1,3,5,7,9' in str(acl))
     self.failUnless('-m multiport --dports 29,31,33,35,37' in str(acl))
     self.failUnless('-m multiport --dports 57,59,61,63,65,67,69' in str(acl))
 
+    self.naming.GetServiceByProto.assert_called_once_with(
+        'LOTS_OF_PORTS', 'tcp')
+
   def testMultiportDualLargePortCount(self):
     ports = [str(x) for x in range(1, 71, 2)]
-    self.naming.GetServiceByProto('LOTS_OF_SPORTS', 'tcp').InAnyOrder(
-        ).AndReturn(ports)
-    self.naming.GetServiceByProto('LOTS_OF_DPORTS', 'tcp').InAnyOrder(
-        ).AndReturn(ports)
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ports
+
     acl = iptables.Iptables(policy.ParsePolicy(
         GOOD_HEADER_1 + DUAL_LARGE_MULTIPORT, self.naming), EXP_INFO)
     self.failUnless('-m multiport --sports 1,3,5' in str(acl))
@@ -876,6 +888,10 @@ class AclCheckTest(unittest.TestCase):
     self.failUnless('65,67,69 -m multiport --dports 1,3,5' in str(acl))
     self.failUnless('65,67,69 -m multiport --dports 29,31,33' in str(acl))
     self.failUnless('65,67,69 -m multiport --dports 57,59,61' in str(acl))
+
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('LOTS_OF_SPORTS', 'tcp'),
+        mock.call('LOTS_OF_DPORTS', 'tcp')])
 
   def testGeneratePortBadArguments(self):
     term = iptables.Term(FakeTerm(), 'test', True, 'test')
@@ -915,25 +931,25 @@ class AclCheckTest(unittest.TestCase):
     self.failUnless('-o eth0' in result,
                     'destination interface specification not in output.')
 
-  def testExpired(self):
-    self.mox.StubOutWithMock(iptables.logging, 'warn')
-    # create mock to ensure we warn about expired terms being skipped
-    iptables.logging.warn('WARNING: Term %s in policy %s is expired'
-                          ' and will not be rendered.', 'is_expired', 'INPUT')
-    self.mox.ReplayAll()
+  @mock.patch.object(iptables.logging, 'warn')
+  def testExpired(self, mock_warn):
     _ = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + EXPIRED_TERM,
                                              self.naming), EXP_INFO)
 
-  def testExpiringTerm(self):
-    self.mox.StubOutWithMock(iptables.logging, 'info')
-    # create mock to ensure we inform about expiring terms
-    iptables.logging.info('INFO: Term %s in policy %s expires in '
-                          'less than two weeks.', 'is_expiring', 'INPUT')
-    self.mox.ReplayAll()
+    mock_warn.assert_called_once_with(
+        'WARNING: Term %s in policy %s is expired'
+        ' and will not be rendered.', 'is_expired', 'INPUT')
+
+  @mock.patch.object(iptables.logging, 'info')
+  def testExpiringTerm(self, mock_info):
     exp_date = datetime.date.today() + datetime.timedelta(weeks=EXP_INFO)
     _ = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + EXPIRING_TERM %
                                              exp_date.strftime('%Y-%m-%d'),
                                              self.naming), EXP_INFO)
+
+    mock_info.assert_called_once_with(
+        'INFO: Term %s in policy %s expires in '
+        'less than two weeks.', 'is_expiring', 'INPUT')
 
   def testIPv6Icmp(self):
     pol = policy.ParsePolicy(IPV6_HEADER_1 + IPV6_TERM_1, self.naming)
@@ -947,9 +963,9 @@ class AclCheckTest(unittest.TestCase):
                     'icmpv6-type 129 (router-solicit) is missing')
 
   def testIPv6IcmpOrder(self):
-    self.naming.GetNetAddr('IPV6_INTERNAL').InAnyOrder().AndReturn(
-        [nacaddr.IPv6('fd87:6044:ac54:3558::/64')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IPv6('fd87:6044:ac54:3558::/64')]
+
     pol = policy.ParsePolicy(IPV6_HEADER_1 + ICMPV6_TERM_1, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
@@ -957,28 +973,32 @@ class AclCheckTest(unittest.TestCase):
                     ' --icmpv6-type 1' in result,
                     'incorrect order of ICMPv6 match elements')
 
-  def testIcmpv6InetMismatch(self):
-    self.mox.StubOutWithMock(iptables.logging, 'debug')
-    iptables.logging.debug('Term inet6-icmp will not be rendered,'
-                           ' as it has [\'icmpv6\'] match specified but '
-                           'the ACL is of inet address family.')
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.assert_called_once_with('IPV6_INTERNAL')
+
+  @mock.patch.object(iptables.logging, 'debug')
+  def testIcmpv6InetMismatch(self, mock_debug):
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + IPV6_TERM_1,
                                                self.naming), EXP_INFO)
     # output happens in __str_
     str(acl)
 
-  def testIcmpInet6Mismatch(self):
-    self.mox.StubOutWithMock(iptables.logging, 'debug')
-    iptables.logging.debug('Term good-term-1 will not be rendered,'
-                           ' as it has [\'icmp\'] match specified but '
-                           'the ACL is of inet6 address family.')
-    self.mox.ReplayAll()
+    mock_debug.assert_called_once_with(
+        'Term inet6-icmp will not be rendered,'
+        ' as it has [\'icmpv6\'] match specified but '
+        'the ACL is of inet address family.')
+
+  @mock.patch.object(iptables.logging, 'debug')
+  def testIcmpInet6Mismatch(self, mock_debug):
     acl = iptables.Iptables(policy.ParsePolicy(IPV6_HEADER_1 +
                                                GOOD_TERM_1,
                                                self.naming), EXP_INFO)
     # output happens in __str_
     str(acl)
+
+    mock_debug.assert_called_once_with(
+        'Term good-term-1 will not be rendered,'
+        ' as it has [\'icmp\'] match specified but '
+        'the ACL is of inet6 address family.')
 
   def testOwner(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_10, self.naming)

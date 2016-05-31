@@ -46,5 +46,5 @@ setup(
     include_package_data=True,
     data_files=data_files,
     install_requires=[
-      'python-gflags', 'ply', 'ipaddr', 'mox']
+      'python-gflags', 'ply', 'ipaddr', 'mock', 'mox']
 )

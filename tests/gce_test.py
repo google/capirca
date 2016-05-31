@@ -22,7 +22,7 @@ from lib import gce
 from lib import nacaddr
 from lib import naming
 from lib import policy
-import mox
+import mock
 
 GOOD_HEADER = """
 header {
@@ -296,79 +296,92 @@ TEST_EXCLUDE_RANGE = [nacaddr.IP('10.240.0.0/16')]
 class GCETest(unittest.TestCase):
 
   def setUp(self):
-    self.mox = mox.Mox()
-    self.naming = self.mox.CreateMock(naming.Naming)
-
-  def tearDown(self):
-    self.mox.VerifyAll()
-    self.mox.UnsetStubs()
-    self.mox.ResetAll()
+    self.naming = mock.create_autospec(naming.Naming)
 
   def _StripAclHeaders(self, acl):
     return '\n'.join([line for line in str(acl).split('\n')
                       if not line.lstrip().startswith('#')])
 
   def testGenericTerm(self):
-    self.naming.GetNetAddr('CORP_EXTERNAL').AndReturn(TEST_IPS)
-    self.naming.GetServiceByProto('DNS', 'udp').AndReturn(['53'])
-    self.naming.GetServiceByProto('DNS', 'tcp').AndReturn(['53'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
     expected = json.loads(GOOD_TERM_JSON)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('DNS', 'udp'),
+        mock.call('DNS', 'tcp')])
+
   def testGenericTermWithoutNetwork(self):
-    self.naming.GetNetAddr('CORP_EXTERNAL').AndReturn(TEST_IPS)
-    self.naming.GetServiceByProto('DNS', 'udp').AndReturn(['53'])
-    self.naming.GetServiceByProto('DNS', 'tcp').AndReturn(['53'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER_NO_NETWORK + GOOD_TERM, self.naming), EXP_INFO)
     expected = json.loads(GOOD_TERM_NO_NETWORK_JSON)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('DNS', 'udp'),
+        mock.call('DNS', 'tcp')])
+
   def testGenericTermWithExclude(self):
-    self.naming.GetNetAddr('CORP_EXTERNAL').AndReturn(TEST_INCLUDE_IPS)
-    self.naming.GetNetAddr('GUEST_WIRELESS_EXTERNAL').AndReturn(
-        TEST_EXCLUDE_IPS)
-    self.naming.GetServiceByProto('DNS', 'udp').AndReturn(['53'])
-    self.naming.GetServiceByProto('DNS', 'tcp').AndReturn(['53'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.side_effect = [TEST_INCLUDE_IPS, TEST_EXCLUDE_IPS]
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_EXCLUDE, self.naming), EXP_INFO)
     expected = json.loads(GOOD_TERM_JSON)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('CORP_EXTERNAL'),
+        mock.call('GUEST_WIRELESS_EXTERNAL')])
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('DNS', 'udp'),
+        mock.call('DNS', 'tcp')])
+
   def testGenericTermWithExcludeRange(self):
-    self.naming.GetNetAddr('CORP_EXTERNAL').AndReturn(TEST_INCLUDE_RANGE)
-    self.naming.GetNetAddr('GUEST_WIRELESS_EXTERNAL').AndReturn(
-        TEST_EXCLUDE_RANGE)
-    self.naming.GetServiceByProto('DNS', 'udp').AndReturn(['53'])
-    self.naming.GetServiceByProto('DNS', 'tcp').AndReturn(['53'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.side_effect = [TEST_INCLUDE_RANGE,
+                                          TEST_EXCLUDE_RANGE]
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_EXCLUDE, self.naming), EXP_INFO)
     expected = json.loads(GOOD_TERM_EXCLUDE_RANGE)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('CORP_EXTERNAL'),
+        mock.call('GUEST_WIRELESS_EXTERNAL')])
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('DNS', 'udp'),
+        mock.call('DNS', 'tcp')])
+
   def testExpiredTerm(self):
-    self.naming.GetNetAddr('CORP_EXTERNAL').AndReturn(TEST_IPS)
-    self.naming.GetServiceByProto('SSH', 'tcp').AndReturn(['22'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.return_value = ['22']
+
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_EXPIRED, self.naming), EXP_INFO)
     self.assertEquals(self._StripAclHeaders(str(acl)), '[]\n\n')
+
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+    self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
 
   def testSourceNetworkSplit(self):
     lots_of_ips = []
     for i in range(20):
       for j in range(20):
         lots_of_ips.append(nacaddr.IP('10.%d.%d.1/32' % (i, j)))
-    self.naming.GetNetAddr('CORP_EXTERNAL').AndReturn(lots_of_ips)
-    self.naming.GetServiceByProto('DNS', 'udp').AndReturn(['53'])
-    self.naming.GetServiceByProto('DNS', 'tcp').AndReturn(['53'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = lots_of_ips
+    self.naming.GetServiceByProto.return_value = ['53']
+
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
     self.assertTrue('default-good-term-1-udp-1' in str(acl))
@@ -376,10 +389,15 @@ class GCETest(unittest.TestCase):
     self.assertTrue('default-good-term-1-tcp-1' in str(acl))
     self.assertTrue('default-good-term-1-tcp-2' in str(acl))
 
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('DNS', 'udp'),
+        mock.call('DNS', 'tcp')])
+
   def testRaisesWithUnsupportedAction(self):
-    self.naming.GetNetAddr('CORP_EXTERNAL').AndReturn(TEST_IPS)
-    self.naming.GetServiceByProto('SSH', 'tcp').AndReturn(['22'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.return_value = ['22']
+
     self.assertRaisesRegexp(
         gce.GceFirewallError,
         'GCE firewall action must be "accept".',
@@ -388,9 +406,12 @@ class GCETest(unittest.TestCase):
             GOOD_HEADER + BAD_TERM_UNSUPPORTED_ACTION, self.naming),
         EXP_INFO)
 
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+    self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
+
   def testRaisesWithoutSource(self):
-    self.naming.GetServiceByProto('SSH', 'tcp').AndReturn(['22'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['22']
+
     self.assertRaisesRegexp(
         gce.GceFirewallError,
         'GCE firewall needs either to specify source address or source tags.',
@@ -399,11 +420,12 @@ class GCETest(unittest.TestCase):
             GOOD_HEADER + BAD_TERM_NO_SOURCE, self.naming),
         EXP_INFO)
 
+    self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
+
   def testRaisesWithOnlySourceExclusion(self):
-    self.naming.GetNetAddr('GUEST_WIRELESS_EXTERNAL').AndReturn(
-        TEST_EXCLUDE_IPS)
-    self.naming.GetServiceByProto('SSH', 'tcp').AndReturn(['22'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = TEST_EXCLUDE_IPS
+    self.naming.GetServiceByProto.return_value = ['22']
+
     self.assertRaisesRegexp(
         gce.GceFirewallError,
         ('GCE firewall does not support address exclusions without a source '
@@ -413,13 +435,13 @@ class GCETest(unittest.TestCase):
             GOOD_HEADER + BAD_TERM_SOURCE_EXCLUDE_ONLY, self.naming),
         EXP_INFO)
 
+    self.naming.GetNetAddr.assert_called_once_with('GUEST_WIRELESS_EXTERNAL')
+    self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
+
   def testRaisesNoSourceAfterExclude(self):
-    self.naming.GetNetAddr('CORP_EXTERNAL').AndReturn(TEST_INCLUDE_IPS)
-    self.naming.GetNetAddr('GUEST_WIRELESS_EXTERNAL').AndReturn(
-        TEST_INCLUDE_IPS)
-    self.naming.GetServiceByProto('DNS', 'udp').AndReturn(['53'])
-    self.naming.GetServiceByProto('DNS', 'tcp').AndReturn(['53'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.side_effect = [TEST_INCLUDE_IPS, TEST_INCLUDE_IPS]
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+
     self.assertRaisesRegexp(
         gce.GceFirewallError,
         ('GCE firewall rule no longer contains any source addresses after '
@@ -429,10 +451,17 @@ class GCETest(unittest.TestCase):
             GOOD_HEADER + GOOD_TERM_EXCLUDE, self.naming),
         EXP_INFO)
 
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('CORP_EXTERNAL'),
+        mock.call('GUEST_WIRELESS_EXTERNAL')])
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('DNS', 'udp'),
+        mock.call('DNS', 'tcp')])
+
   def testRaisesWithSourcePort(self):
-    self.naming.GetNetAddr('CORP_EXTERNAL').AndReturn(TEST_IPS)
-    self.naming.GetServiceByProto('SSH', 'tcp').AndReturn(['22'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.return_value = ['22']
+
     self.assertRaisesRegexp(
         gce.GceFirewallError,
         'GCE firewall does not support source port restrictions.',
@@ -441,10 +470,13 @@ class GCETest(unittest.TestCase):
             GOOD_HEADER + BAD_TERM_SOURCE_PORT, self.naming),
         EXP_INFO)
 
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+    self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
+
   def testRaisesWithLongTermName(self):
-    self.naming.GetNetAddr('CORP_EXTERNAL').AndReturn(TEST_IPS)
-    self.naming.GetServiceByProto('SSH', 'tcp').AndReturn(['22'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.return_value = ['22']
+
     self.assertRaises(
         aclgenerator.TermNameTooLongError,
         gce.GCE,
@@ -452,11 +484,13 @@ class GCETest(unittest.TestCase):
             GOOD_HEADER + BAD_TERM_NAME_TOO_LONG, self.naming),
         EXP_INFO)
 
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+    self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
+
   def testRaisesWithIcmpAndDestinationPort(self):
-    self.naming.GetNetAddr('CORP_EXTERNAL').AndReturn(TEST_IPS)
-    self.naming.GetServiceByProto('SSH', 'tcp').AndReturn(['22'])
-    self.naming.GetServiceByProto('SSH', 'icmp').AndReturn(['22'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['22'], ['22']]
+
     self.assertRaisesRegexp(
         gce.GceFirewallError,
         'Only TCP and UDP protocols support destination ports.',
@@ -464,6 +498,11 @@ class GCETest(unittest.TestCase):
         policy.ParsePolicy(
             GOOD_HEADER + BAD_TERM_UNSUPPORTED_PORT, self.naming),
         EXP_INFO)
+
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('SSH', 'tcp'),
+        mock.call('SSH', 'icmp')])
 
 
 if __name__ == '__main__':

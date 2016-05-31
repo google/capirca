@@ -18,7 +18,7 @@ import unittest
 from lib import arista
 from lib import naming
 from lib import policy
-import mox
+import mock
 
 
 GOOD_HEADER = """
@@ -46,17 +46,11 @@ EXP_INFO = 2
 class AristaTest(unittest.TestCase):
 
   def setUp(self):
-    self.mox = mox.Mox()
-    self.naming = self.mox.CreateMock(naming.Naming)
-
-  def tearDown(self):
-    self.mox.VerifyAll()
-    self.mox.UnsetStubs()
+    self.naming = mock.create_autospec(naming.Naming)
 
   def testExtendedEosSyntax(self):
     # Extended access-lists should not use the "extended" argument to ip
     # access-list.
-    self.mox.ReplayAll()
     acl = arista.Arista(
         policy.ParsePolicy(GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
     self.assertTrue('ip access-list test-filter' in str(acl))

@@ -20,7 +20,7 @@ from lib import ipset
 from lib import nacaddr
 from lib import naming
 from lib import policy
-import mox
+import mock
 
 GOOD_HEADER_1 = """
 header {
@@ -59,26 +59,23 @@ EXP_INFO = 2
 class IpsetTest(unittest.TestCase):
 
   def setUp(self):
-    self.mox = mox.Mox()
-    self.naming = self.mox.CreateMock(naming.Naming)
-
-  def tearDown(self):
-    self.mox.VerifyAll()
+    self.naming = mock.create_autospec(naming.Naming)
 
   def testMarkers(self):
-    self.naming.GetNetAddr('INTERNAL').InAnyOrder().AndReturn(
-        [nacaddr.IPv4('10.0.0.0/8')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IPv4('10.0.0.0/8')]
+
     acl = ipset.Ipset(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                                          self.naming), EXP_INFO)
     result = str(acl)
     self.assertIn('# begin:ipset-rules', result)
     self.assertIn('# end:ipset-rules', result)
 
+    self.naming.GetNetAddr.assert_called_once_with('INTERNAL')
+
   def testGenerateSetName(self):
     # iptables superclass currently limits term name length to 26 characters,
     # but that could change
-    policy_term = self.mox.CreateMockAnything()
+    policy_term = mock.MagicMock()
     policy_term.name = 'filter_name'
     policy_term.protocol = ['tcp']
     term = ipset.Term(policy_term, 'filter_name', False, None)
@@ -95,31 +92,32 @@ class IpsetTest(unittest.TestCase):
                      'good-but-way-too-long-te-src-v6')
 
   def testOneSourceAddress(self):
-    self.naming.GetNetAddr('INTERNAL').InAnyOrder().AndReturn(
-        [nacaddr.IPv4('10.0.0.0/8')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IPv4('10.0.0.0/8')]
+
     acl = ipset.Ipset(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                                          self.naming), EXP_INFO)
     result = str(acl)
     self.assertIn('-s 10.0.0.0/8', result)
     self.assertNotIn('-m set --match-set good-term-3-src src', result)
 
+    self.naming.GetNetAddr.assert_called_once_with('INTERNAL')
+
   def testOneDestinationAddress(self):
-    self.naming.GetNetAddr('EXTERNAL').InAnyOrder().AndReturn(
-        [nacaddr.IPv4('172.16.0.0/12')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IPv4('172.16.0.0/12')]
+
     acl = ipset.Ipset(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
                                          self.naming), EXP_INFO)
     result = str(acl)
     self.assertIn('-d 172.16.0.0/12', result)
     self.assertNotIn('-m set --match-set good-term-2-dst dst', result)
 
+    self.naming.GetNetAddr.assert_called_once_with('EXTERNAL')
+
   def testOneSourceAndDestinationAddress(self):
-    self.naming.GetNetAddr('INTERNAL').InAnyOrder().AndReturn(
-        [nacaddr.IPv4('10.0.0.0/8')])
-    self.naming.GetNetAddr('EXTERNAL').InAnyOrder().AndReturn(
-        [nacaddr.IPv4('172.16.0.0/12')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IPv4('10.0.0.0/8')],
+        [nacaddr.IPv4('172.16.0.0/12')]]
+
     acl = ipset.Ipset(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_3,
                                          self.naming), EXP_INFO)
     result = str(acl)
@@ -128,10 +126,14 @@ class IpsetTest(unittest.TestCase):
     self.assertNotIn('-m set --match-set good-term-3-src src', result)
     self.assertNotIn('-m set --match-set good-term-3-dst dst', result)
 
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('INTERNAL'),
+        mock.call('EXTERNAL')])
+
   def testManySourceAddresses(self):
-    self.naming.GetNetAddr('INTERNAL').InAnyOrder().AndReturn(
-        [nacaddr.IPv4('10.0.0.0/24'), nacaddr.IPv4('10.1.0.0/24')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IPv4('10.0.0.0/24'), nacaddr.IPv4('10.1.0.0/24')]
+
     acl = ipset.Ipset(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                                          self.naming), EXP_INFO)
     result = str(acl)
@@ -142,10 +144,12 @@ class IpsetTest(unittest.TestCase):
     self.assertIn('-m set --match-set good-term-1-src src', result)
     self.assertNotIn('-s ', result)
 
+    self.naming.GetNetAddr.assert_called_once_with('INTERNAL')
+
   def testManyDestinationAddresses(self):
-    self.naming.GetNetAddr('EXTERNAL').InAnyOrder().AndReturn(
-        [nacaddr.IPv4('172.16.0.0/24'), nacaddr.IPv4('172.17.0.0/24')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IPv4('172.16.0.0/24'), nacaddr.IPv4('172.17.0.0/24')]
+
     acl = ipset.Ipset(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
                                          self.naming), EXP_INFO)
     result = str(acl)
@@ -156,12 +160,13 @@ class IpsetTest(unittest.TestCase):
     self.assertIn('-m set --match-set good-term-2-dst dst', result)
     self.assertNotIn('-s ', result)
 
+    self.naming.GetNetAddr.assert_called_once_with('EXTERNAL')
+
   def testManySourceAndDestinationAddresses(self):
-    self.naming.GetNetAddr('INTERNAL').InAnyOrder().AndReturn(
-        [nacaddr.IPv4('10.0.0.0/24'), nacaddr.IPv4('10.1.0.0/24')])
-    self.naming.GetNetAddr('EXTERNAL').InAnyOrder().AndReturn(
-        [nacaddr.IPv4('172.16.0.0/24'), nacaddr.IPv4('172.17.0.0/24')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IPv4('10.0.0.0/24'), nacaddr.IPv4('10.1.0.0/24')],
+        [nacaddr.IPv4('172.16.0.0/24'), nacaddr.IPv4('172.17.0.0/24')]]
+
     acl = ipset.Ipset(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_3,
                                          self.naming), EXP_INFO)
     result = str(acl)
@@ -177,6 +182,10 @@ class IpsetTest(unittest.TestCase):
     self.assertIn('-m set --match-set good-term-3-dst dst', result)
     self.assertNotIn('-s ', result)
     self.assertNotIn('-d ', result)
+
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('INTERNAL'),
+        mock.call('EXTERNAL')])
 
 if __name__ == '__main__':
   unittest.main()

@@ -19,7 +19,7 @@ import unittest
 from lib import aclgenerator
 from lib import naming
 from lib import policy
-import mox
+import mock
 
 GOOD_HEADER_1 = """
 header {
@@ -89,11 +89,7 @@ class ACLMock(aclgenerator.ACLGenerator):
 class ACLGeneratorTest(unittest.TestCase):
 
   def setUp(self):
-    self.mox = mox.Mox()
-    self.naming = self.mox.CreateMock(naming.Naming)
-
-  def tearDown(self):
-    self.mox.VerifyAll()
+    self.naming = mock.create_autospec(naming.Naming)
 
   def testEstablishedNostate(self):
     # When using "nostate" filter and a term with "option:: established"

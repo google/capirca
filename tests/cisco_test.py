@@ -23,7 +23,7 @@ from lib import cisco
 from lib import nacaddr
 from lib import naming
 from lib import policy
-import mox
+import mock
 
 
 GOOD_HEADER = """
@@ -270,26 +270,23 @@ EXP_INFO = 2
 class CiscoTest(unittest.TestCase):
 
   def setUp(self):
-    self.mox = mox.Mox()
-    self.naming = self.mox.CreateMock(naming.Naming)
-
-  def tearDown(self):
-    self.mox.VerifyAll()
-    self.mox.UnsetStubs()
+    self.naming = mock.create_autospec(naming.Naming)
 
   def testIPVersion(self):
-    self.naming.GetNetAddr('ANY').AndReturn([nacaddr.IP('0.0.0.0/0'),
-                                             nacaddr.IP('::/0')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('0.0.0.0/0'),
+                                           nacaddr.IP('::/0')]
+
     pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_6, self.naming)
     acl = cisco.Cisco(pol, EXP_INFO)
     # check if we've got a v6 address in there.
     self.failIf('::' in str(acl), str(acl))
 
+    self.naming.GetNetAddr.assert_called_once_with('ANY')
+
   def testOptions(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('10.0.0.0/8')])
-    self.naming.GetServiceByProto('HTTP', 'tcp').AndReturn(['80'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    self.naming.GetServiceByProto.return_value = ['80']
+
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_2,
                                          self.naming), EXP_INFO)
     # this is a hacky sort of way to test that 'established' maps to HIGH_PORTS
@@ -297,11 +294,13 @@ class CiscoTest(unittest.TestCase):
     range_test = 'permit 6 any eq 80 10.0.0.0 0.255.255.255 range 1024 65535'
     self.failUnless(range_test in str(acl), '[%s]' % str(acl))
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+    self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
+
   def testExpandingConsequtivePorts(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('10.0.0.0/8')])
-    self.naming.GetServiceByProto('CONSECUTIVE_PORTS', 'tcp').AndReturn(['80',
-                                                                         '81'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    self.naming.GetServiceByProto.return_value = ['80', '81']
+
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_14,
                                          self.naming), EXP_INFO)
     first_string = 'permit 6 any 10.0.0.0 0.255.255.255 eq 80'
@@ -309,23 +308,25 @@ class CiscoTest(unittest.TestCase):
     self.failUnless(first_string in str(acl), '[%s]' % str(acl))
     self.failUnless(second_string in str(acl), '[%s]' % str(acl))
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+    self.naming.GetServiceByProto.assert_called_once_with(
+            'CONSECUTIVE_PORTS', 'tcp')
+
   def testDSCP(self):
-    self.mox.ReplayAll()
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_16,
                                          self.naming), EXP_INFO)
     self.failUnless(re.search('permit 6 any any dscp 42', str(acl)),
                     str(acl))
 
   def testTermAndFilterName(self):
-    self.mox.ReplayAll()
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
                                          self.naming), EXP_INFO)
     self.failUnless('ip access-list extended test-filter' in str(acl), str(acl))
     self.failUnless('remark good-term-1' in str(acl), str(acl))
 
   def testRemark(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('10.1.1.1/32')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
+
     # Extended ACLs should have extended remark style.
     acl = cisco.Cisco(policy.ParsePolicy(
         GOOD_EXTENDED_NUMBERED_HEADER + GOOD_TERM_1, self.naming), EXP_INFO)
@@ -338,22 +339,21 @@ class CiscoTest(unittest.TestCase):
                       EXP_INFO)
     self.failUnless('access-list 50 remark' in str(acl), str(acl))
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+
   def testTcpEstablished(self):
-    self.mox.ReplayAll()
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_3,
                                          self.naming), EXP_INFO)
     self.failUnless(re.search('permit 6 any any established\n',
                               str(acl)), str(acl))
 
   def testLogging(self):
-    self.mox.ReplayAll()
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_4,
                                          self.naming), EXP_INFO)
     self.failUnless(re.search('permit 6 any any log\n',
                               str(acl)), str(acl))
 
   def testVerbatimTerm(self):
-    self.mox.ReplayAll()
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_5,
                                          self.naming), EXP_INFO)
     self.failUnless('mary had a little lamb' in str(acl), str(acl))
@@ -362,63 +362,76 @@ class CiscoTest(unittest.TestCase):
     self.failIf('mary had a third lamb' in str(acl), str(acl))
 
   def testBadStandardTerm(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('10.0.0.0/8')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+
     pol = policy.ParsePolicy(GOOD_STANDARD_HEADER_1 + BAD_STANDARD_TERM_1,
                              self.naming)
     self.assertRaises(cisco.StandardAclTermError, cisco.Cisco, pol, EXP_INFO)
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+
   def testStandardTermHost(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('10.1.1.1/32')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
+
     pol = policy.ParsePolicy(GOOD_STANDARD_HEADER_1 + GOOD_STANDARD_TERM_1,
                              self.naming)
     acl = cisco.Cisco(pol, EXP_INFO)
     expected = 'access-list 99 permit 10.1.1.1'
     self.failUnless(expected in str(acl), '[%s]' % str(acl))
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+
   def testStandardTermNet(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('10.0.0.0/8')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+
     pol = policy.ParsePolicy(GOOD_STANDARD_HEADER_1 + GOOD_STANDARD_TERM_2,
                              self.naming)
     acl = cisco.Cisco(pol, EXP_INFO)
     expected = 'access-list 99 permit 10.0.0.0 0.255.255.255'
     self.failUnless(expected in str(acl), '[%s]' % str(acl))
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+
   def testNamedStandard(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('10.0.0.0/8')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+
     pol = policy.ParsePolicy(GOOD_STANDARD_HEADER_2 + GOOD_STANDARD_TERM_2,
                              self.naming)
     acl = cisco.Cisco(pol, EXP_INFO)
     expected = 'ip access-list standard FOO'
     self.failUnless(expected in str(acl), '[%s]' % str(acl))
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+
   def testNoIPv6InOutput(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn(
-        [nacaddr.IP('2620:0:1000::/40')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('2620:0:1000::/40')]
+
     pol = policy.ParsePolicy(GOOD_STANDARD_HEADER_1 + GOOD_STANDARD_TERM_2,
                              self.naming)
     acl = cisco.Cisco(pol, EXP_INFO)
     self.failIf('::' in str(acl), '[%s]' % str(acl))
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+
   def testStandardFilterName(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('10.0.0.0/8')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+
     pol = policy.ParsePolicy(BAD_STANDARD_HEADER_1 + GOOD_STANDARD_TERM_2,
                              self.naming)
     self.assertRaises(cisco.UnsupportedCiscoAccessListError,
                       cisco.Cisco, pol, EXP_INFO)
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+
   def testStandardFilterRange(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('10.0.0.0/8')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+
     pol = policy.ParsePolicy(BAD_STANDARD_HEADER_2 + GOOD_STANDARD_TERM_2,
                              self.naming)
     self.assertRaises(cisco.UnsupportedCiscoAccessListError,
                       cisco.Cisco, pol, EXP_INFO)
+
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
   def testActionsSupport(self):
     self.assertEquals(sorted(cisco._ACTION_TABLE.keys()),
@@ -435,10 +448,10 @@ class CiscoTest(unittest.TestCase):
     port_grp2.append(' range 1024 65535')
     port_grp2.append('exit')
 
-    self.naming.GetNetAddr('SOME_HOST').AndReturn(
-        [nacaddr.IP('10.0.0.0/8', token='SOME_HOST')])
-    self.naming.GetServiceByProto('HTTP', 'tcp').AndReturn(['80'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IP('10.0.0.0/8', token='SOME_HOST')]
+    self.naming.GetServiceByProto.return_value = ['80']
+
     pol = policy.ParsePolicy(GOOD_OBJGRP_HEADER + GOOD_TERM_2, self.naming)
     acl = cisco.Cisco(pol, EXP_INFO)
 
@@ -458,11 +471,13 @@ class CiscoTest(unittest.TestCase):
     for addrgroup in re.findall(r'net-group ([a-f0-9.:/]+)', str(acl)):
       self.assertRaises(ValueError, nacaddr.IP(addrgroup))
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+    self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
+
   def testInet6(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('10.0.0.0/8'),
-                                              nacaddr.IP('2001:4860:8000::/33')]
-                                            )
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8'),
+                                           nacaddr.IP('2001:4860:8000::/33')]
+
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_INET6_HEADER + GOOD_TERM_8,
                                          self.naming), EXP_INFO)
     inet6_test1 = 'no ipv6 access-list inet6_acl'
@@ -473,11 +488,12 @@ class CiscoTest(unittest.TestCase):
     self.failUnless(re.search(inet6_test3, str(acl)), str(acl))
     self.failIf('10.0.0.0' in str(acl), str(acl))
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+
   def testMixed(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('10.0.0.0/8'),
-                                              nacaddr.IP('2001:4860:8000::/33')]
-                                            )
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8'),
+                                           nacaddr.IP('2001:4860:8000::/33')]
+
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_MIXED_HEADER + GOOD_TERM_8,
                                          self.naming), EXP_INFO)
     inet6_test1 = 'no ip access-list extended mixed_acl'
@@ -494,26 +510,28 @@ class CiscoTest(unittest.TestCase):
     self.failUnless(inet6_test5 in aclout, '[%s]' % aclout)
     self.failUnless(re.search(inet6_test6, aclout), aclout)
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+
   def testDsmo(self):
     addr_list = list()
     for octet in range(0, 256):
       net = nacaddr.IP('192.168.' + str(octet) + '.64/27')
       addr_list.append(net)
-    self.naming.GetNetAddr('SOME_HOST').AndReturn(addr_list)
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = addr_list
+
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_DSMO_HEADER + GOOD_TERM_8,
                                          self.naming), EXP_INFO)
     self.failUnless('permit 6 any 192.168.0.64 0.0.255.31' in str(acl))
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+
   def testUdpEstablished(self):
-    self.mox.ReplayAll()
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_9,
                                          self.naming), EXP_INFO)
     self.failIf(re.search('permit 17 any any established',
                           str(acl)), str(acl))
 
   def testIcmpTypes(self):
-    self.mox.ReplayAll()
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_10,
                                          self.naming), EXP_INFO)
     # echo-reply = 0
@@ -527,7 +545,6 @@ class CiscoTest(unittest.TestCase):
                               str(acl)), str(acl))
 
   def testIpv6IcmpTypes(self):
-    self.mox.ReplayAll()
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_INET6_HEADER + GOOD_TERM_11,
                                          self.naming), EXP_INFO)
     # echo-reply = icmp-type code 129
@@ -540,30 +557,31 @@ class CiscoTest(unittest.TestCase):
     self.failUnless(re.search('permit 58 any any 3',
                               str(acl)), str(acl))
 
-  def testIcmpv6InetMismatch(self):
-    self.mox.StubOutWithMock(cisco.logging, 'debug')
-    cisco.logging.debug('Term good-term-11 will not be rendered,'
-                        ' as it has [\'icmpv6\'] match specified but '
-                        'the ACL is of inet address family.')
-    self.mox.ReplayAll()
+  @mock.patch.object(cisco.logging, 'debug')
+  def testIcmpv6InetMismatch(self, mock_debug):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_11,
                                          self.naming), EXP_INFO)
     # output happens in __str_
     str(acl)
 
-  def testIcmpInet6Mismatch(self):
-    self.mox.StubOutWithMock(cisco.logging, 'debug')
-    cisco.logging.debug('Term good-term-1 will not be rendered,'
-                        ' as it has [\'icmp\'] match specified but '
-                        'the ACL is of inet6 address family.')
-    self.mox.ReplayAll()
+    mock_debug.assert_called_once_with(
+        'Term good-term-11 will not be rendered,'
+        ' as it has [\'icmpv6\'] match specified but '
+        'the ACL is of inet address family.')
+
+  @mock.patch.object(cisco.logging, 'debug')
+  def testIcmpInet6Mismatch(self, mock_debug):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_INET6_HEADER + GOOD_TERM_1,
                                          self.naming), EXP_INFO)
     # output happens in __str_
     str(acl)
 
+    mock_debug.assert_called_once_with(
+        'Term good-term-1 will not be rendered,'
+        ' as it has [\'icmp\'] match specified but '
+        'the ACL is of inet6 address family.')
+
   def testUnsupportedKeywordsError(self):
-    self.mox.ReplayAll()
     pol1 = policy.ParsePolicy(GOOD_HEADER + UNSUPPORTED_TERM_1, self.naming)
     pol2 = policy.ParsePolicy(GOOD_HEADER + UNSUPPORTED_TERM_1, self.naming)
     # protocol-except
@@ -574,46 +592,42 @@ class CiscoTest(unittest.TestCase):
                       cisco.Cisco, pol2, EXP_INFO)
 
   def testDefaultInet6Protocol(self):
-    self.mox.ReplayAll()
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_INET6_HEADER + GOOD_TERM_12,
                                          self.naming), EXP_INFO)
     self.failUnless(re.search('permit ipv6 any any', str(acl)), str(acl))
 
-  def testExpiredTerm(self):
-    self.mox.StubOutWithMock(cisco.logging, 'warn')
-    # create mock to ensure we warn about expired terms being skipped
-    cisco.logging.warn('WARNING: Term %s in policy %s is expired and will not '
-                       'be rendered.', 'is_expired', 'test-filter')
-    self.mox.ReplayAll()
+  @mock.patch.object(cisco.logging, 'warn')
+  def testExpiredTerm(self, mock_warn):
     _ = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + EXPIRED_TERM,
                                        self.naming), EXP_INFO)
 
-  def testExpiringTerm(self):
-    self.mox.StubOutWithMock(cisco.logging, 'info')
-    # create mock to ensure we inform about expiring terms
-    cisco.logging.info('INFO: Term %s in policy %s expires in '
-                       'less than two weeks.', 'is_expiring', 'test-filter')
-    self.mox.ReplayAll()
+    mock_warn.assert_called_once_with(
+        'WARNING: Term %s in policy %s is expired and will not '
+        'be rendered.', 'is_expired', 'test-filter')
+
+  @mock.patch.object(cisco.logging, 'info')
+  def testExpiringTerm(self, mock_info):
     exp_date = datetime.date.today() + datetime.timedelta(weeks=EXP_INFO)
     _ = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + EXPIRING_TERM %
                                        exp_date.strftime('%Y-%m-%d'),
                                        self.naming), EXP_INFO)
 
+    mock_info.assert_called_once_with(
+        'INFO: Term %s in policy %s expires in '
+        'less than two weeks.', 'is_expiring', 'test-filter')
+
   def testTermHopByHop(self):
-    self.mox.ReplayAll()
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_15,
                                          self.naming), EXP_INFO)
     self.failUnless('permit hbh any any' in str(acl), str(acl))
 
   def testOwnerTerm(self):
-    self.mox.ReplayAll()
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER +
                                          GOOD_TERM_13, self.naming), EXP_INFO)
     self.failUnless(re.search('remark Owner: foo@google.com',
                               str(acl)), str(acl))
 
   def testRemoveTrailingCommentWhitespace(self):
-    self.mox.ReplayAll()
     term = LONG_COMMENT_TERM%'a'*99
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + term,
                                          self.naming), EXP_INFO)

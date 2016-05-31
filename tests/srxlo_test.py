@@ -19,7 +19,7 @@ import unittest
 from lib import naming
 from lib import policy
 from lib import srxlo
-import mox
+import mock
 
 GOOD_HEADER_1 = """
 header {
@@ -49,11 +49,7 @@ EXP_INFO = 2
 class SRXloTest(unittest.TestCase):
 
   def setUp(self):
-    self.mox = mox.Mox()
-    self.naming = self.mox.CreateMock(naming.Naming)
-
-  def tearDown(self):
-    self.mox.VerifyAll()
+    self.naming = mock.create_autospec(naming.Naming)
 
   def testIcmpv6(self):
     output = str(srxlo.SRXlo(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,

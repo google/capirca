@@ -20,7 +20,7 @@ from lib import aruba
 from lib import nacaddr
 from lib import naming
 from lib import policy
-import mox
+import mock
 
 GOOD_HEADER_IPV4 = """
 header {
@@ -71,35 +71,33 @@ TEST_IPS = [nacaddr.IP('10.2.3.4/32'),
 class ArubaTest(unittest.TestCase):
 
   def setUp(self):
-    self.mox = mox.Mox()
-    self.naming = self.mox.CreateMock(naming.Naming)
-
-  def tearDown(self):
-    self.mox.VerifyAll()
-    self.mox.UnsetStubs()
-    self.mox.ResetAll()
+    self.naming = mock.create_autospec(naming.Naming)
 
   def testNetdestination(self):
-    self.naming.GetNetAddr('SERVERS').AndReturn(TEST_IPS)
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = TEST_IPS
+
     acl = aruba.Aruba(policy.ParsePolicy(
         GOOD_HEADER_IPV4 + GOOD_TERM_IPV4, self.naming), EXP_INFO)
     self.assertTrue('netdestination SERVER-LIST' in str(acl))
     self.assertTrue('  host 10.2.3.4' in str(acl))
     self.assertFalse('  host 2001:4860:8000::5' in str(acl))
 
+    self.naming.GetNetAddr.assert_called_once_with('SERVERS')
+
   def testNetdestination6(self):
-    self.naming.GetNetAddr('SERVERS').AndReturn(TEST_IPS)
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = TEST_IPS
+
     acl = aruba.Aruba(policy.ParsePolicy(
         GOOD_HEADER_IPV6 + GOOD_TERM_IPV6, self.naming), EXP_INFO)
     self.assertTrue('netdestination6 SERVER-LIST_6' in str(acl))
     self.assertTrue('  host 2001:4860:8000::5' in str(acl))
     self.assertFalse('  host 10.2.3.4' in str(acl))
 
+    self.naming.GetNetAddr.assert_called_once_with('SERVERS')
+
   def testActionUnsupported(self):
-    self.naming.GetNetAddr('SERVERS').AndReturn(TEST_IPS)
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = TEST_IPS
+
     self.assertRaisesRegexp(
         aruba.UnsupportedArubaAccessListError,
         'Aruba ACL action must be "accept".',
@@ -107,6 +105,8 @@ class ArubaTest(unittest.TestCase):
         policy.ParsePolicy(
             GOOD_HEADER_IPV4 + BAD_TERM_IPV4, self.naming),
         EXP_INFO)
+
+    self.naming.GetNetAddr.assert_called_once_with('SERVERS')
 
 
 if __name__ == '__main__':

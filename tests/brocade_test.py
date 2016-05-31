@@ -19,7 +19,7 @@ import unittest
 from lib import brocade
 from lib import naming
 from lib import policy
-import mox
+import mock
 
 GOOD_HEADER = """
 header {
@@ -42,22 +42,15 @@ EXP_INFO = 2
 class BrocadeTest(unittest.TestCase):
 
   def setUp(self):
-    self.mox = mox.Mox()
-    self.naming = self.mox.CreateMock(naming.Naming)
-
-  def tearDown(self):
-    self.mox.VerifyAll()
-    self.mox.UnsetStubs()
+    self.naming = mock.create_autospec(naming.Naming)
 
   def testTcpEstablished(self):
-    self.mox.ReplayAll()
     acl = brocade.Brocade(
         policy.ParsePolicy(GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
     self.failUnless(re.search('permit tcp any any established\n',
                               str(acl)), str(acl))
 
   def testNoTermRemark(self):
-    self.mox.ReplayAll()
     acl = brocade.Brocade(
         policy.ParsePolicy(GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
     self.failIf('remark good-term-3' in str(acl))
