@@ -21,7 +21,7 @@ from lib import nacaddr
 from lib import naming
 from lib import policy
 from lib import windows_ipsec
-import mox
+import mock
 
 
 GOOD_HEADER = """
@@ -84,13 +84,7 @@ EXP_INFO = 2
 class WindowsIPSecTest(unittest.TestCase):
 
   def setUp(self):
-    self.mox = mox.Mox()
-    self.naming = self.mox.CreateMock(naming.Naming)
-
-  def tearDown(self):
-    self.mox.VerifyAll()
-    self.mox.UnsetStubs()
-    self.mox.ResetAll()
+    self.naming = mock.create_autospec(naming.Naming)
 
   # pylint: disable=invalid-name
   def failUnless(self, strings, result, term):
@@ -101,9 +95,9 @@ class WindowsIPSecTest(unittest.TestCase):
           'did not find "%s" for %s' % (fullstring, term))
 
   def testPolicy(self):
-    self.naming.GetNetAddr('PROD_NET').AndReturn([nacaddr.IP('10.0.0.0/8')])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    self.naming.GetServiceByProto.return_value = ['25']
+
     acl = windows_ipsec.WindowsIPSec(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
@@ -112,10 +106,13 @@ class WindowsIPSecTest(unittest.TestCase):
         result,
         'header')
 
+    self.naming.GetNetAddr.assert_called_once_with('PROD_NET')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testTcp(self):
-    self.naming.GetNetAddr('PROD_NET').AndReturn([nacaddr.IP('10.0.0.0/8')])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    self.naming.GetServiceByProto.return_value = ['25']
+
     acl = windows_ipsec.WindowsIPSec(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
@@ -129,8 +126,10 @@ class WindowsIPSecTest(unittest.TestCase):
         result,
         'good-term-tcp')
 
+    self.naming.GetNetAddr.assert_called_once_with('PROD_NET')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testIcmp(self):
-    self.mox.ReplayAll()
     acl = windows_ipsec.WindowsIPSec(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_ICMP, self.naming), EXP_INFO)
     result = str(acl)
@@ -146,35 +145,33 @@ class WindowsIPSecTest(unittest.TestCase):
         'good-term-icmp')
 
   def testBadIcmp(self):
-    self.mox.ReplayAll()
     acl = windows_ipsec.WindowsIPSec(policy.ParsePolicy(
         GOOD_HEADER + BAD_TERM_ICMP, self.naming), EXP_INFO)
     self.assertRaises(aclgenerator.UnsupportedFilterError, str, acl)
 
-  def testExpiredTerm(self):
-    self.mox.StubOutWithMock(windows_ipsec.logging, 'warn')
-    # create mock to ensure we warn about expired terms being skipped
-    windows_ipsec.logging.warn('WARNING: Term %s in policy %s is expired and '
-                               'will not be rendered.', 'expired_test',
-                               'test-filter')
-    self.mox.ReplayAll()
+  @mock.patch.object(windows_ipsec.logging, 'warn')
+  def testExpiredTerm(self, mock_warn):
     windows_ipsec.WindowsIPSec(policy.ParsePolicy(
         GOOD_HEADER + EXPIRED_TERM, self.naming), EXP_INFO)
 
-  def testExpiringTerm(self):
-    self.mox.StubOutWithMock(windows_ipsec.logging, 'info')
-    # create mock to ensure we inform about expiring terms
-    windows_ipsec.logging.info('INFO: Term %s in policy %s expires in '
-                               'less than two weeks.', 'is_expiring',
-                               'test-filter')
-    self.mox.ReplayAll()
+    mock_warn.assert_called_once_with(
+        'WARNING: Term %s in policy %s is expired and '
+        'will not be rendered.', 'expired_test',
+        'test-filter')
+
+  @mock.patch.object(windows_ipsec.logging, 'info')
+  def testExpiringTerm(self, mock_info):
     exp_date = datetime.date.today() + datetime.timedelta(weeks=EXP_INFO)
     windows_ipsec.WindowsIPSec(policy.ParsePolicy(
         GOOD_HEADER + EXPIRING_TERM % exp_date.strftime('%Y-%m-%d'),
         self.naming), EXP_INFO)
 
+    mock_info.assert_called_once_with(
+        'INFO: Term %s in policy %s expires in '
+        'less than two weeks.', 'is_expiring',
+        'test-filter')
+
   def testMultiprotocol(self):
-    self.mox.ReplayAll()
     acl = windows_ipsec.WindowsIPSec(policy.ParsePolicy(
         GOOD_HEADER + MULTIPLE_PROTOCOLS_TERM, self.naming), EXP_INFO)
     result = str(acl)

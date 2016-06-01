@@ -22,7 +22,7 @@ from lib import nacaddr
 from lib import naming
 from lib import packetfilter
 from lib import policy
-import mox
+import mock
 
 GOOD_HEADER = """
 header {
@@ -277,20 +277,14 @@ EXP_INFO = 2
 class PacketFilterTest(unittest.TestCase):
 
   def setUp(self):
-    self.mox = mox.Mox()
-    self.naming = self.mox.CreateMock(naming.Naming)
-
-  def tearDown(self):
-    self.mox.VerifyAll()
-    self.mox.UnsetStubs()
-    self.mox.ResetAll()
+    self.naming = mock.create_autospec(naming.Naming)
 
   def testTcp(self):
     ip = nacaddr.IP('10.0.0.0/8')
     ip.parent_token = 'PROD_NETWORK'
-    self.naming.GetNetAddr('PROD_NETWORK').AndReturn([ip])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [ip]
+    self.naming.GetServiceByProto.return_value = ['25']
+
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
@@ -301,8 +295,10 @@ class PacketFilterTest(unittest.TestCase):
         '{ 25 }' in result,
         'did not find actual term for good-term-tcp')
 
+    self.naming.GetNetAddr.assert_called_once_with('PROD_NETWORK')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testLog(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_LOG, self.naming), EXP_INFO)
     result = str(acl)
@@ -315,7 +311,6 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for good-term-log')
 
   def testIcmp(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_ICMP, self.naming), EXP_INFO)
     result = str(acl)
@@ -327,7 +322,6 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for good-term-icmp')
 
   def testIcmpTypes(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_ICMP_TYPES, self.naming), EXP_INFO)
     result = str(acl)
@@ -339,7 +333,6 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for good-term-icmp-types')
 
   def testIcmpv6(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_ICMPV6, self.naming), EXP_INFO)
     result = str(acl)
@@ -351,51 +344,48 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for good-term-icmpv6')
 
   def testBadIcmp(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + BAD_TERM_ICMP, self.naming), EXP_INFO)
     self.assertRaises(aclgenerator.UnsupportedFilterError, str, acl)
 
-  def testExpiredTerm(self):
-    self.mox.StubOutWithMock(packetfilter.logging, 'warn')
-    # create mock to ensure we warn about expired terms being skipped
-    packetfilter.logging.warn('WARNING: Term %s in policy %s is expired and '
-                              'will not be rendered.', 'expired_test',
-                              'test-filter')
-    self.mox.ReplayAll()
+  @mock.patch.object(packetfilter.logging, 'warn')
+  def testExpiredTerm(self, mock_warn):
     packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + EXPIRED_TERM, self.naming), EXP_INFO)
 
-  def testExpiredTerm2(self):
-    self.mox.StubOutWithMock(packetfilter.logging, 'warn')
-    # create mock to ensure we warn about expired terms being skipped
-    packetfilter.logging.warn('WARNING: Term %s in policy %s is expired and '
-                              'will not be rendered.', 'expired_test2',
-                              'test-filter')
-    self.mox.ReplayAll()
+    mock_warn.assert_called_once_with(
+        'WARNING: Term %s in policy %s is expired and '
+        'will not be rendered.', 'expired_test',
+        'test-filter')
+
+  @mock.patch.object(packetfilter.logging, 'warn')
+  def testExpiredTerm2(self, mock_warn):
     packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + EXPIRED_TERM2, self.naming), EXP_INFO)
 
-  def testExpiringTerm(self):
-    self.mox.StubOutWithMock(packetfilter.logging, 'info')
-    # create mock to ensure we inform about expiring terms
-    packetfilter.logging.info('INFO: Term %s in policy %s expires in '
-                              'less than two weeks.', 'is_expiring',
-                              'test-filter')
-    self.mox.ReplayAll()
+    mock_warn.assert_called_once_with(
+        'WARNING: Term %s in policy %s is expired and '
+        'will not be rendered.', 'expired_test2',
+        'test-filter')
+
+  @mock.patch.object(packetfilter.logging, 'info')
+  def testExpiringTerm(self, mock_info):
     exp_date = datetime.date.today() + datetime.timedelta(weeks=EXP_INFO)
     packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + EXPIRING_TERM % exp_date.strftime('%Y-%m-%d'),
         self.naming), EXP_INFO)
 
+    mock_info.assert_called_once_with(
+        'INFO: Term %s in policy %s expires in '
+        'less than two weeks.', 'is_expiring',
+        'test-filter')
+
   def testBadAction(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + BAD_TERM_ACTION, self.naming), EXP_INFO)
     self.assertRaises(aclgenerator.UnsupportedFilterError, str, acl)
 
   def testMultiprotocol(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + MULTIPLE_PROTOCOLS_TERM, self.naming), EXP_INFO)
     result = str(acl)
@@ -407,7 +397,6 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for multi-proto')
 
   def testNextTerm(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + NEXT_TERM, self.naming), EXP_INFO)
     result = str(acl)
@@ -418,7 +407,6 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for next-term')
 
   def testNextLogTerm(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + NEXT_LOG_TERM, self.naming), EXP_INFO)
     result = str(acl)
@@ -429,9 +417,8 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for next-log-term')
 
   def testPortRange(self):
-    self.naming.GetServiceByProto('HIGH_PORTS', 'tcp').AndReturn(
-        ['12345-12354'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['12345-12354']
+
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + PORTRANGE_TERM, self.naming), EXP_INFO)
     result = str(acl)
@@ -442,8 +429,10 @@ class PacketFilterTest(unittest.TestCase):
         'port { 12345:12354 }' in result,
         'did not find actual term for portrange')
 
+    self.naming.GetServiceByProto.assert_called_once_with(
+            'HIGH_PORTS', 'tcp')
+
   def testFlags(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + FLAGS_TERM, self.naming), EXP_INFO)
     result = str(acl)
@@ -455,13 +444,11 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for flags')
 
   def testInvalidFlags(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + INVALID_FLAGS_TERM, self.naming), EXP_INFO)
     self.assertRaises(aclgenerator.UnsupportedFilterError, str, acl)
 
   def testMultilineComment(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + MULTILINE_COMMENT, self.naming), EXP_INFO)
     result = str(acl)
@@ -473,9 +460,9 @@ class PacketFilterTest(unittest.TestCase):
   def testStateless(self):
     ip = nacaddr.IP('10.0.0.0/8')
     ip.parent_token = 'PROD_NETWORK'
-    self.naming.GetNetAddr('PROD_NETWORK').AndReturn([ip])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [ip]
+    self.naming.GetServiceByProto.return_value = ['25']
+
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER_STATELESS + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
@@ -486,8 +473,10 @@ class PacketFilterTest(unittest.TestCase):
         '{ 25 } no state' in result,
         'did not find actual term for good-term-tcp')
 
+    self.naming.GetNetAddr.assert_called_once_with('PROD_NETWORK')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testInet4(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER_INET4 + GOOD_TERM_LOG, self.naming), EXP_INFO)
     result = str(acl)
@@ -500,7 +489,6 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for good-term-log')
 
   def testInet6(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER_INET6 + GOOD_TERM_LOG, self.naming), EXP_INFO)
     result = str(acl)
@@ -515,9 +503,9 @@ class PacketFilterTest(unittest.TestCase):
   def testDirectional(self):
     ip = nacaddr.IP('10.0.0.0/8')
     ip.parent_token = 'PROD_NETWORK'
-    self.naming.GetNetAddr('PROD_NETWORK').AndReturn([ip])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [ip]
+    self.naming.GetServiceByProto.return_value = ['25']
+
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER_DIRECTIONAL + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
@@ -528,8 +516,10 @@ class PacketFilterTest(unittest.TestCase):
         '{ 25 }' in result,
         'did not find actual term for good-term-tcp')
 
+    self.naming.GetNetAddr.assert_called_once_with('PROD_NETWORK')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testMultipleHeader(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER_STATELESS + GOOD_TERM_LOG + GOOD_HEADER_INET6
         + GOOD_TERM_ICMP,
@@ -547,9 +537,9 @@ class PacketFilterTest(unittest.TestCase):
   def testDirectionalStateless(self):
     ip = nacaddr.IP('10.0.0.0/8')
     ip.parent_token = 'PROD_NETWORK'
-    self.naming.GetNetAddr('PROD_NETWORK').AndReturn([ip])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [ip]
+    self.naming.GetServiceByProto.return_value = ['25']
+
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER_DIRECTIONAL_STATELESS + GOOD_TERM_TCP, self.naming),
                                     EXP_INFO)
@@ -561,8 +551,10 @@ class PacketFilterTest(unittest.TestCase):
         '{ 25 } no state' in result,
         'did not find actual term for good-term-tcp')
 
+    self.naming.GetNetAddr.assert_called_once_with('PROD_NETWORK')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testStatelessEstablished(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER_STATELESS + TCP_STATE_TERM, self.naming),
                                     EXP_INFO)
@@ -575,7 +567,6 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for tcp-established-only')
 
   def testBadFlags(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + TCP_BAD_ESTABLISHED_TERM, self.naming), EXP_INFO)
     self.assertRaises(aclgenerator.UnsupportedFilterError, str, acl)
@@ -593,7 +584,6 @@ class PacketFilterTest(unittest.TestCase):
   #   target:: packetfilter nostate
   #   term foo { protocol:: udp option:: established }
   def testUdpStatelessEstablished(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER_STATELESS + UDP_ESTABLISHED_TERM, self.naming),
                                     EXP_INFO)
@@ -606,7 +596,6 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for udp-established')
 
   def testStatefulBlock(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + DENY_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
@@ -618,7 +607,6 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for deny-term-tcp')
 
   def testTcpEstablished(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + TCP_GOOD_ESTABLISHED_TERM, self.naming),
                                     EXP_INFO)
@@ -637,11 +625,11 @@ class PacketFilterTest(unittest.TestCase):
     corp_internal_one.parent_token = 'CORP_INTERNAL'
     corp_internal_two = nacaddr.IP('172.16.0.0/16')
     corp_internal_two.parent_token = 'CORP_INTERNAL'
-    self.naming.GetNetAddr('PROD_NETWORK').AndReturn([prod_network])
-    self.naming.GetNetAddr('CORP_INTERNAL').AndReturn([corp_internal_one,
-                                                       corp_internal_two])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.side_effect = [
+            [prod_network],
+            [corp_internal_one, corp_internal_two]]
+    self.naming.GetServiceByProto.return_value = ['25']
+
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + MULTIPLE_NAME_TERM, self.naming),
                                     EXP_INFO)
@@ -659,13 +647,17 @@ class PacketFilterTest(unittest.TestCase):
         in result,
         'did not find actual term for multiple-name')
 
+    self.naming.GetNetAddr.assert_has_calls([
+            mock.call('PROD_NETWORK'),
+            mock.call('CORP_INTERNAL')])
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testTableNameShortened(self):
     prod_network = nacaddr.IP('10.0.0.0/8')
     prod_network.parent_token = 'PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME'
-    self.naming.GetNetAddr(
-        'PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME').AndReturn([prod_network])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [prod_network]
+    self.naming.GetServiceByProto.return_value = ['25']
+
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER_DIRECTIONAL + LONG_NAME_TERM, self.naming), EXP_INFO)
     result = str(acl)
@@ -679,17 +671,19 @@ class PacketFilterTest(unittest.TestCase):
         in result,
         'did not find actual term for multiple-name')
 
+    self.naming.GetNetAddr.assert_called_once_with(
+        'PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testTableDuplicateShortNameError(self):
     prod_network = nacaddr.IP('10.0.0.0/8')
     prod_network.parent_token = 'PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME'
     prod_network_two = nacaddr.IP('172.0.0.1/8')
     prod_network_two.parent_token = 'PROD_NETWORK_EXTREAMLY_LONG_VERY_GOOD_NAME'
-    self.naming.GetNetAddr(
-        'PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME').AndReturn([prod_network])
-    self.naming.GetNetAddr(
-        'PROD_NETWORK_EXTREAMLY_LONG_VERY_GOOD_NAME').AndReturn([prod_network_two])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.side_effect = [
+        [prod_network], [prod_network_two]]
+    self.naming.GetServiceByProto.return_value = ['25']
+
     self.assertRaises(
         packetfilter.DuplicateShortenedTableName,
         packetfilter.PacketFilter.__init__,
@@ -698,8 +692,12 @@ class PacketFilterTest(unittest.TestCase):
             GOOD_HEADER_DIRECTIONAL + DUPLICATE_LONG_NAME_TERM, self.naming),
         EXP_INFO)
 
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME'),
+        mock.call('PROD_NETWORK_EXTREAMLY_LONG_VERY_GOOD_NAME')])
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testBadProtoError(self):
-    self.mox.ReplayAll()
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + BAD_PROTO_TERM, self.naming), EXP_INFO)
     self.assertRaises(packetfilter.UnsupportedProtoError, str, acl)

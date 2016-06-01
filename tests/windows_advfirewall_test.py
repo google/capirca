@@ -21,7 +21,7 @@ from lib import nacaddr
 from lib import naming
 from lib import policy
 from lib import windows_advfirewall
-import mox
+import mock
 
 
 GOOD_HEADER_OUT = """
@@ -156,13 +156,7 @@ EXP_INFO = 2
 class WindowsAdvFirewallTest(unittest.TestCase):
 
   def setUp(self):
-    self.mox = mox.Mox()
-    self.naming = self.mox.CreateMock(naming.Naming)
-
-  def tearDown(self):
-    self.mox.VerifyAll()
-    self.mox.UnsetStubs()
-    self.mox.ResetAll()
+    self.naming = mock.create_autospec(naming.Naming)
 
   def FailUnless(self, strings, result, term):
     for string in strings:
@@ -172,9 +166,9 @@ class WindowsAdvFirewallTest(unittest.TestCase):
           'did not find "%s" for %s' % (fullstring, term))
 
   def testTcp(self):
-    self.naming.GetNetAddr('PROD_NETWRK').AndReturn([nacaddr.IP('10.0.0.0/8')])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    self.naming.GetServiceByProto.return_value = ['25']
+
     acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
         GOOD_HEADER_OUT + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
@@ -184,8 +178,10 @@ class WindowsAdvFirewallTest(unittest.TestCase):
         result,
         'did not find actual term for good-term-tcp')
 
+    self.naming.GetNetAddr.assert_called_once_with('PROD_NETWRK')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testIcmp(self):
-    self.mox.ReplayAll()
     acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
         GOOD_HEADER_OUT + GOOD_TERM_ICMP, self.naming), EXP_INFO)
     result = str(acl)
@@ -196,7 +192,6 @@ class WindowsAdvFirewallTest(unittest.TestCase):
         'did not find actual term for good-term-icmp')
 
   def testIcmpTypes(self):
-    self.mox.ReplayAll()
     acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
         GOOD_HEADER_OUT + GOOD_TERM_ICMP_TYPES, self.naming), EXP_INFO)
     result = str(acl)
@@ -211,36 +206,34 @@ class WindowsAdvFirewallTest(unittest.TestCase):
         'did not find actual term for good-term-icmp-types')
 
   def testBadIcmp(self):
-    self.mox.ReplayAll()
     acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
         GOOD_HEADER_OUT + BAD_TERM_ICMP, self.naming), EXP_INFO)
     self.assertRaises(aclgenerator.UnsupportedFilterError,
                       str, acl)
 
-  def testExpiredTerm(self):
-    self.mox.StubOutWithMock(windows_advfirewall.logging, 'warn')
-    # create mock to ensure we warn about expired terms being skipped
-    windows_advfirewall.logging.warn('WARNING: Term %s in policy %s is expired '
-                                     'and will not be rendered.',
-                                     'expired_test', 'out')
-    self.mox.ReplayAll()
+  @mock.patch.object(windows_advfirewall.logging, 'warn')
+  def testExpiredTerm(self, mock_warn):
     windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
         GOOD_HEADER_OUT + EXPIRED_TERM, self.naming), EXP_INFO)
 
-  def testExpiringTerm(self):
-    self.mox.StubOutWithMock(windows_advfirewall.logging, 'info')
-    # create mock to ensure we inform about expiring terms
-    windows_advfirewall.logging.info('INFO: Term %s in policy %s expires in '
-                                     'less than two weeks.', 'is_expiring',
-                                     'out')
-    self.mox.ReplayAll()
+    mock_warn.assert_called_once_with(
+        'WARNING: Term %s in policy %s is expired '
+        'and will not be rendered.',
+        'expired_test', 'out')
+
+  @mock.patch.object(windows_advfirewall.logging, 'info')
+  def testExpiringTerm(self, mock_info):
     exp_date = datetime.date.today() + datetime.timedelta(weeks=EXP_INFO)
     windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
         GOOD_HEADER_OUT + EXPIRING_TERM % exp_date.strftime('%Y-%m-%d'),
         self.naming), EXP_INFO)
 
+    mock_info.assert_called_once_with(
+        'INFO: Term %s in policy %s expires in '
+        'less than two weeks.', 'is_expiring',
+        'out')
+
   def testMultiprotocol(self):
-    self.mox.ReplayAll()
     acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
         GOOD_HEADER_OUT + MULTIPLE_PROTOCOLS_TERM, self.naming), EXP_INFO)
     result = str(acl)
@@ -255,9 +248,9 @@ class WindowsAdvFirewallTest(unittest.TestCase):
         'did not find actual term for multi-proto')
 
   def testDirectionIn(self):
-    self.naming.GetNetAddr('PROD_NETWRK').AndReturn([nacaddr.IP('10.0.0.0/8')])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    self.naming.GetServiceByProto.return_value = ['25']
+
     acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
         GOOD_HEADER_IN + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
@@ -266,6 +259,9 @@ class WindowsAdvFirewallTest(unittest.TestCase):
          ' localip=10.0.0.0/8 localport=25 protocol=tcp action=allow'],
         result,
         'did not find actual term for good-term-tcp-direction-in')
+
+    self.naming.GetNetAddr.assert_called_once_with('PROD_NETWRK')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
 if __name__ == '__main__':
   unittest.main()

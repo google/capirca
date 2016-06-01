@@ -21,7 +21,7 @@ from lib import nacaddr
 from lib import naming
 from lib import pcap
 from lib import policy
-import mox
+import mock
 
 
 GOOD_HEADER = """
@@ -171,18 +171,12 @@ EXP_INFO = 2
 class PcapFilter(unittest.TestCase):
 
   def setUp(self):
-    self.mox = mox.Mox()
-    self.naming = self.mox.CreateMock(naming.Naming)
-
-  def tearDown(self):
-    self.mox.VerifyAll()
-    self.mox.UnsetStubs()
-    self.mox.ResetAll()
+    self.naming = mock.create_autospec(naming.Naming)
 
   def testTcp(self):
-    self.naming.GetNetAddr('PROD_NETWRK').AndReturn([nacaddr.IP('10.0.0.0/8')])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    self.naming.GetServiceByProto.return_value = ['25']
+
     acl = pcap.PcapFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
@@ -190,8 +184,10 @@ class PcapFilter(unittest.TestCase):
         '(dst net 10.0.0.0/8) and (proto \\tcp) and (dst port 25)' in result,
         'did not find actual term for good-term-tcp')
 
+    self.naming.GetNetAddr.assert_called_once_with('PROD_NETWRK')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testLog(self):
-    self.mox.ReplayAll()
     acl = pcap.PcapFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_LOG, self.naming), EXP_INFO)
     result = str(acl)
@@ -200,7 +196,6 @@ class PcapFilter(unittest.TestCase):
         'did not find actual term for good-term-log')
 
   def testIcmp(self):
-    self.mox.ReplayAll()
     acl = pcap.PcapFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_ICMP, self.naming), EXP_INFO)
     result = str(acl)
@@ -209,7 +204,6 @@ class PcapFilter(unittest.TestCase):
         'did not find actual term for good-term-icmp')
 
   def testIcmpTypes(self):
-    self.mox.ReplayAll()
     acl = pcap.PcapFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_ICMP_TYPES, self.naming), EXP_INFO)
     result = str(acl)
@@ -219,7 +213,6 @@ class PcapFilter(unittest.TestCase):
         'did not find actual term for good-term-icmp-types')
 
   def testIcmpv6(self):
-    self.mox.ReplayAll()
     acl = pcap.PcapFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_ICMPV6, self.naming), EXP_INFO)
     result = str(acl)
@@ -228,34 +221,32 @@ class PcapFilter(unittest.TestCase):
         'did not find actual term for good-term-icmpv6')
 
   def testBadIcmp(self):
-    self.mox.ReplayAll()
     acl = pcap.PcapFilter(policy.ParsePolicy(
         GOOD_HEADER + BAD_TERM_ICMP, self.naming), EXP_INFO)
     self.assertRaises(aclgenerator.UnsupportedFilterError,
                       str, acl)
 
-  def testExpiredTerm(self):
-    self.mox.StubOutWithMock(pcap.logging, 'warn')
-    # create mock to ensure we warn about expired terms being skipped
-    pcap.logging.warn('WARNING: Term %s in policy %s is expired and '
-                      'will not be rendered.', 'expired_test', 'test-filter')
-    self.mox.ReplayAll()
+  @mock.patch.object(pcap.logging, 'warn')
+  def testExpiredTerm(self, mock_warn):
     pcap.PcapFilter(policy.ParsePolicy(
         GOOD_HEADER + EXPIRED_TERM, self.naming), EXP_INFO)
 
-  def testExpiringTerm(self):
-    self.mox.StubOutWithMock(pcap.logging, 'info')
-    # create mock to ensure we inform about expiring terms
-    pcap.logging.info('INFO: Term %s in policy %s expires in '
-                      'less than two weeks.', 'is_expiring', 'test-filter')
-    self.mox.ReplayAll()
+    mock_warn.assert_called_once_with(
+        'WARNING: Term %s in policy %s is expired and '
+        'will not be rendered.', 'expired_test', 'test-filter')
+
+  @mock.patch.object(pcap.logging, 'info')
+  def testExpiringTerm(self, mock_info):
     exp_date = datetime.date.today() + datetime.timedelta(weeks=EXP_INFO)
     pcap.PcapFilter(policy.ParsePolicy(
         GOOD_HEADER + EXPIRING_TERM % exp_date.strftime('%Y-%m-%d'),
         self.naming), EXP_INFO)
 
+    mock_info.assert_called_once_with(
+        'INFO: Term %s in policy %s expires in '
+        'less than two weeks.', 'is_expiring', 'test-filter')
+
   def testMultiprotocol(self):
-    self.mox.ReplayAll()
     acl = pcap.PcapFilter(policy.ParsePolicy(
         GOOD_HEADER + MULTIPLE_PROTOCOLS_TERM, self.naming), EXP_INFO)
     result = str(acl)
@@ -264,7 +255,6 @@ class PcapFilter(unittest.TestCase):
         'did not find actual term for multi-proto')
 
   def testNextTerm(self):
-    self.mox.ReplayAll()
     acl = pcap.PcapFilter(policy.ParsePolicy(
         GOOD_HEADER + NEXT_TERM, self.naming), EXP_INFO)
     result = str(acl)
@@ -272,7 +262,6 @@ class PcapFilter(unittest.TestCase):
                     'did not find actual term for good-term-icmpv6')
 
   def testTcpOptions(self):
-    self.mox.ReplayAll()
     acl = pcap.PcapFilter(policy.ParsePolicy(
         GOOD_HEADER + ESTABLISHED_TERM, self.naming), EXP_INFO)
     result = str(acl)
@@ -281,7 +270,6 @@ class PcapFilter(unittest.TestCase):
         'did not find actual term for established')
 
   def testVrrpTerm(self):
-    self.mox.ReplayAll()
     acl = pcap.PcapFilter(policy.ParsePolicy(
         GOOD_HEADER + VRRP_TERM, self.naming), EXP_INFO)
     result = str(acl)
@@ -290,7 +278,6 @@ class PcapFilter(unittest.TestCase):
         'did not find actual term for vrrp')
 
   def testMultiHeader(self):
-    self.mox.ReplayAll()
     acl = pcap.PcapFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_LOG + GOOD_HEADER + GOOD_TERM_ICMP,
         self.naming), EXP_INFO)
@@ -300,7 +287,6 @@ class PcapFilter(unittest.TestCase):
         'did not find actual terms for multi-header')
 
   def testDirectional(self):
-    self.mox.ReplayAll()
     acl = pcap.PcapFilter(policy.ParsePolicy(
         GOOD_HEADER_IN + GOOD_TERM_LOG + GOOD_HEADER_OUT + GOOD_TERM_ICMP,
         self.naming), EXP_INFO)
@@ -311,8 +297,8 @@ class PcapFilter(unittest.TestCase):
         'did not find actual terms for directional')
 
   def testUnicastIPv6(self):
-    self.naming.GetNetAddr('ANY').AndReturn([nacaddr.IP('::/0')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('::/0')]
+
     acl = pcap.PcapFilter(policy.ParsePolicy(
         GOOD_HEADER_IN + UNICAST_TERM, self.naming), EXP_INFO)
     result = str(acl)
@@ -320,8 +306,9 @@ class PcapFilter(unittest.TestCase):
         '(dst net localhost and ((proto \\tcp)))' in result,
         'did not find actual terms for unicast-term')
 
+    self.naming.GetNetAddr.assert_called_once_with('ANY')
+
   def testHbh(self):
-    self.mox.ReplayAll()
     acl = pcap.PcapFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_HBH, self.naming), EXP_INFO)
     result = str(acl)
@@ -329,6 +316,7 @@ class PcapFilter(unittest.TestCase):
     self.failUnless(
         '(ip6 protochain 0)' in result,
         'did not find actual terms for unicast-term')
+
 
 if __name__ == '__main__':
   unittest.main()

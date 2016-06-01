@@ -24,7 +24,6 @@ from lib import nacaddr
 from lib import naming
 from lib import policy
 import mock
-import mox
 
 import gflags as flags
 import logging
@@ -373,17 +372,12 @@ EXP_INFO = 2
 class JuniperTest(unittest.TestCase):
 
   def setUp(self):
-    self.mox = mox.Mox()
-    self.naming = self.mox.CreateMock(naming.Naming)
-
-  def tearDown(self):
-    self.mox.VerifyAll()
-    self.mox.UnsetStubs()
+    self.naming = mock.create_autospec(naming.Naming)
 
   def testOptions(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('10.0.0.0/8')])
-    self.naming.GetServiceByProto('HTTP', 'tcp').AndReturn(['80'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    self.naming.GetServiceByProto.return_value = ['80']
+
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_2,
                                              self.naming), EXP_INFO)
     output = str(jcl)
@@ -392,33 +386,45 @@ class JuniperTest(unittest.TestCase):
     # and 'tcp-established' options are included in term
     self.assertEquals(output.count('tcp-established;'), 1)
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+    self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
+
   def testTermAndFilterName(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('10.0.0.0/8')])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    self.naming.GetServiceByProto.return_value = ['25']
+
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('term good-term-1 {' in output, output)
     self.failUnless('filter test-filter {' in output, output)
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testBadFilterType(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('10.0.0.0/8')])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    self.naming.GetServiceByProto.return_value = ['25']
+
     pol = policy.ParsePolicy(BAD_HEADER_2 + GOOD_TERM_1, self.naming)
     self.assertRaises(aclgenerator.UnsupportedAF, juniper.Juniper,
                       pol, EXP_INFO)
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testBridgeFilterType(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('10.0.0.0/8')])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    self.naming.GetServiceByProto.return_value = ['25']
+
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_1,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('ip-protocol tcp;' in output, output)
     self.failIf(' destination-address {' in output, output)
+
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
   def testCommentShrinking(self):
     long_comment = ' this is a very descriptive comment ' * 10
@@ -427,24 +433,25 @@ class JuniperTest(unittest.TestCase):
         ' ' * 24 + '** very descriptive comment  this is a very\n' +
         ' ' * 24 + '** descriptive comment  this is a very descript */'
         )
-    self.naming.GetNetAddr('SOME_HOST').AndReturn(
-        [nacaddr.IPv4('10.0.0.0/8', comment=long_comment)])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = (
+            [nacaddr.IPv4('10.0.0.0/8', comment=long_comment)])
+    self.naming.GetServiceByProto.return_value = ['25']
+
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless(expected in output, output)
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testDefaultDeny(self):
-    self.mox.ReplayAll()
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + DEFAULT_TERM_1,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failIf('from {' in output, output)
 
   def testIcmpType(self):
-    self.mox.ReplayAll()
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_3,
                                              self.naming), EXP_INFO)
     output = str(jcl)
@@ -458,36 +465,44 @@ class JuniperTest(unittest.TestCase):
     self.failUnless('];' in output, output)
 
   def testInet6(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('2001::/33')])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('2001::/33')]
+    self.naming.GetServiceByProto.return_value = ['25']
+
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_1_V6,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('next-header icmpv6;' in output and
                     'next-header tcp;' in output, output)
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testNotInterfaceSpecificHeader(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('10.0.0.0/8')])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    self.naming.GetServiceByProto.return_value = ['25']
+
     jcl = juniper.Juniper(
         policy.ParsePolicy(GOOD_HEADER_NOT_INTERFACE_SPECIFIC + GOOD_TERM_1,
                            self.naming), EXP_INFO)
     output = str(jcl)
     self.failIf('interface-specific;' in output, output)
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testInterfaceSpecificHeader(self):
-    self.naming.GetNetAddr('SOME_HOST').AndReturn([nacaddr.IP('10.0.0.0/8')])
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    self.naming.GetServiceByProto.return_value = ['25']
+
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('interface-specific;' in output, output)
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testHopLimit(self):
-    self.mox.ReplayAll()
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 +
                                              GOOD_TERM_V6_HOP_LIMIT,
                                              self.naming), EXP_INFO)
@@ -495,28 +510,24 @@ class JuniperTest(unittest.TestCase):
     self.failUnless('hop-limit 25;' in output, output)
 
   def testProtocolExcept(self):
-    self.mox.ReplayAll()
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_7,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('next-header-except tcp;' in output, output)
 
   def testIcmpv6Except(self):
-    self.mox.ReplayAll()
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_20_V6,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('next-header-except icmpv6;' in output, output)
 
   def testProtocolCase(self):
-    self.mox.ReplayAll()
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_5,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('protocol [ icmp tcp ];' in output, output)
 
   def testPrefixList(self):
-    self.mox.ReplayAll()
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_8,
                                              self.naming), EXP_INFO)
     spfx_re = re.compile('source-prefix-list {\W+foo_prefix_list;\W+}')
@@ -527,21 +538,18 @@ class JuniperTest(unittest.TestCase):
     self.failUnless(dpfx_re.search(output), output)
 
   def testEtherType(self):
-    self.mox.ReplayAll()
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_9,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('ether-type arp;' in output, output)
 
   def testTrafficType(self):
-    self.mox.ReplayAll()
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_10,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('traffic-type unknown-unicast;' in output, output)
 
   def testVerbatimTerm(self):
-    self.mox.ReplayAll()
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_11,
                                              self.naming), EXP_INFO)
     output = str(jcl)
@@ -551,17 +559,19 @@ class JuniperTest(unittest.TestCase):
     self.failIf('mary had a third lamb' in output, output)
 
   def testDscpByte(self):
-    self.naming.GetServiceByProto('DNS', 'tcp').AndReturn(['53'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['53']
+
     policy_text = GOOD_HEADER + GOOD_TERM_22
     jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
     output = str(jcl)
     self.failUnless('dscp b111000;' in output, output)
 
+    self.naming.GetServiceByProto.assert_called_once_with('DNS', 'tcp')
+
   def testDscpClass(self):
-    self.naming.GetServiceByProto('DNS', 'tcp').AndReturn(['53'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['53']
+
     policy_text = GOOD_HEADER + GOOD_TERM_23
     jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
@@ -570,9 +580,11 @@ class JuniperTest(unittest.TestCase):
     self.failUnless('dscp [ af41-af42 5 ];' in output, output)
     self.failUnless('dscp-except [ be ];' in output, output)
 
+    self.naming.GetServiceByProto.assert_called_once_with('DNS', 'tcp')
+
   def testDscpIPv6(self):
-    self.naming.GetServiceByProto('DNS', 'tcp').AndReturn(['53'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['53']
+
     policy_text = GOOD_HEADER_V6 + GOOD_TERM_23
     jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
@@ -582,9 +594,11 @@ class JuniperTest(unittest.TestCase):
     self.failUnless('traffic-class-except [ be ];' in output, output)
     self.failIf('dscp' in output, output)
 
+    self.naming.GetServiceByProto.assert_called_once_with('DNS', 'tcp')
+
   def testSimplifiedThenStatement(self):
-    self.naming.GetServiceByProto('DNS', 'tcp').AndReturn(['53'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['53']
+
     policy_text = GOOD_HEADER + GOOD_TERM_24
     jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
@@ -592,18 +606,22 @@ class JuniperTest(unittest.TestCase):
     self.failUnless('forwarding-class af1' in output, output)
     self.failUnless('accept' in output, output)
 
+    self.naming.GetServiceByProto.assert_called_once_with('DNS', 'tcp')
+
   def testSimplifiedThenStatementWithSingleAction(self):
-    self.naming.GetServiceByProto('DNS', 'tcp').AndReturn(['53'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['53']
+
     policy_text = GOOD_HEADER + GOOD_TERM_25
     jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
     output = str(jcl)
     self.failUnless('then accept;' in output, output)
 
+    self.naming.GetServiceByProto.assert_called_once_with('DNS', 'tcp')
+
   def testSimplifiedThenStatementWithSingleActionDiscardIPv4(self):
-    self.naming.GetServiceByProto('DNS', 'tcp').AndReturn(['53'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['53']
+
     policy_text = GOOD_HEADER + GOOD_TERM_26
     jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
@@ -611,18 +629,22 @@ class JuniperTest(unittest.TestCase):
     self.failUnless('then {' in  output, output)
     self.failUnless('discard;' in output, output)
 
+    self.naming.GetServiceByProto.assert_called_once_with('DNS', 'tcp')
+
   def testSimplifiedThenStatementWithSingleActionDiscardIPv6(self):
-    self.naming.GetServiceByProto('DNS', 'tcp').AndReturn(['53'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['53']
+
     policy_text = GOOD_HEADER_V6 + GOOD_TERM_26_V6
     jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
     output = str(jcl)
     self.failUnless('then discard;' in output, output)
 
+    self.naming.GetServiceByProto.assert_called_once_with('DNS', 'tcp')
+
   def testSimplifiedThenStatementWithSingleActionRejectIPv6(self):
-    self.naming.GetServiceByProto('DNS', 'tcp').AndReturn(['53'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['53']
+
     policy_text = GOOD_HEADER_V6 + GOOD_TERM_26_V6_REJECT
     jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
@@ -630,67 +652,85 @@ class JuniperTest(unittest.TestCase):
     self.failUnless('then {' in output, output)
     self.failUnless('reject;' in output, output)
 
+    self.naming.GetServiceByProto.assert_called_once_with('DNS', 'tcp')
+
   def testTcpEstablished(self):
-    self.naming.GetServiceByProto('DNS', 'tcp').AndReturn(['53'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['53']
+
     policy_text = GOOD_HEADER + ESTABLISHED_TERM_1
     jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
     output = str(jcl)
     self.failUnless('tcp-established' in output, output)
 
+    self.naming.GetServiceByProto.assert_called_once_with('DNS', 'tcp')
+
   def testNonTcpWithTcpEstablished(self):
-    self.naming.GetServiceByProto('DNS', 'tcp').InAnyOrder().AndReturn(['53'])
-    self.naming.GetServiceByProto('DNS', 'udp').InAnyOrder().AndReturn(['53'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['53']
+
     policy_text = GOOD_HEADER + BAD_TERM_1
     pol_obj = policy.ParsePolicy(policy_text, self.naming)
     jcl = juniper.Juniper(pol_obj, EXP_INFO)
     self.assertRaises(juniper.TcpEstablishedWithNonTcp, str, jcl)
 
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('DNS', 'tcp'), mock.call('DNS', 'udp')])
+
   def testBridgeFilterInetType(self):
-    self.naming.GetNetAddr('LOCALHOST').AndReturn([nacaddr.IPv4('127.0.0.1'),
-                                                   nacaddr.IPv6('::1/128')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [
+            nacaddr.IPv4('127.0.0.1'), nacaddr.IPv6('::1/128')]
+
     jcl = juniper.Juniper(policy.ParsePolicy(
         GOOD_HEADER_BRIDGE + GOOD_TERM_12, self.naming), EXP_INFO)
     output = str(jcl)
     self.failIf('::1/128' in output, output)
+
+    self.naming.GetNetAddr.assert_called_once_with('LOCALHOST')
 
   def testDsmo(self):
     addr_list = list()
     for octet in range(0, 256):
       net = nacaddr.IP('192.168.' + str(octet) + '.64/27')
       addr_list.append(net)
-    self.naming.GetNetAddr('SOME_HOST').AndReturn(addr_list)
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = addr_list
+    self.naming.GetServiceByProto.return_value = ['25']
+
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_DSMO_HEADER + GOOD_TERM_1,
                                              self.naming), EXP_INFO)
     self.failUnless('192.168.0.64/255.255.0.224;' in str(jcl))
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testDsmoJuniperFriendly(self):
     addr_list = [nacaddr.IP('192.168.%d.0/24' % octet) for octet in range(256)]
-    self.naming.GetNetAddr('SOME_HOST').AndReturn(addr_list)
-    self.naming.GetServiceByProto('SMTP', 'tcp').AndReturn(['25'])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = addr_list
+    self.naming.GetServiceByProto.return_value = ['25']
+
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_DSMO_HEADER + GOOD_TERM_1,
                                              self.naming), EXP_INFO)
     self.failUnless('192.168.0.0/16;' in str(jcl))
+
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
   def testDsmoExclude(self):
     big = nacaddr.IPv4('0.0.0.0/1')
     ip1 = nacaddr.IPv4('192.168.0.64/27')
     ip2 = nacaddr.IPv4('192.168.1.64/27')
     terms = (GOOD_TERM_18_SRC, GOOD_TERM_18_DST)
-    for _ in terms:
-      self.naming.GetNetAddr('INTERNAL').AndReturn([big])
-      self.naming.GetNetAddr('SOME_HOST').AndReturn([ip1, ip2])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.side_effect = [[big], [ip1, ip2]] * len(terms)
+
+    mock_calls = []
     for term in terms:
-      jcl = juniper.Juniper(policy.ParsePolicy(GOOD_DSMO_HEADER + term,
-                                               self.naming), EXP_INFO)
+      jcl = juniper.Juniper(
+          policy.ParsePolicy(GOOD_DSMO_HEADER + term, self.naming),
+          EXP_INFO)
       self.failUnless('192.168.0.64/255.255.254.224 except;' in str(jcl))
+      mock_calls.append(mock.call('INTERNAL'))
+      mock_calls.append(mock.call('SOME_HOST'))
+
+    self.naming.GetNetAddr.assert_has_calls(mock_calls)
 
   def testTermTypeIndexKeys(self):
     # ensure an _INET entry for each _TERM_TYPE entry
@@ -698,88 +738,93 @@ class JuniperTest(unittest.TestCase):
                       sorted(juniper.Term.AF_MAP.keys()))
 
   def testRoutingInstance(self):
-    self.mox.ReplayAll()
     jcl = juniper.Juniper(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_13, self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('routing-instance EXTERNAL-NAT;' in output, output)
 
   def testLossPriority(self):
-    self.mox.ReplayAll()
     jcl = juniper.Juniper(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_14, self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('loss-priority low;' in output, output)
 
   def testPrecedence(self):
-    self.naming.GetServiceByProto('SSH', 'tcp').AndReturn(['22'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['22']
+
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_15,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('precedence 7;' in output, output)
 
+    self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
+
   def testMultiplePrecedence(self):
-    self.naming.GetServiceByProto('SSH', 'tcp').AndReturn(['22'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['22']
+
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_16,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('precedence [ 5 7 ];' in output, output)
 
+    self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
+
   def testArbitraryOptions(self):
-    self.naming.GetServiceByProto('SSH', 'tcp').AndReturn(['22'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['22']
+
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + OPTION_TERM_1,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('is-fragment;' in output, output)
 
-  def testIcmpv6InetMismatch(self):
-    self.mox.StubOutWithMock(juniper.logging, 'debug')
-    juniper.logging.debug('Term icmptype-mismatch will not be rendered,'
-                          ' as it has [\'icmpv6\'] match specified but '
-                          'the ACL is of inet address family.')
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
+
+  @mock.patch.object(juniper.logging, 'debug')
+  def testIcmpv6InetMismatch(self, mock_debug):
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + BAD_ICMPTYPE_TERM_1,
                                              self.naming), EXP_INFO)
     # output happens in __str_
     str(jcl)
 
-  def testIcmpInet6Mismatch(self):
-    self.mox.StubOutWithMock(juniper.logging, 'debug')
-    juniper.logging.debug('Term icmptype-mismatch will not be rendered,'
-                          ' as it has [\'icmp\'] match specified but '
-                          'the ACL is of inet6 address family.')
-    self.mox.ReplayAll()
+    mock_debug.assert_called_once_with(
+        'Term icmptype-mismatch will not be rendered,'
+        ' as it has [\'icmpv6\'] match specified but '
+        'the ACL is of inet address family.')
+
+  @mock.patch.object(juniper.logging, 'debug')
+  def testIcmpInet6Mismatch(self, mock_debug):
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 +
                                              BAD_ICMPTYPE_TERM_2,
                                              self.naming), EXP_INFO)
     # output happens in __str_
     str(jcl)
 
-  def testExpiredTerm(self):
-    self.mox.StubOutWithMock(juniper.logging, 'warn')
-    # create mock to ensure we warn about expired terms being skipped
-    juniper.logging.warn('WARNING: Term %s in policy %s is expired and will '
-                         'not be rendered.', 'is_expired', 'test-filter')
-    self.mox.ReplayAll()
+    mock_debug.assert_called_once_with(
+            'Term icmptype-mismatch will not be rendered,'
+            ' as it has [\'icmp\'] match specified but '
+            'the ACL is of inet6 address family.')
+
+  @mock.patch.object(juniper.logging, 'warn')
+  def testExpiredTerm(self, mock_warn):
     _ = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + EXPIRED_TERM,
                                            self.naming), EXP_INFO)
 
-  def testExpiringTerm(self):
-    self.mox.StubOutWithMock(juniper.logging, 'info')
-    # create mock to ensure we inform about expiring terms
-    juniper.logging.info('INFO: Term %s in policy %s expires in '
-                         'less than two weeks.', 'is_expiring', 'test-filter')
-    self.mox.ReplayAll()
+    mock_warn.assert_called_once_with(
+        'WARNING: Term %s in policy %s is expired and will '
+        'not be rendered.', 'is_expired', 'test-filter')
+
+  @mock.patch.object(juniper.logging, 'info')
+  def testExpiringTerm(self, mock_info):
     exp_date = datetime.date.today() + datetime.timedelta(weeks=EXP_INFO)
     _ = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + EXPIRING_TERM %
                                            exp_date.strftime('%Y-%m-%d'),
                                            self.naming), EXP_INFO)
 
+    mock_info.assert_called_once_with(
+        'INFO: Term %s in policy %s expires in '
+        'less than two weeks.', 'is_expiring', 'test-filter')
+
   def testOwnerTerm(self):
-    self.mox.ReplayAll()
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_17,
                                              self.naming), EXP_INFO)
     output = str(jcl)
@@ -792,19 +837,22 @@ class JuniperTest(unittest.TestCase):
     ip1 = nacaddr.IPv4('10.0.0.0/8')
     ip2 = nacaddr.IPv4('172.16.0.0/12')
     terms = (GOOD_TERM_18_SRC, GOOD_TERM_18_DST)
-    for _ in terms:
-      self.naming.GetNetAddr('INTERNAL').AndReturn([big, ip1, ip2])
-      self.naming.GetNetAddr('SOME_HOST').AndReturn([ip1])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.side_effect = [[big, ip1, ip2], [ip1]] * len(terms)
 
+    mock_calls = []
     for term in terms:
-      jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + term,
-                                               self.naming), EXP_INFO)
+      jcl = juniper.Juniper(
+          policy.ParsePolicy(GOOD_HEADER + term, self.naming),
+          EXP_INFO)
       output = str(jcl)
       self.failUnless('10.0.0.0/8 except;' in output, output)
       self.failIf('10.0.0.0/8;' in output, output)
       self.failUnless('172.16.0.0/12;' in output, output)
       self.failIf('172.16.0.0/12 except;' in output, output)
+      mock_calls.append(mock.call('INTERNAL'))
+      mock_calls.append(mock.call('SOME_HOST'))
+      
+    self.naming.GetNetAddr.assert_has_calls(mock_calls)
 
   def testMinimizePrefixes(self):
     includes = ['1.0.0.0/8', '2.0.0.0/8']
@@ -816,13 +864,13 @@ class JuniperTest(unittest.TestCase):
                   '2.0.0.0/8 except;',
                   '3.3.3.3/32']
 
-    self.naming.GetNetAddr('INCLUDES').AndReturn(
-        [nacaddr.IPv4(ip) for ip in includes])
-    self.naming.GetNetAddr('EXCLUDES').AndReturn(
-        [nacaddr.IPv4(ip) for ip in excludes])
-    self.mox.ReplayAll()
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_19,
-                                             self.naming), EXP_INFO)
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IPv4(ip) for ip in includes],
+        [nacaddr.IPv4(ip) for ip in excludes]]
+
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_19, self.naming),
+        EXP_INFO)
     output = str(jcl)
     for result in expected:
       self.failUnless(result in output,
@@ -830,6 +878,9 @@ class JuniperTest(unittest.TestCase):
     for result in unexpected:
       self.failIf(result in output,
                   'unexpected "%s" in %s' % (result, output))
+
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('INCLUDES'), mock.call('EXCLUDES')])
 
   def testConfigHelper(self):
     config = juniper.Config()
@@ -858,7 +909,6 @@ class JuniperTest(unittest.TestCase):
                       lambda: config.Append('}'))
 
   def testForwardingClass(self):
-    self.mox.ReplayAll()
     policy_text = GOOD_HEADER + GOOD_TERM_27
     jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
@@ -880,17 +930,19 @@ class JuniperTest(unittest.TestCase):
                               '-very-very-long', 128, 128)
 
   def testNextIp(self):
-    self.naming.GetNetAddr('TEST_NEXT').AndReturn([nacaddr.IP('10.1.1.1/32')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
+
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless(
         ('next-ip 10.1.1.1/32') in output)
 
+    self.naming.GetNetAddr.assert_called_once_with('TEST_NEXT')
+
   def testNextIpFormat(self):
-    self.naming.GetNetAddr('TEST_NEXT').AndReturn([nacaddr.IP('10.1.1.1/32')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
+
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
                                              self.naming), EXP_INFO)
     output = str(jcl)
@@ -899,30 +951,37 @@ class JuniperTest(unittest.TestCase):
          '                    next-ip 10.1.1.1/32;\n'
          '                }') in output)
 
+    self.naming.GetNetAddr.assert_called_once_with('TEST_NEXT')
+
   def testNextIpv6(self):
-    self.naming.GetNetAddr('TEST_NEXT').AndReturn([nacaddr.IP('2001::/128')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('2001::/128')]
+
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless(
         ('next-ip6 2001::/128;') in output)
 
+    self.naming.GetNetAddr.assert_called_once_with('TEST_NEXT')
+
   def testFailNextIpMultipleIP(self):
-    self.naming.GetNetAddr('TEST_NEXT').AndReturn(
-        [nacaddr.IP('10.1.1.1/32'),
-         nacaddr.IP('192.168.1.1/32')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IP('10.1.1.1/32'), nacaddr.IP('192.168.1.1/32')]
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
                                              self.naming), EXP_INFO)
     self.assertRaises(juniper.JuniperNextIpError, str, jcl)
 
+    self.naming.GetNetAddr.assert_called_once_with('TEST_NEXT')
+
   def testFailNextIpNetworkIP(self):
-    self.naming.GetNetAddr('TEST_NEXT').AndReturn([nacaddr.IP('10.1.1.1/26')])
-    self.mox.ReplayAll()
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/26')]
+
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
                                              self.naming), EXP_INFO)
     self.assertRaises(juniper.JuniperNextIpError, str, jcl)
+
+    self.naming.GetNetAddr.assert_called_once_with('TEST_NEXT')
+
 
 if __name__ == '__main__':
   unittest.main()

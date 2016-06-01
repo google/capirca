@@ -19,7 +19,7 @@ import unittest
 from lib import naming
 from lib import policy
 from lib import speedway
-import mox
+import mock
 
 
 GOOD_HEADER_1 = """
@@ -44,14 +44,9 @@ EXP_INFO = 2
 class SpeedwayTest(unittest.TestCase):
 
   def setUp(self):
-    self.mox = mox.Mox()
-    self.naming = self.mox.CreateMock(naming.Naming)
-
-  def tearDown(self):
-    self.mox.VerifyAll()
+    self.naming = mock.create_autospec(naming.Naming)
 
   def testSpeedwayOutputFormat(self):
-    self.mox.ReplayAll()
     acl = speedway.Speedway(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                                                self.naming), EXP_INFO)
     result = []

@@ -20,7 +20,7 @@ from lib import nacaddr
 from lib import naming
 from lib import nsxv
 from lib import policy
-import mox
+import mock
 
 
 INET_TERM = """\
@@ -114,12 +114,7 @@ POLICY_NO_ACTION = """\
 class TermTest(unittest.TestCase):
 
   def setUp(self):
-    self.mox = mox.Mox()
-    self.naming = self.mox.CreateMock(naming.Naming)
-
-  def tearDown(self):
-    self.mox.VerifyAll()
-    self.mox.UnsetStubs()
+    self.naming = mock.create_autospec(naming.Naming)
 
   def testInitForinet(self):
     """Test for Term._init_."""
@@ -153,9 +148,8 @@ class TermTest(unittest.TestCase):
     self.naming.GetNetAddr('INTERNAL').AndReturn([nacaddr.IP('10.0.0.0/8'),
                                                   nacaddr.IP('172.16.0.0/12'),
                                                   nacaddr.IP('192.168.0.0/16')])
-    self.naming.GetServiceByProto('NTP', 'udp').AndReturn(['123'])
-    self.naming.GetServiceByProto('NTP', 'udp').AndReturn(['123'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['123']
+
     pol = policy.ParsePolicy(INET_FILTER, self.naming, False)
     af = 4
     for _, terms in pol.filters:
@@ -199,9 +193,11 @@ class TermTest(unittest.TestCase):
     notes = root.find('notes').text
     self.assertEqual(notes, 'Allow ntp request')
 
+    self.naming.GetServiceByProto.assert_has_calls(
+            [mock.call('NTP', 'udp')] * 2)
+
   def testStrForinet6(self):
     """Test for Term._str_."""
-    self.mox.ReplayAll()
     pol = policy.ParsePolicy(INET6_FILTER, self.naming, False)
     af = 6
     filter_type = 'inet6'
@@ -233,9 +229,8 @@ class TermTest(unittest.TestCase):
     self.naming.GetNetAddr('INTERNAL').AndReturn([nacaddr.IP('10.0.0.0/8'),
                                                   nacaddr.IP('172.16.0.0/12'),
                                                   nacaddr.IP('192.168.0.0/16')])
-    self.naming.GetServiceByProto('NTP', 'udp').AndReturn(['123'])
-    self.naming.GetServiceByProto('NTP', 'udp').AndReturn(['123'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['123']
+
     exp_info = 2
     pol = policy.ParsePolicy(INET_FILTER, self.naming, False)
     translate_pol = nsxv.Nsxv(pol, exp_info)
@@ -245,6 +240,9 @@ class TermTest(unittest.TestCase):
       self.assertEqual(filter_list, ['inet'])
       self.assertEqual(len(terms), 1)
 
+    self.naming.GetServiceByProto.assert_has_calls(
+            [mock.call('NTP', 'udp')] * 2)
+
   def testNsxvStr(self):
     """Test for Nsxv._str_."""
     # exp_info default is 2
@@ -253,8 +251,7 @@ class TermTest(unittest.TestCase):
         nacaddr.IP('8.8.8.8'),
         nacaddr.IP('2001:4860:4860::8844'),
         nacaddr.IP('2001:4860:4860::8888')])
-    self.naming.GetServiceByProto('DNS', 'udp').AndReturn(['53'])
-    self.mox.ReplayAll()
+    self.naming.GetServiceByProto.return_value = ['53']
 
     exp_info = 2
     pol = policy.ParsePolicy(MIXED_FILTER, self.naming, False)
@@ -311,6 +308,9 @@ class TermTest(unittest.TestCase):
     # check notes
     notes = root.find('./rule/notes').text
     self.assertEqual(notes, 'Allow name resolution using honestdns.')
+
+    self.naming.GetServiceByProto.assert_called_once_with('DNS', 'udp')
+
 
 if __name__ == '__main__':
   unittest.main()
