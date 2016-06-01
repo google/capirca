@@ -1,5 +1,16 @@
-#!/usr/bin/python
-
+# Copyright 2011 Capirca Project Authors All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
 """Cisco ASA renderer."""
@@ -7,13 +18,12 @@
 __author__ = 'antony@slac.stanford.edu (Antonio Ceseracciu)'
 
 import datetime
-import socket
 import logging
 import re
 
-from third_party import ipaddr
-import aclgenerator
-import nacaddr
+from lib import aclgenerator
+from lib import nacaddr
+import ipaddr
 
 
 _ACTION_TABLE = {
@@ -48,7 +58,6 @@ class NoCiscoPolicyError(Error):
 
 class Term(aclgenerator.Term):
   """A single ACL Term."""
-
 
   def __init__(self, term, filter_name, af=4):
     self.term = term
@@ -187,132 +196,129 @@ class Term(aclgenerator.Term):
 
     return '\n'.join(ret_str)
 
-  def _TermPortToProtocol (self,portNumber,proto):
 
-    _ASA_PORTS_TCP = {
-5190: "aol",
-179: "bgp",
-19: "chargen",
-1494: "citrix-ica",
-514: "cmd",
-2748: "ctiqbe",
-13: "daytime",
-9: "discard",
-53: "domain",
-7: "echo",
-512: "exec",
-79: "finger",
-21: "ftp",
-20: "ftp-data",
-70: "gopher",
-443: "https",
-1720: "h323",
-101: "hostname",
-113: "ident",
-143: "imap4",
-194: "irc",
-750: "kerberos",
-543: "klogin",
-544: "kshell",
-389: "ldap",
-636: "ldaps",
-515: "lpd",
-513: "login",
-1352: "lotusnotes",
-139: "netbios-ssn",
-119: "nntp",
-5631: "pcanywhere-data",
-496: "pim-auto-rp",
-109: "pop2",
-110: "pop3",
-1723: "pptp",
-25: "smtp",
-1521: "sqlnet",
-22: "ssh",
-111: "sunrpc",
-49: "tacacs",
-517: "talk",
-23: "telnet",
-540: "uucp",
-43: "whois",
-80: "www",
-2049: "nfs",
-5060: "sip"
-    }
-    _ASA_PORTS_UDP = {
-512: "biff",
-68: "bootpc",
-67: "bootps",
-9: "discard",
-53: "domain",
-195: "dnsix",
-7: "echo",
-500: "isakmp",
-750: "kerberos",
-434: "mobile-ip",
-42: "nameserver",
-137: "netbios-ns",
-138: "netbios-dgm",
-123: "ntp",
-5632: "pcanywhere-status",
-496: "pim-auto-rp",
-1645: "radius",
-1646: "radius-acct",
-520: "rip",
-5510: "secureid-udp",
-161: "snmp",
-162: "snmptrap",
-111: "sunrpc",
-514: "syslog",
-49: "tacacs",
-517: "talk",
-69: "tftp",
-37: "time",
-513: "who",
-177: "xdmcp",
-2049: "nfs",
-5060: "sip"
-    }
+  def _TermPortToProtocol(self, portNumber, proto):
+    _ASA_PORTS_TCP = {5190: 'aol',
+                      179: 'bgp',
+                      19: 'chargen',
+                      1494: 'citrix-ica',
+                      514: 'cmd',
+                      2748: 'ctiqbe',
+                      13: 'daytime',
+                      9: 'discard',
+                      53: 'domain',
+                      7: 'echo',
+                      512: 'exec',
+                      79: 'finger',
+                      21: 'ftp',
+                      20: 'ftp-data',
+                      70: 'gopher',
+                      443: 'https',
+                      1720: 'h323',
+                      101: 'hostname',
+                      113: 'ident',
+                      143: 'imap4',
+                      194: 'irc',
+                      750: 'kerberos',
+                      543: 'klogin',
+                      544: 'kshell',
+                      389: 'ldap',
+                      636: 'ldaps',
+                      515: 'lpd',
+                      513: 'login',
+                      1352: 'lotusnotes',
+                      139: 'netbios-ssn',
+                      119: 'nntp',
+                      5631: 'pcanywhere-data',
+                      496: 'pim-auto-rp',
+                      109: 'pop2',
+                      110: 'pop3',
+                      1723: 'pptp',
+                      25: 'smtp',
+                      1521: 'sqlnet',
+                      22: 'ssh',
+                      111: 'sunrpc',
+                      49: 'tacacs',
+                      517: 'talk',
+                      23: 'telnet',
+                      540: 'uucp',
+                      43: 'whois',
+                      80: 'www',
+                      2049: 'nfs',
+                      5060: 'sip'
+                    }
+    _ASA_PORTS_UDP = {512: 'biff',
+                      68: 'bootpc',
+                      67: 'bootps',
+                      9: 'discard',
+                      53: 'domain',
+                      195: 'dnsix',
+                      7: 'echo',
+                      500: 'isakmp',
+                      750: 'kerberos',
+                      434: 'mobile-ip',
+                      42: 'nameserver',
+                      137: 'netbios-ns',
+                      138: 'netbios-dgm',
+                      123: 'ntp',
+                      5632: 'pcanywhere-status',
+                      496: 'pim-auto-rp',
+                      1645: 'radius',
+                      1646: 'radius-acct',
+                      520: 'rip',
+                      5510: 'secureid-udp',
+                      161: 'snmp',
+                      162: 'snmptrap',
+                      111: 'sunrpc',
+                      514: 'syslog',
+                      49: 'tacacs',
+                      517: 'talk',
+                      69: 'tftp',
+                      37: 'time',
+                      513: 'who',
+                      177: 'xdmcp',
+                      2049: 'nfs',
+                      5060: 'sip'
+                    }
 
-    _ASA_TYPES_ICMP = {
-6:  "alternate-address",
-31: "conversion-error",    
-8: "echo",                  
-0: "echo-reply",            
-16: "information-reply",
-15: "information-request",
-18:  "mask-reply",            
-17:  "mask-request",          
-32:  "mobile-redirect",       
-12:  "parameter-problem",     
-5:  "redirect",              
-9:  "router-advertisement",  
-10:  "router-solicitation",   
-4:  "source-quench",         
-11:  "time-exceeded",         
-14:  "timestamp-reply",       
-13:  "timestamp-request",     
-30:  "traceroute",            
-3:  "unreachable"
-    }
+    _ASA_TYPES_ICMP = {6: 'alternate-address',
+                       31: 'conversion-error',
+                       8: 'echo',
+                       0: 'echo-reply',
+                       16: 'information-reply',
+                       15: 'information-request',
+                       18: 'mask-reply',
+                       17: 'mask-request',
+                       32: 'mobile-redirect',
+                       12: 'parameter-problem',
+                       5: 'redirect',
+                       9: 'router-advertisement',
+                       10: 'router-solicitation',
+                       4: 'source-quench',
+                       11: 'time-exceeded',
+                       14: 'timestamp-reply',
+                       13: 'timestamp-request',
+                       30: 'traceroute',
+                       3: 'unreachable'
+                     }
        
-
-    if proto == "tcp":
+    if proto == 'tcp':
       if portNumber in _ASA_PORTS_TCP:
         return _ASA_PORTS_TCP[portNumber]
-    elif proto == "udp":
+    elif proto == 'udp':
       if portNumber in _ASA_PORTS_UDP:
         return _ASA_PORTS_UDP[portNumber]
-    elif proto == "icmp":
+    elif proto == 'icmp':
       if portNumber in _ASA_TYPES_ICMP:
         return _ASA_TYPES_ICMP[portNumber]
     return portNumber
 
-  def _TermletToStr(self, filter_name, action, proto, saddr, sport, daddr, dport,
-                    icmp_type, option):
+  def _TermletToStr(self, filter_name, action, proto, saddr, sport, daddr,
+                    dport, icmp_type, option):
     """Take the various compenents and turn them into a cisco acl line.
 
     Args:
+      filter_name: name of the filter
       action: str, action
       proto: str, protocl
       saddr: str or ipaddr, source address
@@ -325,8 +331,6 @@ class Term(aclgenerator.Term):
     Returns:
       string of the cisco acl line, suitable for printing.
     """
-
-
     # inet4
     if type(saddr) is nacaddr.IPv4 or type(saddr) is ipaddr.IPv4Network:
       if saddr.numhosts > 1:
@@ -354,16 +358,18 @@ class Term(aclgenerator.Term):
     if not sport:
       sport = ''
     elif sport[0] != sport[1]:
-      sport = ' range %s %s' % (self._TermPortToProtocol(sport[0],proto), self._TermPortToProtocol(sport[1],proto))
+      sport = ' range %s %s' % (self._TermPortToProtocol(sport[0], proto),
+                                self._TermPortToProtocol(sport[1], proto))
     else:
-      sport = ' eq %s' % (self._TermPortToProtocol(sport[0],proto))
+      sport = ' eq %s' % (self._TermPortToProtocol(sport[0], proto))
 
     if not dport:
       dport = ''
     elif dport[0] != dport[1]:
-      dport = ' range %s %s' % (self._TermPortToProtocol(dport[0],proto), self._TermPortToProtocol(dport[1],proto))
+      dport = ' range %s %s' % (self._TermPortToProtocol(dport[0], proto),
+                                self._TermPortToProtocol(dport[1], proto))
     else:
-      dport = ' eq %s' % (self._TermPortToProtocol(dport[0],proto))
+      dport = ' eq %s' % (self._TermPortToProtocol(dport[0], proto))
 
     if not option:
       option = ['']
@@ -376,21 +382,21 @@ class Term(aclgenerator.Term):
     ret_lines = []
 
     # str(icmp_type) is needed to ensure 0 maps to '0' instead of FALSE
-    icmp_type = str(self._TermPortToProtocol(icmp_type,"icmp"))
+    icmp_type = str(self._TermPortToProtocol(icmp_type, 'icmp'))
 
-    ret_lines.append('access-list %s extended  %s %s %s %s %s %s %s %s' % 
+    ret_lines.append('access-list %s extended  %s %s %s %s %s %s %s %s' %
                      (filter_name, action, proto, saddr,
                       sport, daddr, dport,
                       icmp_type,
                       ' '.join(sane_options)
-                      ))
+                     ))
 
     # remove any trailing spaces and replace multiple spaces with singles
     stripped_ret_lines = [re.sub('\s+', ' ', x).rstrip() for x in ret_lines]
     return stripped_ret_lines
 
 #    return 'access-list %s extended %s %s %s%s %s%s %s' % (
-#        filter_name, action, proto, saddr, sport, daddr, dport, ' '.join(option))
+#      filter_name, action, proto, saddr, sport, daddr, dport, ' '.join(option))
 
 
 class CiscoASA(aclgenerator.ACLGenerator):
@@ -398,7 +404,7 @@ class CiscoASA(aclgenerator.ACLGenerator):
 
   _PLATFORM = 'ciscoasa'
   _DEFAULT_PROTOCOL = 'ip'
-  _SUFFIX = '.asa'
+  SUFFIX = '.asa'
 
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',
                                       'logging',
@@ -426,7 +432,7 @@ class CiscoASA(aclgenerator.ACLGenerator):
                          'will not be rendered.', term.name, filter_name)
             continue
 
-        new_terms.append(str(Term(term,filter_name)))
+        new_terms.append(str(Term(term, filter_name)))
 
       self.ciscoasa_policies.append((header, filter_name, new_terms))
 
@@ -445,7 +451,7 @@ class CiscoASA(aclgenerator.ACLGenerator):
       # add a header comment if one exists
       for comment in header.comment:
         for line in comment.split('\n'):
-          target.append('access-list %s remark %s' % (filter_name,line))
+          target.append('access-list %s remark %s' % (filter_name, line))
 
       # now add the terms
       for term in terms:

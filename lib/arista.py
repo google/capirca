@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2015 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +17,7 @@
 
 __author__ = 'ryanshea@google.com (Ryan Shea)'
 
-import cisco
+from lib import cisco
 
 
 class Error(Exception):
@@ -28,12 +26,6 @@ class Error(Exception):
 
 class UnsupportedEosAccessListError(Error):
   """When a filter type is not supported in an EOS policy target."""
-
-
-class Term(cisco.Term):
-  """A single ACL Term."""
-
-  _PLATFORM = 'arista'
 
 
 class Arista(cisco.Cisco):
@@ -45,7 +37,7 @@ class Arista(cisco.Cisco):
   """
 
   _PLATFORM = 'arista'
-  _SUFFIX = '.eacl'
+  SUFFIX = '.eacl'
   # Protocols should be emitted as they were in the policy (names).
   _PROTO_INT = False
 

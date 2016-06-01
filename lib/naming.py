@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,8 +47,9 @@ DNS = 53/tcp
 __author__ = 'watson@google.com (Tony Watson)'
 
 import glob
+import os
 
-import nacaddr
+from lib import nacaddr
 
 
 class Error(Exception):
@@ -119,7 +118,7 @@ class Naming(object):
     self.unseen_networks = {}
     if naming_file and naming_type:
       filename = os.path.sep.join([naming_dir, naming_file])
-      file_handle = gfile.GFile(filename, 'r')
+      file_handle = open(filename, 'r')
       self._ParseFile(file_handle, naming_type)
     elif naming_dir:
       self._Parse(naming_dir, 'services')
@@ -145,6 +144,9 @@ class Naming(object):
 
     Args:
       query: an ip string ('10.1.1.1') or nacaddr.IP object
+
+    Returns:
+      A sorted list of unique parent tokens.
     """
     base_parents = []
     recursive_parents = []
@@ -157,8 +159,14 @@ class Naming(object):
       for token in self.networks:
         for item in self.networks[token].items:
           item = item.split('#')[0].strip()
-          if item[:1].isdigit() and nacaddr.IP(item).Contains(query):
-            base_parents.append(token)
+          if not item[:1].isdigit():
+            continue
+          try:
+            if nacaddr.IP(item).Contains(query):
+              base_parents.append(token)
+          except ValueError:
+            # item was not an IP
+            pass
     # Get parent token for another token
     else:
       for token in self.networks:
@@ -188,6 +196,8 @@ class Naming(object):
 
     Args:
       query: a service token name.
+    Returns:
+      List of service definitions containing the token.
     """
     return self._GetParents(query, self.services)
 
@@ -196,6 +206,8 @@ class Naming(object):
 
     Args:
       query: a network token name.
+    Returns:
+      A list of network definitions containing the token.
     """
     return self._GetParents(query, self.networks)
 
@@ -205,6 +217,9 @@ class Naming(object):
     Args:
       query: a service or token name, such as 53/tcp or DNS
       query_group: either services or networks dict
+
+    Returns:
+      Returns a list of definitions containing the token in desired group.
     """
     base_parents = []
     recursive_parents = []
@@ -223,6 +238,10 @@ class Naming(object):
       if bp not in recursive_parents:
         recursive_parents.append(bp)
     return recursive_parents
+
+  def GetServiceNames(self):
+    """Returns the list of all known service names."""
+    return self.services.keys()
 
   def GetService(self, query):
     """Given a service name, return a list of associated ports and protocols.
@@ -251,7 +270,7 @@ class Naming(object):
       # Remove any trailing comment.
       service = next_item.split('#')[0].strip()
       # Recognized token, not a value.
-      if not '/' in service:
+      if '/' not in service:
         # Make sure we are not descending into recursion hell.
         if service not in already_done:
           already_done.add(service)
@@ -377,16 +396,15 @@ class Naming(object):
     if def_type in get_files:
       file_names = get_files[def_type]()
     else:
-      raise NoDefinitionsError('Unknown definitions type.')
+      raise NoDefinitionsError('Definitions type %s is unknown.' % def_type)
     if not file_names:
       raise NoDefinitionsError('No definition files for %s in %s found.' %
                                (def_type, defdirectory))
 
     for current_file in file_names:
       try:
-        file_handle = open(current_file, 'r').readlines()
-        for line in file_handle:
-          self._ParseLine(line, def_type)
+        file_handle = open(current_file, 'r')
+        self._ParseFile(file_handle, def_type)
       except IOError as error_info:
         raise NoDefinitionsError('%s', error_info)
 

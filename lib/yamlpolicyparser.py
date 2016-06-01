@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2016 Jeff Zohrab. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,19 +16,18 @@
 """Parses the generic policy files and return a policy object for acl rendering.
 """
 
+__author__ = ['jzohrab@gmail.com']
+
 import datetime
-from functools import wraps
 import os
 import sys
 
 import logging
-import nacaddr
-import naming
+from lib import nacaddr
+from lib import naming
 
-import policy
+from lib import policy
 from policy import Policy, Header, Target, Term
-from third_party.ply import lex
-from third_party.ply import yacc
 import yaml
 
 class YamlPolicyParser(object):
@@ -158,8 +155,11 @@ class YamlPolicyParser(object):
         raise InvalidTermActionError('%s is not a valid action' % obj)
       term.action.append(a)
 
+    def set_vpn(v):
+      term.vpn = (v[0], v[1])
+
     def append_logging(a):
-      possible_logging = set(('true', 'True', 'syslog', 'local', 'disable'))
+      possible_logging = set(('true', 'True', 'syslog', 'local', 'disable', 'log-both'))
       if a == True:  # PyYAML reads 'true' in a .yml as True; hack force to string.
         a = 'true'
       if a not in possible_logging:
@@ -191,12 +191,18 @@ class YamlPolicyParser(object):
       'destination-prefix': (split_tokens, term.destination_prefix.extend),
       'destination-port': (split_tokens, term.destination_port.extend),
       'destination-tag':  (split_tokens, term.destination_tag.extend),
+      'dscp-except': term.dscp_except.append,
+      'dscp-match': term.dscp_match.append,
+      'dscp-set': 'dscp_set',
       'ether-type': (split_tokens, term.ether_type.extend),
       'expiration': 'expiration',
+      'forwarding-class': 'forwarding_class',
       'fragment-offset': 'fragment_offset',
+      'hop-limit': 'hop_limit',
       'icmp-type': (split_tokens, term.icmp_type.extend),
       'logging': append_logging,
       'loss-priority': 'loss_priority',
+      'next-ip': (map_addr_tokens, term.next_ip.extend),
       'option': (split_tokens, term.option.extend),
       'owner': 'owner',
       'packet-length': 'packet_length',
@@ -219,6 +225,7 @@ class YamlPolicyParser(object):
       'timeout': 'timeout',
       'traffic-type': (split_tokens, term.traffic_type.extend),
       'verbatim': term.verbatim.append,
+      'vpn': set_vpn,
     }
 
     op = ops_map.get(key, None)
@@ -403,6 +410,7 @@ def _ReadFile(filename):
     FileNotFoundError: if requested file does not exist.
     FileReadError: Any error resulting from trying to open/read file.
   """
+  logging.debug('ReadFile(%s)', filename)
   if os.path.exists(filename):
     try:
       data = open(filename, 'r').read()
@@ -434,8 +442,7 @@ def _Preprocess(data, max_depth=5, base_dir=''):
     raise RecursionTooDeepError('%s' % (
         'Included files exceed maximum recursion depth of %s.' % max_depth))
   rval = []
-  lines = [x.rstrip() for x in data.splitlines()]
-  for index, line in enumerate(lines):
+  for line in [x.rstrip() for x in data.splitlines()]:
     words = line.split()
     if len(words) > 1 and words[0] == '#include':
       # remove any quotes around included filename
@@ -463,25 +470,12 @@ def ParseFile(filename, definitions=None, optimize=True, base_dir='',
     shade_check: bool - whether to raise an exception when a term is shaded.
 
   Returns:
-    policy object.
+    policy object or False (if parse error).
   """
   data = _ReadFile(filename)
   p = ParsePolicy(data, definitions, optimize, base_dir=base_dir,
                   shade_check=shade_check)
   return p
-
-
-@memoize
-def CacheParseFile(*args, **kwargs):
-  """Same as ParseFile, but cached if possible.
-
-  If this was previously called with same args/kwargs, then just return
-  the previous result from cache.
-
-  See the ParseFile function for signature details.
-  """
-
-  return ParseFile(*args, **kwargs)
 
 
 def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
@@ -494,11 +488,11 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
     data: a string blob of policy data to parse.
     definitions: optional naming library definitions object.
     optimize: bool - whether to summarize networks and services.
-    base_dir: base path string to look for policies or include files.
+    base_dir: base path string to look for acls or include files.
     shade_check: bool - whether to raise an exception when a term is shaded.
 
   Returns:
-    policy object.
+    policy object or False (if parse error).
   """
   try:
 
@@ -513,7 +507,7 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
     return False
 
 
-# If you call this from the command line, you can specify a policy file for it
+# If you call this from the command line, you can specify a pol file for it
 # to read.
 if __name__ == '__main__':
   ret = 0

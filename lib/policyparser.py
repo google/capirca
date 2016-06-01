@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,25 +16,27 @@
 """Parses the generic policy files and return a policy object for acl rendering.
 """
 
+__author__ = ['pmoody@google.com',
+              'watson@google.com']
+
 import datetime
-from functools import wraps
 import os
 import sys
 
 import logging
-import nacaddr
-import naming
+from lib import nacaddr
+from lib import naming
 
-import policy
+from lib import policy
 from policy import Policy, Header, Target, Term
-from third_party.ply import lex
-from third_party.ply import yacc
+from ply import lex
+from ply import yacc
 
 
 DEFINITIONS = None
 DEFAULT_DEFINITIONS = './def'
-_ACTIONS = set(('accept', 'deny', 'reject', 'next', 'reject-with-tcp-rst'))
-_LOGGING = set(('true', 'True', 'syslog', 'local', 'disable'))
+ACTIONS = set(('accept', 'deny', 'reject', 'next', 'reject-with-tcp-rst'))
+_LOGGING = set(('true', 'True', 'syslog', 'local', 'disable', 'log-both'))
 _OPTIMIZE = True
 _SHADE_CHECK = False
 
@@ -141,8 +141,17 @@ class VarType(object):
   OWNER = 34
   PRINCIPALS = 35
   ADDREXCLUDE = 36
+  VPN = 37
+  APPLY_GROUPS = 38
+  APPLY_GROUPS_EXCEPT = 39
+  DSCP_SET = 40
+  DSCP_MATCH = 41
+  DSCP_EXCEPT = 42
+  FORWARDING_CLASS = 43
   STAG = 44
   DTAG = 45
+  NEXT_IP = 46
+  HOP_LIMIT = 47
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -155,7 +164,10 @@ class VarType(object):
       self.value = value
 
   def __str__(self):
-    return self.value
+    return str(self.value)
+
+  def __repr__(self):
+    return self.__str__()
 
   def __eq__(self, other):
     return self.var_type == other.var_type and self.value == other.value
@@ -170,19 +182,30 @@ tokens = (
     'COUNTER',
     'DADDR',
     'DADDREXCLUDE',
+    'DINTERFACE',
     'DPFX',
     'DPORT',
-    'DINTERFACE',
     'DQUOTEDSTRING',
+    'DSCP',
+    'DSCP_EXCEPT',
+    'DSCP_MATCH',
+    'DSCP_RANGE',
+    'DSCP_SET',
     'DTAG',
+    'ESCAPEDSTRING',
     'ETHER_TYPE',
     'EXPIRATION',
+    'FORWARDING_CLASS',
     'FRAGMENT_OFFSET',
+    'HOP_LIMIT',
+    'APPLY_GROUPS',
+    'APPLY_GROUPS_EXCEPT',
     'HEADER',
     'ICMP_TYPE',
     'INTEGER',
     'LOGGING',
     'LOSS_PRIORITY',
+    'NEXT_IP',
     'OPTION',
     'OWNER',
     'PACKET_LEN',
@@ -208,6 +231,7 @@ tokens = (
     'TIMEOUT',
     'TRAFFIC_TYPE',
     'VERBATIM',
+    'VPN',
 )
 
 literals = r':{},-'
@@ -225,13 +249,21 @@ reserved = {
     'destination-prefix': 'DPFX',
     'destination-port': 'DPORT',
     'destination-tag': 'DTAG',
+    'dscp-except': 'DSCP_EXCEPT',
+    'dscp-match': 'DSCP_MATCH',
+    'dscp-set': 'DSCP_SET',
     'ether-type': 'ETHER_TYPE',
     'expiration': 'EXPIRATION',
+    'forwarding-class': 'FORWARDING_CLASS',
     'fragment-offset': 'FRAGMENT_OFFSET',
+    'hop-limit': 'HOP_LIMIT',
+    'apply-groups': 'APPLY_GROUPS',
+    'apply-groups-except': 'APPLY_GROUPS_EXCEPT',
     'header': 'HEADER',
     'icmp-type': 'ICMP_TYPE',
     'logging': 'LOGGING',
     'loss-priority': 'LOSS_PRIORITY',
+    'next-ip': 'NEXT_IP',
     'option': 'OPTION',
     'owner': 'OWNER',
     'packet-length': 'PACKET_LEN',
@@ -256,17 +288,26 @@ reserved = {
     'timeout': 'TIMEOUT',
     'traffic-type': 'TRAFFIC_TYPE',
     'verbatim': 'VERBATIM',
+    'vpn': 'VPN',
 }
 
 
 # disable linting warnings for lexx/yacc code
-# pylint: disable-msg=W0613,C6102,C6104,C6105,C6108,C6409
-
+# pylint: disable=unused-argument,invalid-name,g-short-docstring-punctuation
+# pylint: disable=g-docstring-quotes,g-short-docstring-space
+# pylint: disable=g-space-before-docstring-summary,g-doc-args
+# pylint: disable=g-no-space-after-docstring-summary
+# pylint: disable=g-docstring-missing-newline
 
 def t_IGNORE_COMMENT(t):
   r'\#.*'
   pass
 
+
+def t_ESCAPEDSTRING(t):
+  r'"([^"\\]*(?:\\"[^"\\]*)+)"'
+  t.lexer.lineno += str(t.value).count('\n')
+  return t
 
 def t_DQUOTEDSTRING(t):
   r'"[^"]*?"'
@@ -282,6 +323,18 @@ def t_newline(t):
 def t_error(t):
   print "Illegal character '%s' on line %s" % (t.value[0], t.lineno)
   t.lexer.skip(1)
+
+
+def t_DSCP_RANGE(t):
+  # pylint: disable=line-too-long
+  r'\b((b[0-1]{6})|(af[1-4]{1}[1-3]{1})|(be)|(ef)|(cs[0-7]{1}))([-]{1})((b[0-1]{6})|(af[1-4]{1}[1-3]{1})|(be)|(ef)|(cs[0-7]{1}))\b'
+  t.type = reserved.get(t.value, 'DSCP_RANGE')
+  return t
+
+def t_DSCP(t):
+  r'\b((b[0-1]{6})|(af[1-4]{1}[1-3]{1})|(be)|(ef)|(cs[0-7]{1}))\b'
+  t.type = reserved.get(t.value, 'DSCP')
+  return t
 
 
 def t_INTEGER(t):
@@ -387,6 +440,8 @@ def p_header(p):
 def p_header_spec(p):
   """ header_spec : header_spec target_spec
                   | header_spec comment_spec
+                  | header_spec apply_groups_spec
+                  | header_spec apply_groups_except_spec
                   | """
   if len(p) > 1:
     if type(p[1]) == Header:
@@ -397,10 +452,28 @@ def p_header_spec(p):
       __add_header_vartype_obj(p[0], p[2])
 
 def __add_header_vartype_obj(header, obj):
+  """Add an object to the Header.
+
+  Args:
+    header: the Header
+    obj: of type VarType.COMMENT, VarType.APPLY_GROUPS,
+    VarType.APPLY_GROUPS_EXCEPT, or Target
+
+  Raises:
+    RuntimeError: if object type cannot be determined
+  """
   if type(obj) == Target:
     header.target.append(obj)
-  else:
+  elif isinstance(obj, list) and all(isinstance(x, VarType) for x in obj):
+    for x in obj:
+      if x.var_type == VarType.APPLY_GROUPS:
+        header.apply_groups.append(str(x))
+      elif x.var_type == VarType.APPLY_GROUPS_EXCEPT:
+        header.apply_groups_except.append(str(x))
+  elif obj.var_type == VarType.COMMENT:
     header.comment.append(str(obj))
+  else:
+    raise RuntimeError('Unable to add object from header.')
 
 # we may want to change this at some point if we want to be clever with things
 # like being able to set a default input/output policy for iptables policies.
@@ -426,14 +499,20 @@ def p_term_spec(p):
                 | term_spec addr_spec
                 | term_spec comment_spec
                 | term_spec counter_spec
+                | term_spec dscp_set_spec
+                | term_spec dscp_match_spec
+                | term_spec dscp_except_spec
                 | term_spec ether_type_spec
                 | term_spec exclude_spec
                 | term_spec expiration_spec
+                | term_spec forwarding_class_spec
                 | term_spec fragment_offset_spec
+                | term_spec hop_limit_spec
                 | term_spec icmp_type_spec
                 | term_spec interface_spec
                 | term_spec logging_spec
                 | term_spec losspriority_spec
+                | term_spec next_ip_spec
                 | term_spec option_spec
                 | term_spec owner_spec
                 | term_spec packet_length_spec
@@ -450,6 +529,7 @@ def p_term_spec(p):
                 | term_spec timeout_spec
                 | term_spec traffic_type_spec
                 | term_spec verbatim_spec
+                | term_spec vpn_spec
                 | """
   if len(p) > 1:
     if type(p[1]) == Term:
@@ -527,10 +607,18 @@ def __add_term_vartype_obj(term, obj):
         term.traffic_type.append(x.value)
       elif x.var_type is VarType.PRECEDENCE:
         term.precedence.append(x.value)
+      elif x.var_type is VarType.FORWARDING_CLASS:
+        term.forwarding_class = obj.value
+      elif x.var_type is VarType.NEXT_IP:
+        term.next_ip = DEFINITIONS.GetNetAddr(x.value)
       elif x.var_type is VarType.PLATFORM:
         term.platform.append(x.value)
       elif x.var_type is VarType.PLATFORMEXCLUDE:
         term.platform_exclude.append(x.value)
+      elif x.var_type is VarType.DSCP_MATCH:
+        term.dscp_match.append(x.value)
+      elif x.var_type is VarType.DSCP_EXCEPT:
+        term.dscp_except.append(x.value)
       elif x.var_type is VarType.STAG:
         term.source_tag.append(x.value)
       elif x.var_type is VarType.DTAG:
@@ -553,10 +641,14 @@ def __add_term_vartype_obj(term, obj):
       term.routing_instance = obj.value
     elif obj.var_type is VarType.PRECEDENCE:
       term.precedence = obj.value
+    elif obj.var_type is VarType.FORWARDING_CLASS:
+      term.forwarding_class = obj.value
+    elif obj.var_type is VarType.NEXT_IP:
+      term.next_ip = DEFINITIONS.GetNetAddr(obj.value)
     elif obj.var_type is VarType.VERBATIM:
       term.verbatim.append(obj)
     elif obj.var_type is VarType.ACTION:
-      if str(obj) not in _ACTIONS:
+      if str(obj) not in ACTIONS:
         raise InvalidTermActionError('%s is not a valid action' % obj)
       term.action.append(obj.value)
     elif obj.var_type is VarType.COUNTER:
@@ -578,12 +670,18 @@ def __add_term_vartype_obj(term, obj):
       term.packet_length = obj.value
     elif obj.var_type is VarType.FRAGMENT_OFFSET:
       term.fragment_offset = obj.value
+    elif obj.var_type is VarType.HOP_LIMIT:
+      term.hop_limit = obj.value
     elif obj.var_type is VarType.SINTERFACE:
       term.source_interface = obj.value
     elif obj.var_type is VarType.DINTERFACE:
       term.destination_interface = obj.value
     elif obj.var_type is VarType.TIMEOUT:
       term.timeout = obj.value
+    elif obj.var_type is VarType.DSCP_SET:
+      term.dscp_set = obj.value
+    elif obj.var_type is VarType.VPN:
+      term.vpn = (obj.value[0], obj.value[1])
     else:
       raise TermObjectTypeError(
           '%s isn\'t a type I know how to deal with' % (type(obj)))
@@ -604,6 +702,16 @@ def p_precedence_spec(p):
   p[0] = VarType(VarType.PRECEDENCE, p[4])
 
 
+def p_forwarding_class_spec(p):
+  """ forwarding_class_spec : FORWARDING_CLASS ':' ':' STRING """
+  p[0] = VarType(VarType.FORWARDING_CLASS, p[4])
+
+
+def p_next_ip_spec(p):
+  """ next_ip_spec : NEXT_IP ':' ':' STRING """
+  p[0] = VarType(VarType.NEXT_IP, p[4])
+
+
 def p_icmp_type_spec(p):
   """ icmp_type_spec : ICMP_TYPE ':' ':' one_or_more_strings """
   p[0] = VarType(VarType.ICMP_TYPE, p[4])
@@ -612,7 +720,7 @@ def p_icmp_type_spec(p):
 def p_packet_length_spec(p):
   """ packet_length_spec : PACKET_LEN ':' ':' INTEGER
                          | PACKET_LEN ':' ':' INTEGER '-' INTEGER """
-  if len(p) == 4:
+  if len(p) == 5:
     p[0] = VarType(VarType.PACKET_LEN, str(p[4]))
   else:
     p[0] = VarType(VarType.PACKET_LEN, str(p[4]) + '-' + str(p[6]))
@@ -621,10 +729,54 @@ def p_packet_length_spec(p):
 def p_fragment_offset_spec(p):
   """ fragment_offset_spec : FRAGMENT_OFFSET ':' ':' INTEGER
                            | FRAGMENT_OFFSET ':' ':' INTEGER '-' INTEGER """
-  if len(p) == 4:
+  if len(p) == 5:
     p[0] = VarType(VarType.FRAGMENT_OFFSET, str(p[4]))
   else:
     p[0] = VarType(VarType.FRAGMENT_OFFSET, str(p[4]) + '-' + str(p[6]))
+
+
+def p_hop_limit_spec(p):
+  """ hop_limit_spec : HOP_LIMIT ':' ':' INTEGER
+                     | HOP_LIMIT ':' ':' INTEGER '-' INTEGER """
+  if len(p) == 5:
+    p[0] = VarType(VarType.HOP_LIMIT, str(p[4]))
+  else:
+    p[0] = VarType(VarType.HOP_LIMIT, str(p[4]) + '-' + str(p[6]))
+
+
+def p_one_or_more_dscps(p):
+  """ one_or_more_dscps : one_or_more_dscps DSCP_RANGE
+                        | one_or_more_dscps DSCP
+                        | one_or_more_dscps INTEGER
+                        | DSCP_RANGE
+                        | DSCP
+                        | INTEGER """
+  if len(p) > 1:
+    if type(p[1]) is list:
+      p[1].append(p[2])
+      p[0] = p[1]
+    else:
+      p[0] = [p[1]]
+
+
+def p_dscp_set_spec(p):
+  """ dscp_set_spec : DSCP_SET ':' ':' DSCP
+                    | DSCP_SET ':' ':' INTEGER """
+  p[0] = VarType(VarType.DSCP_SET, p[4])
+
+
+def p_dscp_match_spec(p):
+  """ dscp_match_spec : DSCP_MATCH ':' ':' one_or_more_dscps """
+  p[0] = []
+  for dscp in p[4]:
+    p[0].append(VarType(VarType.DSCP_MATCH, dscp))
+
+
+def p_dscp_except_spec(p):
+  """ dscp_except_spec : DSCP_EXCEPT ':' ':' one_or_more_dscps """
+  p[0] = []
+  for dscp in p[4]:
+    p[0].append(VarType(VarType.DSCP_EXCEPT, dscp))
 
 
 def p_exclude_spec(p):
@@ -766,8 +918,18 @@ def p_owner_spec(p):
 
 
 def p_verbatim_spec(p):
-  """ verbatim_spec : VERBATIM ':' ':' STRING DQUOTEDSTRING """
-  p[0] = VarType(VarType.VERBATIM, [p[4], p[5].strip('"')])
+  """ verbatim_spec : VERBATIM ':' ':' STRING DQUOTEDSTRING
+                    | VERBATIM ':' ':' STRING ESCAPEDSTRING """
+  p[0] = VarType(VarType.VERBATIM, [p[4], p[5].strip('"').replace('\\"', '"')])
+
+
+def p_vpn_spec(p):
+  """ vpn_spec : VPN ':' ':' STRING STRING
+               | VPN ':' ':' STRING """
+  if len(p) == 6:
+    p[0] = VarType(VarType.VPN, [p[4], p[5]])
+  else:
+    p[0] = VarType(VarType.VPN, [p[4], ''])
 
 
 def p_qos_spec(p):
@@ -793,6 +955,21 @@ def p_platform_spec(p):
       p[0].append(VarType(VarType.PLATFORMEXCLUDE, platform))
     elif p[1].find('platform') >= 0:
       p[0].append(VarType(VarType.PLATFORM, platform))
+
+
+def p_apply_groups_spec(p):
+  """ apply_groups_spec : APPLY_GROUPS ':' ':' one_or_more_strings """
+  p[0] = []
+  for group in p[4]:
+    p[0].append(VarType(VarType.APPLY_GROUPS, group))
+
+
+def p_apply_groups_except_spec(p):
+  """ apply_groups_except_spec : APPLY_GROUPS_EXCEPT ':' ':' one_or_more_strings
+  """
+  p[0] = []
+  for group_except in p[4]:
+    p[0].append(VarType(VarType.APPLY_GROUPS_EXCEPT, group_except))
 
 
 def p_timeout_spec(p):
@@ -852,24 +1029,11 @@ def p_error(p):
   else:
     raise ParseError(' ERROR you likely have unablanaced "{"\'s')
 
-# pylint: enable-msg=W0613,C6102,C6104,C6105,C6108,C6409
-
-
-def memoize(obj):
-  """Memoize decorator for objects that take args and or kwargs."""
-
-  cache = obj.cache = {}
-
-  @wraps(obj)
-  def memoizer(*args, **kwargs):
-    key = (args, tuple(zip(kwargs.iteritems())))
-    try:
-      return cache[key]
-    except KeyError:
-      value = obj(*args, **kwargs)
-      cache[key] = value
-      return value
-  return memoizer
+# pylint: enable=unused-argument,invalid-name,g-short-docstring-punctuation
+# pylint: enable=g-docstring-quotes,g-short-docstring-space
+# pylint: enable=g-space-before-docstring-summary,g-doc-args
+# pylint: enable=g-no-space-after-docstring-summary
+# pylint: enable=g-docstring-missing-newline
 
 
 def _ReadFile(filename):
@@ -885,6 +1049,7 @@ def _ReadFile(filename):
     FileNotFoundError: if requested file does not exist.
     FileReadError: Any error resulting from trying to open/read file.
   """
+  logging.debug('ReadFile(%s)', filename)
   if os.path.exists(filename):
     try:
       data = open(filename, 'r').read()
@@ -916,8 +1081,7 @@ def _Preprocess(data, max_depth=5, base_dir=''):
     raise RecursionTooDeepError('%s' % (
         'Included files exceed maximum recursion depth of %s.' % max_depth))
   rval = []
-  lines = [x.rstrip() for x in data.splitlines()]
-  for index, line in enumerate(lines):
+  for line in [x.rstrip() for x in data.splitlines()]:
     words = line.split()
     if len(words) > 1 and words[0] == '#include':
       # remove any quotes around included filename
@@ -945,25 +1109,12 @@ def ParseFile(filename, definitions=None, optimize=True, base_dir='',
     shade_check: bool - whether to raise an exception when a term is shaded.
 
   Returns:
-    policy object.
+    policy object or False (if parse error).
   """
   data = _ReadFile(filename)
   p = ParsePolicy(data, definitions, optimize, base_dir=base_dir,
                   shade_check=shade_check)
   return p
-
-
-@memoize
-def CacheParseFile(*args, **kwargs):
-  """Same as ParseFile, but cached if possible.
-
-  If this was previously called with same args/kwargs, then just return
-  the previous result from cache.
-
-  See the ParseFile function for signature details.
-  """
-
-  return ParseFile(*args, **kwargs)
 
 
 def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
@@ -976,11 +1127,11 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
     data: a string blob of policy data to parse.
     definitions: optional naming library definitions object.
     optimize: bool - whether to summarize networks and services.
-    base_dir: base path string to look for policies or include files.
+    base_dir: base path string to look for acls or include files.
     shade_check: bool - whether to raise an exception when a term is shaded.
 
   Returns:
-    policy object.
+    policy object or False (if parse error).
   """
   try:
     global DEFINITIONS
@@ -1006,7 +1157,7 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
     return False
 
 
-# If you call this from the command line, you can specify a policy file for it
+# If you call this from the command line, you can specify a pol file for it
 # to read.
 if __name__ == '__main__':
   ret = 0

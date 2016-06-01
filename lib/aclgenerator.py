@@ -1,5 +1,3 @@
-#!/usr/bin/python2.4
-#
 # Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +19,7 @@ import copy
 import re
 from string import Template
 
-import policy
+from lib import policy
 
 
 # generic error class
@@ -236,33 +234,30 @@ class ACLGenerator(object):
   # prefer fixed terms unless there's a clear benefit to regular
   # expressions.
   _ABBREVIATION_TABLE = [
-        ('bogons', 'BGN'),
-        ('bogon', 'BGN'),
-        ('reserved', 'RSV'),
-        ('rfc1918', 'PRV'),
-        ('rfc-1918', 'PRV'),
-        ('internet', 'EXT'),
-        ('global', 'GBL'),
-        ('internal', 'INT'),
-        ('customer', 'CUST'),
-        ('google', 'GOOG'),
-        ('ballmer', 'ASS'),
-        ('microsoft', 'LOL'),
-        ('china', 'BAN'),
-        ('border', 'BDR'),
-        ('service', 'SVC'),
-        ('router', 'RTR'),
-        ('transit', 'TRNS'),
-        ('experiment', 'EXP'),
-        ('established', 'EST'),
-        ('unreachable', 'UNR'),
-        ('fragment', 'FRG'),
-        ('accept', 'OK'),
-        ('discard', 'DSC'),
-        ('reject', 'REJ'),
-        ('replies', 'ACK'),
-        ('request', 'REQ'),
-        ]
+      # Service abbreviations first.
+      ('experiment', 'EXP'),
+      ('wifi-radius', 'W-R'),
+      ('customer', 'CUST'),
+      ('server', 'SRV'),
+      # Next, common routing terms
+      ('global', 'GBL'),
+      ('google', 'GOOG'),
+      ('service', 'SVC'),
+      ('router', 'RTR'),
+      ('internal', 'INT'),
+      ('external', 'EXT'),
+      ('transit', 'TRNS'),
+      ('management', 'MGMT'),
+      # State info
+      ('established', 'EST'),
+      ('unreachable', 'UNR'),
+      ('fragment', 'FRAG'),
+      ('accept', 'ACC'),
+      ('discard', 'DISC'),
+      ('reject', 'REJ'),
+      ('replies', 'RPL'),
+      ('request', 'REQ'),
+  ]
   # Maximum term length. Can be overriden by generator to enforce
   # platform specific restrictions.
   _TERM_MAX_LENGTH = 62

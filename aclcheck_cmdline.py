@@ -1,6 +1,4 @@
-#!/usr/bin/python
-#
-# Copyright 2011 Google Inc. All Rights Reserved
+# Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,14 +18,15 @@
 __author__ = 'watson@google.com (Tony Watson)'
 
 from optparse import OptionParser
-import sys
+
 from lib import aclcheck
-from lib import policy
 from lib import naming
+from lib import policy
 
 
 def main():
-  usage = "usage: %prog [options] arg"
+  # TODO(robankeny): Lets move this to gflags
+  usage = 'usage: %prog [options] arg'
   _parser = OptionParser(usage)
   _parser.add_option('--definitions-directory', dest='definitions',
                      help='definitions directory', default='./def')
@@ -35,7 +34,7 @@ def main():
                      help='policy file', default='./policies/sample.pol')
   _parser.add_option('-d', '--destination', dest='dst',
                      help='destination IP', default='200.1.1.1')
-  _parser.add_option('-s' ,'--source', dest='src',
+  _parser.add_option('-s', '--source', dest='src',
                      help='source IP', default='any')
   _parser.add_option('--proto', '--protocol', dest='proto',
                      help='Protocol (tcp, udp, icmp, etc.)', default='tcp')
@@ -43,9 +42,7 @@ def main():
                      help='destination port', default='80')
   _parser.add_option('--sport', '--source-port', dest='sport',
                      help='source port', default='1025')
-  (FLAGS, args) = _parser.parse_args()
-  #if FLAGS.help:
-  #  print _parser.format_help()
+  (FLAGS, unused_args) = _parser.parse_args()
 
   defs = naming.Naming(FLAGS.definitions)
   policy_obj = policy.ParsePolicy(open(FLAGS.pol).read(), defs)

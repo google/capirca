@@ -1,6 +1,4 @@
-#!/usr/bin/python
-#
-# Copyright 2011 Google Inc. All Rights Reserved
+# Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,10 +18,9 @@
 __author__ = 'watson@google.com (Tony Watson)'
 
 import logging
-import sys
-import nacaddr
-import policy
-import port
+from lib import nacaddr
+from lib import policy
+from lib import port
 
 
 class Error(Exception):
@@ -78,6 +75,7 @@ class AclCheck(object):
                proto='any',
               ):
 
+    logging.debug('aclcheck __init__')
     self.pol_obj = pol
     self.proto = proto
 
@@ -207,9 +205,9 @@ class AclCheck(object):
         last_filter = next.filter
         text.append('  filter: ' + next.filter)
       if next.possibles:
-        text.append(' ' * 10 + 'term: ' + next.term + ' (possible match)')
+        text.append(' ' * 10 + 'term: ' + str(next.term) + ' (possible match)')
       else:
-        text.append(' ' * 10 + 'term: ' + next.term)
+        text.append(' ' * 10 + 'term: ' + str(next.term))
       if next.possibles:
         text.append(' ' * 16 + next.action + ' if ' + str(next.possibles))
       else:

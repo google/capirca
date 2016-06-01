@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2015 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 """Ipset iptables generator.  This is a subclass of Iptables generator.
 
 ipset is a system inside the Linux kernel, which can very efficiently store
@@ -26,8 +23,9 @@ performace of iptables firewall.
 __author__ = 'vklimovs@google.com (Vjaceslavs Klimovs)'
 
 import string
-import iptables
-import nacaddr
+
+from lib import iptables
+from lib import nacaddr
 
 
 class Error(Exception):

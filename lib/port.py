@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +32,7 @@ class BadPortRange(Error):
 
 def Port(port):
   """Sanitize a port value.
-   
+
   Args:
     port: a port value
 

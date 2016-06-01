@@ -18,12 +18,12 @@
 __author__ = 'watson@google.com (Tony Watson)'
 
 import datetime
-import logging
-import nacaddr
 import re
-from string import Template
+from string import Template  # pylint: disable=g-importing-member
 
-import aclgenerator
+from lib import aclgenerator
+from lib import nacaddr
+import logging
 
 
 class Term(aclgenerator.Term):
@@ -626,7 +626,7 @@ class Iptables(aclgenerator.ACLGenerator):
 
   _PLATFORM = 'iptables'
   _DEFAULT_PROTOCOL = 'all'
-  _SUFFIX = ''
+  SUFFIX = ''
   _RENDER_PREFIX = None
   _RENDER_SUFFIX = None
   _DEFAULTACTION_FORMAT = '-P %s %s'
@@ -660,7 +660,7 @@ class Iptables(aclgenerator.ACLGenerator):
   def _TranslatePolicy(self, pol, exp_info):
     """Translate a policy from objects into strings."""
     self.iptables_policies = []
-    current_date = datetime.date.today()
+    current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     default_action = None

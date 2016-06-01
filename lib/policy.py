@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,14 +16,15 @@
 """Parses the generic policy files and return a policy object for acl rendering.
 """
 
+__author__ = ['pmoody@google.com',
+              'watson@google.com']
+
 import datetime
-from functools import wraps
 import os
 import sys
 
-import logging
-import nacaddr
-import naming
+from lib import logging
+from lib import nacaddr
 
 class Error(Exception):
   """Generic error class."""
@@ -124,6 +123,31 @@ class Policy(object):
     if shading_errors:
       raise ShadingError('\n'.join(shading_errors))
 
+  def __eq__(self, obj):
+    """Compares for equality against another Policy object.
+
+    Note that it is picky and requires the list contents to be in the
+    same order.
+
+    Args:
+      obj: object to be compared to for equality.
+    Returns:
+      True if the list of filters in this policy object is equal to the list
+      in obj and False otherwise.
+    """
+    if not isinstance(obj, Policy):
+      return False
+    return self.filters == obj.filters
+
+  def __str__(self):
+    def tuple_str(tup):
+      return '%s:%s' % (tup[0], tup[1])
+    return 'Policy: {%s}' % ', '.join(map(tuple_str, self.filters))
+
+  def __repr__(self):
+    return self.__str__()
+
+
 
 class Term(object):
   """The Term object is used to store each of the terms.
@@ -141,12 +165,18 @@ class Term(object):
     protocol: list of VarType.PROTOCOL's.
     counter: VarType.COUNTER
     action: list of VarType.ACTION's
+    dscp-set: VarType.DSCP_SET
+    dscp-match: VarType.DSCP_MATCH
+    dscp-except: VarType.DSCP_EXCEPT
     comments: VarType.COMMENT
+    forwarding-class: VarType.FORWARDING_CLASS
     expiration: VarType.EXPIRATION
     verbatim: VarType.VERBATIM
     logging: VarType.LOGGING
+    next-ip: VarType.NEXT_IP
     qos: VarType.QOS
     policer: VarType.POLICER
+    vpn: VarType.VPN
   """
   ICMP_TYPE = {4: {'echo-reply': 0,
                    'unreachable': 3,
@@ -198,6 +228,7 @@ class Term(object):
                    'multicast-router-termination': 153,
                   },
               }
+  _IPV6_BYTE_SIZE = 4
 
   def __init__(self):
     self.name = None
@@ -212,6 +243,7 @@ class Term(object):
     self.destination_address_exclude = []
     self.destination_port = []
     self.destination_prefix = []
+    self.forwarding_class = None
     self.logging = []
     self.loss_priority = None
     self.option = []
@@ -232,10 +264,17 @@ class Term(object):
     # juniper specific.
     self.packet_length = None
     self.fragment_offset = None
+    self.hop_limit = None
     self.icmp_type = []
     self.ether_type = []
     self.traffic_type = []
     self.translated = False
+    self.dscp_set = None
+    self.dscp_match = []
+    self.dscp_except = []
+    self.next_ip = None
+    # srx specific
+    self.vpn = None
     # gce specific
     self.source_tag = []
     self.destination_tag = []
@@ -257,7 +296,7 @@ class Term(object):
       if sorted(self.verbatim) != sorted(other.verbatim):
         return False
 
-    # check prototols
+    # check protocols
     # either protocol or protocol-except may be used, not both at the same time.
     if self.protocol:
       if other.protocol:
@@ -369,6 +408,13 @@ class Term(object):
       for opt in other.option:
         if opt not in self.option:
           return False
+    # check forwarding-class
+    if self.forwarding_class:
+      if not other.forwarding_class:
+        return False
+    if self.next_ip:
+      if not other.next_ip:
+        return False
     if self.fragment_offset:
       # fragment_offset looks like 'integer-integer' or just, 'integer'
       sfo = [int(x) for x in self.fragment_offset.split('-')]
@@ -376,6 +422,19 @@ class Term(object):
         ofo = [int(x) for x in other.fragment_offset.split('-')]
         if sfo[0] < ofo[0] or sorted(sfo[1:]) > sorted(ofo[1:]):
           return False
+      else:
+        return False
+    if self.hop_limit:
+      # hop_limit looks like 'integer-integer' or just, 'integer'
+      shl = [int(x) for x in self.hop_limit.split('-')]
+      if other.hop_limit:
+        ohl = [int(x) for x in other.hop_limit.split('-')]
+        if shl[0] < ohl[0]:
+          return False
+        shll, ohll = shl[1:2], ohl[1:2]
+        if shll and ohll:
+          if shl[0] > ohl[0]:
+            return False
       else:
         return False
     if self.packet_length:
@@ -427,6 +486,10 @@ class Term(object):
       ret_str.append('  source_prefix: %s' % self.source_prefix)
     if self.destination_prefix:
       ret_str.append('  destination_prefix: %s' % self.destination_prefix)
+    if self.forwarding_class:
+      ret_str.append('  forwarding_class: %s' % self.forwarding_class)
+    if self.next_ip:
+      ret_str.append('  next_ip: %s' % self.next_ip)
     if self.protocol:
       ret_str.append('  protocol: %s' % self.protocol)
     if self.protocol_except:
@@ -461,7 +524,18 @@ class Term(object):
       ret_str.append('  platform_exclude: %s' % self.platform_exclude)
     if self.timeout:
       ret_str.append('  timeout: %s' % self.timeout)
+    if self.vpn:
+      vpn_name, pair_policy = self.vpn
+      if pair_policy:
+        ret_str.append('  vpn: name = %s, pair_policy = %s' %
+                       (vpn_name, pair_policy))
+      else:
+        ret_str.append('  vpn: name = %s' % vpn_name)
+
     return '\n'.join(ret_str)
+
+  def __repr__(self):
+    return self.__str__()
 
   def __eq__(self, other):
     # action
@@ -532,11 +606,17 @@ class Term(object):
       return False
     if self.fragment_offset != other.fragment_offset:
       return False
+    if self.hop_limit != other.hop_limit:
+      return False
     if sorted(self.icmp_type) != sorted(other.icmp_type):
       return False
     if sorted(self.ether_type) != sorted(other.ether_type):
       return False
     if sorted(self.traffic_type) != sorted(other.traffic_type):
+      return False
+
+    # vpn
+    if self.vpn != other.vpn:
       return False
 
     # platform
@@ -548,10 +628,43 @@ class Term(object):
     if self.timeout != other.timeout:
       return False
 
+    # precedence
+    if self.precedence != other.precedence:
+      return False
+
+    # forwarding-class
+    if self.forwarding_class != other.forwarding_class:
+      return False
+
+    # next_ip
+    if self.next_ip != other.next_ip:
+      return False
+
     return True
 
   def __ne__(self, other):
     return not self.__eq__(other)
+
+  def AddressesByteLength(self):
+    """Returns the byte length of all IP addresses in the term.
+
+    This is used in the srx generator due to a address size limitation.
+
+    Returns:
+      counter: Byte length of the sum of both source and destination IPs.
+    """
+    counter = 0
+    for i in self.source_address:
+      if i.version == 6:
+        counter += self._IPV6_BYTE_SIZE
+      else:
+        counter += 1
+    for i in self.destination_address:
+      if i.version == 6:
+        counter += self._IPV6_BYTE_SIZE
+      else:
+        counter += 1
+    return counter
 
   def FlattenAll(self):
     """Reduce source, dest, and address fields to their post-exclude state.
@@ -599,9 +712,17 @@ class Term(object):
       for ex_addr in exclude:
         if ex_addr in in_addr:
           reduced_list = in_addr.address_exclude(ex_addr)
-          include.pop(index)
-          include.extend(
-              Term._FlattenAddresses(reduced_list, exclude[1:]))
+          include[index] = None
+          for term in Term._FlattenAddresses(reduced_list, exclude[1:]):
+            if term not in include:
+              include.append(term)
+        elif in_addr in ex_addr:
+          include[index] = None
+
+    # Remove items from include outside of the enumerate loop
+    while None in include:
+      include.remove(None)
+
     return include
 
   def GetAddressOfVersion(self, addr_type, af=None):
@@ -617,9 +738,9 @@ class Term(object):
       list of addresses of the correct family.
     """
     if not af:
-      return eval('self.' + addr_type)
+      return getattr(self, addr_type)
 
-    return filter(lambda x: x.version == af, eval('self.' + addr_type))
+    return filter(lambda x: x.version == af, getattr(self, addr_type))
 
 
   def SanityCheck(self):
@@ -648,11 +769,11 @@ class Term(object):
         raise ParseError(
             'term "%s" has both verbatim and non-verbatim tokens.' % self.name)
     else:
-      if not self.action and not self.routing_instance:
+      if not self.action and not self.routing_instance and not self.next_ip:
         raise TermNoActionError('no action specified for term %s' % self.name)
       # have we specified a port with a protocol that doesn't support ports?
       if self.source_port or self.destination_port or self.port:
-        if 'tcp' not in self.protocol and 'udp' not in self.protocol:
+        if not any(proto in self.protocol for proto in ['tcp', 'udp', 'sctp']):
           raise TermPortProtocolError(
               'ports specified with a protocol that doesn\'t support ports. '
               'Term: %s ' % self.name)
@@ -863,6 +984,8 @@ class Header(object):
   def __init__(self):
     self.target = []
     self.comment = []
+    self.apply_groups = []
+    self.apply_groups_except = []
     self.Name = None
 
   def __set_target(self, value):
@@ -930,6 +1053,40 @@ class Header(object):
           return target.options[0]
     return None
 
+  def __str__(self):
+    return 'Target[%s], Comments [%s], Apply groups: [%s], except: [%s]' % (
+        ', '.join(map(str, self.target)),
+        ', '.join(self.comment),
+        ', '.join(self.apply_groups),
+        ', '.join(self.apply_groups_except))
+
+  def __repr__(self):
+    return self.__str__()
+
+  def __eq__(self, obj):
+    """Compares for equality against another Header object.
+
+    Note that it is picky and requires the list contents to be in the
+    same order.
+
+    Args:
+      obj: object to be compared to for equality.
+    Returns:
+      True if all the list member variables of this object are equal to the list
+      member variables of obj and False otherwise.
+    """
+    if not isinstance(obj, Header):
+      return False
+    if self.target != obj.target:
+      return False
+    if self.comment != obj.comment:
+      return False
+    if self.apply_groups != obj.apply_groups:
+      return False
+    if self.apply_groups_except != obj.apply_groups_except:
+      return False
+    return True
+
 
 # This could be a VarType object, but I'm keeping it as it's class
 # b/c we're almost certainly going to have to do something more exotic with
@@ -947,6 +1104,9 @@ class Target(object):
 
   def __str__(self):
     return self.platform
+
+  def __repr__(self):
+    return self.__str__()
 
   def __eq__(self, other):
     return self.platform == other.platform and self.options == other.options

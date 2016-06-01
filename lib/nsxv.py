@@ -1,6 +1,4 @@
-#!/usr/bin/python
-#
-# Copyright 2015 VMware Inc. All Rights Reserved.
+# Copyright 2015 The Capirca Project Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,16 +15,12 @@
 
 """Nsxv generator."""
 
-
 import datetime
-import logging
 import re
 
-from third_party import ipaddr
-import aclgenerator
-import nacaddr
-import itertools
-
+from lib import aclgenerator
+from lib import nacaddr
+import logging
 
 _ACTION_TABLE = {
     'accept': 'allow',
@@ -56,8 +50,8 @@ _XML_TABLE = {
     'logFalse': '<loggingEnabled>false</loggingEnabled>',
     'sectionStart': '<section>',
     'sectionEnd': '</section>',
-    'nameStart' : '<name>',
-    'nameEnd' : '</name>',
+    'nameStart': '<name>',
+    'nameEnd': '</name>',
     'srcIpv6Start': '<source><type>Ipv6Address</type><value>',
     'srcIpv6End': '</value></source>',
     'destIpv6Start': '<destination><type>Ipv6Address</type><value>',
@@ -83,6 +77,7 @@ _NSXV_SUPPORTED_KEYWORDS = [
     'logging'
 ]
 
+
 # generic error class
 class Error(Exception):
   """Generic error class."""
@@ -98,8 +93,9 @@ class NsxvAclTermError(Error):
   """Raised when there is a problem in a nsxv access list."""
   pass
 
+
 class NsxvDuplicateTermError(Error):
-  """Raised when there is a duplicate"""
+  """Raised when there is a duplicate."""
   pass
 
 
@@ -111,7 +107,6 @@ class Term(aclgenerator.Term):
     # Our caller should have already verified the address family.
     assert af in (4, 6)
     self.af = af
-    self.text_af = self.AF_MAP_BY_NUMBER[self.af]
     self.filter_type = filter_type
 
   def __str__(self):
@@ -140,7 +135,7 @@ class Term(aclgenerator.Term):
         (self.af == 4 and 'icmpv6' in self.term.protocol)):
       logging.debug(self.NO_AF_LOG_PROTO.substitute(term=self.term.name,
                                                     proto=self.term.protocol,
-                                                    af=self.text_af))
+                                                    af=self.filter_type))
       return ''
 
     # Term verbatim is not supported
@@ -154,7 +149,7 @@ class Term(aclgenerator.Term):
           'Option are not implemented in standard ACLs')
 
     # check for keywords Nsxv does not support
-    term_keywords =  self.term.__dict__
+    term_keywords = self.term.__dict__
     unsupported_keywords = []
     for key  in term_keywords:
       if term_keywords[key]:
@@ -162,17 +157,18 @@ class Term(aclgenerator.Term):
         if ('translated' not in key) and (key not in _NSXV_SUPPORTED_KEYWORDS):
           unsupported_keywords.append(key)
     if unsupported_keywords:
-      logging.warn('WARNING: The keywords %s in Term %s are not supported in Nsxv '
-                    , unsupported_keywords, self.term.name)
+      logging.warn('WARNING: The keywords %s in Term %s are not supported in '
+                   'Nsxv ', unsupported_keywords, self.term.name)
 
-    name = '%s%s%s' % (_XML_TABLE.get('nameStart'), self.term.name, _XML_TABLE.get('nameEnd'))
-
+    name = '%s%s%s' % (_XML_TABLE.get('nameStart'), self.term.name,
+                       _XML_TABLE.get('nameEnd'))
 
     notes = ''
     if self.term.comment:
       for comment in self.term.comment:
         notes = '%s%s' %(notes, comment)
-      notes = '%s%s%s' % (_XML_TABLE.get('noteStart'), notes, _XML_TABLE.get('noteEnd'))
+      notes = '%s%s%s' % (_XML_TABLE.get('noteStart'), notes,
+                          _XML_TABLE.get('noteEnd'))
 
     # protocol
     protocol = None
@@ -183,26 +179,28 @@ class Term(aclgenerator.Term):
       # icmp-types
       icmp_types = ['']
       if self.term.icmp_type:
-        icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type, self.term.protocol, self.af)
+        icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type,
+                                             self.term.protocol,
+                                             self.af)
 
     # for mixed filter type get both IPV4address and IPv6Address
     af_list = []
-    if self.filter_type  == 'mixed':
-      af_list = [4 ,6]
+    if self.filter_type == 'mixed':
+      af_list = [4, 6]
     else:
-      af_list= [self.af]
+      af_list = [self.af]
 
     source_address = None
     destination_address = None
     source_addr = []
-    destination_addr =[]
+    destination_addr = []
 
     for af in af_list:
       # source address
       if self.term.source_address:
         source_address = self.term.GetAddressOfVersion('source_address', af)
         source_address_exclude = self.term.GetAddressOfVersion(
-              'source_address_exclude', af)
+            'source_address_exclude', af)
         if source_address_exclude:
           source_address = nacaddr.ExcludeAddrs(
               source_address,
@@ -210,11 +208,11 @@ class Term(aclgenerator.Term):
         if not source_address:
           logging.warn(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
                                                       direction='source',
-                                                      af=self.text_af))
+                                                      af=self.filter_type))
           return ''
-        if not source_addr :
+        if not source_addr:
           source_addr.append(source_address)
-        else :
+        else:
           source_addr = source_address
 
       # destination address
@@ -225,18 +223,18 @@ class Term(aclgenerator.Term):
             'destination_address_exclude', af)
         if destination_address_exclude:
           destination_address = nacaddr.ExcludeAddrs(
-             destination_address,
-             destination_address_exclude)
+              destination_address,
+              destination_address_exclude)
         if not destination_address:
           logging.warn(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
                                                       direction='destination',
-                                                      af=self.text_af))
+                                                      af=self.filter_type))
           return ''
         destination_addr.append(destination_address)
     # creating single list out of lists of lists
     source_addresses = [val for sublist in source_addr for val in sublist]
-    destination_addresses = [val for sublist in destination_addr for val in sublist]
-
+    destination_addresses = [val for sublist in destination_addr
+                             for val in sublist]
 
     # ports
     source_port = None
@@ -256,83 +254,97 @@ class Term(aclgenerator.Term):
       sources = '<sources excluded="false">'
       for saddr in source_addresses:
 
-        #inet4
-        if type(saddr) is nacaddr.IPv4 or type(saddr) is ipaddr.IPv4Network:	
+        # inet4
+        if type(saddr) is nacaddr.IPv4:
           if saddr.numhosts > 1:
-            saddr = '%s%s%s' % (_XML_TABLE.get('srcIpv4Start'), saddr.with_prefixlen, _XML_TABLE.get('srcIpv4End'),)
+            saddr = '%s%s%s' % (_XML_TABLE.get('srcIpv4Start'),
+                                saddr.with_prefixlen,
+                                _XML_TABLE.get('srcIpv4End'),)
           else:
-            saddr = '%s%s%s' % (_XML_TABLE.get('srcIpv4Start'), saddr.ip, _XML_TABLE.get('srcIpv4End'))
+            saddr = '%s%s%s' % (_XML_TABLE.get('srcIpv4Start'),
+                                saddr.ip,
+                                _XML_TABLE.get('srcIpv4End'))
           sources = '%s%s' %(sources, saddr)
         # inet6
-        if type(saddr) is nacaddr.IPv6 or type(saddr) is ipaddr.IPv6Network:
+        if type(saddr) is nacaddr.IPv6:
           if saddr.numhosts > 1:
-            saddr = '%s%s%s' % (_XML_TABLE.get('srcIpv6Start'), saddr.with_prefixlen, _XML_TABLE.get('srcIpv6End'),)
+            saddr = '%s%s%s' % (_XML_TABLE.get('srcIpv6Start'),
+                                saddr.with_prefixlen,
+                                _XML_TABLE.get('srcIpv6End'),)
           else:
-            saddr = '%s%s%s' % (_XML_TABLE.get('srcIpv6Start'), saddr.ip, _XML_TABLE.get('srcIpv6End'))
+            saddr = '%s%s%s' % (_XML_TABLE.get('srcIpv6Start'),
+                                saddr.ip, _XML_TABLE.get('srcIpv6End'))
           sources = '%s%s' %(sources, saddr)
-      sources = '%s%s' %(sources,'</sources>')
+      sources = '%s%s' %(sources, '</sources>')
 
     destinations = ''
     if destination_addresses:
       destinations = '<destinations excluded="false">'
       for daddr in destination_addresses:
-        #inet4
-        if type(daddr) is nacaddr.IPv4 or type(daddr) is ipaddr.IPv4Network:
+        # inet4
+        if type(daddr) is nacaddr.IPv4:
           if daddr.numhosts > 1:
-	        daddr = '%s%s%s' % (_XML_TABLE.get('destIpv4Start'), daddr.with_prefixlen, _XML_TABLE.get('destIpv4End'),)
+            daddr = '%s%s%s' % (_XML_TABLE.get('destIpv4Start'),
+                                daddr.with_prefixlen,
+                                _XML_TABLE.get('destIpv4End'),)
           else:
-	        daddr = '%s%s%s' % (_XML_TABLE.get('destIpv4Start'), daddr.ip, _XML_TABLE.get('destIpv4End'))
+            daddr = '%s%s%s' % (_XML_TABLE.get('destIpv4Start'),
+                                daddr.ip,
+                                _XML_TABLE.get('destIpv4End'))
           destinations = '%s%s' %(destinations, daddr)
-        #inet6
-        if type(daddr) is nacaddr.IPv6 or type(daddr) is ipaddr.IPv6Network:
+        # inet6
+        if type(daddr) is nacaddr.IPv6:
           if daddr.numhosts > 1:
-            daddr = '%s%s%s' % (_XML_TABLE.get('destIpv6Start'), daddr.with_prefixlen, _XML_TABLE.get('destIpv6End'),)
+            daddr = '%s%s%s' % (_XML_TABLE.get('destIpv6Start'),
+                                daddr.with_prefixlen,
+                                _XML_TABLE.get('destIpv6End'),)
           else:
-            daddr = '%s%s%s' % (_XML_TABLE.get('destIpv6Start'), daddr.ip, _XML_TABLE.get('destIpv6End'))
+            daddr = '%s%s%s' % (_XML_TABLE.get('destIpv6Start'),
+                                daddr.ip,
+                                _XML_TABLE.get('destIpv6End'))
           destinations = '%s%s' %(destinations, daddr)
       destinations = '%s%s' %(destinations, '</destinations>')
 
     services = []
     if protocol:
-       services.append('<services>')
-       for proto in protocol:
-         if proto != 'any':
-           services.append(self._ServiceToString(
-                    proto,
-                    source_port,
-                    destination_port,
-                    icmp_types))
-
-       services.append('</services>')
+      services.append('<services>')
+      for proto in protocol:
+        if proto != 'any':
+          services.append(self._ServiceToString(proto,
+                                                source_port,
+                                                destination_port,
+                                                icmp_types))
+      services.append('</services>')
 
     service = ''
     for s in services:
       service = '%s%s' % (service, s)
 
-    #action
-    action = '%s%s%s' % (_XML_TABLE.get('actionStart'), _ACTION_TABLE.get(str(self.term.action[0])),
-                           _XML_TABLE.get('actionEnd'))
+    # action
+    action = '%s%s%s' % (_XML_TABLE.get('actionStart'),
+                         _ACTION_TABLE.get(str(self.term.action[0])),
+                         _XML_TABLE.get('actionEnd'))
 
     ret_lines = []
-    ret_lines.append('<rule logged="%s"> %s %s %s %s %s %s </rule>' % (log, name, action, sources, destinations,
-                                                                       service, notes))
+    ret_lines.append('<rule logged="%s"> %s %s %s %s %s %s </rule>' %
+                     (log, name, action, sources, destinations, service, notes))
 
     # remove any trailing spaces and replace multiple spaces with singles
     stripped_ret_lines = [re.sub(r'\s+', ' ', x).rstrip() for x in ret_lines]
     ret_str.extend(stripped_ret_lines)
     return '\n'.join(ret_str)
 
-  def _ServiceToString(self, proto, sports, dports,
-                    icmp_types):
-    """
+  def _ServiceToString(self, proto, sports, dports, icmp_types):
+    """Converts service to string.
 
     Args:
       proto: str, protocl
-      sport: str list or none, the source port
-      dport: str list or none, the destination port
-      icmp_type: icmp-type numeric specification (if any)
+      sports: str list or none, the source port
+      dports: str list or none, the destination port
+      icmp_types: icmp-type numeric specification (if any)
 
     Returns:
+      Service definition.
 
     Raises:
       UnsupportedNsxvAccessListError: When unknown icmp-types specified
@@ -342,17 +354,21 @@ class Term(aclgenerator.Term):
     if proto == 1 or proto == 58:
       # handle icmp protocol
       for icmp_type in icmp_types:
-        icmp_service = '%s%s%s%s' % (_XML_TABLE.get('serviceStart'), _XML_TABLE.get('protocolStart'), proto,
+        icmp_service = '%s%s%s%s' % (_XML_TABLE.get('serviceStart'),
+                                     _XML_TABLE.get('protocolStart'), proto,
                                      _XML_TABLE.get('protocolEnd'))
         # handle icmp types
-        if icmp_type != '':
-           icmp_type = '%s%s%s' %(_XML_TABLE.get('icmpTypeStart'), str(icmp_type), _XML_TABLE.get('icmpTypeEnd'))
-           icmp_service = '%s%s' % (icmp_service, icmp_type)
+        if icmp_type:
+          icmp_type = '%s%s%s' %(_XML_TABLE.get('icmpTypeStart'),
+                                 str(icmp_type),
+                                 _XML_TABLE.get('icmpTypeEnd'))
+          icmp_service = '%s%s' % (icmp_service, icmp_type)
         icmp_service = '%s%s' % (icmp_service, _XML_TABLE.get('serviceEnd'))
         service = '%s%s' % (service, icmp_service)
     else:
       # handle other protocols
-      service = '%s%s%s%s' % (_XML_TABLE.get('serviceStart'), _XML_TABLE.get('protocolStart'), proto,
+      service = '%s%s%s%s' % (_XML_TABLE.get('serviceStart'),
+                              _XML_TABLE.get('protocolStart'), proto,
                               _XML_TABLE.get('protocolEnd'))
 
       # handle source ports
@@ -363,7 +379,8 @@ class Term(aclgenerator.Term):
             str_sport.append('%s-%s' % (sport[0], sport[1]))
           else:
             str_sport.append('%s' % (sport[0]))
-        service = '%s%s%s%s' % (service, _XML_TABLE.get('srcPortStart'), ', '.join(str_sport),
+        service = '%s%s%s%s' % (service, _XML_TABLE.get('srcPortStart'),
+                                ', '.join(str_sport),
                                 _XML_TABLE.get('srcPortEnd'))
 
       # handle destination ports
@@ -374,7 +391,8 @@ class Term(aclgenerator.Term):
             str_dport.append('%s-%s' % (dport[0], dport[1]))
           else:
             str_dport.append('%s' % (dport[0]))
-        service = '%s%s%s%s' % (service, _XML_TABLE.get('destPortStart'), ', '.join(str_dport),
+        service = '%s%s%s%s' % (service, _XML_TABLE.get('destPortStart'),
+                                ', '.join(str_dport),
                                 _XML_TABLE.get('destPortEnd'))
       service = '%s%s' % (service, _XML_TABLE.get('serviceEnd'))
 
@@ -391,21 +409,22 @@ class Nsxv(aclgenerator.ACLGenerator):
     pol: policy.Policy object
 
   Raises:
-  UnsupportedNsxvAccessListError: Raised when we're give a non named access list.
+  UnsupportedNsxvAccessListError: Raised when we're give a non named access
+  list.
 
   """
 
   _PLATFORM = 'nsxv'
   _DEFAULT_PROTOCOL = 'ip'
-  _SUFFIX = '.nsx'
+  SUFFIX = '.nsx'
 
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',
                                       'logging',
-                                    ])
+                                     ])
 
   def _TranslatePolicy(self, pol, exp_info):
     self.nsxv_policies = []
-    current_date = datetime.date.today()
+    current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     # a mixed filter outputs both ipv4 and ipv6 acls in the same output file
@@ -420,7 +439,7 @@ class Nsxv(aclgenerator.ACLGenerator):
 
       # check for filter type
       filter_type = ''
-      if filter_options is not None and len(filter_options) > 0:
+      if filter_options is not None and filter_options > 0:
         filter_type = filter_options[0]
       else:
         raise UnsupportedNsxvAccessListError(
@@ -438,13 +457,13 @@ class Nsxv(aclgenerator.ACLGenerator):
         # Check for duplicate terms
         if term.name in term_names:
           raise NsxvDuplicateTermError('There are multiple terms named: %s' %
-                                          term.name)
+                                       term.name)
         term_names.add(term.name)
 
         if term.expiration:
           if term.expiration <= exp_info_date:
             logging.info('INFO: Term %s in policy %s expires '
-                     'in less than two weeks.', term.name, filter_name)
+                         'in less than two weeks.', term.name, filter_name)
           if term.expiration <= current_date:
             logging.warn('WARNING: Term %s in policy %s is expired and '
                          'will not be rendered.', term.name, filter_name)
@@ -464,21 +483,21 @@ class Nsxv(aclgenerator.ACLGenerator):
           term = self.FixHighPorts(term, af=af)
           if not term:
             continue
-          new_terms.append(Term(term, filter_type,  4))
+          new_terms.append(Term(term, filter_type, 4))
 
         if filter_type == 'inet6':
           af = 'inet6'
           term = self.FixHighPorts(term, af=af)
           if not term:
             continue
-          new_terms.append(Term(term, filter_type,  6))
+          new_terms.append(Term(term, filter_type, 6))
 
         if filter_type == 'mixed':
           if 'icmpv6' not in term.protocol:
             inet_term = self.FixHighPorts(term, 'inet')
             if not inet_term:
               continue
-            new_terms.append(Term(inet_term, filter_type,  4))
+            new_terms.append(Term(inet_term, filter_type, 4))
           else:
             inet6_term = self.FixHighPorts(term, 'inet6')
             if not inet6_term:
@@ -486,7 +505,7 @@ class Nsxv(aclgenerator.ACLGenerator):
             new_terms.append(Term(inet6_term, filter_type, 6))
 
       self.nsxv_policies.append((header, filter_name, [filter_type],
-                                new_terms))
+                                 new_terms))
 
   def __str__(self):
     """Render the output of the Nsxv policy."""
@@ -499,9 +518,7 @@ class Nsxv(aclgenerator.ACLGenerator):
     target.extend(aclgenerator.AddRepositoryTags(' '))
     target.append('-->')
 
-    for (header, filter_name, filter_list, terms
-        ) in self.nsxv_policies:
-
+    for (header, _, _, terms) in self.nsxv_policies:
       # add a header comment if one exists
       section_name = ''
       for comment in header.comment:
@@ -512,17 +529,18 @@ class Nsxv(aclgenerator.ACLGenerator):
       filter_options = header.FilterOptions(self._PLATFORM)
       section_id = 0
       if filter_options is not None and len(filter_options) > 1:
-        section_id  = filter_options[1]
+        section_id = filter_options[1]
 
       # check section id value
       if not section_id or section_id == 0:
-        logging.warn('WARNING: Section-id is 0. A new Section is created for%s. If there is any existing '
-                     'section, it will remain unreferenced and should be removed manually.', section_name)
+        logging.warn('WARNING: Section-id is 0. A new Section is created for%s.'
+                     ' If there is any existing section, it will remain '
+                     'unreferenced and should be removed manually.',
+                     section_name)
         target.append('<section name="%s">' % (section_name.strip(' \t\n\r')))
       else:
-        target.append('<section id="%s" name="%s">' % (section_id, section_name.strip(' \t\n\r')))
-
-
+        target.append('<section id="%s" name="%s">' %
+                      (section_id, section_name.strip(' \t\n\r')))
 
       # now add the terms
       for term in terms:

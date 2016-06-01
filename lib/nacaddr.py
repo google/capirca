@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,34 +13,33 @@
 # limitations under the License.
 #
 
-"""A subclass of the ipaddr library that includes comments for ipaddr objects."""
+"""A subclass of the ipaddr library that includes comments for ipaddr."""
 
 __author__ = 'watson@google.com (Tony Watson)'
 
-from third_party import ipaddr
+import ipaddr
+
 
 def IP(ipaddress, comment='', token=''):
   """Take an ip string and return an object of the correct type.
 
   Args:
-    ip_string: the ip address.
-    comment:: option comment field
-    token:: option token name where this address was extracted from
+    ipaddress: the ip address.
+    comment: option comment field
+    token: option token name where this address was extracted from
 
   Returns:
     ipaddr.IPv4 or ipaddr.IPv6 object or raises ValueError.
 
   Raises:
     ValueError: if the string passed isn't either a v4 or a v6 address.
-
-  Notes:
-    this is sort of a poor-mans factory method.
   """
   a = ipaddr.IPNetwork(ipaddress)
   if a.version == 4:
     return IPv4(ipaddress, comment, token)
   elif a.version == 6:
     return IPv6(ipaddress, comment, token)
+
 
 class IPv4(ipaddr.IPv4Network):
   """This subclass allows us to keep text comments related to each object."""
@@ -58,7 +55,8 @@ class IPv4(ipaddr.IPv4Network):
 
     Don't add the comment if it's the same as self.text.
 
-    Args: comment
+    Args:
+      comment: comment to be added.
     """
     if self.text:
       if comment and comment not in self.text:
@@ -70,6 +68,16 @@ class IPv4(ipaddr.IPv4Network):
     """Override ipaddr.IPv4 supernet so we can maintain comments.
 
     See ipaddr.IPv4.Supernet for complete documentation.
+
+    Args:
+      prefixlen_diff: Prefix length difference.
+
+    Returns:
+      An IPv4 object
+
+    Raises:
+      PrefixlenDiffInvalidError: Raised when prefixlen - prefixlen_diff results
+        in a negative number.
     """
     if self.prefixlen == 0:
       return self
@@ -98,6 +106,15 @@ class IPv6(ipaddr.IPv6Network):
     """Override ipaddr.IPv6Network supernet so we can maintain comments.
 
     See ipaddr.IPv6Network.Supernet for complete documentation.
+    Args:
+      prefixlen_diff: Prefix length difference.
+
+    Returns:
+      An IPv4 object
+
+    Raises:
+      PrefixlenDiffInvalidError: Raised when prefixlen - prefixlen_diff results
+        in a negative number.
     """
     if self.prefixlen == 0:
       return self
@@ -117,7 +134,8 @@ class IPv6(ipaddr.IPv6Network):
 
     Don't add the comment if it's the same as self.text.
 
-    Args: comment
+    Args:
+      comment: comment to be added.
     """
     if self.text:
       if comment and comment not in self.text:
@@ -138,11 +156,11 @@ def CollapseAddrListRecursive(addresses):
    ip5 = ipaddr.IPv4Network('1.1.4.0/24')
    ip6 = ipaddr.IPv4Network('1.1.0.1/22')
 
-   CollapseAddrRecursive([ip1, ip2, ip3, ip4, ip5, ip6]) ->
+   CollapseAddrListRecursive([ip1, ip2, ip3, ip4, ip5, ip6]) ->
    [IPv4Network('1.1.0.0/22'), IPv4Network('1.1.4.0/24')]
 
    Note, this shouldn't be called directly, but is called via
-   CollapseAddr([])
+   CollapseAddrList([])
 
   Args:
     addresses: List of IPv4 or IPv6 objects
@@ -161,7 +179,10 @@ def CollapseAddrListRecursive(addresses):
       # save the comment from the subsumed address
       ret_array[-1].AddComment(cur_addr.text)
       optimized = True
-    elif cur_addr == ret_array[-1].Supernet().Subnet()[1]:
+    elif (ret_array[-1].version == cur_addr.version and
+          ret_array[-1].prefixlen == cur_addr.prefixlen and
+          ret_array[-1].broadcast + 1 == cur_addr.network and
+          ret_array[-1].Supernet().network == ret_array[-1].network):
       ret_array.append(ret_array.pop().Supernet())
       # save the text from the subsumed address
       ret_array[-1].AddComment(cur_addr.text)
@@ -177,7 +198,7 @@ def CollapseAddrListRecursive(addresses):
 def CollapseAddrList(addresses):
   """Collapse an array of IP objects.
 
-  Example:  CollapseAddr(
+  Example:  CollapseAddrList(
     [IPv4('1.1.0.0/24'), IPv4('1.1.1.0/24')]) -> [IPv4('1.1.0.0/23')]
     Note: this works just as well with IPv6 addresses too.
 
@@ -209,10 +230,10 @@ def RemoveAddressFromList(superset, exclude):
   ret_array = []
   for addr in superset:
     if exclude == addr or addr in exclude:
-      # this is a bug in ipaddr v1. IP('1.1.1.1').AddressExclude(IP('1.1.1.1'))
-      # raises an error.  Not tested in v2 yet.
       pass
     elif exclude.version == addr.version and exclude in addr:
+      # this could be optimized except that one group uses this
+      # code with ipaddrs (instead of nacaddrs).
       ret_array.extend([IP(x) for x in addr.AddressExclude(exclude)])
     else:
       ret_array.append(addr)
@@ -233,10 +254,15 @@ def AddressListExclude(superset, excludes):
   excludes = CollapseAddrList(excludes)
 
   ret_array = []
-
-  for ex in excludes:
-    superset = RemoveAddressFromList(superset, ex)
-  return CollapseAddrList(superset)
+  while superset and excludes:
+    if superset[0].overlaps(excludes[0]):
+      superset = (RemoveAddressFromList([superset[0]], excludes[0]) +
+                  superset[1:])
+    elif superset[0]._get_networks_key() < excludes[0]._get_networks_key():  # pylint: disable=protected-access
+      ret_array.append(superset.pop(0))
+    else:
+      excludes.pop(0)
+  return CollapseAddrList(ret_array + superset)
 
 
 ExcludeAddrs = AddressListExclude

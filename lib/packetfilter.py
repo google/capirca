@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2012 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +19,9 @@ __author__ = 'msu@google.com (Martin Suess)'
 
 import collections
 import copy
-import aclgenerator
 import datetime
+
+from lib import aclgenerator
 import logging
 
 
@@ -375,9 +374,15 @@ class Term(aclgenerator.Term):
 class PacketFilter(aclgenerator.ACLGenerator):
   """Generates filters and terms from provided policy object."""
 
+  # Table names can be at most 31 characters long.
+  # Names longer than this length will be truncated.
+  # A simple logic is implemented in order to look for
+  # possible duplicates after truncation.
+  _TABLE_NAME_MAX_LENGTH = 31
+
   _PLATFORM = 'packetfilter'
   _DEFAULT_PROTOCOL = 'all'
-  _SUFFIX = '.pf'
+  SUFFIX = '.pf'
   _TERM = Term
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
                                       'expiration',
@@ -389,7 +394,7 @@ class PacketFilter(aclgenerator.ACLGenerator):
   def _TranslatePolicy(self, pol, exp_info):
     self.pf_policies = []
     self.address_book = {}
-    current_date = datetime.date.today()
+    current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     good_afs = ['inet', 'inet6', 'mixed']
@@ -471,8 +476,8 @@ class PacketFilter(aclgenerator.ACLGenerator):
       shortened_deduped_list = {}
 
       for key in self.address_book:
-        if len(key) > 31:
-          name = key[:31]
+        if len(key) > self._TABLE_NAME_MAX_LENGTH:
+          name = key[:self._TABLE_NAME_MAX_LENGTH]
         else:
           name = key
         if name in shortened_deduped_list.keys():
