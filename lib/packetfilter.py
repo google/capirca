@@ -28,14 +28,14 @@ import logging
 class Error(Exception):
   """Base error class."""
 
+class DuplicateTermError(Error):
+  """Raised when duplication of term names are detected."""
 
 class DuplicateShortenedTableName(Error):
   """Raised when a duplicate shortened table name is found."""
 
-
 class UnsupportedProtoError(Error):
   """Raised when a protocol is not supported."""
-
 
 class Term(aclgenerator.Term):
   """Generate PacketFilter policy terms."""
@@ -446,8 +446,9 @@ class PacketFilter(aclgenerator.ACLGenerator):
       for term in terms:
         term.name = self.FixTermLength(term.name)
         if term.name in term_names:
-          raise aclgenerator.DuplicateTermError(
+          raise DuplicateTermError(
               'You have a duplicate term: %s' % term.name)
+        term_names.add(term.name)
         for source_addr in term.source_address:
           if source_addr.parent_token not in self.address_book:
             self.address_book[source_addr.parent_token] = set([source_addr])
