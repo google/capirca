@@ -707,7 +707,6 @@ class PacketFilterTest(unittest.TestCase):
         EXP_INFO)
 
   def testTermNameConflict(self):
-    self.mox.ReplayAll()
     self.assertRaises(
         packetfilter.DuplicateTermError,
         packetfilter.PacketFilter.__init__,

@@ -851,7 +851,7 @@ class JuniperTest(unittest.TestCase):
       self.failIf('172.16.0.0/12 except;' in output, output)
       mock_calls.append(mock.call('INTERNAL'))
       mock_calls.append(mock.call('SOME_HOST'))
-      
+
     self.naming.GetNetAddr.assert_has_calls(mock_calls)
 
   def testMinimizePrefixes(self):

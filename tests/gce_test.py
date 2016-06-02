@@ -24,6 +24,7 @@ from lib import naming
 from lib import policy
 import mock
 
+
 GOOD_HEADER = """
 header {
   comment:: "The general policy comment."
