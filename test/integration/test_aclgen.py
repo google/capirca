@@ -29,7 +29,7 @@ class Test_AclGen(unittest.TestCase):
 
   def setUp(self):
     self.iobuff = StringIO()
-    logger = logging.getLogger(aclgen.REPORTING_LOGGER)
+    logger = logging.getLogger()
     logger.level = logging.DEBUG
     self.s = logging.StreamHandler(self.iobuff)
     self.s.level = logging.DEBUG
