@@ -166,6 +166,9 @@ class YamlPolicyParser(object):
         raise InvalidTermLoggingError('%s is not a valid logging option', a)
       term.logging.append(a)
 
+    def set_next_ip(addresses_string):
+      term.next_ip = self.definitions.GetNetAddr(tok)
+
     def split_tokens(s): return [t.strip() for t in s.split(',') if t.strip() != '']
 
     def map_addr_tokens(addresses_string):
@@ -202,7 +205,7 @@ class YamlPolicyParser(object):
       'icmp-type': (split_tokens, term.icmp_type.extend),
       'logging': append_logging,
       'loss-priority': 'loss_priority',
-      'next-ip': (map_addr_tokens, term.next_ip.extend),
+      'next-ip': set_next_ip,
       'option': (split_tokens, term.option.extend),
       'owner': 'owner',
       'packet-length': 'packet_length',
