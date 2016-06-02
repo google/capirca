@@ -118,9 +118,9 @@ class YamlParser_Test(unittest.TestCase):
     # Not doing real test.  Integration tests will catch further issues.
     self.assertTrue(p is not None)
 
-  def test_CacheParseFile(self):
+  def test_ParseFile(self):
     """API should mimic the existing policyparser.py API."""
-    p = yamlpolicyparser.CacheParseFile(
+    p = yamlpolicyparser.ParseFile(
       self.test_policy_filename,
       self.definitions,
       True,
