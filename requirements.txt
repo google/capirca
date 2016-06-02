@@ -3,3 +3,5 @@
 #   $ pip install -r requirements.txt
 
 PyYAML==3.11
+ipaddr
+python-gflags
