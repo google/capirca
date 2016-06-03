@@ -132,8 +132,8 @@ class AclGen_Characterization_Test_Base(unittest.TestCase):
       os.makedirs(self.output_dir)
     self.empty_output_dir(self.output_dir)
 
-  def testpath(self, *args):
-    return os.path.join(self.test_dir, *args)
+  def dirpath(self, *args):
+    return os.path.realpath(os.path.join(self.test_dir, *args))
 
   def empty_output_dir(self, d):
     entries = [ os.path.join(d, f) for f in os.listdir(d)]
@@ -154,9 +154,14 @@ class AclGen_Arguments_Tests(AclGen_Characterization_Test_Base):
 class AclGen_Characterization_Tests(AclGen_Characterization_Test_Base):
 
   def test_characterization(self):
-    def_dir, pol_dir, expected_dir = map(self.testpath, ('def', 'policies', 'filters_expected'))
-    aclgen.main(['-d', def_dir, '--poldir', pol_dir, '-o', self.output_dir])
-
+    def_dir, pol_dir, expected_dir = map(self.dirpath, ('def', 'policies', 'filters_expected'))
+    args = [
+      'program',  # Dummy value for gflags, which expects the program name to be the first entry.
+      '--base_directory={0}'.format(pol_dir),
+      '--definitions_directory={0}'.format(def_dir),
+      '--output_directory={0}'.format(self.output_dir)
+    ]
+    aclgen.main(args)
     dircmp = filecmp.dircmp(self.output_dir, expected_dir)
     self.assertEquals([], dircmp.left_only, 'missing {0} in filters_expected'.format(dircmp.left_only))
     self.assertEquals([], dircmp.right_only, 'missing {0} in filters_actual'.format(dircmp.right_only))
