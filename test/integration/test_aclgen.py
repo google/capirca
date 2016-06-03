@@ -18,6 +18,7 @@ import logging
 import os
 import inspect
 import shutil
+import tempfile
 from cStringIO import StringIO
 import filecmp
 
@@ -36,52 +37,71 @@ class Test_AclGen_ensure_demo_files_work(unittest.TestCase):
     self.s.level = logging.DEBUG
     logger.addHandler(self.s)
 
+    # Capirca only writes if files have changed, so write out to a new
+    # temp dir for each test run.
+    self.output_dir = tempfile.mkdtemp()
 
-  def test_smoke_test_generates_successfully_with_no_args(self):
-    aclgen.main([])
+    curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    self.root_dir = os.path.realpath(os.path.join(curr_dir, '..', '..'))
+    self.policies_dir = os.path.join(self.root_dir, 'policies')
+    self.defs_dir = os.path.join(self.root_dir, 'def')
 
-    expected_output = """writing ./filters/sample_cisco_lab.acl
-writing ./filters/sample_gce.gce
-writing ./filters/sample_ipset
-writing ./filters/sample_juniper_loopback.jcl
-writing ./filters/sample_multitarget.jcl
-writing ./filters/sample_multitarget.acl
-writing ./filters/sample_multitarget.ipt
-writing ./filters/sample_multitarget.asa
-writing ./filters/sample_multitarget.demo
-writing ./filters/sample_multitarget.eacl
-writing ./filters/sample_multitarget.bacl
-writing ./filters/sample_multitarget.xacl
-writing ./filters/sample_multitarget.jcl
-writing ./filters/sample_multitarget.acl
-writing ./filters/sample_multitarget.ipt
-writing ./filters/sample_multitarget.asa
-writing ./filters/sample_nsxv.nsx
-writing ./filters/sample_packetfilter.pf
-writing ./filters/sample_speedway.ipt
-writing ./filters/sample_speedway.ipt
-writing ./filters/sample_speedway.ipt
-writing ./filters/sample_srx.srx
-22 filters rendered
-"""
+  def tearDown(self):
+        # Remove the directory after the test
+        shutil.rmtree(self.output_dir)
 
-    def subtract_list(lhs, rhs):
-      return '; '.join([el for el in lhs if el not in rhs])
+  def test_smoke_test_generates_successfully(self):
+    args = [
+      'program',  # Dummy value for gflags, which expects the program name to be the first entry.
+      '--base_directory={0}'.format(self.policies_dir),
+      '--definitions_directory={0}'.format(self.defs_dir),
+      '--output_directory={0}'.format(self.output_dir)
+    ]
+    aclgen.main(args)
 
-    expected = expected_output.split("\n")
-    actual = self.iobuff.getvalue().split("\n")
-    not_in_actual = subtract_list(expected, actual)
-    not_in_expected = subtract_list(actual, expected)
-    self.assertEqual('', not_in_actual, 'Not in actual: ' + not_in_actual)
-    self.assertEqual('', not_in_expected, 'Not in expected: ' + not_in_expected)
+    expected_files = [
+      'sample_cisco_lab.acl',
+      'sample_gce.gce',
+      'sample_ipset.ips',
+      'sample_juniper_loopback.jcl',
+      'sample_multitarget.acl',
+      'sample_multitarget.asa',
+      'sample_multitarget.bacl',
+      'sample_multitarget.eacl',
+      'sample_multitarget.ipt',
+      'sample_multitarget.jcl',
+      'sample_multitarget.xacl',
+      'sample_nsxv.nsx',
+      'sample_packetfilter.pf',
+      'sample_speedway.ipt',
+      'sample_srx.srx'
+    ]
+    def makeoutput(f):
+      return 'writing file: {0}'.format(os.path.join(self.output_dir, f))
+
+    actual_output = self.iobuff.getvalue().split("\n")
+    for expected_output in map(makeoutput, expected_files):
+      self.assertTrue(expected_output in actual_output)
+
+    self.assertTrue('writing 15 files to disk...' in actual_output)
+
 
   def test_generate_single_policy(self):
-    aclgen.main(['-p', 'policies/sample_cisco_lab.pol'])
+    args = [
+      'program',  # Dummy value for gflags, which expects the program name to be the first entry.
+      '--policy_file={0}'.format(os.path.join(self.policies_dir, 'pol', 'sample_cisco_lab.pol')),
+      '--definitions_directory={0}'.format(self.defs_dir),
+      '--output_directory={0}'.format(self.output_dir)
+    ]
+    aclgen.main(args)
 
-    expected_output = """writing ./filters/sample_cisco_lab.acl
-1 filters rendered
-"""
-    self.assertEquals(expected_output, self.iobuff.getvalue())
+    actual_output = self.iobuff.getvalue()
+    expected_outputs = [
+      'rendering one file',
+      os.path.join(self.output_dir, 'sample_cisco_lab.acl')
+    ]
+    for s in expected_outputs:
+      self.assertTrue(s in actual_output)
 
 
 # (Temporarily?) disabling.
@@ -127,7 +147,7 @@ class AclGen_Characterization_Test_Base(unittest.TestCase):
 
     curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     self.test_dir = os.path.join(curr_dir, '..', 'characterization_data')
-    self.output_dir = self.testpath('filters_actual')
+    self.output_dir = self.dirpath('filters_actual')
     if not os.path.exists(self.output_dir):
       os.makedirs(self.output_dir)
     self.empty_output_dir(self.output_dir)
@@ -146,7 +166,7 @@ class AclGen_Characterization_Test_Base(unittest.TestCase):
 class AclGen_Arguments_Tests(AclGen_Characterization_Test_Base):
 
   def test_missing_defs_folder_raises_error(self):
-    def_dir, pol_dir, expected_dir = map(self.testpath, ('def', 'policies', 'filters_expected'))
+    def_dir, pol_dir, expected_dir = map(self.dirpath, ('def', 'policies', 'filters_expected'))
     with self.assertRaises(ValueError):
       aclgen.main(['-d', 'missing_dir', '--poldir', pol_dir, '-o', self.output_dir])
 
