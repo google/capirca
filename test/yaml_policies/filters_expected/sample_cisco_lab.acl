@@ -41,7 +41,8 @@ remark $Id:$
  remark Deny access to specified public.
  deny ip any host 200.1.1.1
  deny ip any host 200.1.1.2
- deny ip any 200.1.1.4 0.0.0.1
+ deny ip any host 200.1.1.4
+ deny ip any host 200.1.1.5
 
 
  remark default-permit

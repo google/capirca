@@ -45,7 +45,7 @@
 
 <rule logged="false"> <name>reject-large-dns</name> <action>reject</action> <destinations excluded="false"><destination><type>Ipv4Address</type><value>8.8.4.4</value></destination><destination><type>Ipv4Address</type><value>8.8.8.8</value></destination></destinations> <services><service><protocol>17</protocol><destinationPort>53</destinationPort></service></services> </rule>
 
-<rule logged="false"> <name>reject-imap-requests</name> <action>reject</action> <destinations excluded="false"><destination><type>Ipv4Address</type><value>200.1.1.4/31</value></destination></destinations> <services><service><protocol>6</protocol><destinationPort>143</destinationPort></service></services> </rule>
+<rule logged="false"> <name>reject-imap-requests</name> <action>reject</action> <destinations excluded="false"><destination><type>Ipv4Address</type><value>200.1.1.4</value></destination><destination><type>Ipv4Address</type><value>200.1.1.5</value></destination></destinations> <services><service><protocol>6</protocol><destinationPort>143</destinationPort></service></services> </rule>
 
 <rule logged="false"> <name>discard-default</name> <action>deny</action> </rule>
 

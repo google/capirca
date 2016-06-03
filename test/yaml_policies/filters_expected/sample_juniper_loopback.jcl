@@ -59,9 +59,12 @@ firewall {
             term accept-ospf {
                 from {
                     source-address {
-                        10.0.0.0/8; /* non-public */
-                        172.16.0.0/12; /* non-public */
-                        192.168.0.0/16; /* non-public */
+                        /* non-public */
+                        10.0.0.0/8;
+                        /* non-public */
+                        172.16.0.0/12;
+                        /* non-public */
+                        192.168.0.0/16;
                     }
                     protocol ospf;
                 }
@@ -102,35 +105,40 @@ firewall {
             term accept-pim {
                 from {
                     source-address {
-                        10.0.0.0/8; /* non-public */
-                        172.16.0.0/12; /* non-public */
-                        192.168.0.0/16; /* non-public */
+                        /* non-public */
+                        10.0.0.0/8;
+                        /* non-public */
+                        172.16.0.0/12;
+                        /* non-public */
+                        192.168.0.0/16;
                     }
                     protocol pim;
                 }
-                then {
-                    accept;
-                }
+                then accept;
             }
             term accept-igmp {
                 from {
                     source-address {
-                        10.0.0.0/8; /* non-public */
-                        172.16.0.0/12; /* non-public */
-                        192.168.0.0/16; /* non-public */
+                        /* non-public */
+                        10.0.0.0/8;
+                        /* non-public */
+                        172.16.0.0/12;
+                        /* non-public */
+                        192.168.0.0/16;
                     }
                     protocol igmp;
                 }
-                then {
-                    accept;
-                }
+                then accept;
             }
             term accept-ssh-requests {
                 from {
                     source-address {
-                        10.0.0.0/8; /* non-public */
-                        172.16.0.0/12; /* non-public */
-                        192.168.0.0/16; /* non-public */
+                        /* non-public */
+                        10.0.0.0/8;
+                        /* non-public */
+                        172.16.0.0/12;
+                        /* non-public */
+                        192.168.0.0/16;
                     }
                     protocol tcp;
                     destination-port 22;
@@ -154,33 +162,43 @@ firewall {
             term accept-snmp-requests {
                 from {
                     source-address {
-                        10.0.0.0/8; /* non-public */
-                        172.16.0.0/12; /* non-public */
-                        192.168.0.0/16; /* non-public */
+                        /* non-public */
+                        10.0.0.0/8;
+                        /* non-public */
+                        172.16.0.0/12;
+                        /* non-public */
+                        192.168.0.0/16;
                     }
                     destination-address {
-                        10.0.0.0/8; /* non-public */
-                        172.16.0.0/12; /* non-public */
-                        192.168.0.0/16; /* non-public */
+                        /* non-public */
+                        10.0.0.0/8;
+                        /* non-public */
+                        172.16.0.0/12;
+                        /* non-public */
+                        192.168.0.0/16;
                     }
                     protocol udp;
                     destination-port 161;
                 }
-                then {
-                    accept;
-                }
+                then accept;
             }
             term accept-dns-replies {
                 from {
                     source-address {
-                        10.0.0.0/8; /* non-public */
-                        172.16.0.0/12; /* non-public */
-                        192.168.0.0/16; /* non-public */
+                        /* non-public */
+                        10.0.0.0/8;
+                        /* non-public */
+                        172.16.0.0/12;
+                        /* non-public */
+                        192.168.0.0/16;
                     }
                     destination-address {
-                        10.0.0.0/8; /* non-public */
-                        172.16.0.0/12; /* non-public */
-                        192.168.0.0/16; /* non-public */
+                        /* non-public */
+                        10.0.0.0/8;
+                        /* non-public */
+                        172.16.0.0/12;
+                        /* non-public */
+                        192.168.0.0/16;
                     }
                     protocol udp;
                     source-port 53;
@@ -194,13 +212,18 @@ firewall {
             term allow-ntp-request {
                 from {
                     source-address {
-                        10.0.0.1/32; /* Example NTP server */
-                        10.0.0.2/32; /* Example NTP server */
+                        /* Example NTP server */
+                        10.0.0.1/32;
+                        /* Example NTP server */
+                        10.0.0.2/32;
                     }
                     destination-address {
-                        10.0.0.0/8; /* non-public */
-                        172.16.0.0/12; /* non-public */
-                        192.168.0.0/16; /* non-public */
+                        /* non-public */
+                        10.0.0.0/8;
+                        /* non-public */
+                        172.16.0.0/12;
+                        /* non-public */
+                        192.168.0.0/16;
                     }
                     protocol udp;
                     destination-port 123;
@@ -213,13 +236,18 @@ firewall {
             term allow-ntp-replies {
                 from {
                     source-address {
-                        10.0.0.0/8; /* non-public */
-                        172.16.0.0/12; /* non-public */
-                        192.168.0.0/16; /* non-public */
+                        /* non-public */
+                        10.0.0.0/8;
+                        /* non-public */
+                        172.16.0.0/12;
+                        /* non-public */
+                        192.168.0.0/16;
                     }
                     destination-address {
-                        10.0.0.1/32; /* Example NTP server */
-                        10.0.0.2/32; /* Example NTP server */
+                        /* Example NTP server */
+                        10.0.0.1/32;
+                        /* Example NTP server */
+                        10.0.0.2/32;
                     }
                     protocol udp;
                     source-port 123;
@@ -233,14 +261,20 @@ firewall {
             term allow-radius-replies {
                 from {
                     source-address {
-                        10.0.0.0/8; /* non-public */
-                        172.16.0.0/12; /* non-public */
-                        192.168.0.0/16; /* non-public */
+                        /* non-public */
+                        10.0.0.0/8;
+                        /* non-public */
+                        172.16.0.0/12;
+                        /* non-public */
+                        192.168.0.0/16;
                     }
                     destination-address {
-                        10.0.0.0/8; /* non-public */
-                        172.16.0.0/12; /* non-public */
-                        192.168.0.0/16; /* non-public */
+                        /* non-public */
+                        10.0.0.0/8;
+                        /* non-public */
+                        172.16.0.0/12;
+                        /* non-public */
+                        192.168.0.0/16;
                     }
                     protocol udp;
                     source-port 1812;
@@ -253,13 +287,18 @@ firewall {
             term allow-tacacs-requests {
                 from {
                     source-address {
-                        10.0.0.0/8; /* non-public */
-                        172.16.0.0/12; /* non-public */
-                        192.168.0.0/16; /* non-public */
+                        /* non-public */
+                        10.0.0.0/8;
+                        /* non-public */
+                        172.16.0.0/12;
+                        /* non-public */
+                        192.168.0.0/16;
                     }
                     destination-address {
-                        10.1.0.1/32; /* Example tacacs server */
-                        10.1.0.2/32; /* Example tacacs server */
+                        /* Example tacacs server */
+                        10.1.0.1/32;
+                        /* Example tacacs server */
+                        10.1.0.2/32;
                     }
                     protocol tcp;
                     destination-port 49;
@@ -272,13 +311,18 @@ firewall {
             term allow-tacacs-replies {
                 from {
                     source-address {
-                        10.1.0.1/32; /* Example tacacs server */
-                        10.1.0.2/32; /* Example tacacs server */
+                        /* Example tacacs server */
+                        10.1.0.1/32;
+                        /* Example tacacs server */
+                        10.1.0.2/32;
                     }
                     destination-address {
-                        10.0.0.0/8; /* non-public */
-                        172.16.0.0/12; /* non-public */
-                        192.168.0.0/16; /* non-public */
+                        /* non-public */
+                        10.0.0.0/8;
+                        /* non-public */
+                        172.16.0.0/12;
+                        /* non-public */
+                        192.168.0.0/16;
                     }
                     protocol tcp;
                     source-port 49;
@@ -293,25 +337,28 @@ firewall {
                 from {
                     source-address {
                         0.0.0.0/0;
-                        200.1.1.3/32 except; /* Example company NAT address */
+                        /* Example company NAT address */
+                        200.1.1.3/32 except;
                     }
                     destination-address {
-                        8.8.4.4/32; /* IPv4 Anycast */
-                        8.8.8.8/32; /* IPv4 Anycast */
+                        /* IPv4 Anycast */
+                        8.8.4.4/32;
+                        /* IPv4 Anycast */
+                        8.8.8.8/32;
                     }
                     protocol [ tcp udp ];
                     destination-port 53;
                     is-fragment;
                 }
-                then {
-                    accept;
-                }
+                then accept;
             }
             term ratelimit-large-dns {
                 from {
                     destination-address {
-                        8.8.4.4/32; /* IPv4 Anycast */
-                        8.8.8.8/32; /* IPv4 Anycast */
+                        /* IPv4 Anycast */
+                        8.8.4.4/32;
+                        /* IPv4 Anycast */
+                        8.8.8.8/32;
                     }
                     protocol udp;
                     destination-port 53;
@@ -327,8 +374,10 @@ firewall {
             term reject-large-dns {
                 from {
                     destination-address {
-                        8.8.4.4/32; /* IPv4 Anycast */
-                        8.8.8.8/32; /* IPv4 Anycast */
+                        /* IPv4 Anycast */
+                        8.8.4.4/32;
+                        /* IPv4 Anycast */
+                        8.8.8.8/32;
                     }
                     protocol udp;
                     destination-port 53;
@@ -341,8 +390,10 @@ firewall {
             term reject-imap-requests {
                 from {
                     destination-address {
-                        200.1.1.4/31; /* Example mail server 1, Example mail
-                                      ** server 2 */
+                        /* Example mail server 1 */
+                        200.1.1.4/32;
+                        /* Example mail server 2 */
+                        200.1.1.5/32;
                     }
                     protocol tcp;
                     destination-port 143;
