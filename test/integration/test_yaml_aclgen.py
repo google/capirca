@@ -21,7 +21,7 @@ class YAML_AclGen_Characterization_Test_Base(unittest.TestCase):
     logger.addHandler(logging.NullHandler())
 
     curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    self.test_dir = os.path.join(curr_dir, '..', 'yaml_policies')
+    self.test_dir = os.path.realpath(os.path.join(curr_dir, '..', 'yaml_policies'))
     self.output_dir = self.get_testpath('filters_actual')
     if not os.path.exists(self.output_dir):
       os.makedirs(self.output_dir)
@@ -42,11 +42,14 @@ class YAML_AclGen_Tests(YAML_AclGen_Characterization_Test_Base):
 
   def test_characterization(self):
     def_dir, pol_dir, expected_dir = map(self.get_testpath, ('def', 'policies', 'filters_expected'))
+
     args = [
-      '-d', def_dir,
-      '--poldir', pol_dir,
-      '-o', self.output_dir,
-      '--format', 'yml']
+      'program',  # Dummy value for gflags, which expects the program name to be the first entry.
+      '--base_directory={0}'.format(pol_dir),
+      '--definitions_directory={0}'.format(def_dir),
+      '--output_directory={0}'.format(self.output_dir),
+      '--policy_format=yml'
+    ]
     aclgen.main(args)
 
     dircmp = filecmp.dircmp(self.output_dir, expected_dir)
