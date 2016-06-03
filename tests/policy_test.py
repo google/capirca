@@ -511,12 +511,6 @@ class PolicyTest(unittest.TestCase):
     self.assertEqual(len(terms), 2)
     self.assertEquals(str(terms[1].protocol[0]), 'tcp')
     self.assertEqual(terms[1].destination_port[0], (25, 25))
-    
-    self.naming.GetNetAddr.assert_called_once_with('PROD_NETWRK')
-    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
-
-    self.naming.GetNetAddr.assert_called_once_with('PROD_NETWRK')
-    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
     self.naming.GetNetAddr.assert_called_once_with('PROD_NETWRK')
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
