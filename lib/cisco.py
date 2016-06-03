@@ -786,10 +786,14 @@ class Cisco(aclgenerator.ACLGenerator):
                                       'routing_instance',
                                      ])
 
-  # TODO: potentially remove.
-  # This was used below in comment 'render terms based on filter type'
-  # def _Term(self, term, af=4, proto_int=True):
-  #   return Term(term)
+  def PlatformTermClass(self):
+    """The Term class that this platform should use.
+
+    This is useful for platforms that need specific rendering options,
+    e.g. Nexus.
+
+    """
+    return Term
  
   def _TranslatePolicy(self, pol, exp_info):
     self.cisco_policies = []
@@ -866,15 +870,18 @@ class Cisco(aclgenerator.ACLGenerator):
           elif next_filter == 'extended':
             enable_dsmo = (len(filter_options) > 2 and
                            filter_options[2] == 'enable_dsmo')
-            new_terms.append(
-                Term(term, proto_int=self._PROTO_INT, enable_dsmo=enable_dsmo,
-                     term_remark=self._TERM_REMARK, platform=self._PLATFORM))
+            c = self.PlatformTermClass()
+            new_term = c(term, proto_int=self._PROTO_INT, enable_dsmo=enable_dsmo,
+                     term_remark=self._TERM_REMARK, platform=self._PLATFORM)
+            new_terms.append(new_term)
           elif next_filter == 'object-group':
             obj_target.AddTerm(term)
             obj_group_term = ObjectGroupTerm(term, filter_name)
             new_terms.append(obj_group_term)
           elif next_filter == 'inet6':
-            new_terms.append(Term(term, 6, proto_int=self._PROTO_INT))
+            c = self.PlatformTermClass()
+            new_term = c(term, 6, proto_int=self._PROTO_INT, platform=self._PLATFORM)
+            new_terms.append(new_term)
 
         # cisco requires different name for the v4 and v6 acls
         if filter_type == 'mixed' and next_filter == 'inet6':

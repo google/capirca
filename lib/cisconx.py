@@ -27,8 +27,9 @@ class Term(cisco.Term):
 
   _PLATFORM = 'cisconx'
 
-  def __init__(self, term, af=4, proto_int=True):
-    super(Term, self).__init__(term, af, proto_int)
+  def __init__(self, term, af=4, proto_int=True, enable_dsmo=False,
+               term_remark=False, platform='cisconx'):
+    super(Term, self).__init__(term, af, proto_int, enable_dsmo, term_remark, platform)
  
   def _AddressToStr(self, addr):
     # inet4
@@ -51,10 +52,13 @@ class CiscoNX(cisco.Cisco):
 
   _PLATFORM = 'cisconx'
   _DEFAULT_PROTOCOL = 'ip'
-  _SUFFIX = '.nacl'
+  SUFFIX = '.nacl'
 
-  def _Term(self, term, af=4, proto_int=True):
-    return Term(term)
+  # Protocols should not be emitted as numbers.
+  _PROTO_INT = False
+
+  def PlatformTermClass(self):
+    return Term   # Returns Term defined above.
 
   def _AppendTargetByFilterType(self, filter_name, filter_type):
     """Takes in the filter name and type and appends headers.
