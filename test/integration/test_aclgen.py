@@ -25,7 +25,8 @@ import aclgen
 from lib import policy
 
 
-class Test_AclGen(unittest.TestCase):
+class Test_AclGen_ensure_demo_files_work(unittest.TestCase):
+  """Ensure Capirca demo runs successfully out-of-the-box."""
 
   def setUp(self):
     self.iobuff = StringIO()
