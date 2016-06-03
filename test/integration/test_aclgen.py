@@ -24,6 +24,7 @@ import filecmp
 
 import aclgen
 from lib import policy
+from lib import naming
 
 
 class Test_AclGen_ensure_demo_files_work(unittest.TestCase):
@@ -140,10 +141,12 @@ class AclGen_Characterization_Test_Base(unittest.TestCase):
   characterization_data subfolder."""
 
   def setUp(self):
-    # Ignore output during tests.
+    self.iobuff = StringIO()
     logger = logging.getLogger()
-    logger.level = logging.CRITICAL
-    logger.addHandler(logging.NullHandler())
+    logger.level = logging.DEBUG
+    self.s = logging.StreamHandler(self.iobuff)
+    self.s.level = logging.DEBUG
+    logger.addHandler(self.s)
 
     curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     self.test_dir = os.path.join(curr_dir, '..', 'characterization_data')
@@ -167,8 +170,20 @@ class AclGen_Arguments_Tests(AclGen_Characterization_Test_Base):
 
   def test_missing_defs_folder_raises_error(self):
     def_dir, pol_dir, expected_dir = map(self.dirpath, ('def', 'policies', 'filters_expected'))
-    with self.assertRaises(ValueError):
-      aclgen.main(['-d', 'missing_dir', '--poldir', pol_dir, '-o', self.output_dir])
+    args = [
+      'program',  # Dummy value for gflags, which expects the program name to be the first entry.
+      '--base_directory={0}'.format(pol_dir),
+      '--definitions_directory=/some_missing_dir/',
+      '--output_directory={0}'.format(self.output_dir)
+    ]
+
+    aclgen.main(args)
+
+    # NOTE that the code still continues work, even if a bad directory
+    # was passed in.
+    # TODO: verify this behaviour.
+    self.assertTrue('bad definitions directory' in self.iobuff.getvalue())
+
 
 
 class AclGen_Characterization_Tests(AclGen_Characterization_Test_Base):
