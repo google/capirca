@@ -706,27 +706,6 @@ class PacketFilterTest(unittest.TestCase):
             self.naming),
         EXP_INFO)
 
-  def testTermNameConflict(self):
-    self.assertRaises(
-        packetfilter.DuplicateTermError,
-        packetfilter.PacketFilter.__init__,
-        packetfilter.PacketFilter.__new__(packetfilter.PacketFilter),
-        policy.ParsePolicy(
-            GOOD_HEADER_DIRECTIONAL + GOOD_TERM_ICMP + GOOD_TERM_ICMP,
-            self.naming),
-        EXP_INFO)
-
-  def testTermNameConflict(self):
-    self.mox.ReplayAll()
-    self.assertRaises(
-        packetfilter.DuplicateTermError,
-        packetfilter.PacketFilter.__init__,
-        packetfilter.PacketFilter.__new__(packetfilter.PacketFilter),
-        policy.ParsePolicy(
-            GOOD_HEADER_DIRECTIONAL + GOOD_TERM_ICMP + GOOD_TERM_ICMP,
-            self.naming),
-        EXP_INFO)
-
   def testBadProtoError(self):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + BAD_PROTO_TERM, self.naming), EXP_INFO)

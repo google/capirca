@@ -518,6 +518,9 @@ class PolicyTest(unittest.TestCase):
     self.naming.GetNetAddr.assert_called_once_with('PROD_NETWRK')
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
+    self.naming.GetNetAddr.assert_called_once_with('PROD_NETWRK')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
   def testInvalidKeyword(self):
     pol = HEADER + BAD_TERM_2
     self.assertRaises(policy.ParseError, policy.ParsePolicy, pol, self.naming)
