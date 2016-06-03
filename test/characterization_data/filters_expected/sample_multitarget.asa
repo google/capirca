@@ -16,7 +16,8 @@ access-list asa_in extended deny ip 192.0.2.0 255.255.255.0 any
 access-list asa_in extended deny ip 198.18.0.0 255.254.0.0 any
 access-list asa_in extended deny ip 198.51.100.0 255.255.255.0 any
 access-list asa_in extended deny ip 203.0.113.0 255.255.255.0 any
-access-list asa_in extended deny ip 224.0.0.0 224.0.0.0 any
+access-list asa_in extended deny ip 224.0.0.0 240.0.0.0 any
+access-list asa_in extended deny ip 240.0.0.0 240.0.0.0 any
 
 
 access-list asa_in remark deny-from-reserved
@@ -27,7 +28,8 @@ access-list asa_in extended deny ip 127.0.0.0 255.0.0.0 any
 access-list asa_in extended deny ip 169.254.0.0 255.255.0.0 any
 access-list asa_in extended deny ip 172.16.0.0 255.240.0.0 any
 access-list asa_in extended deny ip 192.168.0.0 255.255.0.0 any
-access-list asa_in extended deny ip 224.0.0.0 224.0.0.0 any
+access-list asa_in extended deny ip 224.0.0.0 240.0.0.0 any
+access-list asa_in extended deny ip 240.0.0.0 240.0.0.0 any
 
 
 access-list asa_in remark deny-to-rfc1918
@@ -37,10 +39,14 @@ access-list asa_in extended deny ip any 192.168.0.0 255.255.0.0
 
 
 access-list asa_in remark permit-mail-services
-access-list asa_in extended permit tcp any 200.1.1.4 255.255.255.254 eq smtp
-access-list asa_in extended permit tcp any 200.1.1.4 255.255.255.254 eq 465
-access-list asa_in extended permit tcp any 200.1.1.4 255.255.255.254 eq 587
-access-list asa_in extended permit tcp any 200.1.1.4 255.255.255.254 eq 995
+access-list asa_in extended permit tcp any host 200.1.1.4 eq smtp
+access-list asa_in extended permit tcp any host 200.1.1.4 eq 465
+access-list asa_in extended permit tcp any host 200.1.1.4 eq 587
+access-list asa_in extended permit tcp any host 200.1.1.4 eq 995
+access-list asa_in extended permit tcp any host 200.1.1.5 eq smtp
+access-list asa_in extended permit tcp any host 200.1.1.5 eq 465
+access-list asa_in extended permit tcp any host 200.1.1.5 eq 587
+access-list asa_in extended permit tcp any host 200.1.1.5 eq 995
 
 
 access-list asa_in remark permit-web-services
@@ -52,14 +58,18 @@ access-list asa_in extended permit tcp any host 200.1.1.2 eq https
 
 access-list asa_in remark permit-tcp-established
 access-list asa_in extended permit tcp any host 200.1.1.1
-access-list asa_in extended permit tcp any 200.1.1.2 255.255.255.254
-access-list asa_in extended permit tcp any 200.1.1.4 255.255.255.254
+access-list asa_in extended permit tcp any host 200.1.1.2
+access-list asa_in extended permit tcp any host 200.1.1.3
+access-list asa_in extended permit tcp any host 200.1.1.4
+access-list asa_in extended permit tcp any host 200.1.1.5
 
 
 access-list asa_in remark permit-udp-established
 access-list asa_in extended permit udp any range 1024 65535 host 200.1.1.1
-access-list asa_in extended permit udp any range 1024 65535 200.1.1.2 255.255.255.254
-access-list asa_in extended permit udp any range 1024 65535 200.1.1.4 255.255.255.254
+access-list asa_in extended permit udp any range 1024 65535 host 200.1.1.2
+access-list asa_in extended permit udp any range 1024 65535 host 200.1.1.3
+access-list asa_in extended permit udp any range 1024 65535 host 200.1.1.4
+access-list asa_in extended permit udp any range 1024 65535 host 200.1.1.5
 
 
 access-list asa_in remark default-deny

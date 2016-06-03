@@ -1,7 +1,6 @@
 security {
-    zones {
-        security-zone DMZ {
-            replace: address-book {
+    replace: address-book {
+        global {
                 address RFC1918_0 10.0.0.0/8;
                 address RFC1918_1 172.16.0.0/12;
                 address RFC1918_2 192.168.0.0/16;
@@ -10,14 +9,17 @@ security {
                     address RFC1918_1;
                     address RFC1918_2;
                 }
-            }
         }
     }
+    /*
+    $Id:$
+    $Date:$
+    $Revision:$
+    */
     replace: policies {
         /*
-        $Id:$
-        $Date:$
-        $Revision:$
+        this is a sample policy to generate Juniper SRX filter
+        from zone Untrust to zone DMZ.
         */
         from-zone Untrust to-zone DMZ {
             policy test-tcp {
@@ -57,9 +59,9 @@ security {
     }
 }
 replace: applications {
-    application-set test-tcp-app {
-        application test-tcp-app1;
-        application test-tcp-app2;
+    application test-icmp-app {
+        term t1 protocol icmp icmp-type 0 inactivity-timeout 60;
+        term t2 protocol icmp icmp-type 8 inactivity-timeout 60;
     }
     application test-tcp-app1 {
         term t1 protocol tcp;
@@ -67,8 +69,8 @@ replace: applications {
     application test-tcp-app2 {
         term t2 protocol udp;
     }
-    application test-icmp-app {
-        term t1 protocol icmp icmp-type 0 inactivity-timeout 60;
-        term t2 protocol icmp icmp-type 8 inactivity-timeout 60;
+    application-set test-tcp-app {
+        application test-tcp-app1;
+        application test-tcp-app2;
     }
 }

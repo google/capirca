@@ -18,7 +18,8 @@ remark $Id:$
  deny ip 198.18.0.0 0.1.255.255 any
  deny ip 198.51.100.0 0.0.0.255 any
  deny ip 203.0.113.0 0.0.0.255 any
- deny ip 224.0.0.0 31.255.255.255 any
+ deny ip 224.0.0.0 15.255.255.255 any
+ deny ip 240.0.0.0 15.255.255.255 any
 
 
  remark deny-from-reserved
@@ -29,7 +30,8 @@ remark $Id:$
  deny ip 169.254.0.0 0.0.255.255 any
  deny ip 172.16.0.0 0.15.255.255 any
  deny ip 192.168.0.0 0.0.255.255 any
- deny ip 224.0.0.0 31.255.255.255 any
+ deny ip 224.0.0.0 15.255.255.255 any
+ deny ip 240.0.0.0 15.255.255.255 any
 
 
  remark deny-to-rfc1918
@@ -39,10 +41,14 @@ remark $Id:$
 
 
  remark permit-mail-services
- permit tcp any 200.1.1.4 0.0.0.1 eq smtp
- permit tcp any 200.1.1.4 0.0.0.1 eq 465
- permit tcp any 200.1.1.4 0.0.0.1 eq 587
- permit tcp any 200.1.1.4 0.0.0.1 eq 995
+ permit tcp any host 200.1.1.4 eq smtp
+ permit tcp any host 200.1.1.4 eq 465
+ permit tcp any host 200.1.1.4 eq 587
+ permit tcp any host 200.1.1.4 eq 995
+ permit tcp any host 200.1.1.5 eq smtp
+ permit tcp any host 200.1.1.5 eq 465
+ permit tcp any host 200.1.1.5 eq 587
+ permit tcp any host 200.1.1.5 eq 995
 
 
  remark permit-web-services
@@ -54,14 +60,18 @@ remark $Id:$
 
  remark permit-tcp-established
  permit tcp any host 200.1.1.1 established
- permit tcp any 200.1.1.2 0.0.0.1 established
- permit tcp any 200.1.1.4 0.0.0.1 established
+ permit tcp any host 200.1.1.2 established
+ permit tcp any host 200.1.1.3 established
+ permit tcp any host 200.1.1.4 established
+ permit tcp any host 200.1.1.5 established
 
 
  remark permit-udp-established
  permit udp any range 1024 65535 host 200.1.1.1
- permit udp any range 1024 65535 200.1.1.2 0.0.0.1
- permit udp any range 1024 65535 200.1.1.4 0.0.0.1
+ permit udp any range 1024 65535 host 200.1.1.2
+ permit udp any range 1024 65535 host 200.1.1.3
+ permit udp any range 1024 65535 host 200.1.1.4
+ permit udp any range 1024 65535 host 200.1.1.5
 
 
  remark default-deny
@@ -87,9 +97,26 @@ remark $Id:$
 
 
  remark deny-from-reserved
- deny ipv6 ::/3 any
- deny ipv6 4000::/2 any
- deny ipv6 8000::/1 any
+ deny ipv6 ::/8 any
+ deny ipv6 host ::1 any
+ deny ipv6 100::/8 any
+ deny ipv6 200::/7 any
+ deny ipv6 400::/6 any
+ deny ipv6 800::/5 any
+ deny ipv6 1000::/4 any
+ deny ipv6 4000::/3 any
+ deny ipv6 6000::/3 any
+ deny ipv6 8000::/3 any
+ deny ipv6 a000::/3 any
+ deny ipv6 c000::/3 any
+ deny ipv6 e000::/4 any
+ deny ipv6 f000::/5 any
+ deny ipv6 f800::/6 any
+ deny ipv6 fc00::/7 any
+ deny ipv6 fe00::/9 any
+ deny ipv6 fe80::/10 any
+ deny ipv6 fec0::/10 any
+ deny ipv6 ff00::/8 any
 
 
  remark default-deny
@@ -105,18 +132,25 @@ remark $Id:$
 
  remark deny-to-bad-destinations
  deny ip any 0.0.0.0 0.255.255.255
+ deny ip any 0.0.0.0 0.255.255.255
+ deny ip any 10.0.0.0 0.255.255.255
  deny ip any 10.0.0.0 0.255.255.255
  deny ip any 100.64.0.0 0.63.255.255
  deny ip any 127.0.0.0 0.255.255.255
  deny ip any 169.254.0.0 0.0.255.255
  deny ip any 172.16.0.0 0.15.255.255
+ deny ip any 172.16.0.0 0.15.255.255
  deny ip any 192.0.0.0 0.0.0.255
  deny ip any 192.0.2.0 0.0.0.255
+ deny ip any 192.168.0.0 0.0.255.255
  deny ip any 192.168.0.0 0.0.255.255
  deny ip any 198.18.0.0 0.1.255.255
  deny ip any 198.51.100.0 0.0.0.255
  deny ip any 203.0.113.0 0.0.0.255
- deny ip any 224.0.0.0 31.255.255.255
+ deny ip any 224.0.0.0 15.255.255.255
+ deny ip any 224.0.0.0 15.255.255.255
+ deny ip any 240.0.0.0 15.255.255.255
+ deny ip any 240.0.0.0 15.255.255.255
 
 
  remark default-accept
@@ -131,11 +165,30 @@ remark $Id:$
 
 
  remark deny-to-bad-destinations
- deny ipv6 any ::/3
+ deny ipv6 any ::/8
+ deny ipv6 any host ::1
+ deny ipv6 any 100::/8
+ deny ipv6 any 200::/7
+ deny ipv6 any 400::/6
+ deny ipv6 any 800::/5
+ deny ipv6 any 1000::/4
  deny ipv6 any 2001:db8::/32
  deny ipv6 any 3ffe::/16
- deny ipv6 any 4000::/2
- deny ipv6 any 8000::/1
+ deny ipv6 any 4000::/3
+ deny ipv6 any 5f00::/8
+ deny ipv6 any 6000::/3
+ deny ipv6 any 8000::/3
+ deny ipv6 any a000::/3
+ deny ipv6 any c000::/3
+ deny ipv6 any e000::/4
+ deny ipv6 any f000::/5
+ deny ipv6 any f800::/6
+ deny ipv6 any fc00::/7
+ deny ipv6 any fe00::/9
+ deny ipv6 any fe80::/10
+ deny ipv6 any fec0::/10
+ deny ipv6 any ff00::/8
+ deny ipv6 any ff00::/8
 
 
  remark default-accept
