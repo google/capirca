@@ -83,8 +83,8 @@ class YamlParser_Test(unittest.TestCase):
 
   def setUp(self):
     curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    self.base_dir = os.path.join(curr_dir, '..', 'yaml_policies')
-    yml = os.path.join(self.base_dir, 'policies', 'sample_cisco_lab.yml')
+    self.base_dir = os.path.realpath(os.path.join(curr_dir, '..', 'yaml_policies'))
+    yml = os.path.join(self.base_dir, 'policies', 'pol', 'sample_cisco_lab.yml')
     self.test_policy_filename = yml
     with open(yml, 'r') as f:
         self.test_policy = f.read()
