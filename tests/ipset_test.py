@@ -20,6 +20,7 @@ from lib import ipset
 from lib import nacaddr
 from lib import naming
 from lib import policy
+from lib import policyparser
 import mock
 
 GOOD_HEADER_1 = """
@@ -64,7 +65,7 @@ class IpsetTest(unittest.TestCase):
   def testMarkers(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IPv4('10.0.0.0/8')]
 
-    acl = ipset.Ipset(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
+    acl = ipset.Ipset(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                                          self.naming), EXP_INFO)
     result = str(acl)
     self.assertIn('# begin:ipset-rules', result)
@@ -94,7 +95,7 @@ class IpsetTest(unittest.TestCase):
   def testOneSourceAddress(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IPv4('10.0.0.0/8')]
 
-    acl = ipset.Ipset(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
+    acl = ipset.Ipset(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                                          self.naming), EXP_INFO)
     result = str(acl)
     self.assertIn('-s 10.0.0.0/8', result)
@@ -105,7 +106,7 @@ class IpsetTest(unittest.TestCase):
   def testOneDestinationAddress(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IPv4('172.16.0.0/12')]
 
-    acl = ipset.Ipset(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
+    acl = ipset.Ipset(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
                                          self.naming), EXP_INFO)
     result = str(acl)
     self.assertIn('-d 172.16.0.0/12', result)
@@ -118,7 +119,7 @@ class IpsetTest(unittest.TestCase):
         [nacaddr.IPv4('10.0.0.0/8')],
         [nacaddr.IPv4('172.16.0.0/12')]]
 
-    acl = ipset.Ipset(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_3,
+    acl = ipset.Ipset(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_3,
                                          self.naming), EXP_INFO)
     result = str(acl)
     self.assertIn('-s 10.0.0.0/8', result)
@@ -134,7 +135,7 @@ class IpsetTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [
         nacaddr.IPv4('10.0.0.0/24'), nacaddr.IPv4('10.1.0.0/24')]
 
-    acl = ipset.Ipset(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
+    acl = ipset.Ipset(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                                          self.naming), EXP_INFO)
     result = str(acl)
     self.assertIn('create good-term-1-src hash:net family inet hashsize'
@@ -150,7 +151,7 @@ class IpsetTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [
         nacaddr.IPv4('172.16.0.0/24'), nacaddr.IPv4('172.17.0.0/24')]
 
-    acl = ipset.Ipset(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
+    acl = ipset.Ipset(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
                                          self.naming), EXP_INFO)
     result = str(acl)
     self.assertIn('create good-term-2-dst hash:net family inet hashsize '
@@ -167,7 +168,7 @@ class IpsetTest(unittest.TestCase):
         [nacaddr.IPv4('10.0.0.0/24'), nacaddr.IPv4('10.1.0.0/24')],
         [nacaddr.IPv4('172.16.0.0/24'), nacaddr.IPv4('172.17.0.0/24')]]
 
-    acl = ipset.Ipset(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_3,
+    acl = ipset.Ipset(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_3,
                                          self.naming), EXP_INFO)
     result = str(acl)
     self.assertIn('create good-term-3-src hash:net family inet hashsize '

@@ -19,6 +19,7 @@ import unittest
 from lib import brocade
 from lib import naming
 from lib import policy
+from lib import policyparser
 import mock
 
 GOOD_HEADER = """
@@ -46,13 +47,13 @@ class BrocadeTest(unittest.TestCase):
 
   def testTcpEstablished(self):
     acl = brocade.Brocade(
-        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
+        policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
     self.failUnless(re.search('permit tcp any any established\n',
                               str(acl)), str(acl))
 
   def testNoTermRemark(self):
     acl = brocade.Brocade(
-        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
+        policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
     self.failIf('remark good-term-3' in str(acl))
 
 

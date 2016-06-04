@@ -22,6 +22,7 @@ from lib import gce
 from lib import nacaddr
 from lib import naming
 from lib import policy
+from lib import policyparser
 import mock
 
 GOOD_HEADER = """
@@ -306,7 +307,7 @@ class GCETest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
 
-    acl = gce.GCE(policy.ParsePolicy(
+    acl = gce.GCE(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
     expected = json.loads(GOOD_TERM_JSON)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
@@ -320,7 +321,7 @@ class GCETest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
 
-    acl = gce.GCE(policy.ParsePolicy(
+    acl = gce.GCE(policyparser.ParsePolicy(
         GOOD_HEADER_NO_NETWORK + GOOD_TERM, self.naming), EXP_INFO)
     expected = json.loads(GOOD_TERM_NO_NETWORK_JSON)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
@@ -334,7 +335,7 @@ class GCETest(unittest.TestCase):
     self.naming.GetNetAddr.side_effect = [TEST_INCLUDE_IPS, TEST_EXCLUDE_IPS]
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
 
-    acl = gce.GCE(policy.ParsePolicy(
+    acl = gce.GCE(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_EXCLUDE, self.naming), EXP_INFO)
     expected = json.loads(GOOD_TERM_JSON)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
@@ -351,7 +352,7 @@ class GCETest(unittest.TestCase):
                                           TEST_EXCLUDE_RANGE]
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
 
-    acl = gce.GCE(policy.ParsePolicy(
+    acl = gce.GCE(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_EXCLUDE, self.naming), EXP_INFO)
     expected = json.loads(GOOD_TERM_EXCLUDE_RANGE)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
@@ -367,7 +368,7 @@ class GCETest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.return_value = ['22']
 
-    acl = gce.GCE(policy.ParsePolicy(
+    acl = gce.GCE(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_EXPIRED, self.naming), EXP_INFO)
     self.assertEquals(self._StripAclHeaders(str(acl)), '[]\n\n')
 
@@ -382,7 +383,7 @@ class GCETest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = lots_of_ips
     self.naming.GetServiceByProto.return_value = ['53']
 
-    acl = gce.GCE(policy.ParsePolicy(
+    acl = gce.GCE(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
     self.assertTrue('default-good-term-1-udp-1' in str(acl))
     self.assertTrue('default-good-term-1-udp-2' in str(acl))
@@ -402,7 +403,7 @@ class GCETest(unittest.TestCase):
         gce.GceFirewallError,
         'GCE firewall action must be "accept".',
         gce.GCE,
-        policy.ParsePolicy(
+        policyparser.ParsePolicy(
             GOOD_HEADER + BAD_TERM_UNSUPPORTED_ACTION, self.naming),
         EXP_INFO)
 
@@ -416,7 +417,7 @@ class GCETest(unittest.TestCase):
         gce.GceFirewallError,
         'GCE firewall needs either to specify source address or source tags.',
         gce.GCE,
-        policy.ParsePolicy(
+        policyparser.ParsePolicy(
             GOOD_HEADER + BAD_TERM_NO_SOURCE, self.naming),
         EXP_INFO)
 
@@ -431,7 +432,7 @@ class GCETest(unittest.TestCase):
         ('GCE firewall does not support address exclusions without a source '
          'address list.'),
         gce.GCE,
-        policy.ParsePolicy(
+        policyparser.ParsePolicy(
             GOOD_HEADER + BAD_TERM_SOURCE_EXCLUDE_ONLY, self.naming),
         EXP_INFO)
 
@@ -447,7 +448,7 @@ class GCETest(unittest.TestCase):
         ('GCE firewall rule no longer contains any source addresses after '
          'the prefixes in source_address_exclude were removed.'),
         gce.GCE,
-        policy.ParsePolicy(
+        policyparser.ParsePolicy(
             GOOD_HEADER + GOOD_TERM_EXCLUDE, self.naming),
         EXP_INFO)
 
@@ -466,7 +467,7 @@ class GCETest(unittest.TestCase):
         gce.GceFirewallError,
         'GCE firewall does not support source port restrictions.',
         gce.GCE,
-        policy.ParsePolicy(
+        policyparser.ParsePolicy(
             GOOD_HEADER + BAD_TERM_SOURCE_PORT, self.naming),
         EXP_INFO)
 
@@ -480,7 +481,7 @@ class GCETest(unittest.TestCase):
     self.assertRaises(
         aclgenerator.TermNameTooLongError,
         gce.GCE,
-        policy.ParsePolicy(
+        policyparser.ParsePolicy(
             GOOD_HEADER + BAD_TERM_NAME_TOO_LONG, self.naming),
         EXP_INFO)
 
@@ -495,7 +496,7 @@ class GCETest(unittest.TestCase):
         gce.GceFirewallError,
         'Only TCP and UDP protocols support destination ports.',
         gce.GCE,
-        policy.ParsePolicy(
+        policyparser.ParsePolicy(
             GOOD_HEADER + BAD_TERM_UNSUPPORTED_PORT, self.naming),
         EXP_INFO)
 

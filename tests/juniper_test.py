@@ -23,6 +23,7 @@ from lib import juniper
 from lib import nacaddr
 from lib import naming
 from lib import policy
+from lib import policyparser
 import mock
 
 import gflags as flags
@@ -378,7 +379,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
     self.naming.GetServiceByProto.return_value = ['80']
 
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_2,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_2,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('destination-port 1024-65535;' in output, output)
@@ -393,7 +394,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('term good-term-1 {' in output, output)
@@ -406,7 +407,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(BAD_HEADER_2 + GOOD_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(BAD_HEADER_2 + GOOD_TERM_1, self.naming)
     self.assertRaises(aclgenerator.UnsupportedAF, juniper.Juniper,
                       pol, EXP_INFO)
 
@@ -417,7 +418,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_1,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_1,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('ip-protocol tcp;' in output, output)
@@ -437,7 +438,7 @@ class JuniperTest(unittest.TestCase):
             [nacaddr.IPv4('10.0.0.0/8', comment=long_comment)])
     self.naming.GetServiceByProto.return_value = ['25']
 
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless(expected in output, output)
@@ -446,13 +447,13 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
   def testDefaultDeny(self):
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + DEFAULT_TERM_1,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + DEFAULT_TERM_1,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failIf('from {' in output, output)
 
   def testIcmpType(self):
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_3,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_3,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     # verify proper translation from policy icmp-type text to juniper-esque
@@ -468,7 +469,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('2001::/33')]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_1_V6,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_1_V6,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('next-header icmpv6;' in output and
@@ -482,7 +483,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['25']
 
     jcl = juniper.Juniper(
-        policy.ParsePolicy(GOOD_HEADER_NOT_INTERFACE_SPECIFIC + GOOD_TERM_1,
+        policyparser.ParsePolicy(GOOD_HEADER_NOT_INTERFACE_SPECIFIC + GOOD_TERM_1,
                            self.naming), EXP_INFO)
     output = str(jcl)
     self.failIf('interface-specific;' in output, output)
@@ -494,7 +495,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('interface-specific;' in output, output)
@@ -503,32 +504,32 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
   def testHopLimit(self):
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 +
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER_V6 +
                                              GOOD_TERM_V6_HOP_LIMIT,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('hop-limit 25;' in output, output)
 
   def testProtocolExcept(self):
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_7,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_7,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('next-header-except tcp;' in output, output)
 
   def testIcmpv6Except(self):
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_20_V6,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_20_V6,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('next-header-except icmpv6;' in output, output)
 
   def testProtocolCase(self):
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_5,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_5,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('protocol [ icmp tcp ];' in output, output)
 
   def testPrefixList(self):
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_8,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_8,
                                              self.naming), EXP_INFO)
     spfx_re = re.compile('source-prefix-list {\W+foo_prefix_list;\W+}')
     dpfx_re = re.compile(
@@ -538,19 +539,19 @@ class JuniperTest(unittest.TestCase):
     self.failUnless(dpfx_re.search(output), output)
 
   def testEtherType(self):
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_9,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_9,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('ether-type arp;' in output, output)
 
   def testTrafficType(self):
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_10,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_10,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('traffic-type unknown-unicast;' in output, output)
 
   def testVerbatimTerm(self):
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_11,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_11,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('mary had a little lamb' in output, output)
@@ -562,7 +563,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['53']
 
     policy_text = GOOD_HEADER + GOOD_TERM_22
-    jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
+    jcl = juniper.Juniper(policyparser.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
     output = str(jcl)
     self.failUnless('dscp b111000;' in output, output)
@@ -573,7 +574,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['53']
 
     policy_text = GOOD_HEADER + GOOD_TERM_23
-    jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
+    jcl = juniper.Juniper(policyparser.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
     output = str(jcl)
     self.failUnless('dscp af42;' in output, output)
@@ -586,7 +587,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['53']
 
     policy_text = GOOD_HEADER_V6 + GOOD_TERM_23
-    jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
+    jcl = juniper.Juniper(policyparser.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
     output = str(jcl)
     self.failUnless('traffic-class af42;' in output, output)
@@ -600,7 +601,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['53']
 
     policy_text = GOOD_HEADER + GOOD_TERM_24
-    jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
+    jcl = juniper.Juniper(policyparser.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
     output = str(jcl)
     self.failUnless('forwarding-class af1' in output, output)
@@ -612,7 +613,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['53']
 
     policy_text = GOOD_HEADER + GOOD_TERM_25
-    jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
+    jcl = juniper.Juniper(policyparser.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
     output = str(jcl)
     self.failUnless('then accept;' in output, output)
@@ -623,7 +624,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['53']
 
     policy_text = GOOD_HEADER + GOOD_TERM_26
-    jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
+    jcl = juniper.Juniper(policyparser.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
     output = str(jcl)
     self.failUnless('then {' in  output, output)
@@ -635,7 +636,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['53']
 
     policy_text = GOOD_HEADER_V6 + GOOD_TERM_26_V6
-    jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
+    jcl = juniper.Juniper(policyparser.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
     output = str(jcl)
     self.failUnless('then discard;' in output, output)
@@ -646,7 +647,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['53']
 
     policy_text = GOOD_HEADER_V6 + GOOD_TERM_26_V6_REJECT
-    jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
+    jcl = juniper.Juniper(policyparser.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
     output = str(jcl)
     self.failUnless('then {' in output, output)
@@ -658,7 +659,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['53']
 
     policy_text = GOOD_HEADER + ESTABLISHED_TERM_1
-    jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
+    jcl = juniper.Juniper(policyparser.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
     output = str(jcl)
     self.failUnless('tcp-established' in output, output)
@@ -669,7 +670,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['53']
 
     policy_text = GOOD_HEADER + BAD_TERM_1
-    pol_obj = policy.ParsePolicy(policy_text, self.naming)
+    pol_obj = policyparser.ParsePolicy(policy_text, self.naming)
     jcl = juniper.Juniper(pol_obj, EXP_INFO)
     self.assertRaises(juniper.TcpEstablishedWithNonTcp, str, jcl)
 
@@ -680,7 +681,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [
             nacaddr.IPv4('127.0.0.1'), nacaddr.IPv6('::1/128')]
 
-    jcl = juniper.Juniper(policy.ParsePolicy(
+    jcl = juniper.Juniper(policyparser.ParsePolicy(
         GOOD_HEADER_BRIDGE + GOOD_TERM_12, self.naming), EXP_INFO)
     output = str(jcl)
     self.failIf('::1/128' in output, output)
@@ -695,7 +696,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = addr_list
     self.naming.GetServiceByProto.return_value = ['25']
 
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_DSMO_HEADER + GOOD_TERM_1,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_DSMO_HEADER + GOOD_TERM_1,
                                              self.naming), EXP_INFO)
     self.failUnless('192.168.0.64/255.255.0.224;' in str(jcl))
 
@@ -707,7 +708,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = addr_list
     self.naming.GetServiceByProto.return_value = ['25']
 
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_DSMO_HEADER + GOOD_TERM_1,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_DSMO_HEADER + GOOD_TERM_1,
                                              self.naming), EXP_INFO)
     self.failUnless('192.168.0.0/16;' in str(jcl))
 
@@ -724,7 +725,7 @@ class JuniperTest(unittest.TestCase):
     mock_calls = []
     for term in terms:
       jcl = juniper.Juniper(
-          policy.ParsePolicy(GOOD_DSMO_HEADER + term, self.naming),
+          policyparser.ParsePolicy(GOOD_DSMO_HEADER + term, self.naming),
           EXP_INFO)
       self.failUnless('192.168.0.64/255.255.254.224 except;' in str(jcl))
       mock_calls.append(mock.call('INTERNAL'))
@@ -738,13 +739,13 @@ class JuniperTest(unittest.TestCase):
                       sorted(juniper.Term.AF_MAP.keys()))
 
   def testRoutingInstance(self):
-    jcl = juniper.Juniper(policy.ParsePolicy(
+    jcl = juniper.Juniper(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_13, self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('routing-instance EXTERNAL-NAT;' in output, output)
 
   def testLossPriority(self):
-    jcl = juniper.Juniper(policy.ParsePolicy(
+    jcl = juniper.Juniper(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_14, self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('loss-priority low;' in output, output)
@@ -752,7 +753,7 @@ class JuniperTest(unittest.TestCase):
   def testPrecedence(self):
     self.naming.GetServiceByProto.return_value = ['22']
 
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_15,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_15,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('precedence 7;' in output, output)
@@ -762,7 +763,7 @@ class JuniperTest(unittest.TestCase):
   def testMultiplePrecedence(self):
     self.naming.GetServiceByProto.return_value = ['22']
 
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_16,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_16,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('precedence [ 5 7 ];' in output, output)
@@ -772,7 +773,7 @@ class JuniperTest(unittest.TestCase):
   def testArbitraryOptions(self):
     self.naming.GetServiceByProto.return_value = ['22']
 
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + OPTION_TERM_1,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + OPTION_TERM_1,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('is-fragment;' in output, output)
@@ -781,7 +782,7 @@ class JuniperTest(unittest.TestCase):
 
   @mock.patch.object(juniper.logging, 'debug')
   def testIcmpv6InetMismatch(self, mock_debug):
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + BAD_ICMPTYPE_TERM_1,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + BAD_ICMPTYPE_TERM_1,
                                              self.naming), EXP_INFO)
     # output happens in __str_
     str(jcl)
@@ -793,7 +794,7 @@ class JuniperTest(unittest.TestCase):
 
   @mock.patch.object(juniper.logging, 'debug')
   def testIcmpInet6Mismatch(self, mock_debug):
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 +
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER_V6 +
                                              BAD_ICMPTYPE_TERM_2,
                                              self.naming), EXP_INFO)
     # output happens in __str_
@@ -806,7 +807,7 @@ class JuniperTest(unittest.TestCase):
 
   @mock.patch.object(juniper.logging, 'warn')
   def testExpiredTerm(self, mock_warn):
-    _ = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + EXPIRED_TERM,
+    _ = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + EXPIRED_TERM,
                                            self.naming), EXP_INFO)
 
     mock_warn.assert_called_once_with(
@@ -816,7 +817,7 @@ class JuniperTest(unittest.TestCase):
   @mock.patch.object(juniper.logging, 'info')
   def testExpiringTerm(self, mock_info):
     exp_date = datetime.date.today() + datetime.timedelta(weeks=EXP_INFO)
-    _ = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + EXPIRING_TERM %
+    _ = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + EXPIRING_TERM %
                                            exp_date.strftime('%Y-%m-%d'),
                                            self.naming), EXP_INFO)
 
@@ -825,7 +826,7 @@ class JuniperTest(unittest.TestCase):
         'less than two weeks.', 'is_expiring', 'test-filter')
 
   def testOwnerTerm(self):
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_17,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_17,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('            /*\n'
@@ -842,7 +843,7 @@ class JuniperTest(unittest.TestCase):
     mock_calls = []
     for term in terms:
       jcl = juniper.Juniper(
-          policy.ParsePolicy(GOOD_HEADER + term, self.naming),
+          policyparser.ParsePolicy(GOOD_HEADER + term, self.naming),
           EXP_INFO)
       output = str(jcl)
       self.failUnless('10.0.0.0/8 except;' in output, output)
@@ -869,7 +870,7 @@ class JuniperTest(unittest.TestCase):
         [nacaddr.IPv4(ip) for ip in excludes]]
 
     jcl = juniper.Juniper(
-        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_19, self.naming),
+        policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_19, self.naming),
         EXP_INFO)
     output = str(jcl)
     for result in expected:
@@ -910,7 +911,7 @@ class JuniperTest(unittest.TestCase):
 
   def testForwardingClass(self):
     policy_text = GOOD_HEADER + GOOD_TERM_27
-    jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
+    jcl = juniper.Juniper(policyparser.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
     output = str(jcl)
     self.failUnless('forwarding-class floop;' in output, output)
@@ -918,7 +919,7 @@ class JuniperTest(unittest.TestCase):
   def testLongPolicer(self):
     with mock.patch.object(juniper.logging, 'warn', spec=logging.warn) as warn:
       policy_text = GOOD_HEADER + LONG_POLICER_TERM_1
-      jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
+      jcl = juniper.Juniper(policyparser.ParsePolicy(policy_text, self.naming),
                             EXP_INFO)
       _ = str(jcl)
       warn.assert_called_with('WARNING: %s is longer than %d bytes. Due to'
@@ -932,7 +933,7 @@ class JuniperTest(unittest.TestCase):
   def testNextIp(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
 
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless(
@@ -943,7 +944,7 @@ class JuniperTest(unittest.TestCase):
   def testNextIpFormat(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
 
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless(
@@ -956,7 +957,7 @@ class JuniperTest(unittest.TestCase):
   def testNextIpv6(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('2001::/128')]
 
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless(
@@ -967,7 +968,7 @@ class JuniperTest(unittest.TestCase):
   def testFailNextIpMultipleIP(self):
     self.naming.GetNetAddr.return_value = [
         nacaddr.IP('10.1.1.1/32'), nacaddr.IP('192.168.1.1/32')]
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
                                              self.naming), EXP_INFO)
     self.assertRaises(juniper.JuniperNextIpError, str, jcl)
 
@@ -976,7 +977,7 @@ class JuniperTest(unittest.TestCase):
   def testFailNextIpNetworkIP(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/26')]
 
-    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
+    jcl = juniper.Juniper(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
                                              self.naming), EXP_INFO)
     self.assertRaises(juniper.JuniperNextIpError, str, jcl)
 

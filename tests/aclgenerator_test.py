@@ -19,6 +19,7 @@ import unittest
 from lib import aclgenerator
 from lib import naming
 from lib import policy
+from lib import policyparser
 import mock
 
 GOOD_HEADER_1 = """
@@ -94,7 +95,7 @@ class ACLGeneratorTest(unittest.TestCase):
   def testEstablishedNostate(self):
     # When using "nostate" filter and a term with "option:: established"
     # have any protocol other than TCP and/or UDP should raise error.
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + STATEFUL_ONLY_TERM, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + STATEFUL_ONLY_TERM, self.naming)
     acl = ACLMock(pol, EXP_INFO)
     for _, terms in pol.filters:
       for term in terms:
@@ -103,7 +104,7 @@ class ACLGeneratorTest(unittest.TestCase):
 
   def testSupportedAF(self):
     # Unsupported address families should raise an error.
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1, self.naming)
     acl = ACLMock(pol, EXP_INFO)
     for _, terms in pol.filters:
       for term in terms:
@@ -113,7 +114,7 @@ class ACLGeneratorTest(unittest.TestCase):
   def testTermNameBelowLimit(self):
     # Term name that is below specified limit should come out unchanged,
     # regardless of abbreviation and truncation settings.
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + SHORT_TERM_NAME, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + SHORT_TERM_NAME, self.naming)
     acl = ACLMock(pol, EXP_INFO)
     for _, terms in pol.filters:
       for term in terms:
@@ -129,7 +130,7 @@ class ACLGeneratorTest(unittest.TestCase):
   def testLongTermAbbreviation(self):
     # Term name that is above specified limit should come out abbreviated
     # when abbreviation is enabled.
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_LONG_TERM_NAME, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_LONG_TERM_NAME, self.naming)
     acl = ACLMock(pol, EXP_INFO)
     for _, terms in pol.filters:
       for term in terms:
@@ -140,7 +141,7 @@ class ACLGeneratorTest(unittest.TestCase):
   def testTermNameTruncation(self):
     # Term name that is above specified limit should come out truncated
     # when truncation is enabled.
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_LONG_TERM_NAME, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_LONG_TERM_NAME, self.naming)
     acl = ACLMock(pol, EXP_INFO)
     for _, terms in pol.filters:
       for term in terms:
@@ -150,7 +151,7 @@ class ACLGeneratorTest(unittest.TestCase):
   def testLongTermName(self):
     # Term name that is above specified limit and is impossible to abbreviate
     # should raise an exception.
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + BAD_LONG_TERM_NAME, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + BAD_LONG_TERM_NAME, self.naming)
     acl = ACLMock(pol, EXP_INFO)
     for _, terms in pol.filters:
       for term in terms:
