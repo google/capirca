@@ -702,7 +702,7 @@ class PacketFilterTest(unittest.TestCase):
         packetfilter.DuplicateTermError,
         packetfilter.PacketFilter.__init__,
         packetfilter.PacketFilter.__new__(packetfilter.PacketFilter),
-        policy.ParsePolicy(
+        policyparser.ParsePolicy(
             GOOD_HEADER_DIRECTIONAL + GOOD_TERM_ICMP + GOOD_TERM_ICMP,
             self.naming),
         EXP_INFO)
