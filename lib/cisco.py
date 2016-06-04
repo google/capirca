@@ -282,7 +282,7 @@ class ObjectGroupTerm(aclgenerator.Term):
   in the acl.
   """
   # Protocols should be emitted as integers rather than strings.
-  _PROTO_INT = False
+  _PROTO_INT = True
 
   def __init__(self, term, filter_name, platform='cisco'):
     super(ObjectGroupTerm, self).__init__(term)
@@ -321,6 +321,10 @@ class ObjectGroupTerm(aclgenerator.Term):
     # protocol
     if not self.term.protocol:
       protocol = ['ip']
+    else:
+      # pylint: disable=g-long-lambda
+      protocol = map(self.PROTO_MAP.get, self.term.protocol, self.term.protocol)
+      # pylint: enable=g-long-lambda
 
     # addresses
     source_address = self.term.source_address
@@ -406,7 +410,7 @@ class Term(aclgenerator.Term):
     ret_str = ['\n']
 
     # Don't render icmpv6 protocol terms under inet, or icmp under inet6
-    if (
+    if ((self.af == 6 and 'icmp' in self.term.protocol) or
         (self.af == 4 and 'icmpv6' in self.term.protocol)):
       logging.debug(self.NO_AF_LOG_PROTO.substitute(term=self.term.name,
                                                     proto=self.term.protocol,
@@ -430,7 +434,6 @@ class Term(aclgenerator.Term):
         return '\n'.join(ret_str)
 
     # protocol
-    protocol = self.term.protocol
     if not self.term.protocol:
       if self.af == 6:
         protocol = ['ipv6']
@@ -438,6 +441,10 @@ class Term(aclgenerator.Term):
         protocol = ['ip']
     elif self.term.protocol == ['hop-by-hop']:
       protocol = ['hbh']
+    elif self.proto_int:
+      # pylint: disable=g-long-lambda
+      protocol = map(self.PROTO_MAP.get, self.term.protocol, self.term.protocol)
+      # pylint: enable=g-long-lambda
     else:
       protocol = self.term.protocol
     # source address
@@ -533,6 +540,11 @@ class Term(aclgenerator.Term):
     return '\n'.join(ret_str)
 
   def _TermPortToProtocol (self,portNumber,proto):
+
+    # Some subclasses may choose to specify the ports as the protocol
+    # names; otherwise, just use the port number as-is.
+    if self.proto_int:
+      return portNumber
 
     _IOS_PORTS_TCP = {
 179: "bgp",

@@ -41,37 +41,37 @@ remark $Id:$
 
 
  remark permit-mail-services
- permit tcp any host 200.1.1.4 eq smtp
- permit tcp any host 200.1.1.4 eq 465
- permit tcp any host 200.1.1.4 eq 587
- permit tcp any host 200.1.1.4 eq 995
- permit tcp any host 200.1.1.5 eq smtp
- permit tcp any host 200.1.1.5 eq 465
- permit tcp any host 200.1.1.5 eq 587
- permit tcp any host 200.1.1.5 eq 995
+ permit 6 any host 200.1.1.4 eq 25
+ permit 6 any host 200.1.1.4 eq 465
+ permit 6 any host 200.1.1.4 eq 587
+ permit 6 any host 200.1.1.4 eq 995
+ permit 6 any host 200.1.1.5 eq 25
+ permit 6 any host 200.1.1.5 eq 465
+ permit 6 any host 200.1.1.5 eq 587
+ permit 6 any host 200.1.1.5 eq 995
 
 
  remark permit-web-services
- permit tcp any host 200.1.1.1 eq www
- permit tcp any host 200.1.1.1 eq 443
- permit tcp any host 200.1.1.2 eq www
- permit tcp any host 200.1.1.2 eq 443
+ permit 6 any host 200.1.1.1 eq 80
+ permit 6 any host 200.1.1.1 eq 443
+ permit 6 any host 200.1.1.2 eq 80
+ permit 6 any host 200.1.1.2 eq 443
 
 
  remark permit-tcp-established
- permit tcp any host 200.1.1.1 established
- permit tcp any host 200.1.1.2 established
- permit tcp any host 200.1.1.3 established
- permit tcp any host 200.1.1.4 established
- permit tcp any host 200.1.1.5 established
+ permit 6 any host 200.1.1.1 established
+ permit 6 any host 200.1.1.2 established
+ permit 6 any host 200.1.1.3 established
+ permit 6 any host 200.1.1.4 established
+ permit 6 any host 200.1.1.5 established
 
 
  remark permit-udp-established
- permit udp any range 1024 65535 host 200.1.1.1
- permit udp any range 1024 65535 host 200.1.1.2
- permit udp any range 1024 65535 host 200.1.1.3
- permit udp any range 1024 65535 host 200.1.1.4
- permit udp any range 1024 65535 host 200.1.1.5
+ permit 17 any range 1024 65535 host 200.1.1.1
+ permit 17 any range 1024 65535 host 200.1.1.2
+ permit 17 any range 1024 65535 host 200.1.1.3
+ permit 17 any range 1024 65535 host 200.1.1.4
+ permit 17 any range 1024 65535 host 200.1.1.5
 
 
  remark default-deny
