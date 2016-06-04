@@ -20,6 +20,7 @@ from lib import aclgenerator
 from lib import nacaddr
 from lib import naming
 from lib import policy
+from lib import policyparser
 from lib import windows_advfirewall
 import mock
 
@@ -169,7 +170,7 @@ class WindowsAdvFirewallTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
+    acl = windows_advfirewall.WindowsAdvFirewall(policyparser.ParsePolicy(
         GOOD_HEADER_OUT + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
     self.FailUnless(
@@ -182,7 +183,7 @@ class WindowsAdvFirewallTest(unittest.TestCase):
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
   def testIcmp(self):
-    acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
+    acl = windows_advfirewall.WindowsAdvFirewall(policyparser.ParsePolicy(
         GOOD_HEADER_OUT + GOOD_TERM_ICMP, self.naming), EXP_INFO)
     result = str(acl)
     self.FailUnless(
@@ -192,7 +193,7 @@ class WindowsAdvFirewallTest(unittest.TestCase):
         'did not find actual term for good-term-icmp')
 
   def testIcmpTypes(self):
-    acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
+    acl = windows_advfirewall.WindowsAdvFirewall(policyparser.ParsePolicy(
         GOOD_HEADER_OUT + GOOD_TERM_ICMP_TYPES, self.naming), EXP_INFO)
     result = str(acl)
     self.FailUnless(
@@ -206,14 +207,14 @@ class WindowsAdvFirewallTest(unittest.TestCase):
         'did not find actual term for good-term-icmp-types')
 
   def testBadIcmp(self):
-    acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
+    acl = windows_advfirewall.WindowsAdvFirewall(policyparser.ParsePolicy(
         GOOD_HEADER_OUT + BAD_TERM_ICMP, self.naming), EXP_INFO)
     self.assertRaises(aclgenerator.UnsupportedFilterError,
                       str, acl)
 
   @mock.patch.object(windows_advfirewall.logging, 'warn')
   def testExpiredTerm(self, mock_warn):
-    windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
+    windows_advfirewall.WindowsAdvFirewall(policyparser.ParsePolicy(
         GOOD_HEADER_OUT + EXPIRED_TERM, self.naming), EXP_INFO)
 
     mock_warn.assert_called_once_with(
@@ -224,7 +225,7 @@ class WindowsAdvFirewallTest(unittest.TestCase):
   @mock.patch.object(windows_advfirewall.logging, 'info')
   def testExpiringTerm(self, mock_info):
     exp_date = datetime.date.today() + datetime.timedelta(weeks=EXP_INFO)
-    windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
+    windows_advfirewall.WindowsAdvFirewall(policyparser.ParsePolicy(
         GOOD_HEADER_OUT + EXPIRING_TERM % exp_date.strftime('%Y-%m-%d'),
         self.naming), EXP_INFO)
 
@@ -234,7 +235,7 @@ class WindowsAdvFirewallTest(unittest.TestCase):
         'out')
 
   def testMultiprotocol(self):
-    acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
+    acl = windows_advfirewall.WindowsAdvFirewall(policyparser.ParsePolicy(
         GOOD_HEADER_OUT + MULTIPLE_PROTOCOLS_TERM, self.naming), EXP_INFO)
     result = str(acl)
     self.FailUnless(
@@ -251,7 +252,7 @@ class WindowsAdvFirewallTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
+    acl = windows_advfirewall.WindowsAdvFirewall(policyparser.ParsePolicy(
         GOOD_HEADER_IN + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
     self.FailUnless(

@@ -1,0 +1,183 @@
+name: LOOPBACK
+address-family: ipv4
+
+comment: Sample Juniper lookback filter
+targets:
+  - juniper
+
+terms:
+
+  - name: accept-icmp
+    protocol: icmp
+    counter: icmp-loopback
+    policer: rate-limit-icmp
+    action: accept
+
+  - name: accept-traceroute
+    comment: Allow inbound traceroute from any source.
+    destination-port: TRACEROUTE
+    protocol: udp
+    counter: inbound-traceroute
+    policer: rate-limit-to-router
+    action: accept
+    expiration: 2001-12-31
+    owner: jeff
+  
+  - name: accept-bgp-requests
+    comment: Allow BGP requests from peers.
+    source-prefix: configured-neighbors-only
+    destination-port: BGP
+    protocol: tcp
+    counter: bgp-requests
+    action: accept
+  
+  - name: accept-bgp-replies
+    comment: Allow inbound replies to BGP requests.
+    source-prefix: configured-neighbors-only
+    source-port: BGP
+    protocol: tcp
+    option: tcp-established
+    counter: bgp-replies
+    action: accept
+  
+  - name: accept-ospf
+    comment: Allow outbound OSPF traffic from other RFC1918 routers.
+    source-address: INTERNAL
+    protocol: ospf
+    counter: ospf
+    action: accept
+  
+  - name: allow-vrrp
+    protocol: vrrp
+    counter: vrrp
+    action: accept
+  
+  - name: accept-ike
+    source-port: IKE
+    destination-port: IKE
+    protocol: udp
+    counter: ipsec-ike
+    action: accept
+  
+  - name: accept-ipsec
+    protocol: esp
+    counter: ipsec-esp
+    action: accept
+
+  - name: accept-pim
+    source-address: INTERNAL
+    protocol: pim
+    action: accept
+  
+  - name: accept-igmp
+    source-address: INTERNAL
+    protocol: igmp
+    action: accept
+  
+  - name: accept-ssh-requests
+    source-address: INTERNAL
+    destination-port: SSH
+    protocol: tcp
+    counter: ssh
+    action: accept
+  
+  - name: accept-ssh-replies
+    source-port: SSH
+    protocol: tcp
+    option: tcp-established
+    counter: ssh-replies
+    action: accept
+  
+  - name: accept-snmp-requests
+    source-address: INTERNAL
+    destination-address: INTERNAL
+    destination-port: SNMP
+    protocol: udp
+    action: accept
+  
+  - name: accept-dns-replies
+    source-address: INTERNAL
+    destination-address: INTERNAL
+    source-port: DNS
+    protocol: udp
+    option: established
+    counter: dns-replies
+    action: accept
+  
+  - name: allow-ntp-request
+    source-address: NTP_SERVERS
+    destination-address: INTERNAL
+    destination-port: NTP
+    protocol: udp
+    counter: ntp-request
+    action: accept
+  
+  - name: allow-ntp-replies
+    source-address: INTERNAL
+    destination-address: NTP_SERVERS
+    source-port: NTP
+    protocol: udp
+    option: established
+    counter: ntp-replies
+    action: accept
+  
+  - name: allow-radius-replies
+    source-address: INTERNAL
+    destination-address: INTERNAL
+    source-port: RADIUS
+    protocol: udp
+    counter: radius-replies
+    action: accept
+  
+  - name: allow-tacacs-requests
+    source-address: INTERNAL
+    destination-address: TACACS_SERVERS
+    destination-port: TACACS
+    protocol: tcp
+    counter: tacacs-requests
+    action: accept
+  
+  - name: allow-tacacs-replies
+    source-address: TACACS_SERVERS
+    destination-address: INTERNAL
+    source-port: TACACS
+    protocol: tcp
+    option: tcp-established
+    counter: tacacs-replies
+    action: accept
+  
+  - name: allow-dns-fragments
+    source-address: ANY
+    source-exclude: PUBLIC_NAT
+    destination-address: GOOGLE_DNS
+    destination-port: DNS
+    protocol: tcp, udp
+    option: is-fragment
+    action: accept
+  
+  - name: ratelimit-large-dns
+    destination-address: GOOGLE_DNS
+    destination-port: DNS
+    protocol: udp
+    packet-length: 500-5000
+    counter: large-dns-counter
+    policer: large-dns-policer
+    option: sample
+    action: next
+  
+  - name: reject-large-dns
+    destination-address: GOOGLE_DNS
+    destination-port: DNS
+    protocol: udp
+    packet-length: 500-5000
+    action: reject
+  
+  - name: reject-imap-requests
+    destination-address: MAIL_SERVERS
+    destination-port: IMAP
+    protocol: tcp
+    action: reject-with-tcp-rst
+  
+  - name: discard-default
+    counter: discard-default
+    action: deny

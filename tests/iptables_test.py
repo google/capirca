@@ -23,6 +23,7 @@ from lib import iptables
 from lib import nacaddr
 from lib import naming
 from lib import policy
+from lib import policyparser
 import mock
 
 
@@ -417,7 +418,7 @@ class AclCheckTest(unittest.TestCase):
   @mock.patch.object(iptables.logging, 'warn')
   def testChainFilter(self, mock_warn):
     filter_name = 'foobar_chain'
-    pol = policy.ParsePolicy(CHAIN_HEADER_1 + GOOD_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(CHAIN_HEADER_1 + GOOD_TERM_1, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
     # is the chain right?
@@ -432,12 +433,12 @@ class AclCheckTest(unittest.TestCase):
         filter_name)
 
   def testUnsupportedTargetOption(self):
-    pol = policy.ParsePolicy(BAD_HEADER_3 + GOOD_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(BAD_HEADER_3 + GOOD_TERM_1, self.naming)
     self.assertRaises(iptables.UnsupportedTargetOption,
                       iptables.Iptables, pol, EXP_INFO)
 
   def testGoodPolicy(self):
-    acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_1,
+    acl = iptables.Iptables(policyparser.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_1,
                                                self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('-P OUTPUT DROP' in result,
@@ -449,14 +450,14 @@ class AclCheckTest(unittest.TestCase):
                     'did not find append for good-term-1.')
 
   def testCustomChain(self):
-    acl = iptables.Iptables(policy.ParsePolicy(NON_STANDARD_CHAIN + GOOD_TERM_1,
+    acl = iptables.Iptables(policyparser.ParsePolicy(NON_STANDARD_CHAIN + GOOD_TERM_1,
                                                self.naming), EXP_INFO)
     result = str(acl).split('\n')
     self.failUnless('-N foo' in result, 'did not find new chain for foo.')
     self.failIf('-P foo' in result, 'chain foo may not have a policy set.')
 
   def testChainNoTarget(self):
-    acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_5 + GOOD_TERM_1,
+    acl = iptables.Iptables(policyparser.ParsePolicy(GOOD_HEADER_5 + GOOD_TERM_1,
                                                self.naming), EXP_INFO)
     result = str(acl).split('\n')
     for line in result:
@@ -468,7 +469,7 @@ class AclCheckTest(unittest.TestCase):
                   'attempting to create a built-in chain.')
 
   def testCustomChainNoTarget(self):
-    acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_6 + GOOD_TERM_1,
+    acl = iptables.Iptables(policyparser.ParsePolicy(GOOD_HEADER_6 + GOOD_TERM_1,
                                                self.naming), EXP_INFO)
     result = str(acl).split('\n')
     self.failUnless('-N foo' in result, 'did not find a new chain for foo.')
@@ -488,7 +489,7 @@ class AclCheckTest(unittest.TestCase):
         [nacaddr.IPv4('10.0.0.0/24')]]
     self.naming.GetServiceByProto.return_value = ['80']
 
-    acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
+    acl = iptables.Iptables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
                                                self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('-P INPUT ACCEPT' in result, 'no default policy found.')
@@ -514,7 +515,7 @@ class AclCheckTest(unittest.TestCase):
         [nacaddr.IPv4('10.128.0.0/9'), nacaddr.IPv4('10.64.0.0/10')]]
     self.naming.GetServiceByProto.return_value = ['80']
 
-    acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
+    acl = iptables.Iptables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
                                                self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('--sport 80 -s 10.0.0.0/10' in result,
@@ -544,7 +545,7 @@ class AclCheckTest(unittest.TestCase):
     self.naming.GetNetAddr.side_effect = [source_range, dest_range]
     self.naming.GetServiceByProto.return_value = ['80']
 
-    acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_9,
+    acl = iptables.Iptables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_9,
                                                self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('-P INPUT ACCEPT' in result, 'no default policy found.')
@@ -586,7 +587,7 @@ class AclCheckTest(unittest.TestCase):
     self.naming.GetNetAddr.side_effect = [source_range, dest_range]
     self.naming.GetServiceByProto.return_value = ['80']
 
-    acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_9,
+    acl = iptables.Iptables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_9,
                                                self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('-P INPUT ACCEPT' in result, 'no default policy found.')
@@ -612,7 +613,7 @@ class AclCheckTest(unittest.TestCase):
   def testOptions(self):
     self.naming.GetServiceByProto.return_value = ['80']
 
-    acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_3,
+    acl = iptables.Iptables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_3,
                                                self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('--tcp-flags FIN,RST FIN,RST' in result,
@@ -626,21 +627,21 @@ class AclCheckTest(unittest.TestCase):
     self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
 
   def testRejectReset(self):
-    acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + REJECT_TERM1,
+    acl = iptables.Iptables(policyparser.ParsePolicy(GOOD_HEADER_1 + REJECT_TERM1,
                                                self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('-j REJECT --reject-with tcp-reset' in result,
                     'missing or incorrect reject specification.')
 
   def testReject(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + REJECT_TERM2, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + REJECT_TERM2, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
     self.failUnless('-j REJECT --reject-with icmp-host-prohibited' in result,
                     'missing or incorrect reject specification.')
 
   def testRejectIpv6(self):
-    pol = policy.ParsePolicy(IPV6_HEADER_1 + REJECT_TERM2, self.naming)
+    pol = policyparser.ParsePolicy(IPV6_HEADER_1 + REJECT_TERM2, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
     self.failIf('-p all' in result, 'protocol spec present')
@@ -648,7 +649,7 @@ class AclCheckTest(unittest.TestCase):
                     'missing or incorrect reject specification.')
 
   def testIPv6Headers(self):
-    pol = policy.ParsePolicy(IPV6_HEADER_1 + IPV6_HEADERS, self.naming)
+    pol = policyparser.ParsePolicy(IPV6_HEADER_1 + IPV6_HEADERS, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
     self.failUnless('-m u32 --u32 "0x3&0xff=0x0"' in result,
@@ -657,14 +658,14 @@ class AclCheckTest(unittest.TestCase):
                     'match for fragment header is missing')
 
   def testNextTerm(self):
-    acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + NEXT_TERM1,
+    acl = iptables.Iptables(policyparser.ParsePolicy(GOOD_HEADER_1 + NEXT_TERM1,
                                                self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('-j RETURN' in result,
                     'jump to RETURN not found.')
 
   def testProtocols(self):
-    acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_4,
+    acl = iptables.Iptables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_4,
                                                self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('-p tcp' in result, 'protocol tcp not found.')
@@ -676,7 +677,7 @@ class AclCheckTest(unittest.TestCase):
     self.failUnless('-p 50' in result, 'protocol 50 not found.')
 
   def testVerbatimTerm(self):
-    acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_5,
+    acl = iptables.Iptables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_5,
                                                self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('mary had a little lamb' in result,
@@ -688,7 +689,7 @@ class AclCheckTest(unittest.TestCase):
                 'third verbatim output is missing or incorrect.')
 
   def testCommentReflowing(self):
-    acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_6,
+    acl = iptables.Iptables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_6,
                                                self.naming), EXP_INFO)
     result = str(acl)
     self.failIf('--comments ""' in result,
@@ -699,19 +700,19 @@ class AclCheckTest(unittest.TestCase):
                 'Iptables comments may not contain newline characters.')
 
   def testLongTermName(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + BAD_LONG_TERM_NAME, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + BAD_LONG_TERM_NAME, self.naming)
     self.assertRaises(aclgenerator.TermNameTooLongError,
                       iptables.Iptables, pol, EXP_INFO)
 
   def testLongTermAbbreviation(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_LONG_TERM_NAME, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_3 + GOOD_LONG_TERM_NAME, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
     self.failUnless('-abbreviations' in result,
                     'Our strings disappeared during abbreviation.')
 
   def testLongTermTruncation(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_4 + GOOD_LONG_TERM_NAME, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_4 + GOOD_LONG_TERM_NAME, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
     self.failUnless('google-experiment-abbrev' in result,
@@ -720,7 +721,7 @@ class AclCheckTest(unittest.TestCase):
                 'Term name was not truncated as expected.')
 
   def testFragmentOptions(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_7, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_7, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
     self.failUnless('--u32 4&0x3FFF=0x2000' in result,
@@ -731,7 +732,7 @@ class AclCheckTest(unittest.TestCase):
                     'fragment-offset rule is missing')
 
   def testIcmpMatching(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_8, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_8, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
     self.failUnless('--icmp-type 0' in result,
@@ -744,7 +745,7 @@ class AclCheckTest(unittest.TestCase):
                     'icmp-type 15 (info-request) is missing')
 
   def testConntrackUDP(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + UDP_STATE_TERM, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + UDP_STATE_TERM, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
     self.failUnless('-m state --state ESTABLISHED,RELATED' in result,
@@ -755,7 +756,7 @@ class AclCheckTest(unittest.TestCase):
                     'udp connection tracking is missing protocol specification')
 
   def testConntrackAll(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + STATEFUL_ONLY_TERM, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + STATEFUL_ONLY_TERM, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
     self.failUnless('-m state --state ESTABLISHED,RELATED' in result,
@@ -764,7 +765,7 @@ class AclCheckTest(unittest.TestCase):
                 'High-ports should not appear for non-TCP/UDP protocols')
 
   def testTcpEstablishedNostate(self):
-    pol = policy.ParsePolicy(NOSTATE_HEADER + TCP_STATE_TERM, self.naming)
+    pol = policyparser.ParsePolicy(NOSTATE_HEADER + TCP_STATE_TERM, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
     self.failUnless(
@@ -777,7 +778,7 @@ class AclCheckTest(unittest.TestCase):
                 'Nostate header should not use nf_conntrack --state flag')
 
   def testUdpEstablishedNostate(self):
-    pol = policy.ParsePolicy(NOSTATE_HEADER + UDP_STATE_TERM, self.naming)
+    pol = policyparser.ParsePolicy(NOSTATE_HEADER + UDP_STATE_TERM, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
     self.failUnless('-p udp --dport 1024:65535 -j ACCEPT' in result,
@@ -788,29 +789,29 @@ class AclCheckTest(unittest.TestCase):
   def testEstablishedNostate(self):
     # when using "nostate" filter and a term with "option:: established"
     # have any protocol other than TCP and/or UDP should raise error.
-    pol = policy.ParsePolicy(NOSTATE_HEADER + STATEFUL_ONLY_TERM, self.naming)
+    pol = policyparser.ParsePolicy(NOSTATE_HEADER + STATEFUL_ONLY_TERM, self.naming)
     self.assertRaises(aclgenerator.EstablishedError,
                       iptables.Iptables, pol, EXP_INFO)
 
   def testUnsupportedFilter(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + UNSUPPORTED_TERM, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + UNSUPPORTED_TERM, self.naming)
     self.assertRaises(aclgenerator.UnsupportedFilterError, iptables.Iptables,
                       pol, EXP_INFO)
 
   def testUnknownTermKeyword(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + UNKNOWN_TERM_KEYWORD, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + UNKNOWN_TERM_KEYWORD, self.naming)
     # Adding a (fake) new property, e.g. if policy.py is updated.
     pol.filters[0][1][0].ip_options_count = '2-255'
     self.assertRaises(aclgenerator.UnsupportedFilterError, iptables.Iptables,
                       pol, EXP_INFO)
 
   def testProtocolExceptUnsupported(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + UNSUPPORTED_EXCEPT, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + UNSUPPORTED_EXCEPT, self.naming)
     self.assertRaises(aclgenerator.UnsupportedFilterError, iptables.Iptables,
                       pol, EXP_INFO)
 
   def testTermNameConflict(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_1 +
+    pol = policyparser.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_1 +
                              GOOD_TERM_1 + GOOD_TERM_1, self.naming)
     self.assertRaises(aclgenerator.DuplicateTermError,
                       iptables.Iptables, pol, EXP_INFO)
@@ -819,7 +820,7 @@ class AclCheckTest(unittest.TestCase):
     ports = [str(x) for x in range(1, 29, 2)]
     self.naming.GetServiceByProto.return_value = ports
 
-    acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_MULTIPORT,
+    acl = iptables.Iptables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_MULTIPORT,
                                                self.naming), EXP_INFO)
     self.failUnless('-m multiport --sports %s' % ','.join(ports) in str(acl),
                     'multiport module not used as expected.')
@@ -835,7 +836,7 @@ class AclCheckTest(unittest.TestCase):
              '27-29']
     self.naming.GetServiceByProto.return_value = ports
 
-    acl = iptables.Iptables(policy.ParsePolicy(
+    acl = iptables.Iptables(policyparser.ParsePolicy(
         GOOD_HEADER_1 + GOOD_MULTIPORT_RANGE, self.naming), EXP_INFO)
     expected = '-m multiport --dports %s' % ','.join(ports).replace('-', ':')
     self.failUnless(expected in str(acl),
@@ -847,7 +848,7 @@ class AclCheckTest(unittest.TestCase):
   def testMultiportSwap(self):
     self.naming.GetServiceByProto.side_effect = [['80'], ['443'], ['22']]
 
-    acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + MULTIPORT_SWAP,
+    acl = iptables.Iptables(policyparser.ParsePolicy(GOOD_HEADER_1 + MULTIPORT_SWAP,
                                                self.naming), EXP_INFO)
     expected = '--dport 22 -m multiport --sports 80,443'
     self.failUnless(expected in str(acl),
@@ -862,7 +863,7 @@ class AclCheckTest(unittest.TestCase):
     ports = [str(x) for x in range(1, 71, 2)]
     self.naming.GetServiceByProto.return_value = ports
 
-    acl = iptables.Iptables(policy.ParsePolicy(
+    acl = iptables.Iptables(policyparser.ParsePolicy(
         GOOD_HEADER_1 + LARGE_MULTIPORT, self.naming), EXP_INFO)
     self.failUnless('-m multiport --dports 1,3,5,7,9' in str(acl))
     self.failUnless('-m multiport --dports 29,31,33,35,37' in str(acl))
@@ -875,7 +876,7 @@ class AclCheckTest(unittest.TestCase):
     ports = [str(x) for x in range(1, 71, 2)]
     self.naming.GetServiceByProto.return_value = ports
 
-    acl = iptables.Iptables(policy.ParsePolicy(
+    acl = iptables.Iptables(policyparser.ParsePolicy(
         GOOD_HEADER_1 + DUAL_LARGE_MULTIPORT, self.naming), EXP_INFO)
     self.failUnless('-m multiport --sports 1,3,5' in str(acl))
     self.failUnless('-m multiport --sports 29,31,33' in str(acl))
@@ -909,7 +910,7 @@ class AclCheckTest(unittest.TestCase):
                       [(1, 1), (2, 2)], source=False, dest=False)
 
   def testLogging(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + LOGGING_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + LOGGING_TERM_1, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
     self.failUnless('-j LOG --log-prefix foo' in result,
@@ -918,14 +919,14 @@ class AclCheckTest(unittest.TestCase):
                     'action jump does not appear in output.')
 
   def testSourceInterface(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + SOURCE_INTERFACE_TERM, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + SOURCE_INTERFACE_TERM, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
     self.failUnless('-i eth0' in result,
                     'source interface specification not in output.')
 
   def testDestinationInterface(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + DESTINATION_INTERFACE_TERM,
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + DESTINATION_INTERFACE_TERM,
                              self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
@@ -934,7 +935,7 @@ class AclCheckTest(unittest.TestCase):
 
   @mock.patch.object(iptables.logging, 'warn')
   def testExpired(self, mock_warn):
-    _ = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + EXPIRED_TERM,
+    _ = iptables.Iptables(policyparser.ParsePolicy(GOOD_HEADER_1 + EXPIRED_TERM,
                                              self.naming), EXP_INFO)
 
     mock_warn.assert_called_once_with(
@@ -944,7 +945,7 @@ class AclCheckTest(unittest.TestCase):
   @mock.patch.object(iptables.logging, 'info')
   def testExpiringTerm(self, mock_info):
     exp_date = datetime.date.today() + datetime.timedelta(weeks=EXP_INFO)
-    _ = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + EXPIRING_TERM %
+    _ = iptables.Iptables(policyparser.ParsePolicy(GOOD_HEADER_1 + EXPIRING_TERM %
                                              exp_date.strftime('%Y-%m-%d'),
                                              self.naming), EXP_INFO)
 
@@ -953,7 +954,7 @@ class AclCheckTest(unittest.TestCase):
         'less than two weeks.', 'is_expiring', 'INPUT')
 
   def testIPv6Icmp(self):
-    pol = policy.ParsePolicy(IPV6_HEADER_1 + IPV6_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(IPV6_HEADER_1 + IPV6_TERM_1, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
     self.failUnless('--icmpv6-type 1' in result,
@@ -967,7 +968,7 @@ class AclCheckTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [
         nacaddr.IPv6('fd87:6044:ac54:3558::/64')]
 
-    pol = policy.ParsePolicy(IPV6_HEADER_1 + ICMPV6_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(IPV6_HEADER_1 + ICMPV6_TERM_1, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
     self.failUnless('-s fd87:6044:ac54:3558::/64 -p ipv6-icmp -m icmp6'
@@ -978,7 +979,7 @@ class AclCheckTest(unittest.TestCase):
 
   @mock.patch.object(iptables.logging, 'debug')
   def testIcmpv6InetMismatch(self, mock_debug):
-    acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + IPV6_TERM_1,
+    acl = iptables.Iptables(policyparser.ParsePolicy(GOOD_HEADER_1 + IPV6_TERM_1,
                                                self.naming), EXP_INFO)
     # output happens in __str_
     str(acl)
@@ -990,7 +991,7 @@ class AclCheckTest(unittest.TestCase):
 
   @mock.patch.object(iptables.logging, 'debug')
   def testIcmpInet6Mismatch(self, mock_debug):
-    acl = iptables.Iptables(policy.ParsePolicy(IPV6_HEADER_1 +
+    acl = iptables.Iptables(policyparser.ParsePolicy(IPV6_HEADER_1 +
                                                GOOD_TERM_1,
                                                self.naming), EXP_INFO)
     # output happens in __str_
@@ -1002,7 +1003,7 @@ class AclCheckTest(unittest.TestCase):
         'the ACL is of inet6 address family.')
 
   def testOwner(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_10, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_10, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl).split('\n')
     self.failUnless('-A I_good-term-10 -m comment --comment "Owner: '
@@ -1010,7 +1011,7 @@ class AclCheckTest(unittest.TestCase):
                     'missing or incorrect comment specification.')
 
   def testSetTarget(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     acl.SetTarget('OUTPUT', 'DROP')
     result = str(acl).split('\n')
@@ -1018,7 +1019,7 @@ class AclCheckTest(unittest.TestCase):
                     'output default policy of drop not set.')
 
   def testSetCustomTarget(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     acl.SetTarget('foobar')
     result = str(acl).split('\n')

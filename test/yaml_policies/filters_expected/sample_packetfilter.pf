@@ -1,0 +1,44 @@
+table <GOOGLE_DNS> {8.8.4.4/32,\
+8.8.8.8/32,\
+2001:4860:4860::8844/128,\
+2001:4860:4860::8888/128}
+table <INTERNAL> {10.0.0.0/8,\
+172.16.0.0/12,\
+192.168.0.0/16}
+table <MAIL_SERVERS> {200.1.1.4/32,\
+200.1.1.5/32}
+table <RFC1918> {10.0.0.0/8,\
+172.16.0.0/12,\
+192.168.0.0/16}
+table <WEB_SERVERS> {200.1.1.1/32,\
+200.1.1.2/32}
+# Packetfilter allowtointernet Policy
+# Denies all traffic to internal IPs except established tcp replies.
+#
+# $Id:$
+# $Date:$
+# $Revision:$
+# inet
+
+# term accept-dhcp
+# Optional - allow forwarding of DHCP requests.
+pass quick inet proto { udp } from { any } to { any } port { 67:68 } keep state
+
+# term accept-to-honestdns
+# Allow name resolution using honestdns.
+pass quick inet proto { udp } from { any } to { <GOOGLE_DNS> } port { 53 } keep state
+
+# term deny-to-internal
+# Deny access to rfc1918/internal.
+block return quick log inet from { any } to { <INTERNAL> } flags S/SA
+
+# term test-icmp
+pass quick inet proto { icmp } from { any } to { <RFC1918> } icmp-type { 0, 8 } keep state
+
+# term deny-to-specific_hosts
+# Deny access to specified public.
+block drop quick inet from { any } to { <MAIL_SERVERS>, <WEB_SERVERS> } flags S/SA
+
+# term default-permit
+# Allow what's left.
+pass quick inet from { any } to { any } flags S/SA keep state

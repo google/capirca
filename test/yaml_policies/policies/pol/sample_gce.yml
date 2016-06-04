@@ -1,0 +1,40 @@
+#
+# This is an example policy for capirca
+#
+
+name: samplepolicy
+address-family: ipv4
+
+comment: this is a sample policy to generate GCE filter
+
+targets:
+  - gce global/networks/default
+
+terms:
+
+  - name: test-ssh
+    comment: Allow SSH access to all instances from company.
+    source-address: PUBLIC_NAT
+    protocol: tcp
+    destination-port: SSH
+    action: accept
+
+  - name: test-web
+    comment: Allow HTTP/S to instances with webserver tag.
+    source-address: ANY
+    protocol: tcp
+    destination-port: HTTP
+    destination-tag: webserver
+    action: accept
+
+  - name: test-icmp
+    comment: Allow ICMP from company.
+    source-address: PUBLIC_NAT
+    protocol: icmp
+    action: accept
+
+  - name: test-internal
+    comment: Allow all GCE network internal traffic.
+    source-address: RFC1918
+    protocol: tcp, udp
+    action: accept

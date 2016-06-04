@@ -21,6 +21,7 @@ import unittest
 from lib import aclcheck
 from lib import naming
 from lib import policy
+from lib import policyparser
 from lib import port
 
 
@@ -72,7 +73,7 @@ class AclCheckTest(unittest.TestCase):
 
     self.defs.ParseServiceList(servicedata)
     self.defs.ParseNetworkList(networkdata)
-    self.pol = policy.ParsePolicy(POLICYTEXT, self.defs)
+    self.pol = policyparser.ParsePolicy(POLICYTEXT, self.defs)
 
   def testExactMatches(self):
     check = aclcheck.AclCheck(self.pol, '172.16.1.1', '10.1.1.1', '1025', '22',

@@ -24,6 +24,7 @@ from lib import junipersrx
 from lib import nacaddr
 from lib import naming
 from lib import policy
+from lib import policyparser
 import mock
 
 
@@ -316,18 +317,18 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming = mock.create_autospec(naming.Naming)
 
   def testHeaderComment(self):
-    pol = policy.ParsePolicy(GOOD_HEADER + ICMP_TYPE_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER + ICMP_TYPE_TERM_1, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('This is a test acl with a comment' in output, output)
 
   def testHeaderApplyGroups(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_5 + ICMP_TYPE_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_5 + ICMP_TYPE_TERM_1, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('apply-groups [ tcp-test1 tcp-test2 ]' in output,
                     output)
 
   def testHeaderApplyGroupsExcept(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_6 + ICMP_TYPE_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_6 + ICMP_TYPE_TERM_1, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('apply-groups-except [ tcp-test1 tcp-test2 ]' in output,
                     output)
@@ -341,7 +342,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = _IPSET
     self.naming.GetServiceByProto.return_value = ['25']
 
-    srx = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
+    srx = junipersrx.JuniperSRX(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
                                                    self.naming), EXP_INFO)
     output = str(srx)
     self.failUnless(expected_output in output, output)
@@ -353,7 +354,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = _IPSET
     self.naming.GetServiceByProto.return_value = ['25']
 
-    srx = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
+    srx = junipersrx.JuniperSRX(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
                                                    self.naming), EXP_INFO)
     output = str(srx)
     self.failUnless('policy good-term-1 {' in output, output)
@@ -364,7 +365,7 @@ class JuniperSRXTest(unittest.TestCase):
   def testVpnWithoutPolicy(self):
     self.naming.GetNetAddr.return_value = _IPSET
 
-    srx = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_3,
+    srx = junipersrx.JuniperSRX(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_3,
                                                    self.naming), EXP_INFO)
     output = str(srx)
     self.failUnless('ipsec-vpn good-vpn-3;' in output, output)
@@ -374,7 +375,7 @@ class JuniperSRXTest(unittest.TestCase):
   def testVpnWithPolicy(self):
     self.naming.GetNetAddr.return_value = _IPSET
 
-    srx = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_4,
+    srx = junipersrx.JuniperSRX(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_4,
                                                    self.naming), EXP_INFO)
     output = str(srx)
     self.failUnless('ipsec-vpn good-vpn-4;' in output, output)
@@ -385,7 +386,7 @@ class JuniperSRXTest(unittest.TestCase):
   def testVpnWithDrop(self):
     self.naming.GetNetAddr.return_value = _IPSET
 
-    srx = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER + BAD_TERM_1,
+    srx = junipersrx.JuniperSRX(policyparser.ParsePolicy(GOOD_HEADER + BAD_TERM_1,
                                                    self.naming), EXP_INFO)
     output = str(srx)
     self.failUnless('ipsec-vpn good-vpn-4;' not in output, output)
@@ -394,13 +395,13 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
   def testDefaultDeny(self):
-    srx = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER + DEFAULT_TERM_1,
+    srx = junipersrx.JuniperSRX(policyparser.ParsePolicy(GOOD_HEADER + DEFAULT_TERM_1,
                                                    self.naming), EXP_INFO)
     output = str(srx)
     self.failUnless('deny;' in output, output)
 
   def testIcmpTypes(self):
-    pol = policy.ParsePolicy(GOOD_HEADER + ICMP_TYPE_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER + ICMP_TYPE_TERM_1, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('application test-icmp-app;' in output, output)
     self.failUnless('application test-icmp-app {' in output, output)
@@ -410,31 +411,31 @@ class JuniperSRXTest(unittest.TestCase):
                     in output, output)
 
   def testLoggingBoth(self):
-    srx = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_5,
+    srx = junipersrx.JuniperSRX(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_5,
                                                    self.naming), EXP_INFO)
     output = str(srx)
     self.failUnless('session-init;' in output, output)
     self.failUnless('session-close;' in output, output)
 
   def testOwnerTerm(self):
-    pol = policy.ParsePolicy(GOOD_HEADER + OWNER_TERM, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER + OWNER_TERM, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('            /*\n'
                     '            Owner: foo@google.com\n'
                     '            */' in output, output)
 
   def testBadICMP(self):
-    pol = policy.ParsePolicy(GOOD_HEADER + BAD_ICMP_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER + BAD_ICMP_TERM_1, self.naming)
     self.assertRaises(aclgenerator.UnsupportedFilterError,
                       junipersrx.JuniperSRX, pol, EXP_INFO)
 
   def testICMPProtocolOnly(self):
-    pol = policy.ParsePolicy(GOOD_HEADER + ICMP_ONLY_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER + ICMP_ONLY_TERM_1, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('protocol icmp;' in output, output)
 
   def testMultipleProtocolGrouping(self):
-    pol = policy.ParsePolicy(GOOD_HEADER + MULTIPLE_PROTOCOLS_TERM, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER + MULTIPLE_PROTOCOLS_TERM, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('application-set multi-proto-app {' in output, output)
     self.failUnless('application multi-proto-app1;' in output, output)
@@ -448,20 +449,20 @@ class JuniperSRXTest(unittest.TestCase):
     self.failUnless('term t3 protocol icmp;' in output, output)
 
   def testGlobalPolicyHeader(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_10 + MULTIPLE_PROTOCOLS_TERM,
+    pol = policyparser.ParsePolicy(GOOD_HEADER_10 + MULTIPLE_PROTOCOLS_TERM,
                              self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.assertEqual(output.count('global {'), 2)
     self.assertFalse('from-zone all to-zone all {' in output)
 
   def testBadGlobalPolicyHeaderZoneBook(self):
-    pol = policy.ParsePolicy(BAD_HEADER_3 + MULTIPLE_PROTOCOLS_TERM,
+    pol = policyparser.ParsePolicy(BAD_HEADER_3 + MULTIPLE_PROTOCOLS_TERM,
                              self.naming)
     self.assertRaises(junipersrx.UnsupportedFilterError, junipersrx.JuniperSRX,
                       pol, EXP_INFO)
 
   def testBadGlobalPolicyHeaderNameAll(self):
-    pol = policy.ParsePolicy(BAD_HEADER_4 + MULTIPLE_PROTOCOLS_TERM,
+    pol = policyparser.ParsePolicy(BAD_HEADER_4 + MULTIPLE_PROTOCOLS_TERM,
                              self.naming)
     self.assertRaises(junipersrx.UnsupportedFilterError, junipersrx.JuniperSRX,
                       pol, EXP_INFO)
@@ -470,7 +471,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = _IPSET
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(BAD_HEADER + GOOD_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(BAD_HEADER + GOOD_TERM_1, self.naming)
     self.assertRaises(junipersrx.UnsupportedFilterError, junipersrx.JuniperSRX,
                       pol, EXP_INFO)
 
@@ -482,7 +483,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = _IPSET
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(BAD_HEADER_1 + GOOD_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(BAD_HEADER_1 + GOOD_TERM_1, self.naming)
     self.assertRaises(junipersrx.ConflictingTargetOptions,
                       junipersrx.JuniperSRX,
                       pol, EXP_INFO)
@@ -495,7 +496,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = _IPSET
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(BAD_HEADER_2 + GOOD_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(BAD_HEADER_2 + GOOD_TERM_1, self.naming)
     self.assertRaises(junipersrx.ConflictingTargetOptions,
                       junipersrx.JuniperSRX,
                       pol, EXP_INFO)
@@ -505,7 +506,7 @@ class JuniperSRXTest(unittest.TestCase):
 
   @mock.patch.object(junipersrx.logging, 'warn')
   def testExpiredTerm(self, mock_warn):
-    _ = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER + EXPIRED_TERM_1,
+    _ = junipersrx.JuniperSRX(policyparser.ParsePolicy(GOOD_HEADER + EXPIRED_TERM_1,
                                                  self.naming), EXP_INFO)
 
     mock_warn.assert_called_once_with(
@@ -515,7 +516,7 @@ class JuniperSRXTest(unittest.TestCase):
   @mock.patch.object(junipersrx.logging, 'info')
   def testExpiringTerm(self, mock_info):
     exp_date = datetime.date.today() + datetime.timedelta(weeks=EXP_INFO)
-    _ = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER + EXPIRING_TERM %
+    _ = junipersrx.JuniperSRX(policyparser.ParsePolicy(GOOD_HEADER + EXPIRING_TERM %
                                                  exp_date.strftime('%Y-%m-%d'),
                                                  self.naming), EXP_INFO)
 
@@ -525,12 +526,12 @@ class JuniperSRXTest(unittest.TestCase):
         'trust', 'untrust')
 
   def testTimeout(self):
-    pol = policy.ParsePolicy(GOOD_HEADER + TIMEOUT_TERM, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER + TIMEOUT_TERM, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('timeout 77' in output, output)
 
   def testIcmpV6(self):
-    pol = policy.ParsePolicy(GOOD_HEADER + IPV6_ICMP_TERM, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER + IPV6_ICMP_TERM, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('protocol icmp6' in output, output)
 
@@ -538,7 +539,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = _IPSET
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_1, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('replace: address-book' in output, output)
     self.failUnless('replace: policies' in output, output)
@@ -551,7 +552,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = _IPSET
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_1, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('replace: address-book {' in output, output)
     self.failUnless('global {' in output, output)
@@ -565,7 +566,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = _IPSET
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_1, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('replace: address-book {' in output, output)
     self.failUnless('global {' in output, output)
@@ -579,7 +580,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = _IPSET
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(GOOD_HEADER_4 + GOOD_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_4 + GOOD_TERM_1, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('replace: address-book {' in output, output)
     self.failUnless('global {' in output, output)
@@ -596,7 +597,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.side_effect = [_IPSET2, _IPSET3]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1 + GOOD_HEADER_2 +
+    pol = policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_1 + GOOD_HEADER_2 +
                              GOOD_TERM_12, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('address FOOBAR_0 10.23.0.0/22;' in output, output)
@@ -614,7 +615,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.side_effect = [_IPSET3, _IPSET2]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_12 + GOOD_HEADER +
+    pol = policyparser.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_12 + GOOD_HEADER +
                              GOOD_TERM_1, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('address FOOBAR_0 10.23.0.0/22;' in output, output)
@@ -629,7 +630,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = _IPSET
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(GOOD_HEADER_9 + GOOD_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_9 + GOOD_TERM_1, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('security-zone untrust {' in output, output)
     self.failUnless('replace: address-book {' in output, output)
@@ -643,7 +644,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = _IPSET
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(GOOD_HEADER_7 + GOOD_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_7 + GOOD_TERM_1, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('security-zone untrust {' in output, output)
     self.failUnless('replace: address-book {' in output, output)
@@ -657,7 +658,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = _IPSET
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(GOOD_HEADER_8 + GOOD_TERM_1, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_8 + GOOD_TERM_1, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('security-zone untrust {' in output, output)
     self.failUnless('replace: address-book {' in output, output)
@@ -689,7 +690,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = self._OutOfOrderAddresses()
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_2, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_2, self.naming)
     p = junipersrx.JuniperSRX(pol, EXP_INFO)
 
     self._FailIfUnorderedAddressBook(p._GenerateAddressBook())
@@ -702,7 +703,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [x, y]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_2, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_2, self.naming)
     p = junipersrx.JuniperSRX(pol, EXP_INFO)
 
     self._FailIfUnorderedAddressBook(p._GenerateAddressBook())
@@ -726,7 +727,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = _IPSET
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_2 + GOOD_TERM_1,
+    pol = policyparser.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_2 + GOOD_TERM_1,
                              self.naming)
     p = junipersrx.JuniperSRX(pol, EXP_INFO)
     self._AssertOrder(p._GenerateApplications(),
@@ -744,7 +745,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = _IPSET
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_1 + GOOD_TERM_2,
+    pol = policyparser.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_1 + GOOD_TERM_2,
                              self.naming)
     p = junipersrx.JuniperSRX(pol, EXP_INFO)
     self._AssertOrder(p._GenerateApplications(),
@@ -760,7 +761,7 @@ class JuniperSRXTest(unittest.TestCase):
 
   def testDscpWithByte(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
-    srx = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_10,
+    srx = junipersrx.JuniperSRX(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_10,
                                                    self.naming), EXP_INFO)
     output = str(srx)
     self.failUnless('dscp b111000;' in output, output)
@@ -770,7 +771,7 @@ class JuniperSRXTest(unittest.TestCase):
   def testDscpWithClass(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
 
-    srx = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_11,
+    srx = junipersrx.JuniperSRX(policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_11,
                                                    self.naming), EXP_INFO)
     output = str(srx)
     self.failUnless('dscp af42;' in output, output)
@@ -799,7 +800,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.side_effect = [mo_ips, prodcolos_ips]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_14, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_14, self.naming)
     srx = junipersrx.JuniperSRX(pol, EXP_INFO)
     self.assertEqual(len(srx.policy.filters[0][1]), 4)
 
@@ -830,7 +831,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.side_effect = [mo_ips, prodcolos_ips]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_14, self.naming)
+    pol = policyparser.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_14, self.naming)
     srx = junipersrx.JuniperSRX(pol, EXP_INFO)
     self.assertEqual(len(srx.policy.filters[0][1]), 4)
 
@@ -843,7 +844,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = _IPSET
     self.naming.GetServiceByProto.side_effect = [['25'], ['26']]
 
-    pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_2 + GOOD_HEADER_11 +
+    pol = policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM_2 + GOOD_HEADER_11 +
                              GOOD_TERM_2, self.naming)
     self.assertRaises(junipersrx.ConflictingApplicationSets,
                       junipersrx.JuniperSRX, pol, EXP_INFO)

@@ -20,6 +20,7 @@ from lib import nacaddr
 from lib import naming
 from lib import nsxv
 from lib import policy
+from lib import policyparser
 import mock
 
 
@@ -150,7 +151,7 @@ class TermTest(unittest.TestCase):
                                                   nacaddr.IP('192.168.0.0/16')])
     self.naming.GetServiceByProto.return_value = ['123']
 
-    pol = policy.ParsePolicy(INET_FILTER, self.naming, False)
+    pol = policyparser.ParsePolicy(INET_FILTER, self.naming, False)
     af = 4
     for _, terms in pol.filters:
       nsxv_term = nsxv.Term(terms[0], af)
@@ -198,7 +199,7 @@ class TermTest(unittest.TestCase):
 
   def testStrForinet6(self):
     """Test for Term._str_."""
-    pol = policy.ParsePolicy(INET6_FILTER, self.naming, False)
+    pol = policyparser.ParsePolicy(INET6_FILTER, self.naming, False)
     af = 6
     filter_type = 'inet6'
     for _, terms in pol.filters:
@@ -232,7 +233,7 @@ class TermTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['123']
 
     exp_info = 2
-    pol = policy.ParsePolicy(INET_FILTER, self.naming, False)
+    pol = policyparser.ParsePolicy(INET_FILTER, self.naming, False)
     translate_pol = nsxv.Nsxv(pol, exp_info)
     nsxv_policies = translate_pol.nsxv_policies
     for (_, filter_name, filter_list, terms) in nsxv_policies:
@@ -254,7 +255,7 @@ class TermTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['53']
 
     exp_info = 2
-    pol = policy.ParsePolicy(MIXED_FILTER, self.naming, False)
+    pol = policyparser.ParsePolicy(MIXED_FILTER, self.naming, False)
     target = nsxv.Nsxv(pol, exp_info)
 
     # parse the output and seperate sections and comment

@@ -1,0 +1,37 @@
+# begin:ipset-rules
+create deny-to-reserved-dst hash:net family inet hashsize 16 maxelem 16
+add deny-to-reserved-dst 0.0.0.0/8
+add deny-to-reserved-dst 10.0.0.0/8
+add deny-to-reserved-dst 100.64.0.0/10
+add deny-to-reserved-dst 127.0.0.0/8
+add deny-to-reserved-dst 169.254.0.0/16
+add deny-to-reserved-dst 172.16.0.0/12
+add deny-to-reserved-dst 192.168.0.0/16
+add deny-to-reserved-dst 224.0.0.0/4
+add deny-to-reserved-dst 240.0.0.0/4
+create deny-to-bogons-dst hash:net family inet hashsize 16 maxelem 16
+add deny-to-bogons-dst 0.0.0.0/8
+add deny-to-bogons-dst 10.0.0.0/8
+add deny-to-bogons-dst 100.64.0.0/10
+add deny-to-bogons-dst 127.0.0.0/8
+add deny-to-bogons-dst 169.254.0.0/16
+add deny-to-bogons-dst 172.16.0.0/12
+add deny-to-bogons-dst 192.168.0.0/16
+add deny-to-bogons-dst 224.0.0.0/4
+add deny-to-bogons-dst 240.0.0.0/4
+create allow-web-to-mail-src hash:net family inet hashsize 4 maxelem 4
+add allow-web-to-mail-src 200.1.1.1/32
+add allow-web-to-mail-src 200.1.1.2/32
+create allow-web-to-mail-dst hash:net family inet hashsize 4 maxelem 4
+add allow-web-to-mail-dst 200.1.1.4/32
+add allow-web-to-mail-dst 200.1.1.5/32
+# end:ipset-rules
+# Ipset OUTPUT Policy
+# $Id:$
+# $Date:$
+# $Revision:$
+# inet
+-P OUTPUT DROP
+-A OUTPUT -p all -m set --match-set deny-to-reserved-dst dst -j DROP
+-A OUTPUT -p all -m set --match-set deny-to-bogons-dst dst -j DROP
+-A OUTPUT -p all -m set --match-set allow-web-to-mail-src src -m set --match-set allow-web-to-mail-dst dst -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT

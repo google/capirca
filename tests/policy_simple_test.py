@@ -15,6 +15,7 @@
 import unittest
 
 from lib import policy_simple
+from lib import policyparser
 import logging
 
 
