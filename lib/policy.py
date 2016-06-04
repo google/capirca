@@ -38,9 +38,20 @@ class HeaderDuplicateTargetPlatformError(Error):
   """Same target platform added to Header, resulting in ambiguity for options."""
 
 
+class ShadingError(Error):
+  """Error when a term is shaded by a prior term."""
+
+
 class TermInvalidIcmpType(Error):
   """Error when a term has invalid icmp-types specified."""
 
+
+class TermProtocolEtherTypeError(Error):
+  """Error when both ether-type & upper-layer protocol matches are requested."""
+
+
+class VerbatimError(Error):
+  """Error when both verbatim and non-verbatim terms are used in a Policy."""
 
 # classes for storing the object types in the policy files.
 class Policy(object):
@@ -747,7 +758,7 @@ class Term(object):
     """Sanity check the definition of the term.
 
     Raises:
-      ParseError: if term has both verbatim and non-verbatim tokens
+      VerbatimError: if term has both verbatim and non-verbatim tokens
       TermInvalidIcmpType: if term has invalid icmp-types specified
       TermNoActionError: if the term doesn't have an action defined.
       TermPortProtocolError: if the term has a service/protocol definition pair
@@ -766,7 +777,7 @@ class Term(object):
     if self.verbatim:
       if (self.action or self.source_port or self.destination_port or
           self.port or self.protocol or self.option):
-        raise ParseError(
+        raise VerbatimError(
             'term "%s" has both verbatim and non-verbatim tokens.' % self.name)
     else:
       if not self.action and not self.routing_instance and not self.next_ip:

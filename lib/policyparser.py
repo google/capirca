@@ -73,10 +73,6 @@ class TermPortProtocolError(Error):
   """Error when a requested protocol doesn't have any of the requested ports."""
 
 
-class TermProtocolEtherTypeError(Error):
-  """Error when both ether-type & upper-layer protocol matches are requested."""
-
-
 class TermNoActionError(Error):
   """Error when a term hasn't defined an action."""
 
@@ -95,10 +91,6 @@ class UndefinedAddressError(Error):
 
 class NoTermsError(Error):
   """Error when no terms were found."""
-
-
-class ShadingError(Error):
-  """Error when a term is shaded by a prior term."""
 
 
 class VarType(object):
