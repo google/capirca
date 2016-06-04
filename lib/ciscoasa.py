@@ -196,6 +196,7 @@ class Term(aclgenerator.Term):
 
     return '\n'.join(ret_str)
 
+
   def _TermPortToProtocol(self, portNumber, proto):
     _ASA_PORTS_TCP = {5190: 'aol',
                       179: 'bgp',
@@ -243,8 +244,9 @@ class Term(aclgenerator.Term):
                       540: 'uucp',
                       43: 'whois',
                       80: 'www',
-                      2049: 'nfs'
-                     }
+                      2049: 'nfs',
+                      5060: 'sip'
+                    }
     _ASA_PORTS_UDP = {512: 'biff',
                       68: 'bootpc',
                       67: 'bootps',
@@ -275,8 +277,9 @@ class Term(aclgenerator.Term):
                       37: 'time',
                       513: 'who',
                       177: 'xdmcp',
-                      2049: 'nfs'
-                     }
+                      2049: 'nfs',
+                      5060: 'sip'
+                    }
 
     _ASA_TYPES_ICMP = {6: 'alternate-address',
                        31: 'conversion-error',
@@ -297,8 +300,8 @@ class Term(aclgenerator.Term):
                        13: 'timestamp-request',
                        30: 'traceroute',
                        3: 'unreachable'
-                      }
-
+                     }
+       
     if proto == 'tcp':
       if portNumber in _ASA_PORTS_TCP:
         return _ASA_PORTS_TCP[portNumber]

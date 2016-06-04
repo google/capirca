@@ -1,0 +1,53 @@
+name: edge-inbound
+address-family: ipv4
+
+comment: |-
+  this is a sample edge input filter that generates
+  multiple output formats.
+
+# NOTES: iptables produces filter 'lines' that must be used as args to the
+# '$ iptables' cmd, while Speedway produces stateful iptables filters
+# compatible with iptables-restore (most people will prefer speedway)
+
+targets:
+  - juniper
+  - cisco
+  - speedway INPUT
+  - ciscoasa asa_in
+  - demo
+  - arista
+  - brocade
+  - ciscoxr
+  - cisconx
+
+terms:
+
+#include 'includes/untrusted-networks-blocking.inc'
+
+  - name: permit-mail-services
+    destination-address: MAIL_SERVERS
+    protocol: tcp
+    destination-port: MAIL_SERVICES
+    action: accept
+  
+  - name: permit-web-services
+    destination-address: WEB_SERVERS
+    protocol: tcp
+    destination-port: WEB_SERVICES
+    action: accept
+  
+  - name: permit-tcp-established
+    destination-address: MAIL_SERVERS, WEB_SERVERS, PUBLIC_NAT
+    protocol: tcp
+    option: tcp-established
+    action: accept
+  
+  - name: permit-udp-established
+    destination-address: MAIL_SERVERS, WEB_SERVERS, PUBLIC_NAT
+    protocol: udp
+    source-port: HIGH_PORTS
+    action: accept
+  
+  - name: default-deny
+    action: deny
+

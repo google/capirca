@@ -17,7 +17,7 @@ header {
   target:: ciscoxr edge-inbound
 }
 
-#include 'policies/includes/untrusted-networks-blocking.inc'
+#include 'includes/untrusted-networks-blocking.inc'
 
 term permit-mail-services {
   destination-address:: MAIL_SERVERS

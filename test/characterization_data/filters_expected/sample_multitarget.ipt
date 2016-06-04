@@ -1,0 +1,98 @@
+*filter
+# Speedway INPUT Policy
+# this is a sample edge input filter that generates
+# multiple output formats.
+#
+# $Id:$
+# $Date:$
+# $Revision:$
+# inet
+:INPUT DROP
+-N I_deny-from-bogons
+-A I_deny-from-bogons -m comment --comment "this is a sample edge input filter with a very very very long and"
+-A I_deny-from-bogons -m comment --comment "multi-line comment that"
+-A I_deny-from-bogons -m comment --comment "also has multiple entries."
+-A I_deny-from-bogons -p all -s 0.0.0.0/8 -j DROP
+-A I_deny-from-bogons -p all -s 192.0.0.0/24 -j DROP
+-A I_deny-from-bogons -p all -s 192.0.2.0/24 -j DROP
+-A I_deny-from-bogons -p all -s 198.18.0.0/15 -j DROP
+-A I_deny-from-bogons -p all -s 198.51.100.0/24 -j DROP
+-A I_deny-from-bogons -p all -s 203.0.113.0/24 -j DROP
+-A I_deny-from-bogons -p all -s 224.0.0.0/4 -j DROP
+-A I_deny-from-bogons -p all -s 240.0.0.0/4 -j DROP
+-A INPUT -j I_deny-from-bogons
+-N I_deny-from-reserved
+-A I_deny-from-reserved -p all -s 0.0.0.0/8 -j DROP
+-A I_deny-from-reserved -p all -s 10.0.0.0/8 -j DROP
+-A I_deny-from-reserved -p all -s 100.64.0.0/10 -j DROP
+-A I_deny-from-reserved -p all -s 127.0.0.0/8 -j DROP
+-A I_deny-from-reserved -p all -s 169.254.0.0/16 -j DROP
+-A I_deny-from-reserved -p all -s 172.16.0.0/12 -j DROP
+-A I_deny-from-reserved -p all -s 192.168.0.0/16 -j DROP
+-A I_deny-from-reserved -p all -s 224.0.0.0/4 -j DROP
+-A I_deny-from-reserved -p all -s 240.0.0.0/4 -j DROP
+-A INPUT -j I_deny-from-reserved
+-N I_deny-to-rfc1918
+-A I_deny-to-rfc1918 -p all -d 10.0.0.0/8 -j DROP
+-A I_deny-to-rfc1918 -p all -d 172.16.0.0/12 -j DROP
+-A I_deny-to-rfc1918 -p all -d 192.168.0.0/16 -j DROP
+-A INPUT -j I_deny-to-rfc1918
+-N I_permit-mail-services
+-A I_permit-mail-services -p tcp -m multiport --dports 25,465,587,995 -d 200.1.1.4/32 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A I_permit-mail-services -p tcp -m multiport --dports 25,465,587,995 -d 200.1.1.5/32 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A INPUT -j I_permit-mail-services
+-N I_permit-web-services
+-A I_permit-web-services -p tcp -m multiport --dports 80,443 -d 200.1.1.1/32 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A I_permit-web-services -p tcp -m multiport --dports 80,443 -d 200.1.1.2/32 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A INPUT -j I_permit-web-services
+-N I_permit-tcp-established
+-A I_permit-tcp-established -p tcp -d 200.1.1.1/32 -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A I_permit-tcp-established -p tcp -d 200.1.1.2/32 -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A I_permit-tcp-established -p tcp -d 200.1.1.3/32 -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A I_permit-tcp-established -p tcp -d 200.1.1.4/32 -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A I_permit-tcp-established -p tcp -d 200.1.1.5/32 -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A INPUT -j I_permit-tcp-established
+-N I_permit-udp-established
+-A I_permit-udp-established -p udp --sport 1024:65535 -d 200.1.1.1/32 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A I_permit-udp-established -p udp --sport 1024:65535 -d 200.1.1.2/32 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A I_permit-udp-established -p udp --sport 1024:65535 -d 200.1.1.3/32 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A I_permit-udp-established -p udp --sport 1024:65535 -d 200.1.1.4/32 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A I_permit-udp-established -p udp --sport 1024:65535 -d 200.1.1.5/32 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A INPUT -j I_permit-udp-established
+-N I_default-deny
+-A I_default-deny -p all -j DROP
+-A INPUT -j I_default-deny
+# Speedway OUTPUT Policy
+# this is a sample output filter
+#
+# $Id:$
+# $Date:$
+# $Revision:$
+# inet
+:OUTPUT DROP
+-N O_deny-to-bad-destinations
+-A O_deny-to-bad-destinations -p all -d 0.0.0.0/8 -j DROP
+-A O_deny-to-bad-destinations -p all -d 0.0.0.0/8 -j DROP
+-A O_deny-to-bad-destinations -p all -d 10.0.0.0/8 -j DROP
+-A O_deny-to-bad-destinations -p all -d 10.0.0.0/8 -j DROP
+-A O_deny-to-bad-destinations -p all -d 100.64.0.0/10 -j DROP
+-A O_deny-to-bad-destinations -p all -d 127.0.0.0/8 -j DROP
+-A O_deny-to-bad-destinations -p all -d 169.254.0.0/16 -j DROP
+-A O_deny-to-bad-destinations -p all -d 172.16.0.0/12 -j DROP
+-A O_deny-to-bad-destinations -p all -d 172.16.0.0/12 -j DROP
+-A O_deny-to-bad-destinations -p all -d 192.0.0.0/24 -j DROP
+-A O_deny-to-bad-destinations -p all -d 192.0.2.0/24 -j DROP
+-A O_deny-to-bad-destinations -p all -d 192.168.0.0/16 -j DROP
+-A O_deny-to-bad-destinations -p all -d 192.168.0.0/16 -j DROP
+-A O_deny-to-bad-destinations -p all -d 198.18.0.0/15 -j DROP
+-A O_deny-to-bad-destinations -p all -d 198.51.100.0/24 -j DROP
+-A O_deny-to-bad-destinations -p all -d 203.0.113.0/24 -j DROP
+-A O_deny-to-bad-destinations -p all -d 224.0.0.0/4 -j DROP
+-A O_deny-to-bad-destinations -p all -d 224.0.0.0/4 -j DROP
+-A O_deny-to-bad-destinations -p all -d 240.0.0.0/4 -j DROP
+-A O_deny-to-bad-destinations -p all -d 240.0.0.0/4 -j DROP
+-A OUTPUT -j O_deny-to-bad-destinations
+-N O_default-accept
+-A O_default-accept -p all -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A OUTPUT -j O_default-accept
+COMMIT

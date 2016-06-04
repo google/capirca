@@ -18,6 +18,7 @@ import unittest
 from lib import arista
 from lib import naming
 from lib import policy
+from lib import policyparser
 import mock
 
 
@@ -52,7 +53,7 @@ class AristaTest(unittest.TestCase):
     # Extended access-lists should not use the "extended" argument to ip
     # access-list.
     acl = arista.Arista(
-        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
+        policyparser.ParsePolicy(GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
     self.assertTrue('ip access-list test-filter' in str(acl))
 
 
