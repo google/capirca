@@ -20,10 +20,14 @@ import unittest
 import copy
 from optparse import OptionParser
 from xml.etree import ElementTree as ET
+import sys
+import inspect
+import os
 
 # compiler imports
 from lib import naming
 from lib import policy
+from lib import policyparser
 from lib import nsxv
 import nsxv_mocktest
 
@@ -36,11 +40,9 @@ class NsxvFunctionalTest(unittest.TestCase):
   def setUp(self):
     """Call before every test case
     """
-    _parser = OptionParser()
-    _parser.add_option('-d', '--def', dest='definitions',
-                      help='definitions directory', default='../def')
-    (FLAGS, args) = _parser.parse_args()
-    self.defs = naming.Naming(FLAGS.definitions)
+    curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    defs_dir = os.path.realpath(os.path.join(curr_dir, '..', 'def'))
+    self.defs = naming.Naming(defs_dir)
 
   def tearDown(self):
     pass
@@ -49,7 +51,7 @@ class NsxvFunctionalTest(unittest.TestCase):
     pass
 
   def test_nsxv_policy(self):
-    pol = policy.ParsePolicy(nsxv_mocktest.POLICY, self.defs)
+    pol = policyparser.ParsePolicy(nsxv_mocktest.POLICY, self.defs)
     exp_info = 2
     nsx = copy.deepcopy(pol)
     fw = nsxv.Nsxv(nsx, exp_info)
@@ -82,7 +84,7 @@ class NsxvFunctionalTest(unittest.TestCase):
     self.assertEqual(destination_port, '143')
 
   def test_nsxv_nosectiondid(self):
-    pol = policy.ParsePolicy(nsxv_mocktest.POLICY_NO_SECTION_ID, self.defs)
+    pol = policyparser.ParsePolicy(nsxv_mocktest.POLICY_NO_SECTION_ID, self.defs)
     exp_info = 2
     nsx = copy.deepcopy(pol)
     fw = nsxv.Nsxv(nsx, exp_info)
@@ -102,7 +104,7 @@ class NsxvFunctionalTest(unittest.TestCase):
 
   def test_nsxv_nofiltertype(self):
     def test_nofiltertype():
-      pol = policy.ParsePolicy(nsxv_mocktest.POLICY_NO_FILTERTYPE, self.defs)
+      pol = policyparser.ParsePolicy(nsxv_mocktest.POLICY_NO_FILTERTYPE, self.defs)
       exp_info = 2
       nsx = copy.deepcopy(pol)
       fw = nsxv.Nsxv(nsx, exp_info)
@@ -110,7 +112,7 @@ class NsxvFunctionalTest(unittest.TestCase):
 
   def test_nsxv_incorrectfiltertype(self):
     def test_incorrectfiltertype():
-      pol = policy.ParsePolicy(nsxv_mocktest.POLICY_INCORRECT_FILTERTYPE, self.defs)
+      pol = policyparser.ParsePolicy(nsxv_mocktest.POLICY_INCORRECT_FILTERTYPE, self.defs)
       exp_info = 2
       nsx = copy.deepcopy(pol)
       fw = nsxv.Nsxv(nsx, exp_info)
@@ -118,7 +120,7 @@ class NsxvFunctionalTest(unittest.TestCase):
 
   def test_nsxv_optionkywd(self):
     def test_optionkywd():
-      pol = policy.ParsePolicy(nsxv_mocktest.POLICY_OPTION_KYWD, self.defs)
+      pol = policyparser.ParsePolicy(nsxv_mocktest.POLICY_OPTION_KYWD, self.defs)
       exp_info = 2
       nsx = copy.deepcopy(pol)
       fw = nsxv.Nsxv(nsx, exp_info)
