@@ -692,17 +692,25 @@ class PacketFilterTest(unittest.TestCase):
         policyparser.ParsePolicy(
             GOOD_HEADER_DIRECTIONAL + DUPLICATE_LONG_NAME_TERM, self.naming),
         EXP_INFO)
-
     self.naming.GetNetAddr.assert_has_calls([
         mock.call('PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME'),
         mock.call('PROD_NETWORK_EXTREAMLY_LONG_VERY_GOOD_NAME')])
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
+  def testTermNameConflict(self):
+    self.assertRaises(
+        packetfilter.DuplicateTermError,
+        packetfilter.PacketFilter.__init__,
+        packetfilter.PacketFilter.__new__(packetfilter.PacketFilter),
+        policy.ParsePolicy(
+            GOOD_HEADER_DIRECTIONAL + GOOD_TERM_ICMP + GOOD_TERM_ICMP,
+            self.naming),
+        EXP_INFO)
+
   def testBadProtoError(self):
     acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + BAD_PROTO_TERM, self.naming), EXP_INFO)
     self.assertRaises(packetfilter.UnsupportedProtoError, str, acl)
-
 
 if __name__ == '__main__':
   unittest.main()

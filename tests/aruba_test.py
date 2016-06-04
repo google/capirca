@@ -23,6 +23,7 @@ from lib import policy
 from lib import policyparser
 import mock
 
+
 GOOD_HEADER_IPV4 = """
 header {
   comment:: "For QoS classification of servers on Aruba controllers."

@@ -25,6 +25,7 @@ from lib import policy
 from lib import policyparser
 import mock
 
+
 GOOD_HEADER = """
 header {
   comment:: "The general policy comment."

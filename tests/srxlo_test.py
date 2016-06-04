@@ -22,6 +22,7 @@ from lib import policyparser
 from lib import srxlo
 import mock
 
+
 GOOD_HEADER_1 = """
 header {
   comment:: "this is a test acl"
