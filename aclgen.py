@@ -125,6 +125,10 @@ class ACLParserError(Error):
     """Raised when the ACL parser fails."""
 
 
+class InvalidPolicyFileExtensionError(Error):
+    """Raised if the policy file extension is not recognized."""
+
+
 # Workaround http://bugs.python.org/issue1515, needed because of
 # http://codereview.appspot.com/4523073/.
 #  (more: http://code.google.com/p/ipaddr-py/issues/detail?id=84)
@@ -160,6 +164,9 @@ def RenderFile(input_file, output_directory, definitions,
       exp_info: print a info message when a term is set to expire
                 in that many weeks.
       write_files: a list of file tuples, (output_file, acl_text), to write
+
+    Raises:
+      InvalidPolicyFileExtensionError: when the file extension is unknown.
     """
     logging.debug('rendering file: %s into %s', input_file,
                   output_directory)
@@ -198,7 +205,8 @@ def RenderFile(input_file, output_directory, definitions,
         '.pol': policyparser
     }
     if file_extension not in format_dict:
-        raise Error('bad policy file extension ' + file_extension)
+        msg = 'bad policy file extension ' + file_extension
+        raise InvalidPolicyFileExtensionError(msg)
     policyparser_module = format_dict[file_extension]
 
     try:
