@@ -478,8 +478,7 @@ def main(args):
                 str(FLAGS.base_directory),
                 str(FLAGS.policy_file),
                 str(FLAGS.output_directory),
-                str(FLAGS.policy_format)
-  )
+                str(FLAGS.policy_format))
 
   format_dict = {
     'yml': ('.yml', yamlnaming.YamlNaming),
