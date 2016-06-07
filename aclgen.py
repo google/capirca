@@ -108,6 +108,7 @@ flags.DEFINE_enum(
     ['capirca', 'yml'],
     'policy file format')
 
+
 class Error(Exception):
   """Base Error class."""
 
