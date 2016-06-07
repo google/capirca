@@ -306,8 +306,8 @@ def RenderFile(input_file, output_directory, definitions,
                       input_file, write_files)
         if pcap_accept:
             acl_obj = pcap.PcapFilter(pcap_accept, exp_info)
-            RenderACL(str(acl_obj), '-accept' + acl_obj.SUFFIX, output_directory,
-                      input_file, write_files)
+            RenderACL(str(acl_obj), '-accept' + acl_obj.SUFFIX,
+                      output_directory, input_file, write_files)
         if pcap_deny:
             acl_obj = pcap.PcapFilter(pcap_deny, exp_info, invert=True)
             RenderACL(str(acl_obj), '-deny' + acl_obj.SUFFIX, output_directory,
@@ -387,7 +387,7 @@ def FilesUpdated(file_name, file_string):
 
     diff = difflib.unified_diff(checked_in_text, new_text)
 
-    # why oh why is it so hard to simply tell if two strings/lists are different?
+    # why is it so hard to simply tell if two strings/lists are different?
     if not difflib.IS_CHARACTER_JUNK(''.join(diff)):
         logging.debug('\n'.join(diff))
         return True
@@ -404,7 +404,7 @@ def DescendRecursively(input_dirname, policy_file_extension,
       policy_file_extension: extension used for the policy file data format
       output_dirname: where to place the rendered files.
       definitions: naming.Naming object
-      depth: integer, used for outputing '---> rendering prod/corp-backbone.jcl'
+      depth: integer, used for outputing '---> rendering <filename>'
 
     Returns:
       the files that were found
@@ -419,9 +419,9 @@ def DescendRecursively(input_dirname, policy_file_extension,
                    os.path.isdir(input_dirname + '/' + x)]:
         # be on the lookout for a policy directory
         if curdir == 'pol':
-            for input_file in [x for x in dircache.listdir(input_dirname + '/pol')
-                               if x.endswith(policy_file_extension)]:
-                in_file = os.path.join(input_dirname, 'pol', input_file)
+            pols = dircache.listdir(input_dirname + '/pol')
+            for f in [x for x in pols if x.endswith(policy_file_extension)]:
+                in_file = os.path.join(input_dirname, 'pol', f)
                 files.append({'in_file': in_file,
                               'out_dir': output_dirname,
                               'defs': definitions})
@@ -494,7 +494,8 @@ def main(args):
     try:
         definitions = definitions_class(FLAGS.definitions_directory)
     except naming.NoDefinitionsError:
-        logging.fatal('bad definitions directory: %s', FLAGS.definitions_directory)
+        msg = 'bad definitions directory: %s'
+        logging.fatal(msg, FLAGS.definitions_directory)
 
     # thead-safe list for storing files to write
     manager = multiprocessing.Manager()
@@ -510,7 +511,8 @@ def main(args):
         # render all files in parallel
         logging.info('finding policies...')
         pols = []
-        pols.extend(DescendRecursively(FLAGS.base_directory, policy_file_extension,
+        pols.extend(DescendRecursively(FLAGS.base_directory,
+                                       policy_file_extension,
                                        FLAGS.output_directory,
                                        definitions))
 
@@ -531,7 +533,8 @@ def main(args):
                 result.get()
             except (ACLParserError, ACLGeneratorError) as e:
                 with_errors = True
-                logging.warn('\n\nerror encountered in rendering process:\n%s\n\n', e)
+                msg = '\n\nerror encountered in rendering process:\n%s\n\n'
+                logging.warn(msg, e)
 
     # actually write files to disk
     WriteFiles(write_files)
