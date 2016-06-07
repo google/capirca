@@ -87,6 +87,22 @@ class Test_AclGen_ensure_demo_files_work(unittest.TestCase):
     self.assertTrue('writing 15 files to disk...' in actual_output)
 
 
+  def test_smoke_test_files_only_written_if_updated(self):
+    no_change_msg = 'no files changed, not writing to disk'
+
+    args = [
+      'program',
+      '--base_directory={0}'.format(self.policies_dir),
+      '--definitions_directory={0}'.format(self.defs_dir),
+      '--output_directory={0}'.format(self.output_dir)
+    ]
+    aclgen.main(args)
+    self.assertTrue(no_change_msg not in self.iobuff.getvalue().split("\n"))
+
+    aclgen.main(args)
+    self.assertTrue(no_change_msg in self.iobuff.getvalue().split("\n"))
+
+
   def test_generate_single_policy(self):
     args = [
       'program',  # Dummy value for gflags, which expects the program name to be the first entry.
