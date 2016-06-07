@@ -378,7 +378,8 @@ def FilesUpdated(file_name, file_string):
   p4_date = '$Da te:'.replace(' ', '')
   p4_revision = '$Rev ision:'.replace(' ', '')
 
-  p4_tags = lambda x: p4_id in x or p4_date in x or p4_revision in x
+  def p4_tags(x):
+    return p4_id in x or p4_date in x or p4_revision in x
 
   checked_in_text = SkipLines(conf.split('\n'), skip_line_func=p4_tags)
   new_text = SkipLines(file_string.split('\n'), skip_line_func=p4_tags)
