@@ -20,6 +20,7 @@ import unittest
 from lib import nacaddr
 from lib import nftables
 from lib import policy
+from lib import policyparser
 import logging
 import mock
 
@@ -185,7 +186,7 @@ class NftablesTest(unittest.TestCase):
     for case in cases:
       logging.info('Testing bad header case %s.', case)
       header = BAD_HEADER % case
-      pol = policy.ParsePolicy(header + GOOD_TERM_1, self.mock_naming)
+      pol = policyparser.ParsePolicy(header + GOOD_TERM_1, self.mock_naming)
       self.assertRaises(nftables.InvalidTargetOption,
                         nftables.Nftables.__init__,
                         nftables.Nftables.__new__(nftables.Nftables),
@@ -193,12 +194,12 @@ class NftablesTest(unittest.TestCase):
 
   @mock.patch.object(logging, 'info')
   def testGoodHeader(self, mock_logging_info):
-    nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_1,
+    nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_1,
                                          self.mock_naming), EXP_INFO)
     mock_logging_info.assert_called_once_with('Chain %s is a non-base '
                                               'chain, make sure it is linked.',
                                               'chain_name')
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1 +
+    nft = str(nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1 +
                                                    GOOD_HEADER_3 + IPV6_TERM_2,
                                                    self.mock_naming),
                                 EXP_INFO))
@@ -211,7 +212,7 @@ class NftablesTest(unittest.TestCase):
 
   @mock.patch.object(logging, 'warn')
   def testExpired(self, mock_logging_warn):
-    nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + EXPIRED_TERM,
+    nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_1 + EXPIRED_TERM,
                                          self.mock_naming), EXP_INFO)
     mock_logging_warn.assert_called_once_with('Term %s in policy %s is expired '
                                               'and will not be rendered.',
@@ -220,7 +221,7 @@ class NftablesTest(unittest.TestCase):
   @mock.patch.object(logging, 'info')
   def testExpiring(self, mock_logging_info):
     exp_date = datetime.date.today() + datetime.timedelta(weeks=EXP_INFO)
-    nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + EXPIRING_TERM %
+    nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_1 + EXPIRING_TERM %
                                          exp_date.strftime('%Y-%m-%d'),
                                          self.mock_naming), EXP_INFO)
     mock_logging_info.assert_called_once_with('Term %s in policy %s '
@@ -230,7 +231,7 @@ class NftablesTest(unittest.TestCase):
 
   @mock.patch.object(logging, 'debug')
   def testIcmpv6InetMismatch(self, mock_logging_debug):
-    str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + IPV6_TERM_1,
+    str(nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_1 + IPV6_TERM_1,
                                              self.mock_naming), EXP_INFO))
     mock_logging_debug.assert_called_once_with('Term inet6-icmp will not be '
                                                'rendered, as it has '
@@ -243,7 +244,7 @@ class NftablesTest(unittest.TestCase):
     destination_network = [nacaddr.IPv4('10.0.0.0/24')]
     self.mock_naming.GetNetAddr.side_effect = [source_network,
                                                destination_network]
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
+    nft = str(nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
                                                    self.mock_naming), EXP_INFO))
     self.assertIn('ip saddr 172.16.0.0/24 ip daddr 10.0.0.0/24', nft)
 
@@ -254,51 +255,51 @@ class NftablesTest(unittest.TestCase):
                            nacaddr.IPv4('10.0.2.0/24')]
     self.mock_naming.GetNetAddr.side_effect = [source_network,
                                                destination_network]
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
+    nft = str(nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
                                                    self.mock_naming), EXP_INFO))
     self.assertIn('ip saddr { 172.16.0.0/24, 172.16.2.0/24} ip daddr '
                   '{ 10.0.0.0/24, 10.0.2.0/24}', nft)
 
   def testSingleProtocol(self):
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_5,
+    nft = str(nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_5,
                                                    self.mock_naming), EXP_INFO))
     self.assertIn('ip protocol { ah, esp}', nft)
 
   def testMultiProtocol(self):
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_6,
+    nft = str(nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_6,
                                                    self.mock_naming), EXP_INFO))
     self.assertIn('ip protocol ah', nft)
 
   def testSingleDport(self):
     destination_ports = ['25']
     self.mock_naming.GetServiceByProto.return_value = destination_ports
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_7,
+    nft = str(nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_7,
                                                    self.mock_naming), EXP_INFO))
     self.assertIn('dport 25', nft)
 
   def testMultiDport(self):
     destination_ports = ['25', '80', '6610', '6611', '6612']
     self.mock_naming.GetServiceByProto.return_value = destination_ports
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_7,
+    nft = str(nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_7,
                                                    self.mock_naming), EXP_INFO))
     self.assertIn('dport { 25, 80, 6610-6612}', nft)
 
   def testSingleSport(self):
     source_ports = ['25']
     self.mock_naming.GetServiceByProto.return_value = source_ports
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_8,
+    nft = str(nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_8,
                                                    self.mock_naming), EXP_INFO))
     self.assertIn('sport 25', nft)
 
   def testMultiSport(self):
     source_ports = ['25', '80', '6610', '6611', '6612']
     self.mock_naming.GetServiceByProto.return_value = source_ports
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_8,
+    nft = str(nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_8,
                                                    self.mock_naming), EXP_INFO))
     self.assertIn('sport { 25, 80, 6610-6612}', nft)
 
   def testIcmpType(self):
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_9,
+    nft = str(nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_9,
                                                    self.mock_naming), EXP_INFO))
     self.assertIn('icmp type { echo-reply, echo-request}', nft)
 
@@ -310,20 +311,20 @@ class NftablesTest(unittest.TestCase):
              'reject-with-tcp-rst': 'reject with tcp reset'}
     for case in cases:
       logging.info('Testing action case %s.', case)
-      nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 +
+      nft = str(nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_1 +
                                                      GOOD_TERM_3 % case,
                                                      self.mock_naming),
                                   EXP_INFO))
       self.assertIn(cases[case], nft)
 
   def testCommentOwner(self):
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_4,
+    nft = str(nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_4,
                                                    self.mock_naming), EXP_INFO))
     self.assertIn('comment "comment first line comment second line '
                   'Owner: owner@enterprise.com"', nft)
 
   def testVerbatimTerm(self):
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_10,
+    nft = str(nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_10,
                                                    self.mock_naming), EXP_INFO))
     self.assertIn('mary had a little lamb', nft)
     # check if another platforms verbatim shows up
@@ -339,7 +340,7 @@ class NftablesTest(unittest.TestCase):
                                                source_exclude_network,
                                                destination_network,
                                                destination_exclude_network]
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_11,
+    nft = str(nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_11,
                                                    self.mock_naming), EXP_INFO))
     self.assertIn('ip saddr { 192.168.0.32/27, 192.168.0.64/26, '
                   '192.168.0.128/25}', nft)
@@ -355,7 +356,7 @@ class NftablesTest(unittest.TestCase):
                                                source_exclude_network,
                                                destination_network,
                                                destination_exclude_network]
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_11,
+    nft = str(nftables.Nftables(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_11,
                                                    self.mock_naming), EXP_INFO))
     self.assertIn('ip saddr { 0.0.0.0/1, 128.0.0.0/2, 192.0.0.0/9, '
                   '192.128.0.0/11, 192.160.0.0/13, 192.168.0.32/27, '

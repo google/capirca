@@ -21,6 +21,7 @@ from lib import nacaddr
 from lib import naming
 from lib import pcap
 from lib import policy
+from lib import policyparser
 import mock
 
 
@@ -177,7 +178,7 @@ class PcapFilter(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    acl = pcap.PcapFilter(policy.ParsePolicy(
+    acl = pcap.PcapFilter(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless(
@@ -188,7 +189,7 @@ class PcapFilter(unittest.TestCase):
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
   def testLog(self):
-    acl = pcap.PcapFilter(policy.ParsePolicy(
+    acl = pcap.PcapFilter(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_LOG, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless(
@@ -196,7 +197,7 @@ class PcapFilter(unittest.TestCase):
         'did not find actual term for good-term-log')
 
   def testIcmp(self):
-    acl = pcap.PcapFilter(policy.ParsePolicy(
+    acl = pcap.PcapFilter(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_ICMP, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless(
@@ -204,7 +205,7 @@ class PcapFilter(unittest.TestCase):
         'did not find actual term for good-term-icmp')
 
   def testIcmpTypes(self):
-    acl = pcap.PcapFilter(policy.ParsePolicy(
+    acl = pcap.PcapFilter(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_ICMP_TYPES, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless(
@@ -213,7 +214,7 @@ class PcapFilter(unittest.TestCase):
         'did not find actual term for good-term-icmp-types')
 
   def testIcmpv6(self):
-    acl = pcap.PcapFilter(policy.ParsePolicy(
+    acl = pcap.PcapFilter(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_ICMPV6, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless(
@@ -221,14 +222,14 @@ class PcapFilter(unittest.TestCase):
         'did not find actual term for good-term-icmpv6')
 
   def testBadIcmp(self):
-    acl = pcap.PcapFilter(policy.ParsePolicy(
+    acl = pcap.PcapFilter(policyparser.ParsePolicy(
         GOOD_HEADER + BAD_TERM_ICMP, self.naming), EXP_INFO)
     self.assertRaises(aclgenerator.UnsupportedFilterError,
                       str, acl)
 
   @mock.patch.object(pcap.logging, 'warn')
   def testExpiredTerm(self, mock_warn):
-    pcap.PcapFilter(policy.ParsePolicy(
+    pcap.PcapFilter(policyparser.ParsePolicy(
         GOOD_HEADER + EXPIRED_TERM, self.naming), EXP_INFO)
 
     mock_warn.assert_called_once_with(
@@ -238,7 +239,7 @@ class PcapFilter(unittest.TestCase):
   @mock.patch.object(pcap.logging, 'info')
   def testExpiringTerm(self, mock_info):
     exp_date = datetime.date.today() + datetime.timedelta(weeks=EXP_INFO)
-    pcap.PcapFilter(policy.ParsePolicy(
+    pcap.PcapFilter(policyparser.ParsePolicy(
         GOOD_HEADER + EXPIRING_TERM % exp_date.strftime('%Y-%m-%d'),
         self.naming), EXP_INFO)
 
@@ -247,7 +248,7 @@ class PcapFilter(unittest.TestCase):
         'less than two weeks.', 'is_expiring', 'test-filter')
 
   def testMultiprotocol(self):
-    acl = pcap.PcapFilter(policy.ParsePolicy(
+    acl = pcap.PcapFilter(policyparser.ParsePolicy(
         GOOD_HEADER + MULTIPLE_PROTOCOLS_TERM, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless(
@@ -255,14 +256,14 @@ class PcapFilter(unittest.TestCase):
         'did not find actual term for multi-proto')
 
   def testNextTerm(self):
-    acl = pcap.PcapFilter(policy.ParsePolicy(
+    acl = pcap.PcapFilter(policyparser.ParsePolicy(
         GOOD_HEADER + NEXT_TERM, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('' in result,
                     'did not find actual term for good-term-icmpv6')
 
   def testTcpOptions(self):
-    acl = pcap.PcapFilter(policy.ParsePolicy(
+    acl = pcap.PcapFilter(policyparser.ParsePolicy(
         GOOD_HEADER + ESTABLISHED_TERM, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless(
@@ -270,7 +271,7 @@ class PcapFilter(unittest.TestCase):
         'did not find actual term for established')
 
   def testVrrpTerm(self):
-    acl = pcap.PcapFilter(policy.ParsePolicy(
+    acl = pcap.PcapFilter(policyparser.ParsePolicy(
         GOOD_HEADER + VRRP_TERM, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless(
@@ -278,7 +279,7 @@ class PcapFilter(unittest.TestCase):
         'did not find actual term for vrrp')
 
   def testMultiHeader(self):
-    acl = pcap.PcapFilter(policy.ParsePolicy(
+    acl = pcap.PcapFilter(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_LOG + GOOD_HEADER + GOOD_TERM_ICMP,
         self.naming), EXP_INFO)
     result = str(acl)
@@ -287,7 +288,7 @@ class PcapFilter(unittest.TestCase):
         'did not find actual terms for multi-header')
 
   def testDirectional(self):
-    acl = pcap.PcapFilter(policy.ParsePolicy(
+    acl = pcap.PcapFilter(policyparser.ParsePolicy(
         GOOD_HEADER_IN + GOOD_TERM_LOG + GOOD_HEADER_OUT + GOOD_TERM_ICMP,
         self.naming), EXP_INFO)
     result = str(acl)
@@ -299,7 +300,7 @@ class PcapFilter(unittest.TestCase):
   def testUnicastIPv6(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('::/0')]
 
-    acl = pcap.PcapFilter(policy.ParsePolicy(
+    acl = pcap.PcapFilter(policyparser.ParsePolicy(
         GOOD_HEADER_IN + UNICAST_TERM, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless(
@@ -309,7 +310,7 @@ class PcapFilter(unittest.TestCase):
     self.naming.GetNetAddr.assert_called_once_with('ANY')
 
   def testHbh(self):
-    acl = pcap.PcapFilter(policy.ParsePolicy(
+    acl = pcap.PcapFilter(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_HBH, self.naming), EXP_INFO)
     result = str(acl)
 

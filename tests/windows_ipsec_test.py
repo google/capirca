@@ -20,6 +20,7 @@ from lib import aclgenerator
 from lib import nacaddr
 from lib import naming
 from lib import policy
+from lib import policyparser
 from lib import windows_ipsec
 import mock
 
@@ -98,7 +99,7 @@ class WindowsIPSecTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    acl = windows_ipsec.WindowsIPSec(policy.ParsePolicy(
+    acl = windows_ipsec.WindowsIPSec(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless(
@@ -113,7 +114,7 @@ class WindowsIPSecTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    acl = windows_ipsec.WindowsIPSec(policy.ParsePolicy(
+    acl = windows_ipsec.WindowsIPSec(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless(
@@ -130,7 +131,7 @@ class WindowsIPSecTest(unittest.TestCase):
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
   def testIcmp(self):
-    acl = windows_ipsec.WindowsIPSec(policy.ParsePolicy(
+    acl = windows_ipsec.WindowsIPSec(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_ICMP, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless(
@@ -145,13 +146,13 @@ class WindowsIPSecTest(unittest.TestCase):
         'good-term-icmp')
 
   def testBadIcmp(self):
-    acl = windows_ipsec.WindowsIPSec(policy.ParsePolicy(
+    acl = windows_ipsec.WindowsIPSec(policyparser.ParsePolicy(
         GOOD_HEADER + BAD_TERM_ICMP, self.naming), EXP_INFO)
     self.assertRaises(aclgenerator.UnsupportedFilterError, str, acl)
 
   @mock.patch.object(windows_ipsec.logging, 'warn')
   def testExpiredTerm(self, mock_warn):
-    windows_ipsec.WindowsIPSec(policy.ParsePolicy(
+    windows_ipsec.WindowsIPSec(policyparser.ParsePolicy(
         GOOD_HEADER + EXPIRED_TERM, self.naming), EXP_INFO)
 
     mock_warn.assert_called_once_with(
@@ -162,7 +163,7 @@ class WindowsIPSecTest(unittest.TestCase):
   @mock.patch.object(windows_ipsec.logging, 'info')
   def testExpiringTerm(self, mock_info):
     exp_date = datetime.date.today() + datetime.timedelta(weeks=EXP_INFO)
-    windows_ipsec.WindowsIPSec(policy.ParsePolicy(
+    windows_ipsec.WindowsIPSec(policyparser.ParsePolicy(
         GOOD_HEADER + EXPIRING_TERM % exp_date.strftime('%Y-%m-%d'),
         self.naming), EXP_INFO)
 
@@ -172,7 +173,7 @@ class WindowsIPSecTest(unittest.TestCase):
         'test-filter')
 
   def testMultiprotocol(self):
-    acl = windows_ipsec.WindowsIPSec(policy.ParsePolicy(
+    acl = windows_ipsec.WindowsIPSec(policyparser.ParsePolicy(
         GOOD_HEADER + MULTIPLE_PROTOCOLS_TERM, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless(
