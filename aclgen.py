@@ -395,7 +395,8 @@ def FilesUpdated(file_name, file_string):
   return False
 
 
-def DescendRecursively(input_dirname, policy_file_extension, output_dirname, definitions, depth=1):
+def DescendRecursively(input_dirname, policy_file_extension,
+                       output_dirname, definitions, depth=1):
   """Recursively descend from input_dirname looking for policy files to render.
 
   Args:
@@ -420,7 +421,8 @@ def DescendRecursively(input_dirname, policy_file_extension, output_dirname, def
     if curdir == 'pol':
       for input_file in [x for x in dircache.listdir(input_dirname + '/pol')
                          if x.endswith(policy_file_extension)]:
-        files.append({'in_file': os.path.join(input_dirname, 'pol', input_file),
+        in_file = os.path.join(input_dirname, 'pol', input_file)
+        files.append({'in_file': in_file,
                       'out_dir': output_dirname,
                       'defs': definitions})
     else:
