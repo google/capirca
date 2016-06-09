@@ -15,6 +15,7 @@ header {
   target:: arista edge-inbound
   target:: brocade edge-inbound
   target:: ciscoxr edge-inbound
+  target:: cisconx edge-inbound
 }
 
 #include 'includes/untrusted-networks-blocking.inc'

@@ -434,7 +434,11 @@ def WriteFiles(write_files):
     output.flush()
 
 
-def main(_):
+def main(args):
+  if FLAGS.IsParsed():
+    FLAGS.Reset()  # Clear global state.
+  FLAGS(args)
+
   logging.debug('binary: %s\noptimize: %d\base_directory: %s\n'
                 'policy_file: %s\nrendered_acl_directory: %s',
                 str(sys.argv[0]),
@@ -495,4 +499,6 @@ def main(_):
     logging.info('done.')
 
 if __name__ == '__main__':
-  main(FLAGS(sys.argv))
+  # Start main program.
+  # Pass in command-line args.
+  main(sys.argv)
