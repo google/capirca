@@ -46,6 +46,7 @@ from lib import nsxv
 from lib import packetfilter
 from lib import pcap
 from lib import policy
+from lib import policyparser
 from lib import speedway
 from lib import srxlo
 from lib import windows_advfirewall
@@ -182,13 +183,13 @@ def RenderFile(input_file, output_directory, definitions,
     raise
 
   try:
-    pol = policy.ParsePolicy(
+    pol = policyparser.ParsePolicy(
         conf, definitions, optimize=FLAGS.optimize,
         base_dir=FLAGS.base_directory, shade_check=FLAGS.shade_check)
-  except policy.ShadingError as e:
+  except policyparser.ShadingError as e:
     logging.warn('shading errors for %s:\n%s', input_file, e)
     return
-  except (policy.Error, naming.Error):
+  except (policyparser.Error, naming.Error):
     raise ACLParserError('Error parsing policy file %s:\n%s%s' % (
         input_file, sys.exc_info()[0], sys.exc_info()[1]))
 

@@ -19,6 +19,7 @@ from lib import ciscoxr
 from lib import nacaddr
 from lib import naming
 from lib import policy
+from lib import policyparser
 import mock
 
 
@@ -71,7 +72,7 @@ class CiscoXRTest(unittest.TestCase):
   def testStandardTermHost(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
 
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
+    pol = policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                              self.naming)
     acl = ciscoxr.CiscoXR(pol, EXP_INFO)
     expected = 'ipv4 access-list test-filter'
@@ -83,7 +84,7 @@ class CiscoXRTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('2001::3/128')]
     self.naming.GetServiceByProto.return_value = ['80']
 
-    pol = policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_2,
+    pol = policyparser.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_2,
                              self.naming)
     acl = ciscoxr.CiscoXR(pol, EXP_INFO)
     expected = 'ipv6 access-list ipv6-test-filter'

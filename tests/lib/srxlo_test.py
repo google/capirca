@@ -18,6 +18,7 @@ import unittest
 
 from lib import naming
 from lib import policy
+from lib import policyparser
 from lib import srxlo
 import mock
 
@@ -53,13 +54,13 @@ class SRXloTest(unittest.TestCase):
     self.naming = mock.create_autospec(naming.Naming)
 
   def testIcmpv6(self):
-    output = str(srxlo.SRXlo(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
+    output = str(srxlo.SRXlo(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                                                 self.naming), EXP_INFO))
     self.failUnless('next-header icmp6;' in output,
                     'missing or incorrect ICMPv6 specification')
 
   def testIcmpv6Type(self):
-    output = str(srxlo.SRXlo(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
+    output = str(srxlo.SRXlo(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
                                                 self.naming), EXP_INFO))
     self.failUnless('next-header icmp6;' in output,
                     'missing or incorrect ICMPv6 specification')
