@@ -50,6 +50,8 @@ from lib import policyparser
 from lib import speedway
 from lib import srxlo
 from lib import windows_advfirewall
+from lib import yamlpolicyparser
+from lib import yamlnaming
 
 import gflags as flags
 import logging
@@ -98,6 +100,11 @@ flags.DEFINE_integer(
     'exp_info',
     2,
     'Print a info message when a term is set to expire in that many weeks.')
+flags.DEFINE_enum(
+    'policy_format',
+    'capirca',
+    ['capirca', 'yml'],
+    'policy file format')
 
 
 class Error(Exception):
@@ -151,6 +158,9 @@ def RenderFile(input_file, output_directory, definitions,
     exp_info: print a info message when a term is set to expire
               in that many weeks.
     write_files: a list of file tuples, (output_file, acl_text), to write
+
+  Raises:
+    FileExtensionError: if the file extension is unknown
   """
   logging.debug('rendering file: %s into %s', input_file,
                 output_directory)
@@ -182,8 +192,17 @@ def RenderFile(input_file, output_directory, definitions,
     logging.warn('bad file: \n%s', e)
     raise
 
+  filename, file_extension = os.path.splitext(input_file)
+  format_dict = {
+    '.yml': yamlpolicyparser,
+    '.pol': policyparser
+  }
+  if file_extension not in format_dict:
+    raise FileExtensionError('bad policy file extension ' + file_extension)
+  policyparser_module = format_dict[file_extension]
+
   try:
-    pol = policyparser.ParsePolicy(
+    pol = policyparser_module.ParsePolicy(
         conf, definitions, optimize=FLAGS.optimize,
         base_dir=FLAGS.base_directory, shade_check=FLAGS.shade_check)
   except policyparser.ShadingError as e:
@@ -369,11 +388,12 @@ def FilesUpdated(file_name, file_string):
   return False
 
 
-def DescendRecursively(input_dirname, output_dirname, definitions, depth=1):
+def DescendRecursively(input_dirname, policy_file_extension, output_dirname, definitions, depth=1):
   """Recursively descend from input_dirname looking for policy files to render.
 
   Args:
     input_dirname: the base directory.
+    policy_file_extension: extension used for the policy file data format
     output_dirname: where to place the rendered files.
     definitions: naming.Naming object
     depth: integer, used for outputing '---> rendering prod/corp-backbone.jcl'
@@ -392,7 +412,7 @@ def DescendRecursively(input_dirname, output_dirname, definitions, depth=1):
     # be on the lookout for a policy directory
     if curdir == 'pol':
       for input_file in [x for x in dircache.listdir(input_dirname + '/pol')
-                         if x.endswith('.pol')]:
+                         if x.endswith(policy_file_extension)]:
         files.append({'in_file': os.path.join(input_dirname, 'pol', input_file),
                       'out_dir': output_dirname,
                       'defs': definitions})
@@ -404,6 +424,7 @@ def DescendRecursively(input_dirname, output_dirname, definitions, depth=1):
       logging.warn('-' * (2 * depth) + '> %s' % (
           input_dirname + '/' + curdir))
       files_found = DescendRecursively(input_dirname + '/' + curdir,
+                                       policy_file_extension,
                                        output_dirname + '/' + curdir,
                                        definitions, depth + 1)
       logging.warn('-' * (2 * depth) + '> %s (%d pol files found)' % (
@@ -441,16 +462,29 @@ def main(args):
   FLAGS(args)
 
   logging.debug('binary: %s\noptimize: %d\base_directory: %s\n'
-                'policy_file: %s\nrendered_acl_directory: %s',
+                'policy_file: %s\nrendered_acl_directory: %s\n'
+                'policy_format: %s',
                 str(sys.argv[0]),
                 int(FLAGS.optimize),
                 str(FLAGS.base_directory),
                 str(FLAGS.policy_file),
-                str(FLAGS.output_directory))
+                str(FLAGS.output_directory),
+                str(FLAGS.policy_format)
+  )
+
+  format_dict = {
+    'yml': ('.yml', yamlnaming.YamlNaming),
+    'capirca': ('.pol', naming.Naming)
+  }
+  if FLAGS.policy_format not in format_dict:
+    raise ValueError('invalid format ' + FLAGS.policy_format)
+  tup = format_dict[FLAGS.policy_format]
+  policy_file_extension = tup[0]
+  definitions_class = tup[1]
 
   definitions = None
   try:
-    definitions = naming.Naming(FLAGS.definitions_directory)
+    definitions = definitions_class(FLAGS.definitions_directory)
   except naming.NoDefinitionsError:
     logging.fatal('bad definitions directory: %s', FLAGS.definitions_directory)
 
@@ -468,7 +502,8 @@ def main(args):
     # render all files in parallel
     logging.info('finding policies...')
     pols = []
-    pols.extend(DescendRecursively(FLAGS.base_directory, FLAGS.output_directory,
+    pols.extend(DescendRecursively(FLAGS.base_directory, policy_file_extension,
+                                   FLAGS.output_directory,
                                    definitions))
 
     pool = multiprocessing.Pool(processes=FLAGS.max_renderers)

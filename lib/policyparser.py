@@ -347,9 +347,28 @@ def t_STRING(t):
 def p_target(p):
   """ target : target header terms
              | """
+
   if len(p) > 1:
     terms = p[3]
-    __translate_terms(terms)
+
+    # The 'had_untranslated' section below is to correctly handle the
+    # global state of the _OPTIMIZE flag, as verified by the
+    # characterization tests.  This section (and the call to 'Reset
+    # _OPTIMIZE global to default value') was implicitly included in
+    # the _translate_terms method, and it was necessary to add this
+    # section to allow _translate_terms to be abstracted out to a
+    # separate utility module.
+    had_untranslated = False
+    if terms is not None:
+      untranslated = [t for t in terms if not t.translated]
+      had_untranslated = (len(untranslated) > 0)
+
+    _translate_terms(terms, DEFINITIONS, _OPTIMIZE)
+
+    if had_untranslated:
+      # Reset _OPTIMIZE global to default value
+      globals()['_OPTIMIZE'] = True
+
     if type(p[1]) is Policy:
       p[1].AddFilter(p[2], p[3])
       p[0] = p[1]
@@ -357,7 +376,7 @@ def p_target(p):
       p[0] = Policy(p[2], p[3], _SHADE_CHECK)
 
 
-def __translate_terms(terms):
+def _translate_terms(terms, definitions, optimize):
     """."""
     if not terms:
       raise NoTermsError('no terms found')
@@ -365,34 +384,38 @@ def __translate_terms(terms):
       if term.translated:
         continue
       if term.port:
-        term.port = __translate_ports(term.port, term.protocol, term.name)
+        term.port = _translate_ports(term.port, term.protocol, term.name, definitions)
         if not term.port:
           raise TermPortProtocolError(
               'no ports of the correct protocol for term %s' % (
                   term.name))
       if term.source_port:
-        term.source_port = __translate_ports(term.source_port, term.protocol,
-                                          term.name)
+        term.source_port = _translate_ports(term.source_port, term.protocol,
+                                             term.name, definitions)
         if not term.source_port:
           raise TermPortProtocolError(
               'no source ports of the correct protocol for term %s' % (
                   term.name))
       if term.destination_port:
-        term.destination_port = __translate_ports(term.destination_port,
-                                               term.protocol, term.name)
+        term.destination_port = _translate_ports(term.destination_port,
+                                                  term.protocol, term.name, definitions)
         if not term.destination_port:
           raise TermPortProtocolError(
               'no destination ports of the correct protocol for term %s' % (
                   term.name))
 
       # If argument is true, we optimize, otherwise just sort addresses
-      term.AddressCleanup(_OPTIMIZE)
-      # Reset _OPTIMIZE global to default value
-      globals()['_OPTIMIZE'] = True
+      term.AddressCleanup(optimize)
+
+      # This setting is necessary for the characterization tests to
+      # pass.  We may be able to delete it at some point in the future
+      # after investigation.
+      optimize = True
+
       term.SanityCheck()
       term.translated = True
 
-def __translate_ports(ports, protocols, term_name):
+def _translate_ports(ports, protocols, term_name, definitions):
   """Return all ports of all protocols requested.
 
   Args:
@@ -409,7 +432,7 @@ def __translate_ports(ports, protocols, term_name):
   ret_array = []
   for proto in protocols:
     for port in ports:
-      service_by_proto = DEFINITIONS.GetServiceByProto(port, proto)
+      service_by_proto = definitions.GetServiceByProto(port, proto)
       if not service_by_proto:
         logging.warn('%s %s %s %s %s %s%s %s', 'Term', term_name,
                      'has service', port, 'which is not defined with protocol',
