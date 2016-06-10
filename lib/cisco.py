@@ -154,12 +154,12 @@ class TermStandard(object):
                                                      self.logstring,
                                                      self.dscpstring))
     else:
-      ret_str.append('remark ' + self.term.name)
+      ret_str.append(' remark ' + self.term.name)
       comment_max_width = 70
       comments = aclgenerator.WrapWords(self.term.comment, comment_max_width)
       if comments and comments[0]:
         for comment in comments:
-          ret_str.append('remark ' + str(comment))
+          ret_str.append(' remark ' + str(comment))
 
       action = _ACTION_TABLE.get(str(self.term.action[0]))
       if v4_addresses:
@@ -304,12 +304,12 @@ class ObjectGroupTerm(aclgenerator.Term):
     source_address_set = set()
     destination_address_set = set()
     ret_str = ['\n']
-    ret_str.append('remark %s' % self.term.name)
+    ret_str.append(' remark %s' % self.term.name)
     comment_max_width = 70
     comments = aclgenerator.WrapWords(self.term.comment, comment_max_width)
     if comments and comments[0]:
       for comment in comments:
-        ret_str.append('remark %s' % str(comment))
+        ret_str.append(' remark %s' % str(comment))
 
     # Term verbatim output - this will skip over normal term creation
     # code by returning early.  Warnings provided in policy.py.
@@ -379,6 +379,7 @@ class ObjectGroupTerm(aclgenerator.Term):
 
 class Term(aclgenerator.Term):
   """A single ACL Term."""
+  _TCP = 'tcp'
 
   def __init__(self, term, af=4, proto_int=True, enable_dsmo=False,
                term_remark=True, platform='cisco'):
@@ -418,12 +419,12 @@ class Term(aclgenerator.Term):
       return ''
 
     if self.term_remark:
-      ret_str.append('remark ' + self.term.name)
+      ret_str.append(' remark ' + self.term.name)
     if self.term.owner:
       self.term.comment.append('Owner: %s' % self.term.owner)
     for comment in self.term.comment:
       for line in comment.split('\n'):
-        ret_str.append('remark ' + str(line)[:100].rstrip())
+        ret_str.append(' remark ' + str(line)[:100].rstrip())
 
     # Term verbatim output - this will skip over normal term creation
     # code by returning early.  Warnings provided in policy.py.
@@ -539,6 +540,143 @@ class Term(aclgenerator.Term):
 
     return '\n'.join(ret_str)
 
+  def _TermPortToProtocol (self,portNumber,proto):
+
+    # Some subclasses may choose to specify the ports as the protocol
+    # names; otherwise, just use the port number as-is.
+    if self.proto_int:
+      return portNumber
+
+    _IOS_PORTS_TCP = {
+179: "bgp",
+19: "chargen",
+514: "cmd",
+13: "daytime",
+9: "discard",
+53: "domain",
+7: "echo",
+512: "exec",
+79: "finger",
+21: "ftp",
+20: "ftp-data",
+70: "gopher",
+101: "hostname",
+113: "ident",
+194: "irc",
+543: "klogin",
+544: "kshell",
+513: "login",
+515: "lpd",
+119: "nntp",
+496: "pim-auto-rp",
+109: "pop2",
+110: "pop3",
+25: "smtp",
+111: "sunrpc",
+49: "tacacs",
+517: "talk",
+23: "telnet",
+37: "time",
+540: "uucp",
+43: "whois",
+80: "www"
+}
+
+    _IOS_PORTS_UDP = {
+512: "biff",
+68: "bootpc",
+67: "bootps",
+9: "discard",
+195: "dnsix",
+53: "domain",
+7: "echo",
+500: "isakmp",
+434: "mobile-ip",
+42: "nameserver",
+138: "netbios-dgm",
+137: "netbios-ns",
+139: "netbios-ss",
+4500: "non500-isakmp",
+123: "ntp",
+496: "pim-auto-rp",
+520: "rip",
+161: "snmp",
+162: "snmptrap",
+111: "sunrpc",
+514: "syslog",
+49: "tacacs",
+517: "talk",
+69: "tftp",
+37: "time",
+513: "who",
+177: "xdmcp",
+}
+
+    _CISCO_TYPES_ICMP = {
+6:  "alternate-address",
+31: "conversion-error",
+8:  "echo",
+0:  "echo-reply",
+16: "information-reply",
+15: "information-request",
+18: "mask-reply",
+17: "mask-request",
+32: "mobile-redirect",
+12: "parameter-problem",
+5:  "redirect",
+9:  "router-advertisement",
+10: "router-solicitation",
+4:  "source-quench",
+11: "time-exceeded",
+14: "timestamp-reply",
+13: "timestamp-request",
+30: "traceroute",
+3:  "unreachable"
+}
+
+    _CISCO_TYPES_ICMPv6 = {
+1: "unreachable",
+2: "packet-too-big",
+3: "time-exceeded",
+4: "parameter-problem",
+128: "echo-request",
+129: "echo-reply"
+}
+
+    if proto == "tcp":
+      if portNumber in _IOS_PORTS_TCP:
+        return _IOS_PORTS_TCP[portNumber]
+    elif proto == "udp":
+      if portNumber in _IOS_PORTS_UDP:
+        return _IOS_PORTS_UDP[portNumber]
+    elif proto == "icmp": 
+      if self.af == 4:
+        if portNumber in _CISCO_TYPES_ICMP: 
+          return _CISCO_TYPES_ICMP[portNumber]
+      elif self.af == 6:
+        if portNumber in _CISCO_TYPES_ICMPv6: 
+          return _CISCO_TYPES_ICMPv6[portNumber]
+
+    return portNumber
+
+  def _AddressToStr(self, addr):
+    # inet4
+    if type(addr) is nacaddr.IPv4 or type(addr) is ipaddr.IPv4Network:
+      if addr.numhosts > 1:
+        addr = '%s %s' % (addr.ip, addr.hostmask)
+      else:
+        addr = 'host %s' % (addr.ip)
+    # inet6
+    if type(addr) is nacaddr.IPv6 or type(addr) is ipaddr.IPv6Network:
+      if addr.numhosts > 1:
+        addr = '%s' % (addr.with_prefixlen)
+      else:
+        addr = 'host %s' % (addr.ip)
+    # DSMO enabled
+    if type(addr) is tuple:
+      addr = '%s %s' % summarizer.ToDottedQuad(addr, negate=True)
+    return addr
+
   def _TermletToStr(self, action, proto, saddr, sport, daddr, dport,
                     icmp_type, option):
     """Take the various compenents and turn them into a cisco acl line.
@@ -559,48 +697,23 @@ class Term(aclgenerator.Term):
     Raises:
       UnsupportedCiscoAccessListError: When unknown icmp-types specified
     """
-    # inet4
-    if type(saddr) is nacaddr.IPv4 or type(saddr) is ipaddr.IPv4Network:
-      if saddr.numhosts > 1:
-        saddr = '%s %s' % (saddr.ip, saddr.hostmask)
-      else:
-        saddr = 'host %s' % (saddr.ip)
-    if type(daddr) is nacaddr.IPv4 or type(daddr) is ipaddr.IPv4Network:
-      if daddr.numhosts > 1:
-        daddr = '%s %s' % (daddr.ip, daddr.hostmask)
-      else:
-        daddr = 'host %s' % (daddr.ip)
-    # inet6
-    if type(saddr) is nacaddr.IPv6 or type(saddr) is ipaddr.IPv6Network:
-      if saddr.numhosts > 1:
-        saddr = '%s' % (saddr.with_prefixlen)
-      else:
-        saddr = 'host %s' % (saddr.ip)
-    if type(daddr) is nacaddr.IPv6 or type(daddr) is ipaddr.IPv6Network:
-      if daddr.numhosts > 1:
-        daddr = '%s' % (daddr.with_prefixlen)
-      else:
-        daddr = 'host %s' % (daddr.ip)
-    # DSMO enabled
-    if type(saddr) is tuple:
-      saddr = '%s %s' % summarizer.ToDottedQuad(saddr, negate=True)
-    if type(daddr) is tuple:
-      daddr = '%s %s' % summarizer.ToDottedQuad(daddr, negate=True)
+    saddr = self._AddressToStr(saddr)
+    daddr = self._AddressToStr(daddr)
 
     # fix ports
     if not sport:
       sport = ''
     elif sport[0] != sport[1]:
-      sport = 'range %d %d' % (sport[0], sport[1])
+      sport = ' range %s %s' % (self._TermPortToProtocol(sport[0],proto), self._TermPortToProtocol(sport[1],proto))
     else:
-      sport = 'eq %d' % (sport[0])
+      sport = ' eq %s' % (self._TermPortToProtocol(sport[0],proto))
 
     if not dport:
       dport = ''
     elif dport[0] != dport[1]:
-      dport = 'range %d %d' % (dport[0], dport[1])
+      dport = ' range %s %s' % (self._TermPortToProtocol(dport[0],proto), self._TermPortToProtocol(dport[1],proto))
     else:
-      dport = 'eq %d' % (dport[0])
+      dport = ' eq %s' % (self._TermPortToProtocol(dport[0],proto))
 
     if not option:
       option = ['']
@@ -613,7 +726,7 @@ class Term(aclgenerator.Term):
     ret_lines = []
 
     # str(icmp_type) is needed to ensure 0 maps to '0' instead of FALSE
-    icmp_type = str(icmp_type)
+    icmp_type = str(self._TermPortToProtocol(icmp_type,"icmp")) #str(icmp_type)
     if icmp_type:
       ret_lines.append(' %s %s %s %s %s %s %s %s' % (action, proto, saddr,
                                                      sport, daddr, dport,
@@ -674,6 +787,15 @@ class Cisco(aclgenerator.ACLGenerator):
                                       'routing_instance',
                                      ])
 
+  def PlatformTermClass(self):
+    """The Term class that this platform should use.
+
+    This is useful for platforms that need specific rendering options,
+    e.g. Nexus.
+
+    """
+    return Term
+ 
   def _TranslatePolicy(self, pol, exp_info):
     self.cisco_policies = []
     current_date = datetime.datetime.utcnow().date()
@@ -748,15 +870,18 @@ class Cisco(aclgenerator.ACLGenerator):
           elif next_filter == 'extended':
             enable_dsmo = (len(filter_options) > 2 and
                            filter_options[2] == 'enable_dsmo')
-            new_terms.append(
-                Term(term, proto_int=self._PROTO_INT, enable_dsmo=enable_dsmo,
-                     term_remark=self._TERM_REMARK, platform=self._PLATFORM))
+            c = self.PlatformTermClass()
+            new_term = c(term, proto_int=self._PROTO_INT, enable_dsmo=enable_dsmo,
+                     term_remark=self._TERM_REMARK, platform=self._PLATFORM)
+            new_terms.append(new_term)
           elif next_filter == 'object-group':
             obj_target.AddTerm(term)
             obj_group_term = ObjectGroupTerm(term, filter_name)
             new_terms.append(obj_group_term)
           elif next_filter == 'inet6':
-            new_terms.append(Term(term, 6, proto_int=self._PROTO_INT))
+            c = self.PlatformTermClass()
+            new_term = c(term, 6, proto_int=self._PROTO_INT, platform=self._PLATFORM)
+            new_terms.append(new_term)
 
         # cisco requires different name for the v4 and v6 acls
         if filter_type == 'mixed' and next_filter == 'inet6':
@@ -827,7 +952,7 @@ class Cisco(aclgenerator.ACLGenerator):
         # add a header comment if one exists
         for comment in header.comment:
           for line in comment.split('\n'):
-            target.append('remark %s' % line)
+            target.append(' remark %s' % line)
 
         # now add the terms
         for term in terms:

@@ -1,0 +1,26 @@
+#
+# This is an example policy for capirca
+#
+header {
+  comment:: "this is a sample policy to generate Juniper SRX filter"
+  comment:: "from zone Untrust to zone DMZ."
+  target:: srx from-zone Untrust to-zone DMZ
+}
+
+term test-tcp {
+  destination-address:: RFC1918
+  protocol:: tcp udp
+  logging:: true
+  action:: accept
+}
+
+term test-icmp {
+  destination-address:: RFC1918
+  protocol:: icmp
+  icmp-type:: echo-request echo-reply
+  action:: accept
+}
+
+term default-deny {
+  action:: deny
+}

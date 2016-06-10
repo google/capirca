@@ -1,0 +1,71 @@
+! $Id:$
+! $Date:$
+! $Revision:$
+no ip access-list edge-inbound
+ip access-list edge-inbound
+remark $Id:$
+ remark this is a sample edge input filter that generates
+ remark multiple output formats.
+
+
+ remark deny-from-bogons
+ remark this is a sample edge input filter with a very very very long and
+ remark multi-line comment that
+ remark also has multiple entries.
+ deny ip 0.0.0.0/8 any
+ deny ip 192.0.0.0/24 any
+ deny ip 192.0.2.0/24 any
+ deny ip 198.18.0.0/15 any
+ deny ip 198.51.100.0/24 any
+ deny ip 203.0.113.0/24 any
+ deny ip 224.0.0.0/4 any
+ deny ip 240.0.0.0/4 any
+
+
+ remark deny-from-reserved
+ deny ip 0.0.0.0/8 any
+ deny ip 10.0.0.0/8 any
+ deny ip 100.64.0.0/10 any
+ deny ip 127.0.0.0/8 any
+ deny ip 169.254.0.0/16 any
+ deny ip 172.16.0.0/12 any
+ deny ip 192.168.0.0/16 any
+ deny ip 224.0.0.0/3 any
+
+
+ remark deny-to-rfc1918
+ deny ip any 10.0.0.0/8
+ deny ip any 172.16.0.0/12
+ deny ip any 192.168.0.0/16
+
+
+ remark permit-mail-services
+ permit tcp any 200.1.1.4/31 eq smtp
+ permit tcp any 200.1.1.4/31 eq 465
+ permit tcp any 200.1.1.4/31 eq 587
+ permit tcp any 200.1.1.4/31 eq 995
+
+
+ remark permit-web-services
+ permit tcp any host 200.1.1.1 eq www
+ permit tcp any host 200.1.1.1 eq 443
+ permit tcp any host 200.1.1.2 eq www
+ permit tcp any host 200.1.1.2 eq 443
+
+
+ remark permit-tcp-established
+ permit tcp any host 200.1.1.1 established
+ permit tcp any 200.1.1.2/31 established
+ permit tcp any 200.1.1.4/31 established
+
+
+ remark permit-udp-established
+ permit udp any range 1024 65535 host 200.1.1.1
+ permit udp any range 1024 65535 200.1.1.2/31
+ permit udp any range 1024 65535 200.1.1.4/31
+
+
+ remark default-deny
+ deny ip any any
+
+exit

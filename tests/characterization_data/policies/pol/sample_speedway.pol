@@ -1,0 +1,70 @@
+header {
+  comment:: "Sample policy for Speedway Iptables."
+  comment:: "Speedway generates iptables output suitable for loading"
+  comment:: "using the iptables-restore command"
+  target:: speedway INPUT DROP
+}
+term base-allow-est-in {
+  option:: established
+  action:: accept
+}
+term base-allow-icmp-in {
+  protocol:: icmp
+  icmp-type:: echo-request
+  action:: accept
+}
+term base-traceroute-in {
+  protocol:: udp
+  source-port:: TRACEROUTE
+  destination-port:: HIGH_PORTS
+  action:: accept
+}
+term base-allow-ssh-in {
+  source-address:: INTERNAL
+  protocol:: tcp
+  destination-port:: SSH
+  action:: accept
+}
+
+header {
+  comment:: "Sample output filter policy for Speedway Iptables."
+  target:: speedway OUTPUT DROP
+}
+term base-allow-lo0-out {
+  comment:: "Allow all loopback communications"
+  verbatim::  iptables "-A OUTPUT -o lo -j ACCEPT"
+}
+term base-allow-est-out {
+  option:: established
+  action:: accept 
+}
+term base-allow-dns-query-out {
+  protocol:: udp
+  destination-port:: DNS
+  action:: accept
+}
+term base-allow-icmp-out {
+  protocol:: icmp
+  action:: accept
+}
+term base-traceroute-out {
+  protocol:: udp
+  destination-port:: TRACEROUTE
+  source-port:: HIGH_PORTS
+  action:: accept
+}
+term base-allow-ssh-out {
+  destination-address:: INTERNAL
+  protocol:: tcp
+  destination-port:: SSH
+  action:: accept
+}
+
+header {
+  comment:: "Sample forwarding filter policy for Speedway Iptables."
+  target:: speedway FORWARD DROP
+}
+term base-forwarding-deny {
+  action:: reject
+}
+

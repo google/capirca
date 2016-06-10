@@ -1,0 +1,62 @@
+*filter
+# Speedway INPUT Policy
+# Sample policy for Speedway Iptables.
+# Speedway generates iptables output suitable for loading
+# using the iptables-restore command
+#
+# $Id:$
+# $Date:$
+# $Revision:$
+# inet
+:INPUT DROP
+-N I_base-allow-est-in
+-A I_base-allow-est-in -p all -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A INPUT -j I_base-allow-est-in
+-N I_base-allow-icmp-in
+-A I_base-allow-icmp-in -p icmp --icmp-type 8 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A INPUT -j I_base-allow-icmp-in
+-N I_base-traceroute-in
+-A I_base-traceroute-in -p udp --sport 33434:33534 --dport 1024:65535 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A INPUT -j I_base-traceroute-in
+-N I_base-allow-ssh-in
+-A I_base-allow-ssh-in -p tcp --dport 22 -s 10.0.0.0/8 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A I_base-allow-ssh-in -p tcp --dport 22 -s 172.16.0.0/12 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A I_base-allow-ssh-in -p tcp --dport 22 -s 192.168.0.0/16 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A INPUT -j I_base-allow-ssh-in
+# Speedway OUTPUT Policy
+# Sample output filter policy for Speedway Iptables.
+#
+# $Id:$
+# $Date:$
+# $Revision:$
+# inet
+:OUTPUT DROP
+-N O_base-allow-est-out
+-A O_base-allow-est-out -p all -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A OUTPUT -j O_base-allow-est-out
+-N O_base-allow-dns-query-out
+-A O_base-allow-dns-query-out -p udp --dport 53 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A OUTPUT -j O_base-allow-dns-query-out
+-N O_base-allow-icmp-out
+-A O_base-allow-icmp-out -p icmp -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A OUTPUT -j O_base-allow-icmp-out
+-N O_base-traceroute-out
+-A O_base-traceroute-out -p udp --sport 1024:65535 --dport 33434:33534 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A OUTPUT -j O_base-traceroute-out
+-N O_base-allow-ssh-out
+-A O_base-allow-ssh-out -p tcp --dport 22 -d 10.0.0.0/8 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A O_base-allow-ssh-out -p tcp --dport 22 -d 172.16.0.0/12 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A O_base-allow-ssh-out -p tcp --dport 22 -d 192.168.0.0/16 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A OUTPUT -j O_base-allow-ssh-out
+# Speedway FORWARD Policy
+# Sample forwarding filter policy for Speedway Iptables.
+#
+# $Id:$
+# $Date:$
+# $Revision:$
+# inet
+:FORWARD DROP
+-N F_base-forwarding-deny
+-A F_base-forwarding-deny -p all -j REJECT --reject-with icmp-host-prohibited
+-A FORWARD -j F_base-forwarding-deny
+COMMIT

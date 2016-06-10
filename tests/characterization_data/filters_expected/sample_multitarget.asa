@@ -1,0 +1,67 @@
+clear configure access-list asa_in
+access-list asa_in remark $Id:$
+access-list asa_in remark $Date:$
+access-list asa_in remark $Revision:$
+access-list asa_in remark this is a sample edge input filter that generates
+access-list asa_in remark multiple output formats.
+
+
+access-list asa_in remark deny-from-bogons
+access-list asa_in remark this is a sample edge input filter with a very very very long and
+access-list asa_in remark multi-line comment that
+access-list asa_in remark also has multiple entries.
+access-list asa_in extended deny ip 0.0.0.0 255.0.0.0 any
+access-list asa_in extended deny ip 192.0.0.0 255.255.255.0 any
+access-list asa_in extended deny ip 192.0.2.0 255.255.255.0 any
+access-list asa_in extended deny ip 198.18.0.0 255.254.0.0 any
+access-list asa_in extended deny ip 198.51.100.0 255.255.255.0 any
+access-list asa_in extended deny ip 203.0.113.0 255.255.255.0 any
+access-list asa_in extended deny ip 224.0.0.0 240.0.0.0 any
+access-list asa_in extended deny ip 240.0.0.0 240.0.0.0 any
+
+
+access-list asa_in remark deny-from-reserved
+access-list asa_in extended deny ip 0.0.0.0 255.0.0.0 any
+access-list asa_in extended deny ip 10.0.0.0 255.0.0.0 any
+access-list asa_in extended deny ip 100.64.0.0 255.192.0.0 any
+access-list asa_in extended deny ip 127.0.0.0 255.0.0.0 any
+access-list asa_in extended deny ip 169.254.0.0 255.255.0.0 any
+access-list asa_in extended deny ip 172.16.0.0 255.240.0.0 any
+access-list asa_in extended deny ip 192.168.0.0 255.255.0.0 any
+access-list asa_in extended deny ip 224.0.0.0 224.0.0.0 any
+
+
+access-list asa_in remark deny-to-rfc1918
+access-list asa_in extended deny ip any 10.0.0.0 255.0.0.0
+access-list asa_in extended deny ip any 172.16.0.0 255.240.0.0
+access-list asa_in extended deny ip any 192.168.0.0 255.255.0.0
+
+
+access-list asa_in remark permit-mail-services
+access-list asa_in extended permit tcp any 200.1.1.4 255.255.255.254 eq smtp
+access-list asa_in extended permit tcp any 200.1.1.4 255.255.255.254 eq 465
+access-list asa_in extended permit tcp any 200.1.1.4 255.255.255.254 eq 587
+access-list asa_in extended permit tcp any 200.1.1.4 255.255.255.254 eq 995
+
+
+access-list asa_in remark permit-web-services
+access-list asa_in extended permit tcp any host 200.1.1.1 eq www
+access-list asa_in extended permit tcp any host 200.1.1.1 eq https
+access-list asa_in extended permit tcp any host 200.1.1.2 eq www
+access-list asa_in extended permit tcp any host 200.1.1.2 eq https
+
+
+access-list asa_in remark permit-tcp-established
+access-list asa_in extended permit tcp any host 200.1.1.1
+access-list asa_in extended permit tcp any 200.1.1.2 255.255.255.254
+access-list asa_in extended permit tcp any 200.1.1.4 255.255.255.254
+
+
+access-list asa_in remark permit-udp-established
+access-list asa_in extended permit udp any range 1024 65535 host 200.1.1.1
+access-list asa_in extended permit udp any range 1024 65535 200.1.1.2 255.255.255.254
+access-list asa_in extended permit udp any range 1024 65535 200.1.1.4 255.255.255.254
+
+
+access-list asa_in remark default-deny
+access-list asa_in extended deny ip any any

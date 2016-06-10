@@ -1,0 +1,45 @@
+header {
+  comment:: "Denies all traffic to internal IPs except established tcp replies."
+  target:: packetfilter allowtointernet
+}
+
+term accept-dhcp {
+  comment:: "Optional - allow forwarding of DHCP requests."
+  destination-port:: DHCP
+  protocol:: udp
+  action:: accept
+}
+
+term accept-to-honestdns {
+  comment:: "Allow name resolution using honestdns."
+  destination-address:: GOOGLE_DNS
+  destination-port:: DNS
+  protocol:: udp
+  action:: accept
+}
+
+term deny-to-internal {
+  comment:: "Deny access to rfc1918/internal."
+  destination-address:: INTERNAL
+  logging:: true
+  action:: reject
+}
+
+term test-icmp {
+  destination-address:: RFC1918
+  protocol:: icmp
+  icmp-type:: echo-request echo-reply
+  action:: accept
+}
+
+term deny-to-specific_hosts {
+  comment:: "Deny access to specified public."
+  destination-address:: WEB_SERVERS MAIL_SERVERS
+  action:: deny
+}
+
+term default-permit {
+  comment:: "Allow what's left."
+  action:: accept
+}
+

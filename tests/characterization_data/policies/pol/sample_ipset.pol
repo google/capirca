@@ -1,0 +1,19 @@
+header {
+  target:: ipset OUTPUT DROP
+}
+
+term deny-to-reserved {
+  destination-address:: RESERVED
+  action:: deny
+}
+
+term deny-to-bogons {
+  destination-address:: RESERVED
+  action:: deny
+}
+
+term allow-web-to-mail {
+  source-address:: WEB_SERVERS
+  destination-address:: MAIL_SERVERS
+  action:: accept
+}
