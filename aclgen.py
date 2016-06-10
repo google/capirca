@@ -35,6 +35,7 @@ from lib import brocade
 from lib import cisco
 from lib import ciscoasa
 from lib import ciscoxr
+from lib import cisconx
 from lib import gce
 from lib import ipset
 from lib import iptables
@@ -169,6 +170,7 @@ def RenderFile(input_file, output_directory, definitions,
   acl = False
   asacl = False
   aacl = False
+  nexusacl = False
   bacl = False
   eacl = False
   gcefw = False
@@ -249,6 +251,8 @@ def RenderFile(input_file, output_directory, definitions,
     win_afw = copy.deepcopy(pol)
   if 'ciscoxr' in platforms:
     xacl = copy.deepcopy(pol)
+  if 'cisconx' in platforms:
+    nexusacl = copy.deepcopy(pol)
   if 'nftables' in platforms:
     nft = copy.deepcopy(pol)
   if 'gce' in platforms:
@@ -324,6 +328,10 @@ def RenderFile(input_file, output_directory, definitions,
                 input_file, write_files)
     if xacl:
       acl_obj = ciscoxr.CiscoXR(xacl, exp_info)
+      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
+                input_file, write_files)
+    if nexusacl:
+      acl_obj = cisconx.CiscoNX(nexusacl, exp_info)
       RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
                 input_file, write_files)
     if nft:

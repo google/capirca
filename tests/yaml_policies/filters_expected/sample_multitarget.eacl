@@ -4,14 +4,14 @@
 no ip access-list edge-inbound
 ip access-list edge-inbound
 remark $Id:$
-remark this is a sample edge input filter that generates
-remark multiple output formats.
+ remark this is a sample edge input filter that generates
+ remark multiple output formats.
 
 
-remark deny-from-bogons
-remark this is a sample edge input filter with a very very very long and
-remark multi-line comment that
-remark also has multiple entries.
+ remark deny-from-bogons
+ remark this is a sample edge input filter with a very very very long and
+ remark multi-line comment that
+ remark also has multiple entries.
  deny ip 0.0.0.0 0.255.255.255 any
  deny ip 192.0.0.0 0.0.0.255 any
  deny ip 192.0.2.0 0.0.0.255 any
@@ -22,7 +22,7 @@ remark also has multiple entries.
  deny ip 240.0.0.0 15.255.255.255 any
 
 
-remark deny-from-reserved
+ remark deny-from-reserved
  deny ip 0.0.0.0 0.255.255.255 any
  deny ip 10.0.0.0 0.255.255.255 any
  deny ip 100.64.0.0 0.63.255.255 any
@@ -33,39 +33,39 @@ remark deny-from-reserved
  deny ip 224.0.0.0 31.255.255.255 any
 
 
-remark deny-to-rfc1918
+ remark deny-to-rfc1918
  deny ip any 10.0.0.0 0.255.255.255
  deny ip any 172.16.0.0 0.15.255.255
  deny ip any 192.168.0.0 0.0.255.255
 
 
-remark permit-mail-services
- permit tcp any 200.1.1.4 0.0.0.1 eq 25
+ remark permit-mail-services
+ permit tcp any 200.1.1.4 0.0.0.1 eq smtp
  permit tcp any 200.1.1.4 0.0.0.1 eq 465
  permit tcp any 200.1.1.4 0.0.0.1 eq 587
  permit tcp any 200.1.1.4 0.0.0.1 eq 995
 
 
-remark permit-web-services
- permit tcp any host 200.1.1.1 eq 80
+ remark permit-web-services
+ permit tcp any host 200.1.1.1 eq www
  permit tcp any host 200.1.1.1 eq 443
- permit tcp any host 200.1.1.2 eq 80
+ permit tcp any host 200.1.1.2 eq www
  permit tcp any host 200.1.1.2 eq 443
 
 
-remark permit-tcp-established
+ remark permit-tcp-established
  permit tcp any host 200.1.1.1 established
  permit tcp any 200.1.1.2 0.0.0.1 established
  permit tcp any 200.1.1.4 0.0.0.1 established
 
 
-remark permit-udp-established
+ remark permit-udp-established
  permit udp any range 1024 65535 host 200.1.1.1
  permit udp any range 1024 65535 200.1.1.2 0.0.0.1
  permit udp any range 1024 65535 200.1.1.4 0.0.0.1
 
 
-remark default-deny
+ remark default-deny
  deny ip any any
 
 exit
