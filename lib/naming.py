@@ -99,6 +99,22 @@ class _ItemUnit(object):
     self.name = symbol
     self.items = []
 
+class TrackStr(str):
+
+  """A string extension that also has tracking information for lint.
+
+  Attributes:
+    lineno: Line number this string occurred on.
+    offset: Offset this string was from the start of the line, starting at 0.
+  """
+
+  def __new__(cls, *args, **kwargs):
+    return super(TrackStr, cls).__new__(cls, *args)
+
+  def __init__(self, *args, **kwargs):
+    super(TrackStr, self).__init__(*args)
+    self.lineno = kwargs.pop('lineno', None)
+    self.offset = kwargs.pop('offset', None)
 
 class Naming(object):
   """Object to hold naming objects from NETWORK and SERVICES definition files.
@@ -403,14 +419,15 @@ class Naming(object):
 
     for current_file in file_names:
       try:
-        file_handle = open(current_file, 'r')
-        self._ParseFile(file_handle, def_type)
+        file_content = open(current_file, 'r').readlines()
+        for lineno, line in enumerate(file_content, start=1):
+          self._ParseLine(line, def_type, lineno=lineno)
       except IOError as error_info:
         raise NoDefinitionsError('%s', error_info)
 
   def _ParseFile(self, file_handle, def_type):
-    for line in file_handle:
-      self._ParseLine(line, def_type)
+    for lineno, line in enumerate(file_handle, start=1):
+      self._ParseLine(line, def_type, lineno=lineno)
 
   def ParseServiceList(self, data):
     """Take an array of service data and import into class.
@@ -437,7 +454,7 @@ class Naming(object):
     for line in data:
       self._ParseLine(line, 'networks')
 
-  def _ParseLine(self, line, definition_type):
+  def _ParseLine(self, line, definition_type, lineno=None):
     """Parse a single line of a service definition file.
 
     This routine is used to parse a single line of a service
@@ -456,6 +473,7 @@ class Naming(object):
     if definition_type not in ['services', 'networks']:
       raise UnexpectedDefinitionType('%s %s' % (
           'Received an unexpected defintion type:', definition_type))
+    orig_line = line  # store the original text for identifying value offsets
     line = line.strip()
     if not line or line.startswith('#'):  # Skip comments and blanks.
       return
@@ -478,7 +496,7 @@ class Naming(object):
               '\nMultiple definitions found for service: ',
               self.current_symbol))
 
-      self.unit = _ItemUnit(self.current_symbol)
+      self.unit = _ItemUnit(TrackStr(self.current_symbol, lineno=lineno))
       if definition_type == 'services':
         self.services[self.current_symbol] = self.unit
         # unseen_services is a list of service TOKENS found in the values
@@ -502,10 +520,12 @@ class Naming(object):
         continue
       if not self.current_symbol:
         break
-      if comment:
-        self.unit.items.append(value_piece + ' # ' + comment)
-      else:
-        self.unit.items.append(value_piece)
+      s = value_piece + ' # ' + comment if comment else value_piece
+      # for the actual value - identify the offset from the start of
+      # the line - useful for indentation lint
+      offset = orig_line.find(value_piece)
+      self.unit.items.append(TrackStr(s, lineno=lineno, offset=offset))
+      if not comment:
         # token?
         if value_piece[0].isalpha() and ':' not in value_piece:
           if definition_type == 'services':

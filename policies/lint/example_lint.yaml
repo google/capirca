@@ -1,0 +1,5 @@
+IndentEnforcer:
+  enabled: false
+
+RegexNameEnforcer:
+  NETNAME: ".*"

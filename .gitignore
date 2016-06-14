@@ -1,9 +1,11 @@
 *.pyc
 venv/
+.arcconfig
 
 # build output from 'python setup.py install'
 build/
 
 # Generated files
 filters/sample_*
+policies/sample_*
 def/AUTOGEN.net
