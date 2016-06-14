@@ -15,8 +15,6 @@
 
 """Common library for network ports and protocol handling."""
 
-__author__ = 'watson@google.com (Tony Watson)'
-
 
 class Error(Exception):
   """Base error class."""
@@ -27,7 +25,129 @@ class BadPortValue(Error):
 
 
 class BadPortRange(Error):
-  """Invalid port range."""
+  """Out of bounds port range."""
+
+
+class InvalidRange(Error):
+  """Range is not valid (eg, single port)."""
+
+
+class NotSinglePort(Error):
+  """Port range defined instead of a single port."""
+
+
+class PPP(object):
+
+  """
+  PPP: [P]ort [P]rotocol [P]airs
+
+  Make port/protocol pairs an object for easy comparisons
+  """
+
+  def __init__(self, service):
+    """
+    Args:
+      A port/protocol pair as str (eg: '80/tcp', '22-23/tcp')
+      or a nested service name (eg: 'SSH')
+    """
+    # remove comments (if any)
+    self.service = service.split('#')[0].strip()
+    if '/' in self.service:
+      self.port = self.service.split('/')[0]
+      self.protocol = self.service.split('/')[1]
+      self.nested = False
+    else:
+      # for nested services
+      self.nested = True
+      self.port = None
+      self.protocol = None
+
+  @property
+  def is_range(self):
+    if self.port:
+      return '-' in self.port
+    else:
+      return False
+
+  @property
+  def is_single_port(self):
+    if self.port:
+      return '-' not in self.port
+    else:
+      return False
+
+  @property
+  def start(self):
+    # return the first port in the range as int
+    if '-' in self.port:
+      self._start = int(self.port.split('-')[0])
+    else:
+      raise InvalidRange('%s is not a valid port range' % self.port)
+    return self._start
+
+  @property
+  def end(self):
+    # return the last port in the range as int
+    if '-' in self.port:
+      self._end = int(self.port.split('-')[1])
+    else:
+      raise InvalidRange('%s is not a valid port range' % self.port)
+    return self._end
+
+  def __contains__(self, other):
+    # determine if a single-port object is within another objects' range
+    try:
+      return (int(self.start) <= int(other.port) <= int(self.end))
+    except:
+      raise InvalidRange('%s must be a range' % self.port)
+
+  def __lt__(self, other):
+    if self.is_single_port:
+      try:
+        return int(self.port) < int(other.port)
+      except:
+        return False
+    else:
+      raise NotSinglePort('Comparisons cannot be performed on port ranges')
+
+  def __gt__(self, other):
+    if self.is_single_port:
+      try:
+        return int(self.port) > int(other.port)
+      except:
+        return False
+    else:
+      raise NotSinglePort('Comparisons cannot be performed on port ranges')
+
+  def __le__(self, other):
+    if self.is_single_port:
+      try:
+        return int(self.port) <= int(other.port)
+      except:
+        return False
+    else:
+      raise NotSinglePort('Comparisons cannot be performed on port ranges')
+
+  def __ge__(self, other):
+    if self.is_single_port:
+      try:
+        return int(self.port) >= int(other.port)
+      except:
+        return False
+    else:
+      raise NotSinglePort('Comparisons cannot be performed on port ranges')
+
+  def __eq__(self, other):
+    if self.is_single_port:
+      try:
+        return (
+            int(self.port) == int(other.port) and
+            self.protocol == other.protocol
+        )
+      except:
+        return False
+    else:
+      raise NotSinglePort('Comparisons cannot be performed on port ranges')
 
 
 def Port(port):
