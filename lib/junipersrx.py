@@ -316,6 +316,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     self.from_zone = ''
     self.to_zone = ''
     self.addr_book_type_global = True
+    self.file_comment = []
 
     current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
@@ -327,6 +328,9 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     for header, terms in pol.filters:
       if self._PLATFORM not in header.platforms:
         continue
+
+      if header.filecomment:
+        self.file_comment = header.filecomment
 
       filter_options = header.FilterOptions(self._PLATFORM)
 
@@ -761,6 +765,12 @@ class JuniperSRX(aclgenerator.ACLGenerator):
   def __str__(self):
     """Render the output of the JuniperSRX policy into config."""
     target = []
+
+    # add file comments
+    for fc in self.file_comment:
+      fc = fc.replace('"', "")
+      target.append('/* %s */' % fc)
+
     target.append('security {')
 
     # ADDRESSBOOK

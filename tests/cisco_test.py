@@ -30,6 +30,7 @@ GOOD_HEADER = """
 header {
   comment:: "this is a test acl"
   target:: cisco test-filter
+  file-comment:: "test file comment"
 }
 """
 GOOD_STANDARD_HEADER_1 = """

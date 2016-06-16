@@ -26,6 +26,7 @@ GOOD_HEADER_1 = """
 header {
   comment:: "this is a test acl"
   target:: mock
+  file-comment:: "meh"
 }
 """
 

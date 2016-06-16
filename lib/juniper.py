@@ -776,6 +776,7 @@ class Juniper(aclgenerator.ACLGenerator):
 
   def _TranslatePolicy(self, pol, exp_info):
     self.juniper_policies = []
+    self.file_comment = []
     current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
@@ -800,6 +801,9 @@ class Juniper(aclgenerator.ACLGenerator):
       filter_type = 'inet'
       if len(filter_options) > 1:
         filter_type = filter_options[1]
+
+      if header.filecomment:
+        self.file_comment = header.filecomment
 
       term_names = set()
       new_terms = []
@@ -833,6 +837,11 @@ class Juniper(aclgenerator.ACLGenerator):
 
     for (header, filter_name, filter_type, interface_specific, terms
         ) in self.juniper_policies:
+      # add file-comments from header
+      for fc in self.file_comment:
+        fc = fc.replace('"', "")
+        config.Append('/* %s */' % fc)
+
       # add the header information
       config.Append('firewall {')
       config.Append('family %s {' % filter_type)

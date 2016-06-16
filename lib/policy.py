@@ -1290,6 +1290,7 @@ class VarType(object):
   DTAG = 45
   NEXT_IP = 46
   HOP_LIMIT = 47
+  FILECOMMENT = 48
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1319,13 +1320,14 @@ class Header(object):
     self.comment = []
     self.apply_groups = []
     self.apply_groups_except = []
+    self.filecomment = []
 
   def AddObject(self, obj):
     """Add and object to the Header.
 
     Args:
       obj: of type VarType.COMMENT, VarType.APPLY_GROUPS,
-      VarType.APPLY_GROUPS_EXCEPT, or Target
+      VarType.APPLY_GROUPS_EXCEPT, VarType.FILECOMMENT, or Target
 
     Raises:
       RuntimeError: if object type cannot be determined
@@ -1340,6 +1342,8 @@ class Header(object):
           self.apply_groups_except.append(str(x))
     elif obj.var_type == VarType.COMMENT:
       self.comment.append(str(obj))
+    elif obj.var_type == VarType.FILECOMMENT:
+      self.filecomment.append(str(obj))
     else:
       raise RuntimeError('Unable to add object from header.')
 
@@ -1466,6 +1470,7 @@ tokens = (
     'EXPIRATION',
     'FORWARDING_CLASS',
     'FRAGMENT_OFFSET',
+    'FILECOMMENT',
     'HOP_LIMIT',
     'APPLY_GROUPS',
     'APPLY_GROUPS_EXCEPT',
@@ -1525,6 +1530,7 @@ reserved = {
     'expiration': 'EXPIRATION',
     'forwarding-class': 'FORWARDING_CLASS',
     'fragment-offset': 'FRAGMENT_OFFSET',
+    'file-comment': 'FILECOMMENT',
     'hop-limit': 'HOP_LIMIT',
     'apply-groups': 'APPLY_GROUPS',
     'apply-groups-except': 'APPLY_GROUPS_EXCEPT',
@@ -1644,6 +1650,7 @@ def p_header_spec(p):
                   | header_spec comment_spec
                   | header_spec apply_groups_spec
                   | header_spec apply_groups_except_spec
+                  | header_spec filecomment_spec
                   | """
   if len(p) > 1:
     if type(p[1]) == Header:
@@ -2003,6 +2010,11 @@ def p_apply_groups_except_spec(p):
   p[0] = []
   for group_except in p[4]:
     p[0].append(VarType(VarType.APPLY_GROUPS_EXCEPT, group_except))
+
+
+def p_filecomment_spec(p):
+    """ filecomment_spec : FILECOMMENT ':' ':' DQUOTEDSTRING """
+    p[0] = VarType(VarType.FILECOMMENT, p[4])
 
 
 def p_timeout_spec(p):
