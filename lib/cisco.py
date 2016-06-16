@@ -829,6 +829,9 @@ class Cisco(aclgenerator.ACLGenerator):
           for line in comment.split('\n'):
             target.append('remark %s' % line)
 
+        for line in header.filecomment:
+          target_header.append("! %s !" % line.replace('"', ""))
+
         # now add the terms
         for term in terms:
           term_str = str(term)

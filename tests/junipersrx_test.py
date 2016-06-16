@@ -31,6 +31,7 @@ GOOD_HEADER = """
 header {
   comment:: "This is a test acl with a comment"
   target:: srx from-zone trust to-zone untrust
+  file-comment:: "test file comment"
 }
 """
 GOOD_HEADER_2 = """

@@ -34,6 +34,7 @@ GOOD_HEADER = """
 header {
   comment:: "this is a test acl"
   target:: juniper test-filter
+  file-comment:: "test file comment"
 }
 """
 GOOD_HEADER_2 = """
