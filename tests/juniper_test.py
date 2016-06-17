@@ -363,6 +363,12 @@ term long-policer-term-1 {
   action:: deny
 }
 """
+NUMBER_POLICER_TERM_1 = """
+term number-policing-term {
+  policer:: 25M_50M
+  action:: deny
+}
+"""
 
 # Print a info message when a term is set to expire in that many weeks.
 # This is normally passed from command line.
@@ -928,6 +934,14 @@ class JuniperTest(unittest.TestCase):
                               '-very-very-very-very-very-very-very-very-very'
                               '-very-very-very-very-very-very-very-very-very'
                               '-very-very-long', 128, 128)
+
+  def testNumberPolicer(self):
+    policy_text = GOOD_HEADER + NUMBER_POLICER_TERM_1
+    jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
+                          EXP_INFO)
+    output = str(jcl)
+    self.failUnless(
+        ('policer 25M_50M') in output)
 
   def testNextIp(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
