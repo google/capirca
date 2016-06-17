@@ -1609,7 +1609,7 @@ def t_DSCP(t):
 
 
 def t_INTEGER(t):
-  r'\d+'
+  r'\d+(?!\w)'
   return t
 
 
