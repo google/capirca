@@ -16,7 +16,6 @@ import unittest
 import sys
 import logging
 import os
-import inspect
 import shutil
 import tempfile
 from cStringIO import StringIO
@@ -31,6 +30,9 @@ class Test_AclGen_ensure_demo_files_work(unittest.TestCase):
   """Ensure Capirca demo runs successfully out-of-the-box."""
 
   def setUp(self):
+    if aclgen.FLAGS.IsParsed():
+      aclgen.FLAGS.Reset()
+
     self.iobuff = StringIO()
     logger = logging.getLogger()
     logger.level = logging.DEBUG
@@ -42,14 +44,12 @@ class Test_AclGen_ensure_demo_files_work(unittest.TestCase):
     # temp dir for each test run.
     self.output_dir = tempfile.mkdtemp()
 
-    curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
     self.root_dir = os.path.realpath(os.path.join(curr_dir, '..', '..'))
     self.policies_dir = os.path.join(self.root_dir, 'policies')
     self.defs_dir = os.path.join(self.root_dir, 'def')
 
   def tearDown(self):
-    # print self.iobuff.getvalue().split("\n")
-    # Remove the directory after the test
     shutil.rmtree(self.output_dir)
 
   def test_smoke_test_generates_successfully(self):
@@ -111,6 +111,9 @@ class AclGen_Characterization_Test_Base(unittest.TestCase):
   characterization_data subfolder."""
 
   def setUp(self):
+    if aclgen.FLAGS.IsParsed():
+      aclgen.FLAGS.Reset()
+
     self.iobuff = StringIO()
     logger = logging.getLogger()
     logger.level = logging.DEBUG
@@ -118,7 +121,7 @@ class AclGen_Characterization_Test_Base(unittest.TestCase):
     self.s.level = logging.DEBUG
     logger.addHandler(self.s)
 
-    curr_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
     self.test_dir = os.path.join(curr_dir, '..', 'characterization_data')
     self.output_dir = self.dirpath('filters_actual')
     if not os.path.exists(self.output_dir):

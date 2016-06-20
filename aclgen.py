@@ -435,8 +435,6 @@ def WriteFiles(write_files):
 
 
 def main(args):
-  if FLAGS.IsParsed():
-    FLAGS.Reset()  # Clear global state.
   FLAGS(args)
 
   logging.debug('binary: %s\noptimize: %d\base_directory: %s\n'

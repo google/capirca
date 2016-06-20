@@ -266,14 +266,6 @@ class Naming_Characterization_Tests(unittest.TestCase):
     with self.assertRaises(naming.UndefinedAddressError):
       self.naming.GetNetAddr('SOME_UNDEFINED_TOKEN')
 
-  def test_GetNetAddr(self):
-    """GetNetAddr delegates to GetNet (currently, at least)."""
-    self.test_GetNet()
-
-  def test_GetNetAddr_raises_if_unknown(self):
-    """GetNetAddr delegates to GetNet (currently, at least)."""
-    self.test_GetNet_raises_if_unknown()
-
   def test_parseServiceList(self):
     tok = 'SOME_UNKNOWN_TOKEN'
     with self.assertRaises(naming.UndefinedServiceError):
