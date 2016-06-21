@@ -33,7 +33,7 @@ header {
 GOOD_TERM_IPV4 = """
 term good-term-1 {
   comment:: "All servers."
-  address:: SERVERS
+  source-address:: SERVERS
   action:: accept
 }
 """
@@ -41,7 +41,7 @@ term good-term-1 {
 BAD_TERM_IPV4 = """
 term good-term-1 {
   comment:: "All servers."
-  address:: SERVERS
+  source-address:: SERVERS
   action:: deny
 }
 """
@@ -56,7 +56,7 @@ header {
 GOOD_TERM_IPV6 = """
 term good-term-1 {
   comment:: "All servers."
-  address:: SERVERS
+  source-address:: SERVERS
   action:: accept
 }
 """
@@ -66,7 +66,7 @@ term good-term-1 {
 EXP_INFO = 2
 
 TEST_IPS = [nacaddr.IP('10.2.3.4/32'),
-            nacaddr.IP('2001:4860:8000::5/128')]
+            nacaddr.IP('fc01:2345:8000::5/128')]
 
 
 class ArubaTest(unittest.TestCase):
@@ -81,7 +81,7 @@ class ArubaTest(unittest.TestCase):
         GOOD_HEADER_IPV4 + GOOD_TERM_IPV4, self.naming), EXP_INFO)
     self.assertTrue('netdestination SERVER-LIST' in str(acl))
     self.assertTrue('  host 10.2.3.4' in str(acl))
-    self.assertFalse('  host 2001:4860:8000::5' in str(acl))
+    self.assertFalse('  host fc01:2345:8000::5' in str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SERVERS')
 
@@ -91,7 +91,7 @@ class ArubaTest(unittest.TestCase):
     acl = aruba.Aruba(policy.ParsePolicy(
         GOOD_HEADER_IPV6 + GOOD_TERM_IPV6, self.naming), EXP_INFO)
     self.assertTrue('netdestination6 SERVER-LIST_6' in str(acl))
-    self.assertTrue('  host 2001:4860:8000::5' in str(acl))
+    self.assertTrue('  host fc01:2345:8000::5' in str(acl))
     self.assertFalse('  host 10.2.3.4' in str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SERVERS')
