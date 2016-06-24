@@ -16,6 +16,8 @@
 """Aruba generator.
 
 BETA: This only generates netdestination lists for hosts.
+The word beta is very generous too: this only outputs a
+very, very limited subset of possible acls.
 """
 
 __author__ = 'cburgoyne@google.com (Chris Burgoyne)'
@@ -50,12 +52,12 @@ class Term(aclgenerator.Term):
     if self.term.icmp_type:
       raise UnsupportedArubaAccessListError(
           'ICMP Type specifications are not permissible in Aruba ACLs')
-    if (self.term.source_address
+    if (self.term.address
         or self.term.source_address_exclude
         or self.term.destination_address
         or self.term.destination_address_exclude):
       raise UnsupportedArubaAccessListError(
-          'Aruba ACLs cannot use source or destination addresses')
+          'Aruba ACLs cannot use address:: or destination-addresses')
     if self.term.option:
       raise UnsupportedArubaAccessListError(
           'Aruba ACLs prohibit use of options')
@@ -69,7 +71,7 @@ class Term(aclgenerator.Term):
   def __str__(self):
     ret_str = []
     if self.ip_ver in (4, 6):
-      addresses = self.term.GetAddressOfVersion('address', self.ip_ver)
+      addresses = self.term.GetAddressOfVersion('source_address', self.ip_ver)
     else:
       addresses = []
     for a in addresses:
@@ -82,7 +84,7 @@ class Aruba(aclgenerator.ACLGenerator):
 
   _PLATFORM = 'aruba'
   SUFFIX = '.aruba'
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['address'])
+  _OPTIONAL_SUPPORTED_KEYWORDS = set([])
 
   def _TranslatePolicy(self, pol, exp_info):
     self.aruba_policies = []
