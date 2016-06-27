@@ -18,6 +18,7 @@ import unittest
 
 from lib import naming
 from lib import policy
+from lib import policyparser
 from lib import speedway
 import mock
 
@@ -47,7 +48,7 @@ class SpeedwayTest(unittest.TestCase):
     self.naming = mock.create_autospec(naming.Naming)
 
   def testSpeedwayOutputFormat(self):
-    acl = speedway.Speedway(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
+    acl = speedway.Speedway(policyparser.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                                                self.naming), EXP_INFO)
     result = []
     result.extend(str(acl).split('\n'))

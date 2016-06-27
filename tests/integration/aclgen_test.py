@@ -175,6 +175,57 @@ class AclGen_Characterization_Tests(AclGen_Characterization_Test_Base):
     self.assertEquals([], dircmp.right_only, 'missing {0} in filters_actual'.format(dircmp.right_only))
     self.assertEquals([], dircmp.diff_files)
 
+  def test_characterization_single_file(self):
+    def_dir, pol_dir, expected_dir = map(self.dirpath, ('def', 'policies', 'filters_expected'))
+    polfile = os.path.join(pol_dir, 'pol', 'sample_cisco_lab.pol')
+    args = [
+      'program',  # Dummy value for gflags, which expects the program name to be first.
+      '--policy_file={0}'.format(polfile),
+      '--base_directory={0}'.format(pol_dir),
+      '--definitions_directory={0}'.format(def_dir),
+      '--output_directory={0}'.format(self.output_dir)
+    ]
+    aclgen.main(args)
+
+    def content(f):
+      with open(f, 'r') as handle:
+        return handle.read()
+
+    actual_outfile = os.path.join(self.output_dir, 'sample_cisco_lab.acl')
+    actual = content(actual_outfile)
+    expected_outfile = os.path.join(expected_dir, 'sample_cisco_lab.acl')
+    expected = content(expected_outfile)
+
+    # Build nicer diff message for file content comparison:
+    msg = ""
+    first_diff = 0
+    last_diff = -1  # Counting backwards from end
+    if (actual != expected):
+      actual = actual.split('\n')
+      expected = expected.split('\n')
+      while actual[first_diff] == expected[first_diff]:
+        first_diff += 1  # may run off the end of one of the arrays
+                         # ... not concerned, that's an error anyway.
+      while actual[last_diff] == expected[last_diff]:
+        print actual[last_diff]
+        last_diff -= 1
+      actual = '\n'.join(actual[first_diff:(len(actual) + last_diff + 1)])
+      expected = '\n'.join(expected[first_diff:(len(expected) + last_diff + 1)])
+
+      msg = """Files differ starting at line {0}:
+
+Actual {1}:
+---------------------
+{2}
+---------------------
+Expected {3}:
+---------------------
+{4}
+---------------------""".format(first_diff, actual_outfile, actual, expected_outfile, expected)
+
+    if msg != "":
+      self.assertEquals(1, 2, msg)
+
 
 def main():
     unittest.main()
