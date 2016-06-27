@@ -1,0 +1,145 @@
+! $Id:$
+! $Date:$
+! $Revision:$
+no ip access-list extended edge-inbound
+ip access-list extended edge-inbound
+remark $Id:$
+remark this is a sample edge input filter that generates
+remark multiple output formats.
+
+
+remark deny-from-bogons
+remark this is a sample edge input filter with a very very very long and
+remark multi-line comment that
+remark also has multiple entries.
+ deny ip 0.0.0.0 0.255.255.255 any
+ deny ip 192.0.0.0 0.0.0.255 any
+ deny ip 192.0.2.0 0.0.0.255 any
+ deny ip 198.18.0.0 0.1.255.255 any
+ deny ip 198.51.100.0 0.0.0.255 any
+ deny ip 203.0.113.0 0.0.0.255 any
+ deny ip 224.0.0.0 15.255.255.255 any
+ deny ip 240.0.0.0 15.255.255.255 any
+
+
+remark deny-from-reserved
+ deny ip 0.0.0.0 0.255.255.255 any
+ deny ip 10.0.0.0 0.255.255.255 any
+ deny ip 100.64.0.0 0.63.255.255 any
+ deny ip 127.0.0.0 0.255.255.255 any
+ deny ip 169.254.0.0 0.0.255.255 any
+ deny ip 172.16.0.0 0.15.255.255 any
+ deny ip 192.168.0.0 0.0.255.255 any
+ deny ip 224.0.0.0 31.255.255.255 any
+
+
+remark deny-to-rfc1918
+ deny ip any 10.0.0.0 0.255.255.255
+ deny ip any 172.16.0.0 0.15.255.255
+ deny ip any 192.168.0.0 0.0.255.255
+
+
+remark permit-mail-services
+ permit 6 any 200.1.1.4 0.0.0.1 eq 25
+ permit 6 any 200.1.1.4 0.0.0.1 eq 465
+ permit 6 any 200.1.1.4 0.0.0.1 eq 587
+ permit 6 any 200.1.1.4 0.0.0.1 eq 995
+
+
+remark permit-web-services
+ permit 6 any host 200.1.1.1 eq 80
+ permit 6 any host 200.1.1.1 eq 443
+ permit 6 any host 200.1.1.2 eq 80
+ permit 6 any host 200.1.1.2 eq 443
+
+
+remark permit-tcp-established
+ permit 6 any host 200.1.1.1 established
+ permit 6 any 200.1.1.2 0.0.0.1 established
+ permit 6 any 200.1.1.4 0.0.0.1 established
+
+
+remark permit-udp-established
+ permit 17 any range 1024 65535 host 200.1.1.1
+ permit 17 any range 1024 65535 200.1.1.2 0.0.0.1
+ permit 17 any range 1024 65535 200.1.1.4 0.0.0.1
+
+
+remark default-deny
+ deny ip any any
+
+exit
+
+no ipv6 access-list ipv6-edge-inbound
+ipv6 access-list ipv6-edge-inbound
+remark $Id:$
+remark this is a sample edge input filter that generates
+remark multiple output formats.
+
+
+remark deny-from-bogons
+remark this is a sample edge input filter with a very very very long and
+remark multi-line comment that
+remark also has multiple entries.
+ deny ipv6 2001:db8::/32 any
+ deny ipv6 3ffe::/16 any
+ deny ipv6 5f00::/8 any
+ deny ipv6 ff00::/8 any
+
+
+remark deny-from-reserved
+ deny ipv6 ::/3 any
+ deny ipv6 4000::/2 any
+ deny ipv6 8000::/1 any
+
+
+remark default-deny
+ deny ipv6 any any
+
+exit
+
+no ip access-list extended edge-outbound
+ip access-list extended edge-outbound
+remark $Id:$
+remark this is a sample output filter
+
+
+remark deny-to-bad-destinations
+ deny ip any 0.0.0.0 0.255.255.255
+ deny ip any 10.0.0.0 0.255.255.255
+ deny ip any 100.64.0.0 0.63.255.255
+ deny ip any 127.0.0.0 0.255.255.255
+ deny ip any 169.254.0.0 0.0.255.255
+ deny ip any 172.16.0.0 0.15.255.255
+ deny ip any 192.0.0.0 0.0.0.255
+ deny ip any 192.0.2.0 0.0.0.255
+ deny ip any 192.168.0.0 0.0.255.255
+ deny ip any 198.18.0.0 0.1.255.255
+ deny ip any 198.51.100.0 0.0.0.255
+ deny ip any 203.0.113.0 0.0.0.255
+ deny ip any 224.0.0.0 31.255.255.255
+
+
+remark default-accept
+ permit ip any any
+
+exit
+
+no ipv6 access-list ipv6-edge-outbound
+ipv6 access-list ipv6-edge-outbound
+remark $Id:$
+remark this is a sample output filter
+
+
+remark deny-to-bad-destinations
+ deny ipv6 any ::/3
+ deny ipv6 any 2001:db8::/32
+ deny ipv6 any 3ffe::/16
+ deny ipv6 any 4000::/2
+ deny ipv6 any 8000::/1
+
+
+remark default-accept
+ permit ipv6 any any
+
+exit

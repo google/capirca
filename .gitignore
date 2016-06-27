@@ -7,3 +7,4 @@ build/
 # Generated files
 filters/sample_*
 def/AUTOGEN.net
+tests/characterization_data/filters_actual
