@@ -22,13 +22,12 @@ from copy import deepcopy
 import datetime
 import json
 import re
-import yaml
+
 from lib import nacaddr
+import yaml
 
-__author__ = 'mikeelkin2@fb.com (Mike Elkin)'
-
-Error = namedtuple('Error', ['filename', 'lineno', 'offset', 'severity',
-               'message', 'category'])
+Error = namedtuple('Error', ['filename', 'lineno', 'offset', 'Severity',
+                             'message', 'category'])
 
 
 def sanitizeNetworkItem(x):
@@ -36,7 +35,15 @@ def sanitizeNetworkItem(x):
   return x.split('#', 1)[0].strip()
 
 
-class severity(object):
+class Severity(object):
+  """Helper class to represent the severity of a lint problem.
+
+  Methods:
+    human(k) - represents the human-legible value
+    int(k) - represents a numerical representation of how bad the error is,
+             mimicing the same values used for Phabricator.
+  """
+
   DISABLED = 'disabled'
   ADVICE = 'advice'
   WARNING = 'warning'
@@ -46,27 +53,29 @@ class severity(object):
   @classmethod
   def human(cls, k):
     mapping = {
-      cls.DISABLED: 'Disabled',
-      cls.ADVICE: 'Advice',
-      cls.WARNING: 'Warning',
-      cls.ERROR: 'Error',
-      cls.AUTOFIX: 'Auto-Fix',
+        cls.DISABLED: 'Disabled',
+        cls.ADVICE: 'Advice',
+        cls.WARNING: 'Warning',
+        cls.ERROR: 'Error',
+        cls.AUTOFIX: 'Auto-Fix',
     }
     return mapping[k]
 
   @classmethod
   def int(cls, k):
     mapping = {
-      cls.DISABLED: 10,
-      cls.ADVICE: 20,
-      cls.WARNING: 30,
-      cls.ERROR: 40,
-      cls.AUTOFIX: 25,
+        cls.DISABLED: 10,
+        cls.ADVICE: 20,
+        cls.WARNING: 30,
+        cls.ERROR: 40,
+        cls.AUTOFIX: 25,
     }
     return mapping[k]
 
 
 class LintErrors(object):
+  """Storage class for tracking what lint errors have been observed."""
+
   def __init__(self):
     self.errs = []
     self.filename = None
@@ -75,12 +84,14 @@ class LintErrors(object):
     for e in self.errs:
       yield e
 
-  def add(self, severity, msg, lineno=0, offset=0, filename=None,
+  def add(self, severity_code, msg, lineno=0, offset=0, filename=None,
       category='CAP'):
+    """Construct a lint error based off the given location provided"""
     fn = filename or self.filename or 'unknown'
-    self.errs.append(Error(fn, lineno, offset, severity, msg, category))
+    self.errs.append(Error(fn, lineno, offset, severity_code, msg, category))
 
   def tree(self, sort=True):
+    """Return a tree representation of the stored lint errors"""
     t = defaultdict(list)
     for e in self.errs:
       t[e.filename].append(e)
@@ -90,18 +101,21 @@ class LintErrors(object):
     return t
 
   def pprint(self):
+    """Output a pretty-print of the stored lint errors"""
     for filename, errors in self.tree().iteritems():
       print("%s -" % filename)
       for error in errors:
         print("  %5d <%s> %s" % (error.lineno,
-                     severity.human(error.severity),
+                     Severity.human(error.Severity),
                      error.message))
 
   def plain(self):
+    """Do a plain print() of the stored lint errors"""
     for error in sorted(self.errs, key=lambda x: (x.filename, x.lineno)):
       print(error)
 
   def json(self):
+    """Print a json representation of the tree structure"""
     print(json.dumps(self.tree()))
 
 
@@ -112,10 +126,12 @@ def register_linter(f):
 
 
 def get_linters():
+  """Get all the globally registered linters"""
   return globals().get('CAPIRCA_LINTERS', [])
 
 
 def build_linters(configpath):
+  """Helper function to construct a LintErrors and all linters"""
   errors = LintErrors()
   if configpath:
     with open(configpath) as f:
@@ -127,11 +143,13 @@ def build_linters(configpath):
 
 
 class BaseLintRule(object):
-
   """Base Lint Rule class. All lint rules should extend this.
 
   All configurable parameters should be placed into DEFAULTS - as these
   values get merged with the optional user-specified YAML file.
+
+  setup() can be implemented by child classes that might need to do
+  additional configuration such as remote data-fetching.
   """
 
   CONFIG_NAME = None
@@ -207,8 +225,7 @@ class BaseLintRule(object):
 
 @register_linter
 class AddressNumEnforce(BaseLintRule):
-
-  """ Warns about terms with more than a few address tokens. """
+  """Warns about terms with more than a few address tokens."""
 
   def check_term(self, policy, header, term):
     addr_attrs = (
@@ -224,13 +241,12 @@ class AddressNumEnforce(BaseLintRule):
         msg = ("term %s has too many objects in" % term.name +
              " one of the address fields. " +
              "Please review and consolidate the addresses")
-        self.add(severity.WARNING, msg, term.name.lineno)
+        self.add(Severity.WARNING, msg, term.name.lineno)
 
 
 @register_linter
 class RegexNameEnforcer(BaseLintRule):
-
-  """ Ensures objects and terms following naming conventions. """
+  """Ensures objects and terms following naming conventions."""
 
   DEFAULTS = {
     'NETNAME': r'^([A-Z][A-Z0-9_]+|h_[0-9a-f\.]+|n_[0-9a-f\.]+_[0-9]+)$',
@@ -250,12 +266,12 @@ class RegexNameEnforcer(BaseLintRule):
   def check_network(self, network):
     if not self.netname_re.match(network.name):
       msg = '%s is not a valid network name' % network.name
-      self.add(severity.WARNING, msg, network.name.lineno)
+      self.add(Severity.WARNING, msg, network.name.lineno)
 
   def check_service(self, service):
     if not self.svcname_re.match(service.name):
       msg = '%s is not a valid service name' % service.name
-      self.add(severity.WARNING, msg, service.name.lineno)
+      self.add(Severity.WARNING, msg, service.name.lineno)
 
   def check_term(self, policy, header, term):
     header_targets = {}
@@ -265,16 +281,15 @@ class RegexNameEnforcer(BaseLintRule):
       if target == 'default' and not re_pattern.match(term.name):
         msg = ('%s is not a valid '
              'term name for all platforms' % term.name)
-        self.add(severity.ERROR, msg, term.name.lineno)
+        self.add(Severity.ERROR, msg, term.name.lineno)
       elif target in header_targets and not re_pattern.match(term.name):
         msg = '%s is not a valid term name for target: %s' % (term.name,
                                     target)
-        self.add(severity.ERROR, msg, term.name.lineno)
+        self.add(Severity.ERROR, msg, term.name.lineno)
 
 
 @register_linter
 class BoilerplateTermEnforcer(BaseLintRule):
-
   """Enforces files with BOILERPLATE in the name must have all terms
   prefixed with "bp-"
   """
@@ -285,7 +300,7 @@ class BoilerplateTermEnforcer(BaseLintRule):
     if not term.name.startswith('bp-') and 'BOILERPLATE' in policy:
       msg = ("Term %s is in a boilerplate, and should start with "
            "'bp-'" % term.name)
-      self.add(severity.WARNING, msg, term.name.lineno)
+      self.add(Severity.WARNING, msg, term.name.lineno)
 
 
 @register_linter
@@ -303,7 +318,7 @@ class Inet6TermEnforcer(BaseLintRule):
     if 'inet6' in header_options and not term.name.endswith('-v6'):
       msg = ("Term %s is in an inet6 policy, and should end with "
            "'-v6'" % term.name)
-      self.add(severity.WARNING, msg, term.name.lineno)
+      self.add(Severity.WARNING, msg, term.name.lineno)
 
 
 @register_linter
@@ -317,11 +332,11 @@ class SinglePortEnforcer(BaseLintRule):
       if len(service.items) == 2:
         return
       msg = '%s should contain two port specifications' % name
-      self.add(severity.WARNING, msg, name.lineno)
+      self.add(Severity.WARNING, msg, name.lineno)
     elif (name.startswith('TCP_') or name.startswith('UDP_')) \
         and len(service.items) != 1:
       msg = '%s should contain a single port specification' % name
-      self.add(severity.WARNING, msg, name.lineno)
+      self.add(Severity.WARNING, msg, name.lineno)
 
 
 @register_linter
@@ -334,7 +349,7 @@ class SameLineDefinitionsEnforcer(BaseLintRule):
     for item in service.items:
       if item.lineno in seen_lines:
         msg = 'Services on same line'
-        self.add(severity.WARNING, msg, lineno=item.lineno)
+        self.add(Severity.WARNING, msg, lineno=item.lineno)
       seen_lines.add(item.lineno)
 
   def check_network(self, network):
@@ -342,7 +357,7 @@ class SameLineDefinitionsEnforcer(BaseLintRule):
     for item in network.items:
       if item.lineno in seen_lines:
         msg = 'Networks on same line'
-        self.add(severity.WARNING, msg, lineno=item.lineno)
+        self.add(Severity.WARNING, msg, lineno=item.lineno)
       seen_lines.add(item.lineno)
 
 
@@ -369,7 +384,7 @@ class CharLengthEnforcer(BaseLintRule):
       if len(term.name) > max_len:
         msg = ("Term %s is longer than %d characters" %
              (term.name, max_len))
-        self.add(severity.WARNING, msg, lineno=term.name.lineno)
+        self.add(Severity.WARNING, msg, lineno=term.name.lineno)
     # for policy files, which have headers, only check for the appropriate
     # target
     else:
@@ -378,21 +393,21 @@ class CharLengthEnforcer(BaseLintRule):
         if target in header_targets and len(term.name) > max_len:
           msg = ("Term %s is longer than %d characters" %
                (term.name, max_len))
-          self.add(severity.WARNING, msg, lineno=term.name.lineno)
+          self.add(Severity.WARNING, msg, lineno=term.name.lineno)
 
   def check_network(self, network):
     max_len = self.config['MAX_NETWORK_LEN']
     if len(network.name) > max_len:
       msg = 'Network name %s is more than %d characters' % (network.name,
                                   max_len)
-      self.add(severity.WARNING, msg, network.name.lineno)
+      self.add(Severity.WARNING, msg, network.name.lineno)
 
   def check_service(self, service):
     max_len = self.config['MAX_SERVICE_LEN']
     if len(service.name) > max_len:
       msg = 'Service name %s is more than %d characters' % (service.name,
                                   max_len)
-      self.add(severity.WARNING, msg, service.name.lineno)
+      self.add(Severity.WARNING, msg, service.name.lineno)
 
 
 @register_linter
@@ -411,11 +426,11 @@ class ExpiredTermEnforcer(BaseLintRule):
       sev = None
       days = (term.expiration - datetime.date.today()).days
       if days < self.config['ERROR_DAYS']:
-        sev = severity.ERROR
+        sev = Severity.ERROR
       elif days < self.config['WARN_DAYS']:
-        sev = severity.WARNING
+        sev = Severity.WARNING
       elif days < self.config['ADVICE_DAYS']:
-        sev = severity.ADVICE
+        sev = Severity.ADVICE
       if sev is not None:
         if days < 0:
           msg = 'term is expired!'
@@ -432,12 +447,12 @@ class EmptyNetworkOrPorts(BaseLintRule):
   def check_service(self, service):
     if not len(service.items):
       msg = 'Services must contain at least one element'
-      self.add(severity.ERROR, msg, lineno=service.name.lineno)
+      self.add(Severity.ERROR, msg, lineno=service.name.lineno)
 
   def check_network(self, network):
     if not len(network.items):
       msg = 'Networks must contain at least one element'
-      self.add(severity.ERROR, msg, lineno=network.name.lineno)
+      self.add(Severity.ERROR, msg, lineno=network.name.lineno)
 
 
 @register_linter
@@ -481,13 +496,13 @@ class CheckValidNetwork(BaseLintRule):
         network = nacaddr.IP(stripped)
       except ValueError:
         msg = '%s is not a valid network' % stripped
-        self.add(severity.ERROR, msg, lineno=item.lineno)
+        self.add(Severity.ERROR, msg, lineno=item.lineno)
       else:
         # ensure there the entry is in CIDR notation
         if not cidr_regex.search(stripped):
           msg = ('%s is not in CIDR notation (must have a /## '
                "network assignment)") % stripped
-          self.add(severity.ERROR, msg, lineno=item.lineno)
+          self.add(Severity.ERROR, msg, lineno=item.lineno)
           # skip the other two checks because they require a network
           continue
         # Warn for extraordinarily large v6 subnets (usually a mistake
@@ -498,7 +513,7 @@ class CheckValidNetwork(BaseLintRule):
           msg = ("%s is an extremely large network and may be an error. "
                  "Please confirm this is the correct CIDR mask." %
                  network.with_prefixlen)
-          self.add(severity.WARNING, msg, lineno=item.lineno)
+          self.add(Severity.WARNING, msg, lineno=item.lineno)
         # check that the IP they are defining is the network address
         try:
           # need the raw_ip without the subnet for comparing with the
@@ -512,7 +527,7 @@ class CheckValidNetwork(BaseLintRule):
                  "network: %s/%s" % (raw_ip,
                            str(network.network).lower(),
                            network.prefixlen))
-            self.add(severity.ERROR, msg, lineno=item.lineno)
+            self.add(Severity.ERROR, msg, lineno=item.lineno)
 
 
 @register_linter
@@ -543,7 +558,7 @@ class NetworkMatcher(BaseLintRule):
       net_ip = nacaddr.IP(n)
     except ValueError:
       msg = '%s (%s) is not a valid network' % (network.name, n)
-      self.add(severity.ERROR, msg, lineno=network.name.lineno)
+      self.add(Severity.ERROR, msg, lineno=network.name.lineno)
       return
 
     for item in network.items:
@@ -556,7 +571,7 @@ class NetworkMatcher(BaseLintRule):
       if net_ip != item_ip:
         msg = ('%s does not match name specification of %s'
              % (item_ip, net_ip))
-        self.add(severity.WARNING, msg, lineno=item.lineno)
+        self.add(Severity.WARNING, msg, lineno=item.lineno)
 
 
 @register_linter
@@ -577,7 +592,7 @@ class IndentEnforcer(BaseLintRule):
       if item.offset == indent:
         continue
       msg = '%s indented by %d, not %d' % (item, item.offset, indent)
-      self.add(severity.WARNING, msg, lineno=item.lineno)
+      self.add(Severity.WARNING, msg, lineno=item.lineno)
 
   def check_service(self, service):
     indent = self.config['INDENT']
@@ -587,7 +602,7 @@ class IndentEnforcer(BaseLintRule):
       if item.offset == indent:
         continue
       msg = '%s indented by %d, not %d' % (item, item.offset, indent)
-      self.add(severity.WARNING, msg, lineno=item.lineno)
+      self.add(Severity.WARNING, msg, lineno=item.lineno)
 
 
 @register_linter
@@ -609,4 +624,4 @@ class CounterEnforcer(BaseLintRule):
       if target in header_targets and not term.counter:
         msg = ('A counter is required for term %s, it\'s in a '
                'policy with a "%s" target' % (term.name, target))
-        self.add(severity.WARNING, msg, lineno=term.name.lineno)
+        self.add(Severity.WARNING, msg, lineno=term.name.lineno)

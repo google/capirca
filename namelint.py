@@ -21,10 +21,9 @@ from __future__ import unicode_literals
 import os
 import argparse
 
-from lib.linters import build_linters, severity as sev
+from lib.linters import build_linters
+from lib.linters import Severity as sev
 from lib.naming import Naming
-
-__author__ = 'mikeelkin2@fb.com (Mike Elkin)'
 
 
 def main():

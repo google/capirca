@@ -21,7 +21,8 @@ from __future__ import unicode_literals
 import argparse
 import os
 
-from lib.linters import build_linters, severity as sev
+from lib.linters import Severity as sev
+from lib.linters import build_linters
 from lib.naming import Naming
 from lib.policy import ParsePolicy, _ReadFile
 
