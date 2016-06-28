@@ -1,0 +1,51 @@
+! $Id:$
+! $Date:$
+! $Revision:$
+no ip access-list extended allowtointernet
+ip access-list extended allowtointernet
+remark $Id:$
+remark Denies all traffic to internal IPs except established tcp replies.
+remark Also denies access to certain public allocations.
+remark Ideal for some internal lab/testing types of subnets that are
+remark not well trusted, but allowing internal users to access.
+remark Apply to ingress interface (to filter traffic coming from lab)
+
+
+remark accept-dhcp
+remark Optional - allow forwarding of DHCP requests.
+ permit 17 any any eq 67
+ permit 17 any any eq 68
+
+
+remark accept-to-honestdns
+remark Allow name resolution using honestdns.
+ permit 17 any host 8.8.4.4 eq 53
+ permit 17 any host 8.8.8.8 eq 53
+
+
+remark accept-tcp-replies
+remark Allow tcp replies to internal hosts.
+ permit 6 any 10.0.0.0 0.255.255.255 established
+ permit 6 any 172.16.0.0 0.15.255.255 established
+ permit 6 any 192.168.0.0 0.0.255.255 established
+
+
+remark deny-to-internal
+remark Deny access to rfc1918/internal.
+ deny ip any 10.0.0.0 0.255.255.255
+ deny ip any 172.16.0.0 0.15.255.255
+ deny ip any 192.168.0.0 0.0.255.255
+
+
+remark deny-to-specific_hosts
+remark Deny access to specified public.
+ deny ip any host 200.1.1.1
+ deny ip any host 200.1.1.2
+ deny ip any 200.1.1.4 0.0.0.1
+
+
+remark default-permit
+remark Allow what's left.
+ permit ip any any
+
+exit

@@ -1,0 +1,34 @@
+name: sample_speedway
+address-family: ipv4
+
+comment: |-
+  Sample policy for Speedway Iptables.
+  Speedway generates iptables output suitable for loading
+  using the iptables-restore command
+
+targets:
+
+  - speedway INPUT DROP
+
+terms:
+
+  - name: base-allow-est-in
+    option: established
+    action: accept
+  
+  - name: base-allow-icmp-in
+    protocol: icmp
+    icmp-type: echo-request
+    action: accept
+  
+  - name: base-traceroute-in
+    protocol: udp
+    source-port: TRACEROUTE
+    destination-port: HIGH_PORTS
+    action: accept
+  
+  - name: base-allow-ssh-in
+    source-address: INTERNAL
+    protocol: tcp
+    destination-port: SSH
+    action: accept

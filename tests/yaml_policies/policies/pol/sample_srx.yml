@@ -1,0 +1,26 @@
+name: sample_srx
+address-family: ipv4
+
+comment: |-
+  this is a sample policy to generate Juniper SRX filter
+  from zone Untrust to zone DMZ.
+
+targets:
+  - srx from-zone Untrust to-zone DMZ
+
+terms:
+
+  - name: test-tcp
+    destination-address: RFC1918
+    protocol: tcp, udp
+    logging: true
+    action: accept
+
+  - name: test-icmp
+    destination-address: RFC1918
+    protocol: icmp
+    icmp-type: echo-request, echo-reply
+    action: accept
+
+  - name: default-deny
+    action: deny
