@@ -1,0 +1,45 @@
+name: allowtointernet
+address-family: ipv4
+
+comment: Denies all traffic to internal IPs except established tcp replies.
+
+targets:
+  - packetfilter
+
+terms:
+
+  - name: accept-dhcp
+    comment: Optional - allow forwarding of DHCP requests.
+    destination-port: DHCP
+    protocol: udp
+    action: accept
+  
+  - name: accept-to-honestdns
+    comment: Allow name resolution using honestdns.
+    destination-address: GOOGLE_DNS
+    destination-port: DNS
+    protocol: udp
+    action: accept
+  
+  - name: deny-to-internal
+    comment: Deny access to rfc1918/internal.
+    destination-address: INTERNAL
+    logging: true
+    action: reject
+  
+  - name: test-icmp
+    destination-address: RFC1918
+    protocol: icmp
+    icmp-type: echo-request, echo-reply
+    action: accept
+  
+  - name: deny-to-specific_hosts
+    comment: Deny access to specified public.
+    destination-address: WEB_SERVERS, MAIL_SERVERS
+    action: deny
+  
+  - name: default-permit
+    comment: Allow what's left.
+    action: accept
+
+  

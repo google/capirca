@@ -1,0 +1,26 @@
+*filter
+# Speedway sample_speedway Policy
+# Sample policy for Speedway Iptables.
+# Speedway generates iptables output suitable for loading
+# using the iptables-restore command
+#
+# $Id:$
+# $Date:$
+# $Revision:$
+# inet
+-N sample_speedway
+-N s_base-allow-est-in
+-A s_base-allow-est-in -p all -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A sample_speedway -j s_base-allow-est-in
+-N s_base-allow-icmp-in
+-A s_base-allow-icmp-in -p icmp --icmp-type 8 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A sample_speedway -j s_base-allow-icmp-in
+-N s_base-traceroute-in
+-A s_base-traceroute-in -p udp --sport 33434:33534 --dport 1024:65535 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A sample_speedway -j s_base-traceroute-in
+-N s_base-allow-ssh-in
+-A s_base-allow-ssh-in -p tcp --dport 22 -s 10.0.0.0/8 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A s_base-allow-ssh-in -p tcp --dport 22 -s 172.16.0.0/12 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A s_base-allow-ssh-in -p tcp --dport 22 -s 192.168.0.0/16 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A sample_speedway -j s_base-allow-ssh-in
+COMMIT

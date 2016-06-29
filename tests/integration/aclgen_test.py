@@ -24,7 +24,7 @@ import filecmp
 import aclgen
 from lib import policy
 from lib import naming
-
+import filediff
 
 class Test_AclGen_ensure_demo_files_work(unittest.TestCase):
   """Ensure Capirca demo runs successfully out-of-the-box."""
@@ -173,7 +173,29 @@ class AclGen_Characterization_Tests(AclGen_Characterization_Test_Base):
     dircmp = filecmp.dircmp(self.output_dir, expected_dir)
     self.assertEquals([], dircmp.left_only, 'missing {0} in filters_expected'.format(dircmp.left_only))
     self.assertEquals([], dircmp.right_only, 'missing {0} in filters_actual'.format(dircmp.right_only))
+
+    if dircmp.diff_files != []:
+      diffs = filediff.get_file_content_differences(
+        self.output_dir, expected_dir, dircmp.diff_files)
+      self.assertEquals(1, 2, '\n\n'.join(diffs))
+      
     self.assertEquals([], dircmp.diff_files)
+
+  def test_characterization_single_file(self):
+    def_dir, pol_dir, expected_dir = map(self.dirpath, ('def', 'policies', 'filters_expected'))
+    polfile = os.path.join(pol_dir, 'pol', 'sample_cisco_lab.pol')
+    args = [
+      'program',  # Dummy value for gflags, which expects the program name to be first.
+      '--policy_file={0}'.format(polfile),
+      '--base_directory={0}'.format(pol_dir),
+      '--definitions_directory={0}'.format(def_dir),
+      '--output_directory={0}'.format(self.output_dir)
+    ]
+    aclgen.main(args)
+
+    diffs = filediff.get_file_content_differences(
+      self.output_dir, expected_dir, ['sample_cisco_lab.acl'])
+    self.assertEquals('', diffs[0], diffs[0])
 
 
 def main():

@@ -21,6 +21,7 @@ import unittest
 from lib import nacaddr
 from lib import naming
 from lib import policy
+from lib import policyparser
 import mock
 import logging
 
@@ -451,14 +452,14 @@ class PolicyTest(unittest.TestCase):
   def setUp(self):
     self.naming = mock.create_autospec(naming.Naming)
 
-  @mock.patch.object(policy, '_ReadFile')
+  @mock.patch.object(policyparser, '_ReadFile')
   def testIncludes(self, mock_file):
     """Ensure includes work, as well as nested included."""
     mock_file.side_effect = [INCLUDED_Y_FILE, GOOD_TERM_5]
 
     # contents of our base policy (which has an included file)
     pol = HEADER + INCLUDE_STATEMENT + GOOD_TERM_1
-    p = policy.ParsePolicy(pol, self.naming)
+    p = policyparser.ParsePolicy(pol, self.naming)
     _, terms = p.filters[0]
     # ensure include worked and we now have 3 terms in this policy
     self.assertEquals(len(terms), 3)
@@ -477,7 +478,7 @@ class PolicyTest(unittest.TestCase):
     pol = HEADER + GOOD_TERM_1 + GOOD_TERM_2
     self.naming.GetNetAddr.return_value = [nacaddr.IPv4('10.0.0.0/8')]
 
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     # we should only have one filter from that
     self.assertEquals(len(ret.filters), 1)
     header, terms = ret.filters[0]
@@ -494,18 +495,18 @@ class PolicyTest(unittest.TestCase):
 
   def testBadPol(self):
     pol = HEADER + BAD_TERM_1
-    self.assertRaises(policy.ParseError, policy.ParsePolicy, pol, self.naming)
+    self.assertRaises(policyparser.ParseError, policyparser.ParsePolicy, pol, self.naming)
 
   def testMissingHeader(self):
     pol = GOOD_TERM_1 + GOOD_TERM_2
-    self.assertRaises(policy.ParseError, policy.ParsePolicy, pol, self.naming)
+    self.assertRaises(policyparser.ParseError, policyparser.ParsePolicy, pol, self.naming)
 
   def testService(self):
     pol = HEADER + GOOD_TERM_1 + GOOD_TERM_3
     self.naming.GetNetAddr.return_value = [nacaddr.IPv4('10.0.0.0/8')]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertEqual(len(terms), 2)
@@ -517,25 +518,25 @@ class PolicyTest(unittest.TestCase):
 
   def testInvalidKeyword(self):
     pol = HEADER + BAD_TERM_2
-    self.assertRaises(policy.ParseError, policy.ParsePolicy, pol, self.naming)
+    self.assertRaises(policyparser.ParseError, policyparser.ParsePolicy, pol, self.naming)
 
   def testNumericProtocol(self):
     pol = HEADER + GOOD_TERM_4
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertEquals(str(terms[0].protocol[0]), '1')
 
   def testHopLimitSingle(self):
     pol = HEADER_V6 + GOOD_TERM_V6_1
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertEquals(str(terms[0].hop_limit[0]), '5')
 
   def testHopLimitRange(self):
     pol = HEADER_V6 + GOOD_TERM_V6_2
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertEquals(str(terms[0].hop_limit[2]), '7')
@@ -543,17 +544,17 @@ class PolicyTest(unittest.TestCase):
   def testBadPortProtocols(self):
     pol = HEADER + BAD_TERM_3
     self.naming.GetServiceByProto('SNMP', 'tcp').AndReturn([])
-    self.assertRaises(policy.TermPortProtocolError, policy.ParsePolicy, pol,
+    self.assertRaises(policyparser.TermPortProtocolError, policyparser.ParsePolicy, pol,
                       self.naming)
 
   def testBadPortProtocols2(self):
     pol = HEADER + BAD_TERM_4
-    self.assertRaises(policy.TermPortProtocolError, policy.ParsePolicy, pol,
+    self.assertRaises(policyparser.TermPortProtocolError, policyparser.ParsePolicy, pol,
                       self.naming)
 
   def testMinimumTerm(self):
     pol = HEADER + GOOD_TERM_5
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertEquals(len(terms), 1)
@@ -564,7 +565,7 @@ class PolicyTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['3306']
     self.naming.GetServiceByProto.return_value = ['1024-65535']
 
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertSequenceEqual(terms[0].destination_port, [(1024, 65535)])
@@ -577,7 +578,7 @@ class PolicyTest(unittest.TestCase):
     pol = HEADER + GOOD_TERM_8
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
 
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertSequenceEqual(terms[0].destination_port, [(53, 53)])
@@ -588,7 +589,7 @@ class PolicyTest(unittest.TestCase):
 
   def testMinimumTerm2(self):
     pol = HEADER + GOOD_TERM_9
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertEqual(str(terms[0].comment[0]), 'first comment')
@@ -612,7 +613,7 @@ class PolicyTest(unittest.TestCase):
             ['80'], ['3306'], ['3306'], ['80'], ['3306'], ['443']]
 
     pol_text = HEADER + GOOD_TERM_19 + GOOD_TERM_20 + GOOD_TERM_21
-    ret = policy.ParsePolicy(pol_text, self.naming, shade_check=False)
+    ret = policyparser.ParsePolicy(pol_text, self.naming, shade_check=False)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertEqual(len(terms), 3)
@@ -641,7 +642,7 @@ class PolicyTest(unittest.TestCase):
         [nacaddr.IPv4('10.1.1.1/32')]]
     self.naming.GetServiceByProto.side_effect = [['22'], ['80'], ['22']]
 
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
+    ret = policyparser.ParsePolicy(pol, self.naming, shade_check=False)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
@@ -668,7 +669,7 @@ class PolicyTest(unittest.TestCase):
         [nacaddr.IPv4('10.1.1.1/32')]]
     self.naming.GetServiceByProto.return_value = ['22']
 
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
+    ret = policyparser.ParsePolicy(pol, self.naming, shade_check=False)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
@@ -689,7 +690,7 @@ class PolicyTest(unittest.TestCase):
         [nacaddr.IPv4('10.0.0.0/8')],
         [nacaddr.IPv4('10.62.0.0/15')]]
 
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
+    ret = policyparser.ParsePolicy(pol, self.naming, shade_check=False)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
@@ -712,7 +713,7 @@ class PolicyTest(unittest.TestCase):
         [nacaddr.IPv4('10.0.0.0/8')],
         [nacaddr.IPv4('10.0.0.0/9')]]
 
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
+    ret = policyparser.ParsePolicy(pol, self.naming, shade_check=False)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
@@ -734,7 +735,7 @@ class PolicyTest(unittest.TestCase):
         [nacaddr.IPv4('10.0.0.0/8')],
         [nacaddr.IPv4('10.0.0.0/8')]]
 
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
+    ret = policyparser.ParsePolicy(pol, self.naming, shade_check=False)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
@@ -750,7 +751,7 @@ class PolicyTest(unittest.TestCase):
     # Tests "contains" testing of the precedence field. A term without set
     # precedence contains one which has them set.
     pol = HEADER + TERM_SUB_2 + GOOD_TERM_22
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
+    ret = policyparser.ParsePolicy(pol, self.naming, shade_check=False)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
@@ -761,7 +762,7 @@ class PolicyTest(unittest.TestCase):
   def testProtocolExceptContains(self):
     # Test the protocol-except keyword.
     pol = HEADER + TERM_SUPER_3 + TERM_SUB_2
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
+    ret = policyparser.ParsePolicy(pol, self.naming, shade_check=False)
     _, terms = ret.filters[0]
     self.assertEqual(len(ret.filters), 1)
     self.assertFalse(terms[0] in terms[1], '\n' + str(terms[0]) + '\n' +
@@ -773,7 +774,7 @@ class PolicyTest(unittest.TestCase):
         [nacaddr.IPv4('10.0.0.0/8')],
         [nacaddr.IPv4('10.62.0.0/15')]]
 
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     _, terms = ret.filters[0]
     self.assertEquals(terms[0].destination_address_exclude[0],
                       nacaddr.IPv4('10.62.0.0/15'))
@@ -788,7 +789,7 @@ class PolicyTest(unittest.TestCase):
         [nacaddr.IPv4('10.0.0.0/8')],
         [nacaddr.IPv4('10.62.0.0/15')]]
 
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     _, terms = ret.filters[0]
     self.assertEquals(terms[0].source_address_exclude[0],
                       nacaddr.IPv4('10.62.0.0/15'))
@@ -803,7 +804,7 @@ class PolicyTest(unittest.TestCase):
         [nacaddr.IPv4('10.0.0.0/8')],
         [nacaddr.IPv4('10.62.0.0/15')]]
 
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     _, terms = ret.filters[0]
     self.assertEquals(terms[0].address_exclude[0],
                       nacaddr.IPv4('10.62.0.0/15'))
@@ -818,7 +819,7 @@ class PolicyTest(unittest.TestCase):
         [nacaddr.IPv4('10.0.0.0/8')],
         [nacaddr.IPv4('10.62.0.0/15'), nacaddr.IPv4('10.129.0.0/15')]]
 
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     _, terms = ret.filters[0]
     terms[0].FlattenAll()
     self.assertEquals(terms[0].address,
@@ -848,7 +849,7 @@ class PolicyTest(unittest.TestCase):
          nacaddr.IPv4('192.168.0.0/16')],
         [nacaddr.IPv4('10.2.0.0/15')]]
 
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     _, terms = ret.filters[0]
     terms[0].FlattenAll()
     self.assertEquals(terms[0].address,
@@ -867,7 +868,7 @@ class PolicyTest(unittest.TestCase):
          nacaddr.IPv4('10.3.0.0/16')],
         [nacaddr.IPv4('10.0.0.0/8')]]
 
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     _, terms = ret.filters[0]
     terms[0].FlattenAll()
     self.assertEquals(terms[0].address, [])
@@ -878,34 +879,34 @@ class PolicyTest(unittest.TestCase):
 
   def testLogging(self):
     pol = HEADER + GOOD_TERM_10
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertEquals(str(terms[0].logging[0]), 'true')
 
   def testBadLogging(self):
     pol = HEADER + BAD_TERM_6
-    self.assertRaises(policy.InvalidTermLoggingError, policy.ParsePolicy, pol,
+    self.assertRaises(policyparser.InvalidTermLoggingError, policyparser.ParsePolicy, pol,
                       self.naming)
 
   def testBadAction(self):
     pol = HEADER + BAD_TERM_7
-    self.assertRaises(policy.InvalidTermActionError, policy.ParsePolicy, pol,
+    self.assertRaises(policyparser.InvalidTermActionError, policyparser.ParsePolicy, pol,
                       self.naming)
 
   def testMultifilter(self):
     pol = HEADER + GOOD_TERM_1 + HEADER_2 + GOOD_TERM_1
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     self.assertEquals(len(ret.headers), 2)
 
   def testBadMultifilter(self):
     pol = HEADER + HEADER_2 + GOOD_TERM_1
-    self.assertRaises(policy.NoTermsError, policy.ParsePolicy, pol,
+    self.assertRaises(policyparser.NoTermsError, policyparser.ParsePolicy, pol,
                       self.naming)
 
   def testICMPTypes(self):
     pol = HEADER + GOOD_TERM_11
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertEqual(terms[0].icmp_type[0], 'echo-reply')
@@ -913,11 +914,11 @@ class PolicyTest(unittest.TestCase):
   def testBadICMPTypes(self):
     pol = HEADER + BAD_TERM_12
     self.assertRaises(policy.TermInvalidIcmpType,
-                      policy.ParsePolicy, pol, self.naming)
+                      policyparser.ParsePolicy, pol, self.naming)
 
   def testReservedWordTermName(self):
     pol = HEADER + GOOD_TERM_12
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertEqual(terms[0].qos, 'af4')
@@ -927,7 +928,7 @@ class PolicyTest(unittest.TestCase):
     pol = HEADER + GOOD_TERM_13
     self.naming.GetServiceByProto.side_effect = [['22', '160-162'], ['161']]
 
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertSequenceEqual(terms[0].source_port, [(22, 22), (160, 162)])
@@ -938,22 +939,22 @@ class PolicyTest(unittest.TestCase):
 
   def testErrorLineNumber(self):
     pol = HEADER + GOOD_TERM_13 + BAD_TERM_8
-    self.assertRaisesRegexp(policy.ParseError,
+    self.assertRaisesRegexp(policyparser.ParseError,
                             r'ERROR on "akshun" \(type STRING, line 1',
-                            policy.ParsePolicy, pol, self.naming)
+                            policyparser.ParsePolicy, pol, self.naming)
 
   def testPrefixList(self):
     spol = HEADER + GOOD_TERM_14
     dpol = HEADER + GOOD_TERM_15
 
     # check on the source prefix list
-    ret = policy.ParsePolicy(spol, self.naming)
+    ret = policyparser.ParsePolicy(spol, self.naming)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertEqual(terms[0].source_prefix, ['foo_prefix_list'])
 
     # check on the destination prefix list
-    ret = policy.ParsePolicy(dpol, self.naming)
+    ret = policyparser.ParsePolicy(dpol, self.naming)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertEqual(terms[0].destination_prefix,
@@ -961,7 +962,7 @@ class PolicyTest(unittest.TestCase):
 
   def testEtherTypes(self):
     pol = HEADER + GOOD_TERM_16
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertEqual(terms[0].ether_type[0], 'arp')
@@ -970,7 +971,7 @@ class PolicyTest(unittest.TestCase):
 
   def testTrafficTypes(self):
     pol = HEADER + GOOD_TERM_17
-    ret = policy.ParsePolicy(pol, self.naming)
+    ret = policyparser.ParsePolicy(pol, self.naming)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertEqual(terms[0].traffic_type[0], 'broadcast')
@@ -979,11 +980,11 @@ class PolicyTest(unittest.TestCase):
 
   def testBadProtocolEtherTypes(self):
     pol = HEADER + BAD_TERM_9
-    self.assertRaises(policy.TermProtocolEtherTypeError, policy.ParsePolicy,
+    self.assertRaises(policy.TermProtocolEtherTypeError, policyparser.ParsePolicy,
                       pol, self.naming)
 
   def testVerbatimTerm(self):
-    pol = policy.ParsePolicy(HEADER + GOOD_TERM_18, self.naming)
+    pol = policyparser.ParsePolicy(HEADER + GOOD_TERM_18, self.naming)
     _, terms = pol.filters[0]
     self.assertEqual(terms[0].verbatim[0].value[0], 'iptables')
     self.assertEqual(terms[0].verbatim[0].value[1], 'mary had a little lamb')
@@ -992,16 +993,16 @@ class PolicyTest(unittest.TestCase):
 
   def testVerbatimMixed(self):
     pol = HEADER + BAD_TERM_10
-    self.assertRaises(policy.ParseError, policy.ParsePolicy, pol, self.naming)
+    self.assertRaises(policy.VerbatimError, policyparser.ParsePolicy, pol, self.naming)
 
   def testIntegerFilterName(self):
     pol_text = HEADER_3 + GOOD_TERM_0
-    pol = policy.ParsePolicy(pol_text, self.naming)
+    pol = policyparser.ParsePolicy(pol_text, self.naming)
     self.assertEqual(pol.headers[0].target[0].options[0], '50')
 
   def testPrecedence(self):
     pol_text = HEADER + GOOD_TERM_22
-    pol = policy.ParsePolicy(pol_text, self.naming)
+    pol = policyparser.ParsePolicy(pol_text, self.naming)
     self.assertEquals(len(pol.filters), 1)
     _, terms = pol.filters[0]
     self.assertEquals(terms[0].precedence, ['1'])
@@ -1009,7 +1010,7 @@ class PolicyTest(unittest.TestCase):
   def testLossPriority(self):
     self.naming.GetServiceByProto.return_value = ['22']
 
-    pol = policy.ParsePolicy(HEADER + GOOD_TERM_23, self.naming)
+    pol = policyparser.ParsePolicy(HEADER + GOOD_TERM_23, self.naming)
     self.assertEquals(len(pol.filters), 1)
     _, terms = pol.filters[0]
     self.assertEquals(terms[0].loss_priority, 'low')
@@ -1019,7 +1020,7 @@ class PolicyTest(unittest.TestCase):
   def testRoutingInstance(self):
     self.naming.GetServiceByProto.return_value = ['22']
 
-    pol = policy.ParsePolicy(HEADER + GOOD_TERM_24, self.naming)
+    pol = policyparser.ParsePolicy(HEADER + GOOD_TERM_24, self.naming)
     self.assertEquals(len(pol.filters), 1)
     _, terms = pol.filters[0]
     self.assertEquals(terms[0].routing_instance, 'foobar-router')
@@ -1029,7 +1030,7 @@ class PolicyTest(unittest.TestCase):
   def testSourceInterface(self):
     self.naming.GetServiceByProto.return_value = ['22']
 
-    pol = policy.ParsePolicy(HEADER_4 + GOOD_TERM_25, self.naming)
+    pol = policyparser.ParsePolicy(HEADER_4 + GOOD_TERM_25, self.naming)
     self.assertEquals(len(pol.filters), 1)
     header, terms = pol.filters[0]
     self.assertEqual(str(header.target[0]), 'iptables')
@@ -1044,7 +1045,7 @@ class PolicyTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['25']
 
     # same protocol, same saddr, shaded term defines a port.
-    self.assertRaises(policy.ShadingError, policy.ParsePolicy, pol2,
+    self.assertRaises(policy.ShadingError, policyparser.ParsePolicy, pol2,
                       self.naming, shade_check=True)
 
     self.naming.GetNetAddr.assert_has_calls([
@@ -1053,31 +1054,31 @@ class PolicyTest(unittest.TestCase):
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
   def testVpnConfigWithoutPairPolicy(self):
-    pol = policy.ParsePolicy(HEADER_4 + GOOD_TERM_30, self.naming)
+    pol = policyparser.ParsePolicy(HEADER_4 + GOOD_TERM_30, self.naming)
     self.assertEquals(len(pol.filters), 1)
     self.assertEquals('special-30', pol.filters[0][1][0].vpn[0])
     self.assertEquals('', pol.filters[0][1][0].vpn[1])
 
   def testVpnConfigWithPairPolicy(self):
-    pol = policy.ParsePolicy(HEADER_4 + GOOD_TERM_31, self.naming)
+    pol = policyparser.ParsePolicy(HEADER_4 + GOOD_TERM_31, self.naming)
     self.assertEquals(len(pol.filters), 1)
     self.assertEquals('special-31', pol.filters[0][1][0].vpn[0])
     self.assertEquals('policy-11', pol.filters[0][1][0].vpn[1])
 
   def testForwardingClassPolicy(self):
-    pol = policy.ParsePolicy(HEADER + GOOD_TERM_32, self.naming)
+    pol = policyparser.ParsePolicy(HEADER + GOOD_TERM_32, self.naming)
     self.assertEquals('fritzy', pol.filters[0][1][0].forwarding_class)
 
   def testForwardingClassEqual(self):
     pol_text = HEADER + GOOD_TERM_32 + GOOD_TERM_33
-    ret = policy.ParsePolicy(pol_text, self.naming, shade_check=False)
+    ret = policyparser.ParsePolicy(pol_text, self.naming, shade_check=False)
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertEqual(len(terms), 2)
     self.assertNotEqual(terms[0], terms[1])
 
   def testTagSupportAndNetworkHeaderParsing(self):
-    pol = policy.ParsePolicy(HEADER_5 + GOOD_TERM_34, self.naming)
+    pol = policyparser.ParsePolicy(HEADER_5 + GOOD_TERM_34, self.naming)
     self.assertEquals(len(pol.filters), 1)
     header, terms = pol.filters[0]
     self.assertEqual(str(header.target[0]), 'gce')
@@ -1087,9 +1088,9 @@ class PolicyTest(unittest.TestCase):
 
   def testEq(self):
     """Sanity test to verify __eq__ works on Policy objects."""
-    policy1 = policy.ParsePolicy(HEADER_4 + GOOD_TERM_30, self.naming)
-    policy2 = policy.ParsePolicy(HEADER_4 + GOOD_TERM_30, self.naming)
-    policy3 = policy.ParsePolicy(HEADER_5 + GOOD_TERM_34, self.naming)
+    policy1 = policyparser.ParsePolicy(HEADER_4 + GOOD_TERM_30, self.naming)
+    policy2 = policyparser.ParsePolicy(HEADER_4 + GOOD_TERM_30, self.naming)
+    policy3 = policyparser.ParsePolicy(HEADER_5 + GOOD_TERM_34, self.naming)
     self.assertEqual(policy1, policy2)
     self.assertNotEqual(policy1, policy3)
     self.assertNotEqual(policy2, policy3)
@@ -1100,7 +1101,7 @@ class PolicyTest(unittest.TestCase):
     self.naming.GetNetAddr.side_effect = [
             [nacaddr.IPv4('10.0.0.0/8')], [nacaddr.IPv4('10.1.1.1/32')]]
 
-    result = policy.ParsePolicy(pol, self.naming)
+    result = policyparser.ParsePolicy(pol, self.naming)
     self.assertEqual(result.filters[0][1][0].next_ip[0], expected)
 
     self.naming.GetNetAddr.assert_has_calls([
@@ -1109,8 +1110,64 @@ class PolicyTest(unittest.TestCase):
 
   def testStr(self):
     """Sanity test to verify __eq__ works on Policy objects."""
-    pol = policy.ParsePolicy(HEADER_4 + GOOD_TERM_30, self.naming)
+    pol = policyparser.ParsePolicy(HEADER_4 + GOOD_TERM_30, self.naming)
     logging.info('Ensuring string formatting doesn\'t throw errors: %s', pol)
+
+
+class Test_Header(unittest.TestCase):
+
+  def setUp(self):
+    target = policy.Target(['cisco', 'some', 'options'])
+    h = policy.Header()
+    h.target.append(policy.Target(['cisco', 'some', 'options']))
+    h.target.append(policy.Target(['juniper', 'other_opts']))
+    self.header = h
+
+  def test_sanity_checks(self):
+    """Sanity checks only."""
+    h = self.header
+    self.assertEqual(h.platforms, ['cisco', 'juniper'])
+    self.assertEqual(h.FilterOptions('cisco'), ['some', 'options'])
+
+  def test_can_add_same_platform_more_than_once(self):
+    self.header.target.append(policy.Target(['cisco', 'other_options']))
+    # If reach here, ok.
+
+  def test_cannot_retrieve_platforms_if_same_target_added_more_than_once(self):
+    """FilterOptions returns the first match by platform,
+    so duplicate platforms should break things."""
+    self.header.target.append(policy.Target(['cisco', 'other_options']))
+    with self.assertRaises(policy.HeaderDuplicateTargetPlatformError):
+      p = self.header.target
+    with self.assertRaises(policy.HeaderDuplicateTargetPlatformError):
+      p = self.header.FilterOptions('cisco')
+    with self.assertRaises(policy.HeaderDuplicateTargetPlatformError):
+      p = self.header.FilterName('cisco')
+
+class Test_Policy(unittest.TestCase):
+
+  def make_header_and_terms(self, platform):
+    target = policy.Target([platform, 'some', 'options'])
+    h = policy.Header()
+    h.target.append(target)
+    t = policy.Term()
+    t.action.append('accept')
+    terms = [t]
+    return (h, terms)
+
+  def setUp(self):
+    h, terms = self.make_header_and_terms('cisco')
+    self.policy = policy.Policy(h, terms, True)
+
+  def test_can_get_platforms(self):
+    self.assertEqual(['cisco'], self.policy.platforms)
+
+  def test_multiple_platforms_in_multiple_headers_returns_unique_platforms(self):
+    h, terms = self.make_header_and_terms('other')
+    self.policy.AddFilter(h, terms)
+    h, terms = self.make_header_and_terms('cisco')
+    self.policy.AddFilter(h, terms)
+    self.assertEqual(['cisco', 'other'], self.policy.platforms)
 
 # pylint: enable=maybe-no-member
 

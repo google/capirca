@@ -22,6 +22,7 @@ from lib import nacaddr
 from lib import naming
 from lib import packetfilter
 from lib import policy
+from lib import policyparser
 import mock
 
 GOOD_HEADER = """
@@ -285,7 +286,7 @@ class PacketFilterTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [ip]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('# term good-term-tcp' in result,
@@ -299,7 +300,7 @@ class PacketFilterTest(unittest.TestCase):
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
   def testLog(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_LOG, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('# term good-term-log' in result,
@@ -311,7 +312,7 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for good-term-log')
 
   def testIcmp(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_ICMP, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('# term good-term-icmp' in result,
@@ -322,7 +323,7 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for good-term-icmp')
 
   def testIcmpTypes(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_ICMP_TYPES, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('# term good-term-icmp-types' in result,
@@ -333,7 +334,7 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for good-term-icmp-types')
 
   def testIcmpv6(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_ICMPV6, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('# term good-term-icmpv6' in result,
@@ -344,13 +345,13 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for good-term-icmpv6')
 
   def testBadIcmp(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + BAD_TERM_ICMP, self.naming), EXP_INFO)
     self.assertRaises(aclgenerator.UnsupportedFilterError, str, acl)
 
   @mock.patch.object(packetfilter.logging, 'warn')
   def testExpiredTerm(self, mock_warn):
-    packetfilter.PacketFilter(policy.ParsePolicy(
+    packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + EXPIRED_TERM, self.naming), EXP_INFO)
 
     mock_warn.assert_called_once_with(
@@ -360,7 +361,7 @@ class PacketFilterTest(unittest.TestCase):
 
   @mock.patch.object(packetfilter.logging, 'warn')
   def testExpiredTerm2(self, mock_warn):
-    packetfilter.PacketFilter(policy.ParsePolicy(
+    packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + EXPIRED_TERM2, self.naming), EXP_INFO)
 
     mock_warn.assert_called_once_with(
@@ -371,7 +372,7 @@ class PacketFilterTest(unittest.TestCase):
   @mock.patch.object(packetfilter.logging, 'info')
   def testExpiringTerm(self, mock_info):
     exp_date = datetime.date.today() + datetime.timedelta(weeks=EXP_INFO)
-    packetfilter.PacketFilter(policy.ParsePolicy(
+    packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + EXPIRING_TERM % exp_date.strftime('%Y-%m-%d'),
         self.naming), EXP_INFO)
 
@@ -381,12 +382,12 @@ class PacketFilterTest(unittest.TestCase):
         'test-filter')
 
   def testBadAction(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + BAD_TERM_ACTION, self.naming), EXP_INFO)
     self.assertRaises(aclgenerator.UnsupportedFilterError, str, acl)
 
   def testMultiprotocol(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + MULTIPLE_PROTOCOLS_TERM, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('# term multi-proto' in result,
@@ -397,7 +398,7 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for multi-proto')
 
   def testNextTerm(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + NEXT_TERM, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('# term next' in result,
@@ -407,7 +408,7 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for next-term')
 
   def testNextLogTerm(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + NEXT_LOG_TERM, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('# term next-log' in result,
@@ -419,7 +420,7 @@ class PacketFilterTest(unittest.TestCase):
   def testPortRange(self):
     self.naming.GetServiceByProto.return_value = ['12345-12354']
 
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + PORTRANGE_TERM, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('# term portrange' in result,
@@ -433,7 +434,7 @@ class PacketFilterTest(unittest.TestCase):
             'HIGH_PORTS', 'tcp')
 
   def testFlags(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + FLAGS_TERM, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('# term flags' in result,
@@ -444,12 +445,12 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for flags')
 
   def testInvalidFlags(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + INVALID_FLAGS_TERM, self.naming), EXP_INFO)
     self.assertRaises(aclgenerator.UnsupportedFilterError, str, acl)
 
   def testMultilineComment(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + MULTILINE_COMMENT, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('# term multiline-comment' in result,
@@ -463,7 +464,7 @@ class PacketFilterTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [ip]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER_STATELESS + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('# term good-term-tcp' in result,
@@ -477,7 +478,7 @@ class PacketFilterTest(unittest.TestCase):
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
   def testInet4(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER_INET4 + GOOD_TERM_LOG, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('# term good-term-log' in result,
@@ -489,7 +490,7 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for good-term-log')
 
   def testInet6(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER_INET6 + GOOD_TERM_LOG, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('# term good-term-log' in result,
@@ -506,7 +507,7 @@ class PacketFilterTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [ip]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER_DIRECTIONAL + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('# term good-term-tcp' in result,
@@ -520,7 +521,7 @@ class PacketFilterTest(unittest.TestCase):
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
   def testMultipleHeader(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER_STATELESS + GOOD_TERM_LOG + GOOD_HEADER_INET6
         + GOOD_TERM_ICMP,
         self.naming), EXP_INFO)
@@ -540,7 +541,7 @@ class PacketFilterTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [ip]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER_DIRECTIONAL_STATELESS + GOOD_TERM_TCP, self.naming),
                                     EXP_INFO)
     result = str(acl)
@@ -555,7 +556,7 @@ class PacketFilterTest(unittest.TestCase):
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
   def testStatelessEstablished(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER_STATELESS + TCP_STATE_TERM, self.naming),
                                     EXP_INFO)
     result = str(acl)
@@ -567,7 +568,7 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for tcp-established-only')
 
   def testBadFlags(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + TCP_BAD_ESTABLISHED_TERM, self.naming), EXP_INFO)
     self.assertRaises(aclgenerator.UnsupportedFilterError, str, acl)
 
@@ -584,7 +585,7 @@ class PacketFilterTest(unittest.TestCase):
   #   target:: packetfilter nostate
   #   term foo { protocol:: udp option:: established }
   def testUdpStatelessEstablished(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER_STATELESS + UDP_ESTABLISHED_TERM, self.naming),
                                     EXP_INFO)
     result = str(acl)
@@ -596,7 +597,7 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for udp-established')
 
   def testStatefulBlock(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + DENY_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless('# term deny-term-tcp' in result,
@@ -607,7 +608,7 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for deny-term-tcp')
 
   def testTcpEstablished(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + TCP_GOOD_ESTABLISHED_TERM, self.naming),
                                     EXP_INFO)
     result = str(acl)
@@ -630,7 +631,7 @@ class PacketFilterTest(unittest.TestCase):
             [corp_internal_one, corp_internal_two]]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + MULTIPLE_NAME_TERM, self.naming),
                                     EXP_INFO)
     result = str(acl)
@@ -658,7 +659,7 @@ class PacketFilterTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [prod_network]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER_DIRECTIONAL + LONG_NAME_TERM, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless(
@@ -688,7 +689,7 @@ class PacketFilterTest(unittest.TestCase):
         packetfilter.DuplicateShortenedTableName,
         packetfilter.PacketFilter.__init__,
         packetfilter.PacketFilter.__new__(packetfilter.PacketFilter),
-        policy.ParsePolicy(
+        policyparser.ParsePolicy(
             GOOD_HEADER_DIRECTIONAL + DUPLICATE_LONG_NAME_TERM, self.naming),
         EXP_INFO)
     self.naming.GetNetAddr.assert_has_calls([
@@ -701,13 +702,13 @@ class PacketFilterTest(unittest.TestCase):
         packetfilter.DuplicateTermError,
         packetfilter.PacketFilter.__init__,
         packetfilter.PacketFilter.__new__(packetfilter.PacketFilter),
-        policy.ParsePolicy(
+        policyparser.ParsePolicy(
             GOOD_HEADER_DIRECTIONAL + GOOD_TERM_ICMP + GOOD_TERM_ICMP,
             self.naming),
         EXP_INFO)
 
   def testBadProtoError(self):
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+    acl = packetfilter.PacketFilter(policyparser.ParsePolicy(
         GOOD_HEADER + BAD_PROTO_TERM, self.naming), EXP_INFO)
     self.assertRaises(packetfilter.UnsupportedProtoError, str, acl)
 

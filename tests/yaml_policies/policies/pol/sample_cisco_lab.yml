@@ -1,0 +1,48 @@
+name: allowtointernet
+address-family: ipv4
+
+comment: |-
+  Denies all traffic to internal IPs except established tcp replies.
+  Also denies access to certain public allocations.
+  Ideal for some internal lab/testing types of subnets that are
+  not well trusted, but allowing internal users to access.
+  Apply to ingress interface (to filter traffic coming from lab)
+
+targets:
+  - cisco
+
+terms:
+
+  - name: accept-dhcp
+    comment: Optional - allow forwarding of DHCP requests.
+    destination-port: DHCP
+    protocol: udp
+    action: accept
+
+  - name: accept-to-honestdns
+    comment: Allow name resolution using honestdns.
+    destination-address: GOOGLE_DNS
+    destination-port: DNS
+    protocol: udp
+    action: accept
+
+  - name: accept-tcp-replies
+    comment: Allow tcp replies to internal hosts.
+    destination-address: INTERNAL
+    protocol: tcp
+    option: tcp-established
+    action: accept
+
+  - name: deny-to-internal
+    comment: Deny access to rfc1918/internal.
+    destination-address: INTERNAL
+    action: deny
+
+  - name: deny-to-specific_hosts
+    comment: Deny access to specified public.
+    destination-address: WEB_SERVERS, MAIL_SERVERS
+    action: deny
+
+  - name: default-permit
+    comment: Allow what's left.
+    action: accept
