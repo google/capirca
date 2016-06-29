@@ -17,11 +17,14 @@
 import datetime
 import unittest
 
+
 from lib import nacaddr
 from lib import nftables
 from lib import policy
-import logging
 import mock
+
+import logging
+
 
 
 BAD_HEADER = """

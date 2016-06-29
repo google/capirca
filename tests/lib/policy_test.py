@@ -609,7 +609,7 @@ class PolicyTest(unittest.TestCase):
          nacaddr.IPv4('66.249.80.0/20'), nacaddr.IPv4('72.14.192.0/18'),
          nacaddr.IPv4('72.14.224.0/20'), nacaddr.IPv4('216.239.32.0/19')]]
     self.naming.GetServiceByProto.side_effect = [
-            ['80'], ['3306'], ['3306'], ['80'], ['3306'], ['443']]
+        ['80'], ['3306'], ['3306'], ['80'], ['3306'], ['443']]
 
     pol_text = HEADER + GOOD_TERM_19 + GOOD_TERM_20 + GOOD_TERM_21
     ret = policy.ParsePolicy(pol_text, self.naming, shade_check=False)
@@ -933,8 +933,8 @@ class PolicyTest(unittest.TestCase):
     self.assertSequenceEqual(terms[0].source_port, [(22, 22), (160, 162)])
 
     self.naming.GetServiceByProto.assert_has_calls([
-            mock.call('GOOGLE_PUBLIC', 'udp'),
-            mock.call('SNMP', 'udp')], any_order=True)
+        mock.call('GOOGLE_PUBLIC', 'udp'),
+        mock.call('SNMP', 'udp')], any_order=True)
 
   def testErrorLineNumber(self):
     pol = HEADER + GOOD_TERM_13 + BAD_TERM_8
@@ -1040,7 +1040,7 @@ class PolicyTest(unittest.TestCase):
   def testShadingDetection(self):
     pol2 = HEADER + GOOD_TERM_2 + GOOD_TERM_3
     self.naming.GetNetAddr.side_effect = [
-            [nacaddr.IPv4('10.0.0.0/8')], [nacaddr.IPv4('10.0.0.0/8')]]
+        [nacaddr.IPv4('10.0.0.0/8')], [nacaddr.IPv4('10.0.0.0/8')]]
     self.naming.GetServiceByProto.return_value = ['25']
 
     # same protocol, same saddr, shaded term defines a port.
@@ -1098,7 +1098,7 @@ class PolicyTest(unittest.TestCase):
     pol = HEADER_2 + GOOD_TERM_35
     expected = nacaddr.IPv4('10.1.1.1/32')
     self.naming.GetNetAddr.side_effect = [
-            [nacaddr.IPv4('10.0.0.0/8')], [nacaddr.IPv4('10.1.1.1/32')]]
+        [nacaddr.IPv4('10.0.0.0/8')], [nacaddr.IPv4('10.1.1.1/32')]]
 
     result = policy.ParsePolicy(pol, self.naming)
     self.assertEqual(result.filters[0][1][0].next_ip[0], expected)

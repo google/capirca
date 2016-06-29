@@ -16,21 +16,18 @@
 
 
 import unittest
-from optparse import OptionParser
 from xml.etree import ElementTree as ET
 
+from lib import naming
 from lib import nsxv
 from lib import policy
-from lib import naming
 import nsxv_mocktest
-
 
 
 class TermTest(unittest.TestCase):
 
   def setUp(self):
-    """Call before every test case
-    """
+    """Call before every test case."""
     _parser = OptionParser()
     _parser.add_option('-d', '--def', dest='definitions',
                       help='definitions directory', default='../def')

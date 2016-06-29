@@ -18,8 +18,6 @@ __author__ = 'watson@google.com (Tony Watson)'
 
 import io
 import unittest
-import os
-import inspect
 
 from lib import nacaddr
 from lib import naming
@@ -170,7 +168,6 @@ class NamingUnitTest(unittest.TestCase):
     data = io.BytesIO('HTTP = 80/tcp\n')
     filedefs._ParseFile(data, 'services')
     self.assertEqual(filedefs.GetService('HTTP'), ['80/tcp'])
-
 
 if __name__ == '__main__':
   unittest.main()

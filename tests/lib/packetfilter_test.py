@@ -430,7 +430,7 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for portrange')
 
     self.naming.GetServiceByProto.assert_called_once_with(
-            'HIGH_PORTS', 'tcp')
+        'HIGH_PORTS', 'tcp')
 
   def testFlags(self):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
@@ -626,8 +626,8 @@ class PacketFilterTest(unittest.TestCase):
     corp_internal_two = nacaddr.IP('172.16.0.0/16')
     corp_internal_two.parent_token = 'CORP_INTERNAL'
     self.naming.GetNetAddr.side_effect = [
-            [prod_network],
-            [corp_internal_one, corp_internal_two]]
+        [prod_network],
+        [corp_internal_one, corp_internal_two]]
     self.naming.GetServiceByProto.return_value = ['25']
 
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
@@ -648,8 +648,8 @@ class PacketFilterTest(unittest.TestCase):
         'did not find actual term for multiple-name')
 
     self.naming.GetNetAddr.assert_has_calls([
-            mock.call('PROD_NETWORK'),
-            mock.call('CORP_INTERNAL')])
+        mock.call('PROD_NETWORK'),
+        mock.call('CORP_INTERNAL')])
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
   def testTableNameShortened(self):
