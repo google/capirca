@@ -1,0 +1,59 @@
+*filter
+# Speedway edge-inbound Policy
+# this is a sample edge input filter that generates
+# multiple output formats.
+#
+# $Id:$
+# $Date:$
+# $Revision:$
+# inet
+-N edge-inbound
+-N e_deny-from-bogons
+-A e_deny-from-bogons -m comment --comment "this is a sample edge input filter with a very very very long and"
+-A e_deny-from-bogons -m comment --comment "multi-line comment that"
+-A e_deny-from-bogons -m comment --comment "also has multiple entries."
+-A e_deny-from-bogons -p all -s 0.0.0.0/8 -j DROP
+-A e_deny-from-bogons -p all -s 192.0.0.0/24 -j DROP
+-A e_deny-from-bogons -p all -s 192.0.2.0/24 -j DROP
+-A e_deny-from-bogons -p all -s 198.18.0.0/15 -j DROP
+-A e_deny-from-bogons -p all -s 198.51.100.0/24 -j DROP
+-A e_deny-from-bogons -p all -s 203.0.113.0/24 -j DROP
+-A e_deny-from-bogons -p all -s 224.0.0.0/4 -j DROP
+-A e_deny-from-bogons -p all -s 240.0.0.0/4 -j DROP
+-A edge-inbound -j e_deny-from-bogons
+-N e_deny-from-reserved
+-A e_deny-from-reserved -p all -s 0.0.0.0/8 -j DROP
+-A e_deny-from-reserved -p all -s 10.0.0.0/8 -j DROP
+-A e_deny-from-reserved -p all -s 100.64.0.0/10 -j DROP
+-A e_deny-from-reserved -p all -s 127.0.0.0/8 -j DROP
+-A e_deny-from-reserved -p all -s 169.254.0.0/16 -j DROP
+-A e_deny-from-reserved -p all -s 172.16.0.0/12 -j DROP
+-A e_deny-from-reserved -p all -s 192.168.0.0/16 -j DROP
+-A e_deny-from-reserved -p all -s 224.0.0.0/3 -j DROP
+-A edge-inbound -j e_deny-from-reserved
+-N e_deny-to-rfc1918
+-A e_deny-to-rfc1918 -p all -d 10.0.0.0/8 -j DROP
+-A e_deny-to-rfc1918 -p all -d 172.16.0.0/12 -j DROP
+-A e_deny-to-rfc1918 -p all -d 192.168.0.0/16 -j DROP
+-A edge-inbound -j e_deny-to-rfc1918
+-N e_permit-mail-services
+-A e_permit-mail-services -p tcp -m multiport --dports 25,465,587,995 -d 200.1.1.4/31 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A edge-inbound -j e_permit-mail-services
+-N e_permit-web-services
+-A e_permit-web-services -p tcp -m multiport --dports 80,443 -d 200.1.1.1/32 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A e_permit-web-services -p tcp -m multiport --dports 80,443 -d 200.1.1.2/32 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A edge-inbound -j e_permit-web-services
+-N e_permit-tcp-established
+-A e_permit-tcp-established -p tcp -d 200.1.1.1/32 -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A e_permit-tcp-established -p tcp -d 200.1.1.2/31 -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A e_permit-tcp-established -p tcp -d 200.1.1.4/31 -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A edge-inbound -j e_permit-tcp-established
+-N e_permit-udp-established
+-A e_permit-udp-established -p udp --sport 1024:65535 -d 200.1.1.1/32 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A e_permit-udp-established -p udp --sport 1024:65535 -d 200.1.1.2/31 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A e_permit-udp-established -p udp --sport 1024:65535 -d 200.1.1.4/31 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+-A edge-inbound -j e_permit-udp-established
+-N e_default-deny
+-A e_default-deny -p all -j DROP
+-A edge-inbound -j e_default-deny
+COMMIT

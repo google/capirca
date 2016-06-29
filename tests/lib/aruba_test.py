@@ -20,6 +20,7 @@ from lib import aruba
 from lib import nacaddr
 from lib import naming
 from lib import policy
+from lib import policyparser
 import mock
 
 
@@ -77,7 +78,7 @@ class ArubaTest(unittest.TestCase):
   def testNetdestination(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
 
-    acl = aruba.Aruba(policy.ParsePolicy(
+    acl = aruba.Aruba(policyparser.ParsePolicy(
         GOOD_HEADER_IPV4 + GOOD_TERM_IPV4, self.naming), EXP_INFO)
     self.assertTrue('netdestination SERVER-LIST' in str(acl))
     self.assertTrue('  host 10.2.3.4' in str(acl))
@@ -88,7 +89,7 @@ class ArubaTest(unittest.TestCase):
   def testNetdestination6(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
 
-    acl = aruba.Aruba(policy.ParsePolicy(
+    acl = aruba.Aruba(policyparser.ParsePolicy(
         GOOD_HEADER_IPV6 + GOOD_TERM_IPV6, self.naming), EXP_INFO)
     self.assertTrue('netdestination6 SERVER-LIST_6' in str(acl))
     self.assertTrue('  host fc01:2345:8000::5' in str(acl))
@@ -103,7 +104,7 @@ class ArubaTest(unittest.TestCase):
         aruba.UnsupportedArubaAccessListError,
         'Aruba ACL action must be "accept".',
         aruba.Aruba,
-        policy.ParsePolicy(
+        policyparser.ParsePolicy(
             GOOD_HEADER_IPV4 + BAD_TERM_IPV4, self.naming),
         EXP_INFO)
 
