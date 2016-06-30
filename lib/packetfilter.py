@@ -374,12 +374,7 @@ class Term(aclgenerator.Term):
 class PacketFilter(aclgenerator.ACLGenerator):
   """Generates filters and terms from provided policy object."""
 
-  # Table names can be at most 31 characters long.
-  # Names longer than this length will be truncated.
-  # A simple logic is implemented in order to look for
-  # possible duplicates after truncation.
-  _TABLE_NAME_MAX_LENGTH = 31
-
+  _DEF_MAX_LENGTH = 31
   _PLATFORM = 'packetfilter'
   _DEFAULT_PROTOCOL = 'all'
   SUFFIX = '.pf'
@@ -394,6 +389,7 @@ class PacketFilter(aclgenerator.ACLGenerator):
   def _TranslatePolicy(self, pol, exp_info):
     self.pf_policies = []
     self.address_book = {}
+    self.def_short_to_long = {}
     current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
@@ -449,16 +445,44 @@ class PacketFilter(aclgenerator.ACLGenerator):
           raise DuplicateTermError(
               'You have a duplicate term: %s' % term.name)
         term_names.add(term.name)
+
         for source_addr in term.source_address:
-          if source_addr.parent_token not in self.address_book:
-            self.address_book[source_addr.parent_token] = set([source_addr])
+          src_token = source_addr.parent_token[:self._DEF_MAX_LENGTH]
+
+          if (src_token in self.def_short_to_long and
+              self.def_short_to_long[src_token] != source_addr.parent_token):
+            raise DuplicateShortenedTableName(
+                'There is a shortened name conflict between names %s and %s '
+                '(different named objects would conflict when shortened to %s)'
+                % (self.def_short_to_long[src_token],
+                   source_addr.parent_token,
+                   src_token))
           else:
-            self.address_book[source_addr.parent_token].add(source_addr)
+            self.def_short_to_long[src_token] = source_addr.parent_token
+
+          if src_token not in self.address_book:
+            self.address_book[src_token] = set([source_addr])
+          else:
+            self.address_book[src_token].add(source_addr)
+
         for dest_addr in term.destination_address:
-          if dest_addr.parent_token not in self.address_book:
-            self.address_book[dest_addr.parent_token] = set([dest_addr])
+          dst_token = dest_addr.parent_token[:self._DEF_MAX_LENGTH]
+
+          if (dst_token in self.def_short_to_long and
+              self.def_short_to_long[dst_token] != dest_addr.parent_token):
+            raise DuplicateShortenedTableName(
+                'There is a shortened name conflict between names %s and %s '
+                '(different named objects would conflict when shortened to %s)'
+                %(self.def_short_to_long[dst_token],
+                  dest_addr.parent_token,
+                  dst_token))
           else:
-            self.address_book[dest_addr.parent_token].add(dest_addr)
+            self.def_short_to_long[dst_token] = dest_addr.parent_token
+
+          if dst_token not in self.address_book:
+            self.address_book[dst_token] = set([dest_addr])
+          else:
+            self.address_book[dst_token].add(dest_addr)
 
         if not term:
           continue
@@ -474,19 +498,7 @@ class PacketFilter(aclgenerator.ACLGenerator):
 
         new_terms.append(self._TERM(term, filter_name, all_protocols_stateful,
                                     filter_type, direction))
-      shortened_deduped_list = {}
 
-      for key in self.address_book:
-        if len(key) > self._TABLE_NAME_MAX_LENGTH:
-          name = key[:self._TABLE_NAME_MAX_LENGTH]
-        else:
-          name = key
-        if name in shortened_deduped_list.keys():
-          raise DuplicateShortenedTableName(
-              'The shortened name %s has a collision.', name)
-        else:
-          shortened_deduped_list[name] = self.address_book[key]
-      self.address_book = shortened_deduped_list
       self.pf_policies.append((header, filter_name, filter_type, new_terms))
 
   def __str__(self):

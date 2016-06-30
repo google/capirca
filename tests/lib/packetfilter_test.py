@@ -243,16 +243,34 @@ term multiple-name {
 }
 """
 
-LONG_NAME_TERM = """
-term multiple-name {
+LONG_NAME_TERM_DNS_TCP = """
+term multiple-name-dns-tcp {
   protocol:: tcp
   destination-address:: PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME
-  destination-port:: SMTP
+  destination-port:: DNS
   action:: accept
 }
 """
 
-DUPLICATE_LONG_NAME_TERM = """
+LONG_NAME_TERM_DNS_UDP = """
+term multiple-name-dns-udp {
+  protocol:: udp
+  destination-address:: PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME
+  destination-port:: DNS
+  action:: accept
+}
+"""
+
+NON_SHORTENED_LONG_NAME_TERM_DNS_UDP = """
+term multiple-name-dns-udp {
+  protocol:: udp
+  destination-address:: PROD_NETWORK_EXTREAMLY_LONG_VER
+  destination-port:: DNS
+  action:: accept
+}
+"""
+
+DUPLICATE_DIFFERENT_LONG_NAME_TERM = """
 term multiple-name {
   protocol:: tcp
   destination-address:: PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME
@@ -656,10 +674,10 @@ class PacketFilterTest(unittest.TestCase):
     prod_network = nacaddr.IP('10.0.0.0/8')
     prod_network.parent_token = 'PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME'
     self.naming.GetNetAddr.return_value = [prod_network]
-    self.naming.GetServiceByProto.return_value = ['25']
+    self.naming.GetServiceByProto.return_value = ['53']
 
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
-        GOOD_HEADER_DIRECTIONAL + LONG_NAME_TERM, self.naming), EXP_INFO)
+        GOOD_HEADER_DIRECTIONAL + LONG_NAME_TERM_DNS_TCP, self.naming), EXP_INFO)
     result = str(acl)
     self.failUnless(
         'table <PROD_NETWORK_EXTREAMLY_LONG_VER> {10.0.0.0/8}' in result,
@@ -667,13 +685,13 @@ class PacketFilterTest(unittest.TestCase):
     self.failUnless(
         'pass out quick proto { tcp } from { any } to '
         '{ <PROD_NETWORK_EXTREAMLY_LONG_VER> } '
-        'port { 25 } flags S/SA keep state'
+        'port { 53 } flags S/SA keep state'
         in result,
         'did not find actual term for multiple-name')
 
     self.naming.GetNetAddr.assert_called_once_with(
         'PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME')
-    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+    self.naming.GetServiceByProto.assert_called_once_with('DNS', 'tcp')
 
   def testTableDuplicateShortNameError(self):
     prod_network = nacaddr.IP('10.0.0.0/8')
@@ -689,12 +707,130 @@ class PacketFilterTest(unittest.TestCase):
         packetfilter.PacketFilter.__init__,
         packetfilter.PacketFilter.__new__(packetfilter.PacketFilter),
         policy.ParsePolicy(
-            GOOD_HEADER_DIRECTIONAL + DUPLICATE_LONG_NAME_TERM, self.naming),
+            GOOD_HEADER_DIRECTIONAL + DUPLICATE_DIFFERENT_LONG_NAME_TERM,
+            self.naming),
         EXP_INFO)
     self.naming.GetNetAddr.assert_has_calls([
         mock.call('PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME'),
         mock.call('PROD_NETWORK_EXTREAMLY_LONG_VERY_GOOD_NAME')])
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
+  def testTableSameLongNameSameFilter(self):
+    prod_network = nacaddr.IP('10.0.0.0/8')
+    prod_network.parent_token = 'PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME'
+    self.naming.GetNetAddr.return_value = [prod_network]
+    self.naming.GetServiceByProto.return_value = ['53']
+
+    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+        GOOD_HEADER_DIRECTIONAL + LONG_NAME_TERM_DNS_TCP + LONG_NAME_TERM_DNS_UDP,
+        self.naming), EXP_INFO)
+    result = str(acl)
+    self.failUnless(
+        'table <PROD_NETWORK_EXTREAMLY_LONG_VER> {10.0.0.0/8}' in result,
+        'did not find shortened name in header.')
+    self.failUnless(
+        'pass out quick proto { tcp } from { any } to '
+        '{ <PROD_NETWORK_EXTREAMLY_LONG_VER> } '
+        'port { 53 } flags S/SA keep state'
+        in result,
+        'did not find actual TCP term for multiple-name')
+    self.failUnless(
+        'pass out quick proto { udp } from { any } to '
+        '{ <PROD_NETWORK_EXTREAMLY_LONG_VER> } '
+        'port { 53 } keep state'
+        in result,
+        'did not find actual UDP for multiple-name')
+
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME'),
+        mock.call('PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME')])
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('DNS', 'tcp'),
+        mock.call('DNS', 'udp')])
+
+  def testTableSameLongNameDiffFilter(self):
+    prod_network = nacaddr.IP('10.0.0.0/8')
+    prod_network.parent_token = 'PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME'
+    self.naming.GetNetAddr.return_value = [prod_network]
+    self.naming.GetServiceByProto.return_value = ['53']
+
+    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+        GOOD_HEADER_DIRECTIONAL + LONG_NAME_TERM_DNS_TCP +
+        GOOD_HEADER_DIRECTIONAL + LONG_NAME_TERM_DNS_UDP,
+        self.naming), EXP_INFO)
+    result = str(acl)
+    self.failUnless(
+        'table <PROD_NETWORK_EXTREAMLY_LONG_VER> {10.0.0.0/8}' in result,
+        'did not find shortened name in header.')
+    self.failUnless(
+        'pass out quick proto { tcp } from { any } to '
+        '{ <PROD_NETWORK_EXTREAMLY_LONG_VER> } '
+        'port { 53 } flags S/SA keep state'
+        in result,
+        'did not find actual TCP term for multiple-name')
+    self.failUnless(
+        'pass out quick proto { udp } from { any } to '
+        '{ <PROD_NETWORK_EXTREAMLY_LONG_VER> } '
+        'port { 53 } keep state'
+        in result,
+        'did not find actual UDP for multiple-name')
+
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME'),
+        mock.call('PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME')])
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('DNS', 'tcp'),
+        mock.call('DNS', 'udp')])
+
+  def testTableDiffObjectsShortenedAndNonShortened(self):
+    prod_network = nacaddr.IP('10.0.0.0/8')
+    prod_network.parent_token = 'PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME'
+    prod_network_two = nacaddr.IP('172.0.0.1/8')
+    prod_network_two.parent_token = 'PROD_NETWORK_EXTREAMLY_LONG_VER'
+    self.naming.GetNetAddr.side_effect = [
+        [prod_network], [prod_network_two]]
+    self.naming.GetServiceByProto.return_value = ['53']
+
+    self.assertRaises(
+        packetfilter.DuplicateShortenedTableName,
+        packetfilter.PacketFilter.__init__,
+        packetfilter.PacketFilter.__new__(packetfilter.PacketFilter),
+        policy.ParsePolicy(
+            GOOD_HEADER_DIRECTIONAL + LONG_NAME_TERM_DNS_TCP +
+            NON_SHORTENED_LONG_NAME_TERM_DNS_UDP,
+            self.naming),
+        EXP_INFO)
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME'),
+        mock.call('PROD_NETWORK_EXTREAMLY_LONG_VER')])
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('DNS', 'tcp'),
+        mock.call('DNS', 'udp')])
+
+  def testTableDuplicateShortNameErrorDiffFilter(self):
+    prod_network = nacaddr.IP('10.0.0.0/8')
+    prod_network.parent_token = 'PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME'
+    prod_network_two = nacaddr.IP('172.0.0.1/8')
+    prod_network_two.parent_token = 'PROD_NETWORK_EXTREAMLY_LONG_VER'
+    self.naming.GetNetAddr.side_effect = [
+        [prod_network], [prod_network_two]]
+    self.naming.GetServiceByProto.return_value = ['53']
+
+    self.assertRaises(
+        packetfilter.DuplicateShortenedTableName,
+        packetfilter.PacketFilter.__init__,
+        packetfilter.PacketFilter.__new__(packetfilter.PacketFilter),
+        policy.ParsePolicy(
+            GOOD_HEADER_DIRECTIONAL + LONG_NAME_TERM_DNS_TCP +
+            GOOD_HEADER_DIRECTIONAL + NON_SHORTENED_LONG_NAME_TERM_DNS_UDP,
+            self.naming),
+        EXP_INFO)
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME'),
+        mock.call('PROD_NETWORK_EXTREAMLY_LONG_VER')])
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('DNS', 'tcp'),
+        mock.call('DNS', 'udp')])
 
   def testTermNameConflict(self):
     self.assertRaises(
