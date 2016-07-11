@@ -44,11 +44,9 @@ DNS = 53/tcp
 
 """
 
-__author__ = 'watson@google.com (Tony Watson)'
-
 import glob
 import os
-
+import port as portlib
 from lib import nacaddr
 
 
@@ -78,6 +76,10 @@ class UndefinedAddressError(Error):
 
 class UndefinedServiceError(Error):
   """Raised if a service is referenced but not defined."""
+
+
+class UndefinedPortError(Error):
+  """Raised if a port/protocol pair has not been defined."""
 
 
 class UnexpectedDefinitionType(Error):
@@ -282,6 +284,61 @@ class Naming(object):
       else:
         expandset.add(service)
     return sorted(expandset)
+
+  def GetPortParents(self, query, proto):
+    """
+    Given a port and protocol, return a list of all the service tokens that
+    contain that port/protocol pair
+
+    Args:
+        query: port number ('22') as str
+        proto: protocol name ('tcp') as str
+
+    Returns:
+        A list of service tokens: ['SSH', 'HTTPS']
+
+    Raises:
+      UndefinedPortError: If the port/protocol pair isn't used in any
+      service tokens.
+    """
+    # turn the given port and protocol into a PortProtocolPair object
+    given_ppp = portlib.PPP(query + '/' + proto)
+    base_parents = []
+    matches = set()
+    # check each service token to see if it's a PPP or a nested group.
+    # if it's a PPP, see if there's a match with given_ppp
+    # otherwise, add nested group to a list to recurisvely check later.
+    # if there's no match, do nothing.
+    for service_token in self.services:
+      for port_child in self.services[service_token].items:
+        ppp = portlib.PPP(port_child)
+        # check for exact match
+        if ppp.is_single_port and ppp == given_ppp:
+          matches.add(service_token)
+        # check if it's within ppp's port range
+        elif ppp.is_range and given_ppp in ppp:
+          matches.add(service_token)
+        # if it's a nested token, add to a list to recurisvely
+        # check later.
+        elif ppp.nested:
+          if service_token not in base_parents:
+            base_parents.append(service_token)
+    # break down the nested service tokens into PPP objects and check
+    # against given_ppp
+    for bp in base_parents:
+      for port_child in self.GetService(bp):
+        ppp = portlib.PPP(port_child)
+        # check for exact match
+        if ppp.is_single_port and ppp == given_ppp:
+          matches.add(bp)
+        # check if it's within ppp's port range
+        elif ppp.is_range and given_ppp in ppp:
+          matches.add(bp)
+    # error if the port/protocol pair is not found.
+    if not matches:
+      raise UndefinedPortError(
+          '%s/%s is not found in any service tokens' % (query, proto))
+    return sorted(matches)
 
   def GetServiceByProto(self, query, proto):
     """Given a service name, return list of ports in the service by protocol.
