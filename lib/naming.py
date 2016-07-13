@@ -48,6 +48,9 @@ import glob
 import os
 import port as portlib
 from lib import nacaddr
+from lib import port as portlib
+
+
 
 
 class Error(Exception):
