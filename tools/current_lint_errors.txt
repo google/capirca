@@ -1,0 +1,2525 @@
+************* Module aclgen
+W:124, 0: Access to a protected member _deepcopy_dispatch of a client class (protected-access)
+R:142, 0: Too many local variables (30/15) (too-many-locals)
+R:142, 0: Too many branches (43/12) (too-many-branches)
+R:142, 0: Too many statements (136/50) (too-many-statements)
+************* Module aclcheck_cmdline
+C: 30, 2: Invalid variable name "_parser" (invalid-name)
+C: 45, 3: Invalid variable name "FLAGS" (invalid-name)
+************* Module cgrep
+C:135, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:142, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:145, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:149, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:155, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:159, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:164, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:170, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:171, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:173, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:174, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:177, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:179, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:182, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:184, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:192, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:194, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:204, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:208, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:214, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:221, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:277, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:280, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:283, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:286, 0: Unnecessary parens after 'print' keyword (superfluous-parens)
+C:  1, 0: Missing module docstring (missing-docstring)
+R:122, 0: Too many local variables (25/15) (too-many-locals)
+R:122, 0: Too many branches (25/12) (too-many-branches)
+R:122, 0: Too many statements (65/50) (too-many-statements)
+************* Module tests.lib.nsxv_test
+C:114, 0: Missing class docstring (missing-docstring)
+C:119, 2: Invalid method name "testInitForinet" (invalid-name)
+C:125, 2: Invalid method name "testInitForinet6" (invalid-name)
+C:131, 2: Invalid method name "testServiceToStr" (invalid-name)
+W:139,14: Access to a protected member _ServiceToString of a client class (protected-access)
+C:144, 2: Invalid method name "testStrForinet" (invalid-name)
+R:144, 2: Too many local variables (16/15) (too-many-locals)
+C:199, 2: Invalid method name "testStrForinet6" (invalid-name)
+C:224, 2: Invalid method name "testTranslatePolicy" (invalid-name)
+C:246, 2: Invalid method name "testNsxvStr" (invalid-name)
+R:246, 2: Too many local variables (19/15) (too-many-locals)
+R:114, 0: Too many public methods (52/20) (too-many-public-methods)
+************* Module tests.lib.pcap_test
+C:171, 0: Missing class docstring (missing-docstring)
+C:176, 2: Invalid method name "testTcp" (invalid-name)
+C:176, 2: Missing method docstring (missing-docstring)
+C:190, 2: Invalid method name "testLog" (invalid-name)
+C:198, 2: Invalid method name "testIcmp" (invalid-name)
+C:206, 2: Invalid method name "testIcmpTypes" (invalid-name)
+C:215, 2: Invalid method name "testIcmpv6" (invalid-name)
+C:223, 2: Invalid method name "testBadIcmp" (invalid-name)
+C:230, 2: Invalid method name "testExpiredTerm" (invalid-name)
+C:239, 2: Invalid method name "testExpiringTerm" (invalid-name)
+C:249, 2: Invalid method name "testMultiprotocol" (invalid-name)
+C:257, 2: Invalid method name "testNextTerm" (invalid-name)
+C:264, 2: Invalid method name "testTcpOptions" (invalid-name)
+C:272, 2: Invalid method name "testVrrpTerm" (invalid-name)
+C:280, 2: Invalid method name "testMultiHeader" (invalid-name)
+C:289, 2: Invalid method name "testDirectional" (invalid-name)
+C:299, 2: Invalid method name "testUnicastIPv6" (invalid-name)
+C:299, 2: Missing method docstring (missing-docstring)
+C:311, 2: Invalid method name "testHbh" (invalid-name)
+R:171, 0: Too many public methods (61/20) (too-many-public-methods)
+************* Module tests.lib.nsxv_mocktest
+C: 18, 0: Exactly one space required around assignment
+INET_TERM="""\
+         ^ (bad-whitespace)
+C: 27, 0: Exactly one space required around assignment
+INET6_TERM="""\
+          ^ (bad-whitespace)
+C: 35, 0: Exactly one space required before assignment
+INET_FILTER= """\
+           ^ (bad-whitespace)
+C: 52, 0: Exactly one space required before assignment
+INET6_FILTER= """\
+            ^ (bad-whitespace)
+C: 66, 0: Exactly one space required before assignment
+MIXED_FILTER= """\
+            ^ (bad-whitespace)
+C: 81, 0: Exactly one space required before assignment
+POLICY= """\
+      ^ (bad-whitespace)
+C: 95, 0: Exactly one space required before assignment
+POLICY_NO_SECTION_ID= """\
+                    ^ (bad-whitespace)
+C:106, 0: Exactly one space required before assignment
+POLICY_NO_FILTERTYPE= """\
+                    ^ (bad-whitespace)
+C:117, 0: Exactly one space required before assignment
+POLICY_INCORRECT_FILTERTYPE= """\
+                           ^ (bad-whitespace)
+C:128, 0: Exactly one space required before assignment
+POLICY_OPTION_KYWD= """\
+                  ^ (bad-whitespace)
+************* Module tests.lib.srxlo_test
+C: 50, 0: Missing class docstring (missing-docstring)
+C: 55, 2: Invalid method name "testIcmpv6" (invalid-name)
+C: 61, 2: Invalid method name "testIcmpv6Type" (invalid-name)
+R: 50, 0: Too many public methods (47/20) (too-many-public-methods)
+************* Module tests.lib.windows_advfirewall_test
+C:156, 0: Missing class docstring (missing-docstring)
+C:168, 2: Invalid method name "testTcp" (invalid-name)
+C:168, 2: Missing method docstring (missing-docstring)
+C:184, 2: Invalid method name "testIcmp" (invalid-name)
+C:194, 2: Invalid method name "testIcmpTypes" (invalid-name)
+C:208, 2: Invalid method name "testBadIcmp" (invalid-name)
+C:215, 2: Invalid method name "testExpiredTerm" (invalid-name)
+C:225, 2: Invalid method name "testExpiringTerm" (invalid-name)
+C:236, 2: Invalid method name "testMultiprotocol" (invalid-name)
+C:250, 2: Invalid method name "testDirectionIn" (invalid-name)
+C:250, 2: Missing method docstring (missing-docstring)
+R:156, 0: Too many public methods (54/20) (too-many-public-methods)
+************* Module tests.lib.aclgenerator_test
+C: 90, 0: Missing class docstring (missing-docstring)
+C: 95, 2: Invalid method name "testEstablishedNostate" (invalid-name)
+C:105, 2: Invalid method name "testSupportedAF" (invalid-name)
+C:114, 2: Invalid method name "testTermNameBelowLimit" (invalid-name)
+C:130, 2: Invalid method name "testLongTermAbbreviation" (invalid-name)
+C:141, 2: Invalid method name "testTermNameTruncation" (invalid-name)
+C:151, 2: Invalid method name "testLongTermName" (invalid-name)
+C:161, 2: Invalid method name "testAddRepositoryTags" (invalid-name)
+C:161, 2: Missing method docstring (missing-docstring)
+R: 90, 0: Too many public methods (52/20) (too-many-public-methods)
+************* Module tests.lib.gce_test
+C:297, 0: Missing class docstring (missing-docstring)
+R:302, 2: Method could be a function (no-self-use)
+C:306, 2: Invalid method name "testGenericTerm" (invalid-name)
+C:306, 2: Missing method docstring (missing-docstring)
+C:320, 2: Invalid method name "testGenericTermWithoutNetwork" (invalid-name)
+C:320, 2: Missing method docstring (missing-docstring)
+C:334, 2: Invalid method name "testGenericTermWithExclude" (invalid-name)
+C:334, 2: Missing method docstring (missing-docstring)
+C:350, 2: Invalid method name "testGenericTermWithExcludeRange" (invalid-name)
+C:350, 2: Missing method docstring (missing-docstring)
+C:367, 2: Invalid method name "testExpiredTerm" (invalid-name)
+C:378, 2: Invalid method name "testSourceNetworkSplit" (invalid-name)
+C:378, 2: Missing method docstring (missing-docstring)
+C:398, 2: Invalid method name "testRaisesWithUnsupportedAction" (invalid-name)
+C:398, 2: Missing method docstring (missing-docstring)
+C:413, 2: Invalid method name "testRaisesWithoutSource" (invalid-name)
+C:413, 2: Missing method docstring (missing-docstring)
+C:426, 2: Invalid method name "testRaisesWithOnlySourceExclusion" (invalid-name)
+C:426, 2: Missing method docstring (missing-docstring)
+C:442, 2: Invalid method name "testRaisesNoSourceAfterExclude" (invalid-name)
+C:442, 2: Missing method docstring (missing-docstring)
+C:462, 2: Invalid method name "testRaisesWithSourcePort" (invalid-name)
+C:462, 2: Missing method docstring (missing-docstring)
+C:477, 2: Invalid method name "testRaisesWithLongTermName" (invalid-name)
+C:477, 2: Missing method docstring (missing-docstring)
+C:491, 2: Invalid method name "testRaisesWithIcmpAndDestinationPort" (invalid-name)
+C:491, 2: Missing method docstring (missing-docstring)
+R:297, 0: Too many public methods (58/20) (too-many-public-methods)
+************* Module tests.lib.summarizer_test
+C: 30, 0: Missing class docstring (missing-docstring)
+C: 43, 2: Invalid method name "testToDottedQuad" (invalid-name)
+C: 43, 2: Missing method docstring (missing-docstring)
+C: 67, 2: Invalid method name "testInt32ToDottedQuad" (invalid-name)
+W: 68,22: Access to a protected member _Int32ToDottedQuad of a client class (protected-access)
+C: 71, 2: Invalid method name "testSummarizeEmptyList" (invalid-name)
+C: 76, 2: Invalid method name "testSummarizeNoNetworks" (invalid-name)
+C: 86, 2: Invalid method name "testSummarizeSomeNetworks" (invalid-name)
+C: 86, 2: Missing method docstring (missing-docstring)
+C:107, 2: Invalid method name "testSummarizeAllNetworks" (invalid-name)
+C:117, 2: Invalid method name "testSummarizeToAllSpace" (invalid-name)
+C:126, 2: Invalid method name "testIpaddrToTuple" (invalid-name)
+W:128,21: Access to a protected member _IpaddrToTuple of a client class (protected-access)
+C:130, 2: Invalid method name "testToPrettyBinaryFormat" (invalid-name)
+C:130, 2: Missing method docstring (missing-docstring)
+W:132,21: Access to a protected member _ToPrettyBinaryFormat of a client class (protected-access)
+W:135,21: Access to a protected member _ToPrettyBinaryFormat of a client class (protected-access)
+W:138,21: Access to a protected member _ToPrettyBinaryFormat of a client class (protected-access)
+W:142, 8: Access to a protected member _ToPrettyBinaryFormat of a client class (protected-access)
+R: 30, 0: Too many public methods (54/20) (too-many-public-methods)
+************* Module tests.lib.speedway_test
+C: 49, 2: Invalid method name "testSpeedwayOutputFormat" (invalid-name)
+C: 49, 2: Missing method docstring (missing-docstring)
+R: 44, 0: Too many public methods (46/20) (too-many-public-methods)
+************* Module tests.lib.brocade_test
+C: 43, 0: Missing class docstring (missing-docstring)
+C: 48, 2: Invalid method name "testTcpEstablished" (invalid-name)
+C: 54, 2: Invalid method name "testNoTermRemark" (invalid-name)
+R: 43, 0: Too many public methods (47/20) (too-many-public-methods)
+************* Module tests.lib.policy_simple_test
+C:  1, 0: Missing module docstring (missing-docstring)
+C: 21, 0: Missing class docstring (missing-docstring)
+C: 26, 2: Invalid method name "testAppendAppends" (invalid-name)
+C: 31, 2: Invalid method name "testStr" (invalid-name)
+C: 35, 2: Invalid method name "testStrIndents" (invalid-name)
+C: 39, 2: Invalid method name "testIntegerField" (invalid-name)
+C: 46, 2: Invalid method name "testNamingFieldRejectsBad" (invalid-name)
+C: 55, 2: Invalid method name "testNamingFieldAcceptsGood" (invalid-name)
+C: 68, 2: Invalid method name "testNamingFieldAppendRejectsBad" (invalid-name)
+C: 78, 2: Invalid method name "testNamingFieldAppendAcceptsGood" (invalid-name)
+C: 92, 2: Invalid method name "testNamingFieldDedupes" (invalid-name)
+C: 98, 2: Invalid method name "testNamingFieldStr" (invalid-name)
+R: 21, 0: Too many public methods (55/20) (too-many-public-methods)
+C:105, 0: Missing class docstring (missing-docstring)
+C:110, 2: Invalid method name "testRejectsNonField" (invalid-name)
+C:116, 2: Invalid method name "testFieldsWithType" (invalid-name)
+C:116, 2: Missing method docstring (missing-docstring)
+C:128, 2: Invalid method name "testIter" (invalid-name)
+R:105, 0: Too many public methods (48/20) (too-many-public-methods)
+C:138, 0: Missing class docstring (missing-docstring)
+C:143, 2: Invalid method name "testAddMember" (invalid-name)
+C:143, 2: Missing method docstring (missing-docstring)
+C:160, 2: Invalid method name "testIter" (invalid-name)
+R:138, 0: Too many public methods (47/20) (too-many-public-methods)
+C:170, 0: Missing class docstring (missing-docstring)
+R:175, 2: Method could be a function (no-self-use)
+C:178, 2: Invalid method name "testParseCommentLine" (invalid-name)
+C:185, 2: Invalid method name "testParseBlankLine" (invalid-name)
+C:192, 2: Invalid method name "testParseInclude" (invalid-name)
+C:199, 2: Invalid method name "testParseHeader" (invalid-name)
+C:207, 2: Invalid method name "testParseTerm" (invalid-name)
+C:215, 2: Invalid method name "testParseTermBadField" (invalid-name)
+C:219, 2: Invalid method name "testUnfinishedBlock" (invalid-name)
+R:170, 0: Too many public methods (53/20) (too-many-public-methods)
+************* Module tests.lib.aruba_test
+C: 72, 0: Missing class docstring (missing-docstring)
+C: 77, 2: Invalid method name "testNetdestination" (invalid-name)
+C: 88, 2: Invalid method name "testNetdestination6" (invalid-name)
+C: 99, 2: Invalid method name "testActionUnsupported" (invalid-name)
+C: 99, 2: Missing method docstring (missing-docstring)
+R: 72, 0: Too many public methods (48/20) (too-many-public-methods)
+************* Module tests.lib.iptables_test
+R:407, 0: Too few public methods (0/2) (too-few-public-methods)
+C:412, 0: Missing class docstring (missing-docstring)
+C:418, 2: Invalid method name "testChainFilter" (invalid-name)
+C:418, 2: Missing method docstring (missing-docstring)
+C:434, 2: Invalid method name "testUnsupportedTargetOption" (invalid-name)
+C:439, 2: Invalid method name "testGoodPolicy" (invalid-name)
+C:451, 2: Invalid method name "testCustomChain" (invalid-name)
+C:458, 2: Invalid method name "testChainNoTarget" (invalid-name)
+C:470, 2: Invalid method name "testCustomChainNoTarget" (invalid-name)
+C:481, 2: Invalid method name "testExcludeReturnsPolicy" (invalid-name)
+C:481, 2: Missing method docstring (missing-docstring)
+C:507, 2: Invalid method name "testExcludeAddressesPolicy" (invalid-name)
+C:507, 2: Missing method docstring (missing-docstring)
+C:528, 2: Invalid method name "testAddExcludeSourceForLengthPolicy" (invalid-name)
+C:528, 2: Missing method docstring (missing-docstring)
+C:570, 2: Invalid method name "testAddExcludeDestForLengthPolicy" (invalid-name)
+C:570, 2: Missing method docstring (missing-docstring)
+C:612, 2: Invalid method name "testOptions" (invalid-name)
+C:612, 2: Missing method docstring (missing-docstring)
+C:628, 2: Invalid method name "testRejectReset" (invalid-name)
+C:635, 2: Invalid method name "testReject" (invalid-name)
+C:642, 2: Invalid method name "testRejectIpv6" (invalid-name)
+C:650, 2: Invalid method name "testIPv6Headers" (invalid-name)
+C:659, 2: Invalid method name "testNextTerm" (invalid-name)
+C:666, 2: Invalid method name "testProtocols" (invalid-name)
+C:666, 2: Missing method docstring (missing-docstring)
+C:678, 2: Invalid method name "testVerbatimTerm" (invalid-name)
+C:690, 2: Invalid method name "testCommentReflowing" (invalid-name)
+C:701, 2: Invalid method name "testLongTermName" (invalid-name)
+C:706, 2: Invalid method name "testLongTermAbbreviation" (invalid-name)
+C:713, 2: Invalid method name "testLongTermTruncation" (invalid-name)
+C:722, 2: Invalid method name "testFragmentOptions" (invalid-name)
+C:733, 2: Invalid method name "testIcmpMatching" (invalid-name)
+C:733, 2: Missing method docstring (missing-docstring)
+C:746, 2: Invalid method name "testConntrackUDP" (invalid-name)
+C:757, 2: Invalid method name "testConntrackAll" (invalid-name)
+C:766, 2: Invalid method name "testTcpEstablishedNostate" (invalid-name)
+C:766, 2: Missing method docstring (missing-docstring)
+C:779, 2: Invalid method name "testUdpEstablishedNostate" (invalid-name)
+C:788, 2: Invalid method name "testEstablishedNostate" (invalid-name)
+C:795, 2: Invalid method name "testUnsupportedFilter" (invalid-name)
+C:800, 2: Invalid method name "testUnknownTermKeyword" (invalid-name)
+C:807, 2: Invalid method name "testProtocolExceptUnsupported" (invalid-name)
+C:812, 2: Invalid method name "testTermNameConflict" (invalid-name)
+C:818, 2: Invalid method name "testMultiPort" (invalid-name)
+C:818, 2: Missing method docstring (missing-docstring)
+C:833, 2: Invalid method name "testMultiPortWithRanges" (invalid-name)
+C:833, 2: Missing method docstring (missing-docstring)
+C:847, 2: Invalid method name "testMultiportSwap" (invalid-name)
+C:861, 2: Invalid method name "testMultiportLargePortCount" (invalid-name)
+C:861, 2: Missing method docstring (missing-docstring)
+C:874, 2: Invalid method name "testMultiportDualLargePortCount" (invalid-name)
+C:874, 2: Missing method docstring (missing-docstring)
+C:897, 2: Invalid method name "testGeneratePortBadArguments" (invalid-name)
+W:901,22: Access to a protected member _GeneratePortStatement of a client class (protected-access)
+C:904, 2: Invalid method name "testGeneratePortNotImplemented" (invalid-name)
+W:908,22: Access to a protected member _GeneratePortStatement of a client class (protected-access)
+C:911, 2: Invalid method name "testLogging" (invalid-name)
+C:920, 2: Invalid method name "testSourceInterface" (invalid-name)
+C:927, 2: Invalid method name "testDestinationInterface" (invalid-name)
+C:936, 2: Invalid method name "testExpired" (invalid-name)
+C:945, 2: Invalid method name "testExpiringTerm" (invalid-name)
+C:955, 2: Invalid method name "testIPv6Icmp" (invalid-name)
+C:966, 2: Invalid method name "testIPv6IcmpOrder" (invalid-name)
+C:966, 2: Missing method docstring (missing-docstring)
+C:980, 2: Invalid method name "testIcmpv6InetMismatch" (invalid-name)
+C:992, 2: Invalid method name "testIcmpInet6Mismatch" (invalid-name)
+C:1004, 2: Invalid method name "testOwner" (invalid-name)
+C:1012, 2: Invalid method name "testSetTarget" (invalid-name)
+C:1020, 2: Invalid method name "testSetCustomTarget" (invalid-name)
+R:412, 0: Too many public methods (97/20) (too-many-public-methods)
+************* Module tests.lib.arista_test
+C: 51, 2: Invalid method name "testExtendedEosSyntax" (invalid-name)
+R: 46, 0: Too many public methods (46/20) (too-many-public-methods)
+************* Module tests.lib.aclcheck_test
+C: 63, 0: Missing class docstring (missing-docstring)
+C: 77, 2: Invalid method name "testExactMatches" (invalid-name)
+C: 83, 2: Invalid method name "testAclCheck" (invalid-name)
+C: 83, 2: Missing method docstring (missing-docstring)
+C:115, 2: Invalid method name "testExceptions" (invalid-name)
+C:115, 2: Missing method docstring (missing-docstring)
+R: 63, 0: Too many public methods (48/20) (too-many-public-methods)
+************* Module tests.lib.juniper_test
+W:533, 0: Anomalous backslash in string: '\W'. String constant might be missing an r prefix. (anomalous-backslash-in-string)
+W:533, 0: Anomalous backslash in string: '\W'. String constant might be missing an r prefix. (anomalous-backslash-in-string)
+W:535, 0: Anomalous backslash in string: '\W'. String constant might be missing an r prefix. (anomalous-backslash-in-string)
+W:535, 0: Anomalous backslash in string: '\W'. String constant might be missing an r prefix. (anomalous-backslash-in-string)
+W:535, 0: Anomalous backslash in string: '\W'. String constant might be missing an r prefix. (anomalous-backslash-in-string)
+C:372, 0: Missing class docstring (missing-docstring)
+C:377, 2: Invalid method name "testOptions" (invalid-name)
+C:377, 2: Missing method docstring (missing-docstring)
+C:392, 2: Invalid method name "testTermAndFilterName" (invalid-name)
+C:392, 2: Missing method docstring (missing-docstring)
+C:405, 2: Invalid method name "testBadFilterType" (invalid-name)
+C:416, 2: Invalid method name "testBridgeFilterType" (invalid-name)
+C:416, 2: Missing method docstring (missing-docstring)
+C:429, 2: Invalid method name "testCommentShrinking" (invalid-name)
+C:429, 2: Missing method docstring (missing-docstring)
+C:448, 2: Invalid method name "testDefaultDeny" (invalid-name)
+C:454, 2: Invalid method name "testIcmpType" (invalid-name)
+C:454, 2: Missing method docstring (missing-docstring)
+C:467, 2: Invalid method name "testInet6" (invalid-name)
+C:467, 2: Missing method docstring (missing-docstring)
+C:480, 2: Invalid method name "testNotInterfaceSpecificHeader" (invalid-name)
+C:480, 2: Missing method docstring (missing-docstring)
+C:493, 2: Invalid method name "testInterfaceSpecificHeader" (invalid-name)
+C:493, 2: Missing method docstring (missing-docstring)
+C:505, 2: Invalid method name "testHopLimit" (invalid-name)
+C:512, 2: Invalid method name "testProtocolExcept" (invalid-name)
+C:518, 2: Invalid method name "testIcmpv6Except" (invalid-name)
+C:524, 2: Invalid method name "testProtocolCase" (invalid-name)
+C:530, 2: Invalid method name "testPrefixList" (invalid-name)
+C:540, 2: Invalid method name "testEtherType" (invalid-name)
+C:546, 2: Invalid method name "testTrafficType" (invalid-name)
+C:552, 2: Invalid method name "testVerbatimTerm" (invalid-name)
+C:561, 2: Invalid method name "testDscpByte" (invalid-name)
+C:572, 2: Invalid method name "testDscpClass" (invalid-name)
+C:572, 2: Missing method docstring (missing-docstring)
+C:585, 2: Invalid method name "testDscpIPv6" (invalid-name)
+C:585, 2: Missing method docstring (missing-docstring)
+C:599, 2: Invalid method name "testSimplifiedThenStatement" (invalid-name)
+C:599, 2: Missing method docstring (missing-docstring)
+C:611, 2: Invalid method name "testSimplifiedThenStatementWithSingleAction" (invalid-name)
+C:622, 2: Invalid method name "testSimplifiedThenStatementWithSingleActionDiscardIPv4" (invalid-name)
+C:622, 2: Missing method docstring (missing-docstring)
+C:634, 2: Invalid method name "testSimplifiedThenStatementWithSingleActionDiscardIPv6" (invalid-name)
+C:645, 2: Invalid method name "testSimplifiedThenStatementWithSingleActionRejectIPv6" (invalid-name)
+C:645, 2: Missing method docstring (missing-docstring)
+C:657, 2: Invalid method name "testTcpEstablished" (invalid-name)
+C:668, 2: Invalid method name "testNonTcpWithTcpEstablished" (invalid-name)
+C:679, 2: Invalid method name "testBridgeFilterInetType" (invalid-name)
+C:690, 2: Invalid method name "testDsmo" (invalid-name)
+C:690, 2: Missing method docstring (missing-docstring)
+C:705, 2: Invalid method name "testDsmoJuniperFriendly" (invalid-name)
+C:705, 2: Missing method docstring (missing-docstring)
+C:717, 2: Invalid method name "testDsmoExclude" (invalid-name)
+C:717, 2: Missing method docstring (missing-docstring)
+C:735, 2: Invalid method name "testTermTypeIndexKeys" (invalid-name)
+W:737,29: Access to a protected member _TERM_TYPE of a client class (protected-access)
+C:740, 2: Invalid method name "testRoutingInstance" (invalid-name)
+C:746, 2: Invalid method name "testLossPriority" (invalid-name)
+C:752, 2: Invalid method name "testPrecedence" (invalid-name)
+C:762, 2: Invalid method name "testMultiplePrecedence" (invalid-name)
+C:772, 2: Invalid method name "testArbitraryOptions" (invalid-name)
+C:783, 2: Invalid method name "testIcmpv6InetMismatch" (invalid-name)
+C:795, 2: Invalid method name "testIcmpInet6Mismatch" (invalid-name)
+C:808, 2: Invalid method name "testExpiredTerm" (invalid-name)
+C:817, 2: Invalid method name "testExpiringTerm" (invalid-name)
+C:827, 2: Invalid method name "testOwnerTerm" (invalid-name)
+C:835, 2: Invalid method name "testAddressExclude" (invalid-name)
+C:835, 2: Missing method docstring (missing-docstring)
+C:857, 2: Invalid method name "testMinimizePrefixes" (invalid-name)
+C:857, 2: Missing method docstring (missing-docstring)
+C:885, 2: Invalid method name "testConfigHelper" (invalid-name)
+C:885, 2: Missing method docstring (missing-docstring)
+C:911, 2: Invalid method name "testForwardingClass" (invalid-name)
+C:918, 2: Invalid method name "testLongPolicer" (invalid-name)
+C:932, 2: Invalid method name "testNextIp" (invalid-name)
+C:943, 2: Invalid method name "testNextIpFormat" (invalid-name)
+C:943, 2: Missing method docstring (missing-docstring)
+C:956, 2: Invalid method name "testNextIpv6" (invalid-name)
+C:967, 2: Invalid method name "testFailNextIpMultipleIP" (invalid-name)
+C:976, 2: Invalid method name "testFailNextIpNetworkIP" (invalid-name)
+R:372, 0: Too many public methods (98/20) (too-many-public-methods)
+************* Module tests.lib.policy_test
+I:446, 0: Locally disabling E1103 (locally-disabled)
+C:449, 0: Missing class docstring (missing-docstring)
+C:455, 2: Invalid method name "testIncludes" (invalid-name)
+C:476, 2: Invalid method name "testGoodPol" (invalid-name)
+C:476, 2: Missing method docstring (missing-docstring)
+C:495, 2: Invalid method name "testBadPol" (invalid-name)
+C:499, 2: Invalid method name "testMissingHeader" (invalid-name)
+C:503, 2: Invalid method name "testService" (invalid-name)
+C:503, 2: Missing method docstring (missing-docstring)
+C:518, 2: Invalid method name "testInvalidKeyword" (invalid-name)
+C:522, 2: Invalid method name "testNumericProtocol" (invalid-name)
+C:529, 2: Invalid method name "testHopLimitSingle" (invalid-name)
+C:536, 2: Invalid method name "testHopLimitRange" (invalid-name)
+C:543, 2: Invalid method name "testBadPortProtocols" (invalid-name)
+C:549, 2: Invalid method name "testBadPortProtocols2" (invalid-name)
+C:554, 2: Invalid method name "testMinimumTerm" (invalid-name)
+C:562, 2: Invalid method name "testPortCollapsing" (invalid-name)
+C:562, 2: Missing method docstring (missing-docstring)
+C:576, 2: Invalid method name "testPortCollapsing2" (invalid-name)
+C:589, 2: Invalid method name "testMinimumTerm2" (invalid-name)
+C:597, 2: Invalid method name "testTermEquality" (invalid-name)
+C:597, 2: Missing method docstring (missing-docstring)
+C:637, 2: Invalid method name "testIpAndPortContains" (invalid-name)
+C:637, 2: Missing method docstring (missing-docstring)
+C:660, 2: Invalid method name "testEmptyIpContains" (invalid-name)
+C:660, 2: Missing method docstring (missing-docstring)
+C:683, 2: Invalid method name "testIpExcludeContains" (invalid-name)
+C:683, 2: Missing method docstring (missing-docstring)
+C:705, 2: Invalid method name "testIpDualExcludeContains" (invalid-name)
+C:705, 2: Missing method docstring (missing-docstring)
+C:729, 2: Invalid method name "testOptionsContains" (invalid-name)
+C:729, 2: Missing method docstring (missing-docstring)
+C:749, 2: Invalid method name "testPrecedenceContains" (invalid-name)
+C:761, 2: Invalid method name "testProtocolExceptContains" (invalid-name)
+C:770, 2: Invalid method name "testGoodDestAddrExcludes" (invalid-name)
+C:770, 2: Missing method docstring (missing-docstring)
+C:785, 2: Invalid method name "testGoodSrcAddrExcludes" (invalid-name)
+C:785, 2: Missing method docstring (missing-docstring)
+C:800, 2: Invalid method name "testGoodAddrExcludes" (invalid-name)
+C:800, 2: Missing method docstring (missing-docstring)
+C:815, 2: Invalid method name "testGoodAddrExcludesFlatten" (invalid-name)
+C:815, 2: Missing method docstring (missing-docstring)
+C:842, 2: Invalid method name "testGoodAddrExcludesFlattenMultiple" (invalid-name)
+C:842, 2: Missing method docstring (missing-docstring)
+C:862, 2: Invalid method name "testGoodAddrExcludesFlattenAll" (invalid-name)
+C:862, 2: Missing method docstring (missing-docstring)
+C:879, 2: Invalid method name "testLogging" (invalid-name)
+C:886, 2: Invalid method name "testBadLogging" (invalid-name)
+C:891, 2: Invalid method name "testBadAction" (invalid-name)
+C:896, 2: Invalid method name "testMultifilter" (invalid-name)
+C:901, 2: Invalid method name "testBadMultifilter" (invalid-name)
+C:906, 2: Invalid method name "testICMPTypes" (invalid-name)
+C:913, 2: Invalid method name "testBadICMPTypes" (invalid-name)
+C:918, 2: Invalid method name "testReservedWordTermName" (invalid-name)
+C:926, 2: Invalid method name "testMultiPortLines" (invalid-name)
+C:939, 2: Invalid method name "testErrorLineNumber" (invalid-name)
+C:945, 2: Invalid method name "testPrefixList" (invalid-name)
+C:945, 2: Missing method docstring (missing-docstring)
+C:962, 2: Invalid method name "testEtherTypes" (invalid-name)
+C:971, 2: Invalid method name "testTrafficTypes" (invalid-name)
+C:980, 2: Invalid method name "testBadProtocolEtherTypes" (invalid-name)
+C:985, 2: Invalid method name "testVerbatimTerm" (invalid-name)
+C:993, 2: Invalid method name "testVerbatimMixed" (invalid-name)
+C:997, 2: Invalid method name "testIntegerFilterName" (invalid-name)
+C:1002, 2: Invalid method name "testPrecedence" (invalid-name)
+C:1009, 2: Invalid method name "testLossPriority" (invalid-name)
+C:1019, 2: Invalid method name "testRoutingInstance" (invalid-name)
+C:1029, 2: Invalid method name "testSourceInterface" (invalid-name)
+C:1040, 2: Invalid method name "testShadingDetection" (invalid-name)
+C:1040, 2: Missing method docstring (missing-docstring)
+C:1055, 2: Invalid method name "testVpnConfigWithoutPairPolicy" (invalid-name)
+C:1061, 2: Invalid method name "testVpnConfigWithPairPolicy" (invalid-name)
+C:1067, 2: Invalid method name "testForwardingClassPolicy" (invalid-name)
+C:1071, 2: Invalid method name "testForwardingClassEqual" (invalid-name)
+C:1079, 2: Invalid method name "testTagSupportAndNetworkHeaderParsing" (invalid-name)
+C:1088, 2: Invalid method name "testEq" (invalid-name)
+C:1097, 2: Invalid method name "testNextIP" (invalid-name)
+C:1110, 2: Invalid method name "testStr" (invalid-name)
+R:449, 0: Too many public methods (104/20) (too-many-public-methods)
+************* Module tests.lib.nsxv_unittest
+C: 66, 0: Line too long (148/80) (line-too-long)
+C: 71, 0: Exactly one space required around assignment
+    af=4
+      ^ (bad-whitespace)
+W: 73, 0: Bad indentation. Found 7 spaces, expected 6 (bad-indentation)
+C: 73, 0: Exactly one space required before assignment
+       nsxv_term= nsxv.Term(terms[0], af)
+                ^ (bad-whitespace)
+W: 74, 0: Bad indentation. Found 7 spaces, expected 6 (bad-indentation)
+C: 82, 0: Exactly one space required after comma
+    exp_sourceaddr = ['10.0.0.1','10.0.0.2']
+                                ^ (bad-whitespace)
+C: 90, 0: Exactly one space required after comma
+    exp_destaddr = ['10.0.0.0/8','172.16.0.0/12','192.168.0.0/16']
+                                ^ (bad-whitespace)
+C: 90, 0: Exactly one space required after comma
+    exp_destaddr = ['10.0.0.0/8','172.16.0.0/12','192.168.0.0/16']
+                                                ^ (bad-whitespace)
+C: 98, 0: Exactly one space required after assignment
+    protocol =  int(root.find('./services/service/protocol').text)
+             ^ (bad-whitespace)
+C:110, 0: Exactly one space required after assignment
+    notes =  root.find('notes').text
+          ^ (bad-whitespace)
+C:116, 0: Exactly one space required around assignment
+    af=6
+      ^ (bad-whitespace)
+W:119, 0: Bad indentation. Found 7 spaces, expected 6 (bad-indentation)
+C:119, 0: Exactly one space required before assignment
+       nsxv_term= nsxv.Term(terms[0], filter_type, af)
+                ^ (bad-whitespace)
+W:120, 0: Bad indentation. Found 7 spaces, expected 6 (bad-indentation)
+C:149, 0: No space allowed before comma
+      self.assertEqual(len(terms) , 1)
+                                  ^ (bad-whitespace)
+C:168, 0: Exactly one space required after comma
+    exp_ipv4dest = ['8.8.4.4','8.8.8.8']
+                             ^ (bad-whitespace)
+C:169, 0: Exactly one space required after comma
+    exp_ipv6dest = ['2001:4860:4860::8844','2001:4860:4860::8888']
+                                          ^ (bad-whitespace)
+C:183, 0: Exactly one space required after assignment
+    protocol =  int(root.find('./rule/services/service/protocol').text)
+             ^ (bad-whitespace)
+C:191, 0: Exactly one space required after assignment
+    notes =  root.find('./rule/notes').text
+          ^ (bad-whitespace)
+C: 27, 0: Missing class docstring (missing-docstring)
+C: 31, 4: Invalid variable name "_parser" (invalid-name)
+E: 31,14: Undefined variable 'OptionParser' (undefined-variable)
+C: 34, 5: Invalid variable name "FLAGS" (invalid-name)
+W: 34,12: Unused variable 'args' (unused-variable)
+C: 40, 2: Invalid method name "runTest" (invalid-name)
+C: 57, 2: Invalid method name "test_ServiceToStr" (invalid-name)
+W: 65,14: Access to a protected member _ServiceToString of a client class (protected-access)
+R: 68, 2: Too many local variables (16/15) (too-many-locals)
+W: 72, 8: Unused variable 'header' (unused-variable)
+W:118, 8: Unused variable 'header' (unused-variable)
+C:138, 2: Invalid method name "test_TranslatePolicy" (invalid-name)
+W:145, 9: Unused variable 'header' (unused-variable)
+W:172, 6: Redefining built-in 'type' (redefined-builtin)
+R: 27, 0: Too many public methods (53/20) (too-many-public-methods)
+************* Module tests.lib.nsxv_functtest
+C: 33, 0: Line too long (87/80) (line-too-long)
+C: 77, 0: Exactly one space required after assignment
+    protocol =  int(root.find('./rule/services/service/protocol').text)
+             ^ (bad-whitespace)
+C:100, 0: Exactly one space required after assignment
+    protocol =  int(root.find('./rule/services/service/protocol').text)
+             ^ (bad-whitespace)
+C:113, 0: Line too long (84/80) (line-too-long)
+C:117, 0: Line too long (84/80) (line-too-long)
+C: 39, 4: Invalid variable name "_parser" (invalid-name)
+C: 42, 5: Invalid variable name "FLAGS" (invalid-name)
+W: 42,12: Unused variable 'args' (unused-variable)
+C: 48, 2: Invalid method name "runTest" (invalid-name)
+C: 51, 2: Missing method docstring (missing-docstring)
+C: 84, 2: Missing method docstring (missing-docstring)
+W:108, 6: Unused variable 'fw' (unused-variable)
+W:116, 6: Unused variable 'fw' (unused-variable)
+W:125, 6: Unused variable 'output' (unused-variable)
+R: 31, 0: Too many public methods (51/20) (too-many-public-methods)
+************* Module tests.lib.ciscoxr_test
+C: 66, 0: Missing class docstring (missing-docstring)
+C: 71, 2: Invalid method name "testStandardTermHost" (invalid-name)
+C: 82, 2: Invalid method name "testStandardTermHostIPv6" (invalid-name)
+C: 82, 2: Missing method docstring (missing-docstring)
+R: 66, 0: Too many public methods (47/20) (too-many-public-methods)
+************* Module tests.lib.windows_ipsec_test
+I: 89, 0: Locally disabling C0103 (locally-disabled)
+C: 84, 0: Missing class docstring (missing-docstring)
+C: 97, 2: Missing method docstring (missing-docstring)
+C:112, 2: Missing method docstring (missing-docstring)
+R: 84, 0: Too many public methods (53/20) (too-many-public-methods)
+************* Module tests.lib
+C:  1, 0: Missing module docstring (missing-docstring)
+************* Module tests.lib.ipset_test
+C: 60, 0: Missing class docstring (missing-docstring)
+C: 65, 2: Invalid method name "testMarkers" (invalid-name)
+C: 76, 2: Invalid method name "testGenerateSetName" (invalid-name)
+C: 76, 2: Missing method docstring (missing-docstring)
+W: 83,21: Access to a protected member _GenerateSetName of a client class (protected-access)
+W: 85,21: Access to a protected member _GenerateSetName of a client class (protected-access)
+W: 89,21: Access to a protected member _GenerateSetName of a client class (protected-access)
+W: 91,21: Access to a protected member _GenerateSetName of a client class (protected-access)
+C: 95, 2: Invalid method name "testOneSourceAddress" (invalid-name)
+C:106, 2: Invalid method name "testOneDestinationAddress" (invalid-name)
+C:117, 2: Invalid method name "testOneSourceAndDestinationAddress" (invalid-name)
+C:117, 2: Missing method docstring (missing-docstring)
+C:134, 2: Invalid method name "testManySourceAddresses" (invalid-name)
+C:134, 2: Missing method docstring (missing-docstring)
+C:150, 2: Invalid method name "testManyDestinationAddresses" (invalid-name)
+C:150, 2: Missing method docstring (missing-docstring)
+C:166, 2: Invalid method name "testManySourceAndDestinationAddresses" (invalid-name)
+C:166, 2: Missing method docstring (missing-docstring)
+R: 60, 0: Too many public methods (53/20) (too-many-public-methods)
+************* Module tests.lib.packetfilter_test
+C:680, 0: Line too long (81/80) (line-too-long)
+C:725, 0: Line too long (82/80) (line-too-long)
+C:295, 0: Missing class docstring (missing-docstring)
+C:300, 2: Invalid method name "testTcp" (invalid-name)
+C:300, 2: Missing method docstring (missing-docstring)
+C:319, 2: Invalid method name "testLog" (invalid-name)
+C:331, 2: Invalid method name "testIcmp" (invalid-name)
+C:342, 2: Invalid method name "testIcmpTypes" (invalid-name)
+C:353, 2: Invalid method name "testIcmpv6" (invalid-name)
+C:364, 2: Invalid method name "testBadIcmp" (invalid-name)
+C:370, 2: Invalid method name "testExpiredTerm" (invalid-name)
+C:380, 2: Invalid method name "testExpiredTerm2" (invalid-name)
+C:390, 2: Invalid method name "testExpiringTerm" (invalid-name)
+C:401, 2: Invalid method name "testBadAction" (invalid-name)
+C:406, 2: Invalid method name "testMultiprotocol" (invalid-name)
+C:417, 2: Invalid method name "testNextTerm" (invalid-name)
+C:427, 2: Invalid method name "testNextLogTerm" (invalid-name)
+C:437, 2: Invalid method name "testPortRange" (invalid-name)
+C:437, 2: Missing method docstring (missing-docstring)
+C:453, 2: Invalid method name "testFlags" (invalid-name)
+C:464, 2: Invalid method name "testInvalidFlags" (invalid-name)
+C:469, 2: Invalid method name "testMultilineComment" (invalid-name)
+C:478, 2: Invalid method name "testStateless" (invalid-name)
+C:478, 2: Missing method docstring (missing-docstring)
+C:497, 2: Invalid method name "testInet4" (invalid-name)
+C:509, 2: Invalid method name "testInet6" (invalid-name)
+C:521, 2: Invalid method name "testDirectional" (invalid-name)
+C:521, 2: Missing method docstring (missing-docstring)
+C:540, 2: Invalid method name "testMultipleHeader" (invalid-name)
+C:540, 2: Missing method docstring (missing-docstring)
+C:555, 2: Invalid method name "testDirectionalStateless" (invalid-name)
+C:555, 2: Missing method docstring (missing-docstring)
+C:575, 2: Invalid method name "testStatelessEstablished" (invalid-name)
+C:587, 2: Invalid method name "testBadFlags" (invalid-name)
+C:604, 2: Invalid method name "testUdpStatelessEstablished" (invalid-name)
+C:616, 2: Invalid method name "testStatefulBlock" (invalid-name)
+C:627, 2: Invalid method name "testTcpEstablished" (invalid-name)
+C:639, 2: Invalid method name "testTableCreation" (invalid-name)
+C:639, 2: Missing method docstring (missing-docstring)
+C:673, 2: Invalid method name "testTableNameShortened" (invalid-name)
+C:673, 2: Missing method docstring (missing-docstring)
+C:696, 2: Invalid method name "testTableDuplicateShortNameError" (invalid-name)
+C:696, 2: Missing method docstring (missing-docstring)
+C:718, 2: Invalid method name "testTableSameLongNameSameFilter" (invalid-name)
+C:718, 2: Missing method docstring (missing-docstring)
+C:751, 2: Invalid method name "testTableSameLongNameDiffFilter" (invalid-name)
+C:751, 2: Missing method docstring (missing-docstring)
+C:785, 2: Invalid method name "testTableDiffObjectsShortenedAndNonShortened" (invalid-name)
+C:785, 2: Missing method docstring (missing-docstring)
+C:810, 2: Invalid method name "testTableDuplicateShortNameErrorDiffFilter" (invalid-name)
+C:810, 2: Missing method docstring (missing-docstring)
+C:835, 2: Invalid method name "testTermNameConflict" (invalid-name)
+C:845, 2: Invalid method name "testBadProtoError" (invalid-name)
+R:295, 0: Too many public methods (82/20) (too-many-public-methods)
+************* Module tests.lib.cisco_test
+C:270, 0: Missing class docstring (missing-docstring)
+C:275, 2: Invalid method name "testIPVersion" (invalid-name)
+C:286, 2: Invalid method name "testOptions" (invalid-name)
+C:286, 2: Missing method docstring (missing-docstring)
+C:300, 2: Invalid method name "testExpandingConsequtivePorts" (invalid-name)
+C:300, 2: Missing method docstring (missing-docstring)
+C:315, 2: Invalid method name "testDSCP" (invalid-name)
+C:321, 2: Invalid method name "testTermAndFilterName" (invalid-name)
+C:327, 2: Invalid method name "testRemark" (invalid-name)
+C:327, 2: Missing method docstring (missing-docstring)
+C:344, 2: Invalid method name "testTcpEstablished" (invalid-name)
+C:350, 2: Invalid method name "testLogging" (invalid-name)
+C:356, 2: Invalid method name "testVerbatimTerm" (invalid-name)
+C:364, 2: Invalid method name "testBadStandardTerm" (invalid-name)
+C:373, 2: Invalid method name "testStandardTermHost" (invalid-name)
+C:384, 2: Invalid method name "testStandardTermNet" (invalid-name)
+C:395, 2: Invalid method name "testNamedStandard" (invalid-name)
+C:406, 2: Invalid method name "testNoIPv6InOutput" (invalid-name)
+C:416, 2: Invalid method name "testStandardFilterName" (invalid-name)
+C:426, 2: Invalid method name "testStandardFilterRange" (invalid-name)
+C:436, 2: Invalid method name "testActionsSupport" (invalid-name)
+W:437,29: Access to a protected member _ACTION_TABLE of a client class (protected-access)
+C:440, 2: Invalid method name "testObjectGroup" (invalid-name)
+C:440, 2: Missing method docstring (missing-docstring)
+C:477, 2: Invalid method name "testInet6" (invalid-name)
+C:477, 2: Missing method docstring (missing-docstring)
+C:493, 2: Invalid method name "testMixed" (invalid-name)
+C:493, 2: Missing method docstring (missing-docstring)
+C:515, 2: Invalid method name "testDsmo" (invalid-name)
+C:515, 2: Missing method docstring (missing-docstring)
+C:528, 2: Invalid method name "testUdpEstablished" (invalid-name)
+C:534, 2: Invalid method name "testIcmpTypes" (invalid-name)
+C:534, 2: Missing method docstring (missing-docstring)
+C:547, 2: Invalid method name "testIpv6IcmpTypes" (invalid-name)
+C:547, 2: Missing method docstring (missing-docstring)
+C:561, 2: Invalid method name "testIcmpv6InetMismatch" (invalid-name)
+C:573, 2: Invalid method name "testIcmpInet6Mismatch" (invalid-name)
+C:584, 2: Invalid method name "testUnsupportedKeywordsError" (invalid-name)
+C:594, 2: Invalid method name "testDefaultInet6Protocol" (invalid-name)
+C:600, 2: Invalid method name "testExpiredTerm" (invalid-name)
+C:609, 2: Invalid method name "testExpiringTerm" (invalid-name)
+C:619, 2: Invalid method name "testTermHopByHop" (invalid-name)
+C:624, 2: Invalid method name "testOwnerTerm" (invalid-name)
+C:630, 2: Invalid method name "testRemoveTrailingCommentWhitespace" (invalid-name)
+W:632, 4: Unused variable 'acl' (unused-variable)
+R:270, 0: Too many public methods (78/20) (too-many-public-methods)
+************* Module tests.lib.naming_test
+C: 61, 2: Invalid method name "testCommentedServices" (invalid-name)
+C: 66, 2: Invalid method name "testBadGetRequest" (invalid-name)
+C: 72, 2: Invalid method name "testGetServiceRecursion" (invalid-name)
+C: 77, 2: Invalid method name "testGetService" (invalid-name)
+C: 82, 2: Invalid method name "testBadProtocol" (invalid-name)
+C: 86, 2: Invalid method name "testGetServiceByProto" (invalid-name)
+C: 90, 2: Invalid method name "testGetServiceByProtoWithoutProtocols" (invalid-name)
+C: 94, 2: Invalid method name "testNetworkComment" (invalid-name)
+C: 97, 2: Invalid method name "testNestedNetworkComment" (invalid-name)
+C:100, 2: Invalid method name "testUndefinedAddress" (invalid-name)
+C:103, 2: Invalid method name "testNamespaceCollisionError" (invalid-name)
+C:111, 2: Invalid method name "testNetworkAddress" (invalid-name)
+C:115, 2: Invalid method name "testInet6Address" (invalid-name)
+C:120, 2: Invalid method name "testMixedAddresses" (invalid-name)
+C:129, 2: Invalid method name "testNestedServices" (invalid-name)
+C:133, 2: Invalid method name "testServiceParents" (invalid-name)
+C:138, 2: Invalid method name "testNetParents" (invalid-name)
+C:144, 2: Invalid method name "testGetIpParents" (invalid-name)
+C:149, 2: Invalid method name "testUndefinedTokenNesting" (invalid-name)
+W:156,22: Access to a protected member _CheckUnseen of a client class (protected-access)
+W:158,22: Access to a protected member _CheckUnseen of a client class (protected-access)
+C:160, 2: Invalid method name "testParseNetFile" (invalid-name)
+W:163, 4: Access to a protected member _ParseFile of a client class (protected-access)
+C:166, 2: Invalid method name "testParseServiceFile" (invalid-name)
+W:169, 4: Access to a protected member _ParseFile of a client class (protected-access)
+R: 26, 0: Too many public methods (66/20) (too-many-public-methods)
+************* Module tests.lib.nftables_test
+C:174, 0: Missing class docstring (missing-docstring)
+C:179, 2: Invalid method name "testBadHeader" (invalid-name)
+C:198, 2: Invalid method name "testGoodHeader" (invalid-name)
+C:198, 2: Missing method docstring (missing-docstring)
+C:216, 2: Invalid method name "testExpired" (invalid-name)
+C:224, 2: Invalid method name "testExpiring" (invalid-name)
+C:235, 2: Invalid method name "testIcmpv6InetMismatch" (invalid-name)
+C:244, 2: Invalid method name "testSingleSourceDestIp" (invalid-name)
+C:253, 2: Invalid method name "testMultipleSourceDestIp" (invalid-name)
+C:265, 2: Invalid method name "testSingleProtocol" (invalid-name)
+C:270, 2: Invalid method name "testMultiProtocol" (invalid-name)
+C:275, 2: Invalid method name "testSingleDport" (invalid-name)
+C:282, 2: Invalid method name "testMultiDport" (invalid-name)
+C:289, 2: Invalid method name "testSingleSport" (invalid-name)
+C:296, 2: Invalid method name "testMultiSport" (invalid-name)
+C:303, 2: Invalid method name "testIcmpType" (invalid-name)
+C:308, 2: Invalid method name "testAction" (invalid-name)
+C:322, 2: Invalid method name "testCommentOwner" (invalid-name)
+C:328, 2: Invalid method name "testVerbatimTerm" (invalid-name)
+C:336, 2: Invalid method name "testSourceDestExclude" (invalid-name)
+C:336, 2: Missing method docstring (missing-docstring)
+C:352, 2: Invalid method name "testSourceDestExcludeFromAllIps" (invalid-name)
+C:352, 2: Missing method docstring (missing-docstring)
+R:174, 0: Too many public methods (64/20) (too-many-public-methods)
+************* Module tests.lib.nacaddr_test
+C: 36, 2: Invalid method name "testCollapsing" (invalid-name)
+C: 36, 2: Missing method docstring (missing-docstring)
+C: 73, 2: Invalid method name "testNacaddrV4Comment" (invalid-name)
+C: 76, 2: Invalid method name "testNacaddrV6Comment" (invalid-name)
+C: 79, 2: Invalid method name "testSupernetting" (invalid-name)
+C: 79, 2: Missing method docstring (missing-docstring)
+C: 96, 2: Invalid method name "testAddressListExclusion" (invalid-name)
+C: 96, 2: Missing method docstring (missing-docstring)
+C:119, 2: Invalid method name "testComplexAddressListExcludesion" (invalid-name)
+C:119, 2: Missing method docstring (missing-docstring)
+C:155, 2: Invalid method name "testAddressListExcludeCaseOne" (invalid-name)
+C:165, 2: Invalid method name "testAddressListExcludeCaseTwo" (invalid-name)
+C:178, 2: Invalid method name "testAddressListExcludeCaseThree" (invalid-name)
+C:191, 2: Invalid method name "testAddressListExcludeCaseFour" (invalid-name)
+C:199, 2: Invalid method name "testAddressListExcludeCaseFive" (invalid-name)
+C:207, 2: Invalid method name "testAddressListExcludeCaseSix" (invalid-name)
+R: 24, 0: Too many public methods (57/20) (too-many-public-methods)
+************* Module tests.lib.junipersrx_test
+C:313, 0: Missing class docstring (missing-docstring)
+C:318, 2: Invalid method name "testHeaderComment" (invalid-name)
+C:323, 2: Invalid method name "testHeaderApplyGroups" (invalid-name)
+C:329, 2: Invalid method name "testHeaderApplyGroupsExcept" (invalid-name)
+C:335, 2: Invalid method name "testLongComment" (invalid-name)
+C:335, 2: Missing method docstring (missing-docstring)
+C:352, 2: Invalid method name "testTermAndFilterName" (invalid-name)
+C:352, 2: Missing method docstring (missing-docstring)
+C:364, 2: Invalid method name "testVpnWithoutPolicy" (invalid-name)
+C:374, 2: Invalid method name "testVpnWithPolicy" (invalid-name)
+C:385, 2: Invalid method name "testVpnWithDrop" (invalid-name)
+C:396, 2: Invalid method name "testDefaultDeny" (invalid-name)
+C:402, 2: Invalid method name "testIcmpTypes" (invalid-name)
+C:412, 2: Invalid method name "testLoggingBoth" (invalid-name)
+C:419, 2: Invalid method name "testOwnerTerm" (invalid-name)
+C:426, 2: Invalid method name "testBadICMP" (invalid-name)
+C:431, 2: Invalid method name "testICMPProtocolOnly" (invalid-name)
+C:436, 2: Invalid method name "testMultipleProtocolGrouping" (invalid-name)
+C:436, 2: Missing method docstring (missing-docstring)
+C:450, 2: Invalid method name "testGlobalPolicyHeader" (invalid-name)
+C:457, 2: Invalid method name "testBadGlobalPolicyHeaderZoneBook" (invalid-name)
+C:463, 2: Invalid method name "testBadGlobalPolicyHeaderNameAll" (invalid-name)
+C:469, 2: Invalid method name "testBadHeaderType" (invalid-name)
+C:480, 2: Invalid method name "testBadHeaderMultiAF" (invalid-name)
+C:480, 2: Missing method docstring (missing-docstring)
+C:493, 2: Invalid method name "testBadHeaderMultiAB" (invalid-name)
+C:493, 2: Missing method docstring (missing-docstring)
+C:507, 2: Invalid method name "testExpiredTerm" (invalid-name)
+C:516, 2: Invalid method name "testExpiringTerm" (invalid-name)
+C:527, 2: Invalid method name "testTimeout" (invalid-name)
+C:532, 2: Invalid method name "testIcmpV6" (invalid-name)
+C:537, 2: Invalid method name "testReplaceStatement" (invalid-name)
+C:537, 2: Missing method docstring (missing-docstring)
+C:550, 2: Invalid method name "testAdressBookBothAFs" (invalid-name)
+C:550, 2: Missing method docstring (missing-docstring)
+C:564, 2: Invalid method name "testAdressBookIPv4" (invalid-name)
+C:564, 2: Missing method docstring (missing-docstring)
+C:578, 2: Invalid method name "testAdressBookIPv6" (invalid-name)
+C:578, 2: Missing method docstring (missing-docstring)
+C:592, 2: Invalid method name "testAddressBookContainsSmallerPrefix" (invalid-name)
+C:592, 2: Missing method docstring (missing-docstring)
+C:610, 2: Invalid method name "testAddressBookContainsLargerPrefix" (invalid-name)
+C:610, 2: Missing method docstring (missing-docstring)
+C:628, 2: Invalid method name "testZoneAdressBookBothAFs" (invalid-name)
+C:628, 2: Missing method docstring (missing-docstring)
+C:642, 2: Invalid method name "testZoneAdressBookIPv4" (invalid-name)
+C:642, 2: Missing method docstring (missing-docstring)
+C:656, 2: Invalid method name "testZoneAdressBookIPv6" (invalid-name)
+C:656, 2: Missing method docstring (missing-docstring)
+R:680, 2: Method could be a function (no-self-use)
+C:688, 2: Invalid method name "testAddressBookOrderingSuccess" (invalid-name)
+C:688, 2: Missing method docstring (missing-docstring)
+W:695,37: Access to a protected member _GenerateAddressBook of a client class (protected-access)
+C:700, 2: Invalid method name "testAddressBookOrderingAlreadyOrdered" (invalid-name)
+C:700, 2: Missing method docstring (missing-docstring)
+W:708,37: Access to a protected member _GenerateAddressBook of a client class (protected-access)
+C:725, 2: Invalid method name "testApplicationsOrderingSuccess" (invalid-name)
+C:725, 2: Missing method docstring (missing-docstring)
+W:732,22: Access to a protected member _GenerateApplications of a client class (protected-access)
+C:743, 2: Invalid method name "testApplicationsOrderingAlreadyOrdered" (invalid-name)
+C:743, 2: Missing method docstring (missing-docstring)
+W:750,22: Access to a protected member _GenerateApplications of a client class (protected-access)
+C:761, 2: Invalid method name "testDscpWithByte" (invalid-name)
+C:770, 2: Invalid method name "testDscpWithClass" (invalid-name)
+C:770, 2: Missing method docstring (missing-docstring)
+C:782, 2: Invalid method name "testLargeTermSplitting" (invalid-name)
+C:782, 2: Missing method docstring (missing-docstring)
+C:811, 2: Invalid method name "testLargeTermSplittingV6" (invalid-name)
+C:811, 2: Missing method docstring (missing-docstring)
+C:842, 2: Invalid method name "testDuplicateTermsInDifferentZones" (invalid-name)
+C:842, 2: Missing method docstring (missing-docstring)
+R:313, 0: Too many public methods (88/20) (too-many-public-methods)
+************* Module tests
+C:  1, 0: Missing module docstring (missing-docstring)
+************* Module tests.integration.aclgen_test
+C:  1, 0: Missing module docstring (missing-docstring)
+C: 52, 2: Missing method docstring (missing-docstring)
+C: 87, 2: Missing method docstring (missing-docstring)
+R: 26, 0: Too many public methods (47/20) (too-many-public-methods)
+R:130, 2: Method could be a function (no-self-use)
+R:106, 0: Too many public methods (47/20) (too-many-public-methods)
+C:140, 2: Missing method docstring (missing-docstring)
+R:138, 0: Too many public methods (48/20) (too-many-public-methods)
+C:160, 2: Missing method docstring (missing-docstring)
+R:158, 0: Too many public methods (48/20) (too-many-public-methods)
+************* Module tests.integration
+C:  1, 0: Missing module docstring (missing-docstring)
+************* Module tests.cgrep_test
+R:207, 0: Too few public methods (0/2) (too-few-public-methods)
+C:214, 0: Missing class docstring (missing-docstring)
+C:332, 2: Missing method docstring (missing-docstring)
+C:384, 2: Missing method docstring (missing-docstring)
+C:397, 2: Missing method docstring (missing-docstring)
+C:414, 2: Missing method docstring (missing-docstring)
+C:434, 2: Missing method docstring (missing-docstring)
+C:456, 2: Missing method docstring (missing-docstring)
+C:472, 2: Missing method docstring (missing-docstring)
+R:214, 0: Too many public methods (73/20) (too-many-public-methods)
+************* Module definate
+R: 64, 2: Method could be a function (no-self-use)
+R:240, 2: Too many arguments (6/5) (too-many-arguments)
+R: 55, 0: Too few public methods (1/2) (too-few-public-methods)
+************* Module lib.junipersrx
+I: 17, 0: Locally disabling W0231 (locally-disabled)
+R: 91, 2: Too many branches (29/12) (too-many-branches)
+R: 91, 2: Too many statements (70/50) (too-many-statements)
+R:218, 2: Method could be a function (no-self-use)
+R:295, 2: Too many local variables (25/15) (too-many-locals)
+R:295, 2: Too many branches (45/12) (too-many-branches)
+R:295, 2: Too many statements (101/50) (too-many-statements)
+R:500, 2: Too many branches (15/12) (too-many-branches)
+R:584, 2: Method could be a function (no-self-use)
+R:604, 2: Method could be a function (no-self-use)
+R:621, 2: Too many branches (17/12) (too-many-branches)
+C:696, 2: Missing method docstring (missing-docstring)
+R:696, 2: Too many branches (18/12) (too-many-branches)
+************* Module lib.gce
+R:107, 2: Too many local variables (17/15) (too-many-locals)
+R:107, 2: Too many branches (16/12) (too-many-branches)
+************* Module lib.juniper
+R: 67, 0: Too few public methods (1/2) (too-few-public-methods)
+R:175, 2: Too many local variables (28/15) (too-many-locals)
+R:175, 2: Too many return statements (8/6) (too-many-return-statements)
+R:175, 2: Too many branches (119/12) (too-many-branches)
+R:175, 2: Too many statements (221/50) (too-many-statements)
+R:605, 2: Method could be a function (no-self-use)
+C:639, 2: Missing method docstring (missing-docstring)
+R:696, 2: Method could be a function (no-self-use)
+************* Module lib.packetfilter
+I:513, 0: Locally disabling W0612 (locally-disabled)
+R: 88, 2: Too many arguments (6/5) (too-many-arguments)
+R:110, 2: Too many local variables (19/15) (too-many-locals)
+R:110, 2: Too many branches (29/12) (too-many-branches)
+R:110, 2: Too many statements (64/50) (too-many-statements)
+R:272, 2: Too many arguments (15/5) (too-many-arguments)
+R:272, 2: Too many local variables (20/15) (too-many-locals)
+R:272, 2: Too many branches (15/12) (too-many-branches)
+C:326, 2: Missing method docstring (missing-docstring)
+C:340, 2: Missing method docstring (missing-docstring)
+R:340, 2: Method could be a function (no-self-use)
+R:358, 2: Method could be a function (no-self-use)
+R:389, 2: Too many local variables (23/15) (too-many-locals)
+R:389, 2: Too many branches (27/12) (too-many-branches)
+R:389, 2: Too many statements (63/50) (too-many-statements)
+************* Module lib.policy
+I:1564, 0: Locally disabling W0613 (locally-disabled)
+I:1564, 0: Locally disabling C0103 (locally-disabled)
+E:1564, 0: Bad option value 'g-short-docstring-punctuation' (bad-option-value)
+E:1565, 0: Bad option value 'g-docstring-quotes' (bad-option-value)
+E:1565, 0: Bad option value 'g-short-docstring-space' (bad-option-value)
+E:1566, 0: Bad option value 'g-space-before-docstring-summary' (bad-option-value)
+E:1566, 0: Bad option value 'g-doc-args' (bad-option-value)
+E:1567, 0: Bad option value 'g-no-space-after-docstring-summary' (bad-option-value)
+E:1568, 0: Bad option value 'g-docstring-missing-newline' (bad-option-value)
+I:1599, 0: Locally disabling C0301 (locally-disabled)
+E:2065, 0: Bad option value 'g-short-docstring-punctuation' (bad-option-value)
+E:2066, 0: Bad option value 'g-docstring-quotes' (bad-option-value)
+E:2066, 0: Bad option value 'g-short-docstring-space' (bad-option-value)
+E:2067, 0: Bad option value 'g-space-before-docstring-summary' (bad-option-value)
+E:2067, 0: Bad option value 'g-doc-args' (bad-option-value)
+E:2068, 0: Bad option value 'g-no-space-after-docstring-summary' (bad-option-value)
+E:2069, 0: Bad option value 'g-docstring-missing-newline' (bad-option-value)
+R:167, 2: Method could be a function (no-self-use)
+R:213, 2: Method could be a function (no-self-use)
+R:266, 0: Too many instance attributes (52/7) (too-many-instance-attributes)
+R:347, 2: Too many statements (54/50) (too-many-statements)
+R:410, 2: Too many return statements (36/6) (too-many-return-statements)
+R:410, 2: Too many branches (64/12) (too-many-branches)
+R:410, 2: Too many statements (71/50) (too-many-statements)
+W:646, 6: Attempting to unpack a non-sequence defined at line 391 (unpacking-non-sequence)
+R:582, 2: Too many branches (32/12) (too-many-branches)
+R:582, 2: Too many statements (67/50) (too-many-statements)
+R:658, 2: Too many return statements (27/6) (too-many-return-statements)
+R:658, 2: Too many branches (26/12) (too-many-branches)
+W:860,11: map/filter on lambda could be replaced by comprehension (deprecated-lambda)
+R:862, 2: Too many branches (55/12) (too-many-branches)
+R:862, 2: Too many statements (114/50) (too-many-statements)
+R:1150, 2: Method could be a function (no-self-use)
+R:1169, 2: Method could be a function (no-self-use)
+R:1189, 2: Method could be a function (no-self-use)
+R:1215, 2: Method could be a function (no-self-use)
+R:1242, 0: Too few public methods (0/2) (too-few-public-methods)
+W:1349,11: map/filter on lambda could be replaced by comprehension (deprecated-lambda)
+R:1422, 0: Too few public methods (0/2) (too-few-public-methods)
+************* Module lib.aclgenerator
+I:305, 0: Locally disabling W0613 (locally-disabled)
+************* Module lib.naming
+R: 91, 0: Too few public methods (0/2) (too-few-public-methods)
+R:146, 2: Too many branches (19/12) (too-many-branches)
+W:412, 8: Redefining built-in 'next' (redefined-builtin)
+R:499, 2: Too many branches (26/12) (too-many-branches)
+************* Module lib.windows
+R: 64, 2: Too many branches (16/12) (too-many-branches)
+R:201, 2: Too many arguments (8/5) (too-many-arguments)
+R:244, 2: Too many local variables (20/15) (too-many-locals)
+R:244, 2: Too many branches (19/12) (too-many-branches)
+************* Module lib.cisco
+E:326, 0: Bad option value 'g-long-lambda' (bad-option-value)
+E:328, 0: Bad option value 'g-long-lambda' (bad-option-value)
+E:445, 0: Bad option value 'g-long-lambda' (bad-option-value)
+E:447, 0: Bad option value 'g-long-lambda' (bad-option-value)
+R:102, 2: Too many branches (23/12) (too-many-branches)
+R: 58, 0: Too few public methods (0/2) (too-few-public-methods)
+R:294, 2: Too many local variables (18/15) (too-many-locals)
+R:294, 2: Too many branches (20/12) (too-many-branches)
+R:359, 2: Too many arguments (7/5) (too-many-arguments)
+R:359, 2: Method could be a function (no-self-use)
+R:380, 0: Too many instance attributes (8/7) (too-many-instance-attributes)
+R:383, 2: Too many arguments (7/5) (too-many-arguments)
+R:400, 2: Too many local variables (21/15) (too-many-locals)
+E:513,14: Undefined variable 'ExtendedAclTermError' (undefined-variable)
+R:400, 2: Too many return statements (7/6) (too-many-return-statements)
+R:400, 2: Too many branches (42/12) (too-many-branches)
+R:400, 2: Too many statements (69/50) (too-many-statements)
+R:542, 2: Too many arguments (9/5) (too-many-arguments)
+R:542, 2: Too many branches (24/12) (too-many-branches)
+R:633, 2: Method could be a function (no-self-use)
+R:677, 2: Too many local variables (19/15) (too-many-locals)
+R:677, 2: Too many branches (21/12) (too-many-branches)
+R:677, 2: Too many statements (52/50) (too-many-statements)
+************* Module lib.ciscoasa
+W:392, 0: Anomalous backslash in string: '\s'. String constant might be missing an r prefix. (anomalous-backslash-in-string)
+W: 62, 2: __init__ method from base class 'Term' is not called (super-init-not-called)
+W:100,10: Redefining built-in 'next' (redefined-builtin)
+R: 69, 2: Too many local variables (23/15) (too-many-locals)
+R: 69, 2: Too many branches (38/12) (too-many-branches)
+R: 69, 2: Too many statements (62/50) (too-many-statements)
+C:199, 2: Invalid argument name "portNumber" (invalid-name)
+C:199, 2: Missing method docstring (missing-docstring)
+C:200, 4: Invalid variable name "_ASA_PORTS_TCP" (invalid-name)
+C:248, 4: Invalid variable name "_ASA_PORTS_UDP" (invalid-name)
+C:281, 4: Invalid variable name "_ASA_TYPES_ICMP" (invalid-name)
+R:199, 2: Method could be a function (no-self-use)
+R:313, 2: Too many arguments (10/5) (too-many-arguments)
+R:313, 2: Too many branches (20/12) (too-many-branches)
+W:417, 6: Unused variable 'filter_options' (unused-variable)
+W:437, 4: Unused variable 'target_header' (unused-variable)
+************* Module lib.aclcheck
+R: 42, 0: Too many instance attributes (8/7) (too-many-instance-attributes)
+R: 69, 2: Too many arguments (7/5) (too-many-arguments)
+R: 69, 2: Too many branches (22/12) (too-many-branches)
+R: 69, 2: Too many statements (69/50) (too-many-statements)
+W:181, 8: Redefining built-in 'next' (redefined-builtin)
+W:195, 8: Redefining built-in 'next' (redefined-builtin)
+W:203, 8: Redefining built-in 'next' (redefined-builtin)
+R:217, 2: Method could be a function (no-self-use)
+W:251, 8: Redefining built-in 'next' (redefined-builtin)
+R:239, 2: Method could be a function (no-self-use)
+R:258, 2: Method could be a function (no-self-use)
+R:277, 2: Too many arguments (6/5) (too-many-arguments)
+R:274, 0: Too few public methods (0/2) (too-few-public-methods)
+************* Module lib.nsxv
+W:105, 2: __init__ method from base class 'Term' is not called (super-init-not-called)
+R:112, 2: Too many local variables (37/15) (too-many-locals)
+R:112, 2: Too many branches (49/12) (too-many-branches)
+R:112, 2: Too many statements (114/50) (too-many-statements)
+R:337, 2: Method could be a function (no-self-use)
+R:425, 2: Too many local variables (18/15) (too-many-locals)
+R:425, 2: Too many branches (20/12) (too-many-branches)
+R:425, 2: Too many statements (56/50) (too-many-statements)
+************* Module lib.pcap
+R:109, 2: Too many branches (18/12) (too-many-branches)
+C:239, 2: Missing method docstring (missing-docstring)
+R:239, 2: Method could be a function (no-self-use)
+C:265, 2: Missing method docstring (missing-docstring)
+R:265, 2: Method could be a function (no-self-use)
+C:278, 2: Missing method docstring (missing-docstring)
+R:301, 2: Method could be a function (no-self-use)
+R:339, 2: Too many local variables (19/15) (too-many-locals)
+R:339, 2: Too many branches (18/12) (too-many-branches)
+************* Module lib.iptables
+E: 22, 0: Bad option value 'g-importing-member' (bad-option-value)
+E: 22, 0: Bad option value 'g-importing-member' (bad-option-value)
+R: 29, 0: Too many instance attributes (8/7) (too-many-instance-attributes)
+R: 77, 2: Too many arguments (6/5) (too-many-arguments)
+R:109, 2: Too many local variables (27/15) (too-many-locals)
+R:109, 2: Too many return statements (8/6) (too-many-return-statements)
+R:109, 2: Too many branches (49/12) (too-many-branches)
+R:109, 2: Too many statements (86/50) (too-many-statements)
+R:325, 2: Too many local variables (17/15) (too-many-locals)
+R:406, 2: Too many arguments (14/5) (too-many-arguments)
+R:406, 2: Too many local variables (32/15) (too-many-locals)
+R:406, 2: Too many branches (27/12) (too-many-branches)
+R:406, 2: Too many statements (63/50) (too-many-statements)
+R:562, 2: Method could be a function (no-self-use)
+R:660, 2: Too many local variables (22/15) (too-many-locals)
+R:660, 2: Too many branches (22/12) (too-many-branches)
+************* Module lib.nftables
+R: 74, 2: Too many return statements (7/6) (too-many-return-statements)
+R: 74, 2: Too many branches (18/12) (too-many-branches)
+C:186, 2: Missing method docstring (missing-docstring)
+R:186, 2: Method could be a function (no-self-use)
+R:220, 2: Too many branches (16/12) (too-many-branches)
+************* Module lib.windows_advfirewall
+E: 16, 0: Bad option value 'g-importing-member' (bad-option-value)
+I: 19, 0: Locally disabling W0611 (locally-disabled)
+R: 83, 2: Too many arguments (8/5) (too-many-arguments)
+R: 94, 2: Too many arguments (7/5) (too-many-arguments)
+R:137, 2: Method could be a function (no-self-use)
+************* Module lib
+C:  1, 0: Missing module docstring (missing-docstring)
+************* Module lib.nacaddr
+I:261, 0: Locally disabling W0212 (locally-disabled)
+R: 44, 0: Too many public methods (28/20) (too-many-public-methods)
+R: 96, 0: Too many public methods (32/20) (too-many-public-methods)
+W:212,28: Access to a protected member _get_networks_key of a client class (protected-access)
+W:212,28: Access to a protected member _BaseNet of a client class (protected-access)
+W:217,31: Access to a protected member _get_networks_key of a client class (protected-access)
+W:217,31: Access to a protected member _BaseNet of a client class (protected-access)
+C:268, 0: Invalid constant name "ExcludeAddrs" (invalid-name)
+************* Module lib.windows_ipsec
+E: 16, 0: Bad option value 'g-importing-member' (bad-option-value)
+R: 93, 2: Too many arguments (8/5) (too-many-arguments)
+R:115, 2: Method could be a function (no-self-use)
+R:133, 2: Too many arguments (8/5) (too-many-arguments)
+************* Module lib.policy_simple
+E:628, 0: Bad option value 'g-explicit-bool-comparison' (bad-option-value)
+E:628, 0: Bad option value 'g-explicit-bool-comparison' (bad-option-value)
+E:687, 0: Bad option value 'g-explicit-bool-comparison' (bad-option-value)
+E:687, 0: Bad option value 'g-explicit-bool-comparison' (bad-option-value)
+R: 82, 2: Method could be a function (no-self-use)
+R:387, 2: Method could be a function (no-self-use)
+R:424, 2: Too many local variables (23/15) (too-many-locals)
+R:424, 2: Too many branches (23/12) (too-many-branches)
+R:424, 2: Too many statements (67/50) (too-many-statements)
+R:516, 0: Too few public methods (0/2) (too-few-public-methods)
+R:529, 0: Too few public methods (0/2) (too-few-public-methods)
+R:547, 0: Too few public methods (0/2) (too-few-public-methods)
+************* Module lib.demo
+W: 42, 2: __init__ method from base class 'Term' is not called (super-init-not-called)
+R: 46, 2: Too many branches (21/12) (too-many-branches)
+C:137, 2: Missing method docstring (missing-docstring)
+R:137, 2: Method could be a function (no-self-use)
+************* Module lib.policyreader
+R: 36, 0: Too few public methods (0/2) (too-few-public-methods)
+R: 53, 0: Too many instance attributes (8/7) (too-many-instance-attributes)
+R: 53, 0: Too few public methods (0/2) (too-few-public-methods)
+W: 97, 4: Unused variable 'indent' (unused-variable)
+R: 82, 2: Too many branches (21/12) (too-many-branches)
+R: 82, 2: Too many statements (53/50) (too-many-statements)
+W:202,15: Redefining built-in 'next' (redefined-builtin)
+R:149, 2: Too many arguments (6/5) (too-many-arguments)
+R:149, 2: Too many local variables (22/15) (too-many-locals)
+W:206, 8: Raising a string exception (raising-string)
+R:149, 2: Too many branches (31/12) (too-many-branches)
+R:149, 2: Too many statements (60/50) (too-many-statements)
+R: 79, 0: Too few public methods (1/2) (too-few-public-methods)
+************* Module lib.setup
+C:  1, 0: Missing module docstring (missing-docstring)
+E: 25,14: Undefined variable 'ipaddr' (undefined-variable)
+W: 20, 0: Unused import capirca (unused-import)
+************* Module lib.port
+C:100, 0: Unnecessary parens after 'return' keyword (superfluous-parens)
+W:108, 6: No exception type(s) specified (bare-except)
+W:117, 6: No exception type(s) specified (bare-except)
+W:126, 6: No exception type(s) specified (bare-except)
+W:135, 6: No exception type(s) specified (bare-except)
+W:147, 6: No exception type(s) specified (bare-except)
+************* Module definate.file_filter
+R: 33, 0: Too few public methods (0/2) (too-few-public-methods)
+R: 54, 0: Too few public methods (1/2) (too-few-public-methods)
+R: 73, 0: Too few public methods (1/2) (too-few-public-methods)
+R: 92, 0: Too few public methods (1/2) (too-few-public-methods)
+************* Module definate.generator_factory
+R: 33, 0: Too few public methods (1/2) (too-few-public-methods)
+************* Module definate.dns_generator
+R: 33, 0: Too few public methods (1/2) (too-few-public-methods)
+************* Module definate.global_filter
+R: 29, 0: Too few public methods (0/2) (too-few-public-methods)
+R: 48, 0: Too few public methods (1/2) (too-few-public-methods)
+C:  1, 0: Missing module docstring (missing-docstring)
+E: 22,11: Undefined variable name 'generator' in __all__ (undefined-all-variable)
+E: 22,24: Undefined variable name 'generator_factory' in __all__ (undefined-all-variable)
+E: 22,45: Undefined variable name 'dns_generator' in __all__ (undefined-all-variable)
+E: 23,11: Undefined variable name 'filter_factory' in __all__ (undefined-all-variable)
+E: 23,29: Undefined variable name 'global_filter' in __all__ (undefined-all-variable)
+E: 23,46: Undefined variable name 'file_filter' in __all__ (undefined-all-variable)
+E: 24,11: Undefined variable name 'definition_filter' in __all__ (undefined-all-variable)
+E: 24,32: Undefined variable name 'yaml_validator' in __all__ (undefined-all-variable)
+************* Module definate.generator
+R: 33, 0: Too few public methods (1/2) (too-few-public-methods)
+************* Module definate.filter_factory
+R: 41, 0: Too few public methods (1/2) (too-few-public-methods)
+************* Module definate.yaml_validator
+R: 33, 2: Method could be a function (no-self-use)
+************* Module definate.definition_filter
+R: 25, 0: Too few public methods (0/2) (too-few-public-methods)
+R: 47, 0: Too few public methods (1/2) (too-few-public-methods)
+R:104, 2: Method could be a function (no-self-use)
+R: 66, 0: Too few public methods (1/2) (too-few-public-methods)
+R:123, 0: Too few public methods (1/2) (too-few-public-methods)
+************* Module setup
+C:  1, 0: Missing module docstring (missing-docstring)
+R: 48, 0: Abstract class not referenced (abstract-class-not-used)
+R: 33, 0: Abstract class is only referenced 1 times (abstract-class-little-used)
+R:148, 0: Interface not implemented (interface-not-implemented)
+R:256, 0: Interface not implemented (interface-not-implemented)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.pcap_test:44
+==tests.lib.windows_advfirewall_test:37
+}
+"""
+
+GOOD_TERM_ICMP = """
+term good-term-icmp {
+  protocol:: icmp
+  action:: accept
+}
+"""
+
+GOOD_TERM_ICMP_TYPES = """
+term good-term-icmp-types {
+  protocol:: icmp
+  icmp-type:: echo-reply unreachable time-exceeded
+  action:: deny
+}
+"""
+
+GOOD_TERM_ICMPV6 = """
+term good-term-icmpv6 {
+  protocol:: icmpv6
+  action:: accept
+}
+"""
+
+BAD_TERM_ICMP = """
+term test-icmp {
+  icmp-type:: echo-request echo-reply
+  action:: accept
+}
+"""
+
+BAD_TERM_ACTION = """
+term bad-term-action {
+  protocol:: icmp
+  action:: undefined
+}
+"""
+
+GOOD_TERM_TCP = """
+term good-term-tcp {
+  comment:: "Test term 1"
+  destination-address:: PROD_NETWRK
+  destination-port:: SMTP
+  protocol:: tcp
+  action:: accept
+}
+"""
+
+GOOD_TERM_LOG = """
+term good-term-log {
+  protocol:: tcp
+  logging:: true
+  action:: accept
+}
+"""
+
+EXPIRED_TERM = """
+term expired_test {
+  expiration:: 2000-1-1
+  action:: deny
+}
+"""
+
+EXPIRING_TERM = """
+term is_expiring {
+  expiration:: %s
+  action:: accept
+}
+"""
+
+MULTIPLE_PROTOCOLS_TERM = """
+term multi-proto {
+  protocol:: tcp udp icmp
+  action:: accept
+}
+"""
+
+NEXT_TERM = """
+term next {
+  action:: next
+}
+"""
+
+NEXT_LOG_TERM = """
+term next-log {
+  logging:: true
+  action:: next
+}
+"""
+
+ESTABLISHED_TERM = """ (duplicate-code)
+R:  1, 0: Similar lines in 3 files
+==tests.lib.packetfilter_test:65
+==tests.lib.pcap_test:44
+==tests.lib.windows_advfirewall_test:37
+}
+"""
+
+GOOD_TERM_ICMP = """
+term good-term-icmp {
+  protocol:: icmp
+  action:: accept
+}
+"""
+
+GOOD_TERM_ICMP_TYPES = """
+term good-term-icmp-types {
+  protocol:: icmp
+  icmp-type:: echo-reply unreachable time-exceeded
+  action:: deny
+}
+"""
+
+GOOD_TERM_ICMPV6 = """
+term good-term-icmpv6 {
+  protocol:: icmpv6
+  action:: accept
+}
+"""
+
+BAD_TERM_ICMP = """
+term test-icmp {
+  icmp-type:: echo-request echo-reply
+  action:: accept
+}
+"""
+
+BAD_TERM_ACTION = """
+term bad-term-action {
+  protocol:: icmp (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.nsxv_mocktest:35
+==tests.lib.nsxv_test:43
+  header {
+    comment:: "Sample inet NSXV filter"
+    target:: nsxv inet
+  }
+
+  term allow-ntp-request {
+    comment::"Allow ntp request"
+    source-address:: NTP_SERVERS
+    source-port:: NTP
+    destination-address:: INTERNAL
+    destination-port:: NTP
+    protocol:: udp
+    action:: accept
+  }
+  """
+
+INET6_FILTER= """\
+  header {
+    comment:: "Sample inet6 NSXV filter"
+    target:: nsxv inet6
+  }
+
+  term test-icmpv6 {
+    #destination-address:: WEB_SERVERS
+    protocol:: icmpv6
+    icmp-type:: echo-request echo-reply
+    action:: accept
+  }
+  """
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.arista_test:32
+==tests.lib.brocade_test:31
+term good-term-3 {
+  protocol:: tcp
+  option:: tcp-established
+  action:: accept
+}
+"""
+# Print a info message when a term is set to expire in that many weeks.
+# This is normally passed from command line.
+EXP_INFO = 2
+
+
+class BrocadeTest(unittest.TestCase):
+
+  def setUp(self):
+    self.naming = mock.create_autospec(naming.Naming)
+
+  def testTcpEstablished(self):
+    acl = brocade.Brocade(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
+    self.failUnless(re.search('permit tcp any any established\n',
+                              str(acl)), str(acl))
+
+  def testNoTermRemark(self):
+    acl = brocade.Brocade(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
+    self.failIf('remark good-term-3' in str(acl))
+
+ (duplicate-code)
+R:  1, 0: Similar lines in 3 files
+==tests.lib.packetfilter_test:144
+==tests.lib.pcap_test:109
+==tests.lib.windows_advfirewall_test:102
+term is_expiring {
+  expiration:: %s
+  action:: accept
+}
+"""
+
+MULTIPLE_PROTOCOLS_TERM = """
+term multi-proto {
+  protocol:: tcp udp icmp
+  action:: accept
+}
+"""
+
+NEXT_TERM = """
+term next {
+  action:: next
+}
+"""
+
+NEXT_LOG_TERM = """
+term next-log {
+  logging:: true
+  action:: next
+}
+"""
+
+ESTABLISHED_TERM = """ (duplicate-code)
+R:  1, 0: Similar lines in 3 files
+==tests.lib.pcap_test:97
+==tests.lib.windows_advfirewall_test:90
+==tests.lib.windows_ipsec_test:53
+  action:: accept
+}
+"""
+
+EXPIRED_TERM = """
+term expired_test {
+  expiration:: 2000-1-1
+  action:: deny
+}
+"""
+
+EXPIRING_TERM = """
+term is_expiring {
+  expiration:: %s
+  action:: accept
+}
+"""
+
+MULTIPLE_PROTOCOLS_TERM = """
+term multi-proto {
+  protocol:: tcp udp icmp
+  action:: accept
+}
+"""
+
+NEXT_TERM = """ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.nsxv_mocktest:69
+==tests.lib.nsxv_test:77
+  }
+
+  term accept-to-honestdns {
+    comment:: "Allow name resolution using honestdns."
+    destination-address:: GOOGLE_DNS
+    destination-port:: DNS
+    protocol:: udp
+    action:: accept
+  }
+  """
+
+POLICY = """\
+  header {
+    comment:: "Sample NSXV filter"
+    target:: nsxv inet
+  }
+
+  term reject-imap-requests {
+    destination-address:: MAIL_SERVERS
+    destination-port:: IMAP
+    protocol:: tcp
+    action:: reject-with-tcp-rst
+  }
+  """
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.iptables:106
+==lib.windows:61
+    self.term_name = '%s_%s' % (self.filter[:1], self.term.name)
+
+  def __str__(self):
+    # Verify platform specific terms. Skip whole term if platform does not
+    # match.
+    if self.term.platform:
+      if self._PLATFORM not in self.term.platform:
+        return ''
+    if self.term.platform_exclude:
+      if self._PLATFORM in self.term.platform_exclude:
+        return ''
+
+    ret_str = []
+
+    # Don't render icmpv6 protocol terms under inet, or icmp under inet6
+    if ((self.af == 'inet6' and 'icmp' in self.term.protocol) or
+        (self.af == 'inet' and 'icmpv6' in self.term.protocol)):
+      logging.debug(self.NO_AF_LOG_PROTO.substitute(term=self.term.name,
+                                                    proto=self.term.protocol,
+                                                    af=self.af))
+      return ''
+
+    # Term verbatim output - this will skip over most normal term (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.arista:44
+==lib.cisco:766
+  def _AppendTargetByFilterType(self, filter_name, filter_type):
+    """Takes in the filter name and type and appends headers.
+
+    Args:
+      filter_name: Name of the current filter
+      filter_type: Type of current filter
+
+    Returns:
+      list of strings
+
+    Raises:
+      UnsupportedEosAccessListError: When unknown filter type is used.
+    """
+    target = []
+    if filter_type == 'standard':
+      if filter_name.isdigit():
+        target.append('no access-list %s' % filter_name)
+      else:
+        target.append('no ip access-list standard %s' % filter_name)
+        target.append('ip access-list standard %s' % filter_name)
+    elif filter_type == 'extended': (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.cisco_test:134
+==tests.lib.juniper_test:72
+}
+"""
+EXPIRED_TERM = """
+term is_expired {
+  expiration:: 2001-01-01
+  action:: accept
+}
+"""
+EXPIRING_TERM = """
+term is_expiring {
+  expiration:: %s
+  action:: accept
+}
+"""
+GOOD_TERM_1 = """
+term good-term-1 {
+  protocol:: icmp
+  action:: accept
+}
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.nsxv_test:205
+==tests.lib.nsxv_unittest:119
+       rule_str = nsxv.Term.__str__(nsxv_term)
+
+    # parse xml rule and check if the values are correct
+    root = ET.fromstring(rule_str)
+    # check name and action
+    self.assertEqual(root.find('name').text, 'test-icmpv6')
+    self.assertEqual(root.find('action').text, 'allow')
+
+    #check protocol and sub protocol
+    exp_subprotocol = [128, 129]
+    for service in root.findall('./services/service'):
+      protocol = int(service.find('protocol').text)
+      self.assertEqual(protocol, 58)
+
+      sub_protocol = int(service.find('subProtocol').text)
+      if sub_protocol not in exp_subprotocol:
+        self.fail('subProtocol not matched in test_str_forinet6()')
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.juniper:718
+==lib.junipersrx:240
+        return el.lower()
+      elif isinstance(el, int):
+        return str(el)
+      # type is a tuple below here
+      elif el[0] == el[1]:
+        return '%d' % el[0]
+      else:
+        return '%d-%d' % (el[0], el[1])
+
+    if len(group) > 1:
+      rval = '[ ' + ' '.join([_FormattedGroup(x) for x in group]) + ' ];'
+    else:
+      rval = _FormattedGroup(group[0]) + ';'
+    return rval
+
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.nsxv_mocktest:18
+==tests.lib.nsxv_test:26
+  term permit-mail-services {
+    destination-address:: MAIL_SERVERS
+    protocol:: tcp
+    destination-port:: MAIL_SERVICES
+    action:: accept
+  }
+  """
+
+INET6_TERM="""\
+  term test-icmpv6 {
+    protocol:: icmpv6
+    icmp-type:: echo-request echo-reply
+    action:: accept
+  }
+  """
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.packetfilter:420
+==lib.pcap:362
+      if 'in' in filter_options:
+        direction = 'in'
+      elif 'out' in filter_options:
+        direction = 'out'
+
+      # Check for matching af
+      for address_family in good_afs:
+        if address_family in filter_options:
+          # should not specify more than one AF in options
+          if filter_type is not None:
+            raise aclgenerator.UnsupportedFilterError('%s %s %s %s' % (
+                '\nMay only specify one of', good_afs, 'in filter options:',
+                filter_options))
+          filter_type = address_family
+      if filter_type is None: (duplicate-code)
+R:  1, 0: Similar lines in 3 files
+==tests.lib.packetfilter_test:122
+==tests.lib.pcap_test:94
+==tests.lib.windows_advfirewall_test:87
+term good-term-log {
+  protocol:: tcp
+  logging:: true
+  action:: accept
+}
+"""
+
+EXPIRED_TERM = """
+term expired_test {
+  expiration:: 2000-1-1
+  action:: deny
+}
+"""
+
+EXPIRING_TERM = """ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.cisco:465
+==lib.ciscoasa:120
+    else:
+      # source address not set
+      source_address = ['any']
+
+    # destination address
+    if self.term.destination_address:
+      destination_address = self.term.GetAddressOfVersion(
+          'destination_address', self.af)
+      destination_address_exclude = self.term.GetAddressOfVersion(
+          'destination_address_exclude', self.af)
+      if destination_address_exclude:
+        destination_address = nacaddr.ExcludeAddrs(
+            destination_address,
+            destination_address_exclude) (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.packetfilter_test:144
+==tests.lib.windows_ipsec_test:65
+term is_expiring {
+  expiration:: %s
+  action:: accept
+}
+"""
+
+MULTIPLE_PROTOCOLS_TERM = """
+term multi-proto {
+  protocol:: tcp udp icmp
+  action:: accept
+}
+"""
+
+NEXT_TERM = """ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.iptables_test:298
+==tests.lib.nftables_test:74
+term is_expired {
+    expiration:: 2001-01-01
+    action:: accept
+}
+"""
+
+EXPIRING_TERM = """
+term is_expiring {
+  expiration:: %s
+  action:: accept
+}
+"""
+
+GOOD_TERM_2 = """ (duplicate-code)
+R:  1, 0: Similar lines in 4 files
+==tests.lib.junipersrx_test:232
+==tests.lib.pcap_test:102
+==tests.lib.windows_advfirewall_test:95
+==tests.lib.windows_ipsec_test:58
+term expired_test {
+  expiration:: 2000-1-1
+  action:: deny
+}
+"""
+
+EXPIRING_TERM = """
+term is_expiring {
+  expiration:: %s
+  action:: accept
+}
+"""
+
+MULTIPLE_PROTOCOLS_TERM = """ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.iptables:776
+==lib.packetfilter:515
+      target.append('# %s %s Policy' % (pretty_platform,
+                                        header.FilterName(self._PLATFORM)))
+
+      # reformat long text comments, if needed
+      comments = aclgenerator.WrapWords(header.comment, 70)
+      if comments and comments[0]:
+        for line in comments:
+          target.append('# %s' % line)
+        target.append('#')
+      # add the p4 tags
+      target.extend(aclgenerator.AddRepositoryTags('# '))
+      target.append('# ' + filter_type)
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.iptables:733
+==lib.packetfilter:486
+        if not term:
+          continue
+
+        if term.expiration:
+          if term.expiration <= exp_info_date:
+            logging.info('INFO: Term %s in policy %s expires '
+                         'in less than two weeks.', term.name, filter_name)
+          if term.expiration <= current_date:
+            logging.warn('WARNING: Term %s in policy %s is expired and '
+                         'will not be rendered.', term.name, filter_name)
+            continue
+
+        new_terms.append(self._TERM(term, filter_name, all_protocols_stateful, (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.packetfilter:258
+==lib.pcap:201
+  def _CheckAddressAf(self, addrs):
+    """Verify that the requested address-family matches the address's family."""
+    if not addrs:
+      return ['any']
+    if self.af == 'mixed':
+      return addrs
+    af_addrs = []
+    af = self.NormalizeAddressFamily(self.af)
+    for addr in addrs:
+      if addr.version == af:
+        af_addrs.append(addr)
+    return af_addrs
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.iptables_test:202
+==tests.lib.nftables_test:55
+  action:: accept
+}
+"""
+
+IPV6_TERM_1 = """
+term inet6-icmp {
+  protocol:: icmpv6
+  icmp-type:: destination-unreachable time-exceeded echo-reply
+  action:: deny
+}
+"""
+
+IPV6_TERM_2 = """ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.aclgenerator_test:57
+==tests.lib.iptables_test:268
+  protocol:: tcp
+  action:: accept
+}
+"""
+
+GOOD_LONG_TERM_NAME = """
+term google-experiment-abbreviations {
+  protocol:: tcp
+  action:: accept
+}
+"""
+
+GOOD_MULTIPORT = """ (duplicate-code)
+R:  1, 0: Similar lines in 4 files
+==tests.lib.junipersrx_test:255
+==tests.lib.packetfilter_test:85
+==tests.lib.pcap_test:64
+==tests.lib.windows_advfirewall_test:57
+  protocol:: icmpv6
+  action:: accept
+}
+"""
+
+BAD_ICMP_TERM_1 = """
+term test-icmp {
+  icmp-type:: echo-request echo-reply
+  action:: accept
+}
+"""
+
+ICMP_ONLY_TERM_1 = """ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.cisco:31
+==lib.ciscoasa:28
+_ACTION_TABLE = {
+    'accept': 'permit',
+    'deny': 'deny',
+    'reject': 'deny',
+    'next': '! next',
+    'reject-with-tcp-rst': 'deny',  # tcp rst not supported
+    }
+
+
+# generic error class
+class Error(Exception):
+  """Generic error class.""" (duplicate-code)
+R:  1, 0: Similar lines in 4 files
+==lib.cisco:731
+==lib.iptables:733
+==lib.juniper:813
+==lib.packetfilter:486
+        if not term:
+          continue
+
+        if term.expiration:
+          if term.expiration <= exp_info_date:
+            logging.info('INFO: Term %s in policy %s expires '
+                         'in less than two weeks.', term.name, filter_name)
+          if term.expiration <= current_date:
+            logging.warn('WARNING: Term %s in policy %s is expired and '
+                         'will not be rendered.', term.name, filter_name)
+            continue
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.junipersrx_test:234
+==tests.lib.packetfilter_test:139
+  action:: deny
+}
+"""
+
+EXPIRING_TERM = """
+term is_expiring {
+  expiration:: %s
+  action:: accept
+}
+"""
+
+ICMP_TYPE_TERM_1 = """ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.nsxv_functtest:38
+==tests.lib.nsxv_unittest:30
+    _parser = OptionParser()
+    _parser.add_option('-d', '--def', dest='definitions',
+                      help='definitions directory', default='../def')
+    (FLAGS, args) = _parser.parse_args()
+    self.defs = naming.Naming(FLAGS.definitions)
+
+  def tearDown(self):
+    pass
+
+  def runTest(self):
+    pass
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.ciscoxr_test:51
+==tests.lib.iptables_test:293
+  action:: accept
+}
+"""
+
+EXPIRED_TERM = """
+term is_expired {
+    expiration:: 2001-01-01
+    action:: accept
+}
+"""
+
+EXPIRING_TERM = """ (duplicate-code)
+R:  1, 0: Similar lines in 3 files
+==tests.lib.pcap_test:65
+==tests.lib.windows_advfirewall_test:58
+==tests.lib.windows_ipsec_test:36
+  action:: accept
+}
+"""
+
+BAD_TERM_ICMP = """
+term test-icmp {
+  icmp-type:: echo-request echo-reply
+  action:: accept
+}
+"""
+
+GOOD_TERM_TCP = """ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.nftables:27
+==lib.pcap:29
+import datetime
+
+from lib import aclgenerator
+from lib import nacaddr
+import logging
+
+
+class Error(Exception):
+  """Base error class."""
+
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.cisco:530
+==lib.ciscoasa:187
+                    _ACTION_TABLE.get(str(self.term.action[0])),
+                    proto,
+                    saddr,
+                    sport,
+                    daddr,
+                    dport,
+                    icmp_type,
+                    self.options))
+
+    return '\n'.join(ret_str)
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.cisco:518
+==lib.ciscoasa:163
+    icmp_types = ['']
+    if self.term.icmp_type:
+      icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type,
+                                           self.term.protocol, self.af)
+
+    for saddr in source_address:
+      for daddr in destination_address:
+        for sport in source_port:
+          for dport in destination_port:
+            for proto in protocol:
+              for icmp_type in icmp_types: (duplicate-code)
+R:  1, 0: Similar lines in 3 files
+==lib.gce:222
+==lib.nsxv:460
+==lib.windows:299
+        term_names.add(term.name)
+
+        if term.expiration:
+          if term.expiration <= exp_info_date:
+            logging.info('INFO: Term %s in policy %s expires '
+                         'in less than two weeks.', term.name, filter_name)
+          if term.expiration <= current_date:
+            logging.warn('WARNING: Term %s in policy %s is expired and '
+                         'will not be rendered.', term.name, filter_name)
+            continue
+        # Get the mapped action value (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.iptables_test:107
+==tests.lib.speedway_test:28
+}
+"""
+
+GOOD_TERM_1 = """
+term good-term-1 {
+  protocol:: icmp
+  action:: accept
+}
+"""
+
+# Print a info message when a term is set to expire in that many weeks. (duplicate-code)
+R:  1, 0: Similar lines in 4 files
+==tests.lib.packetfilter_test:65
+==tests.lib.pcap_test:44
+==tests.lib.windows_advfirewall_test:37
+==tests.lib.windows_ipsec_test:30
+}
+"""
+
+GOOD_TERM_ICMP = """
+term good-term-icmp {
+  protocol:: icmp
+  action:: accept
+}
+"""
+
+GOOD_TERM_ICMP_TYPES = """ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.nsxv_test:181
+==tests.lib.nsxv_unittest:98
+    self.assertEqual(protocol, 17)
+
+    #check source port
+    source_port = root.find('./services/service/sourcePort').text
+    self.assertEqual(source_port, '123')
+
+    # check destination port
+    destination_port = root.find('./services/service/destinationPort').text
+    self.assertEqual(destination_port, '123')
+
+    # check notes (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.iptables:121
+==lib.nftables:84
+    if ((self.af == 'inet6' and 'icmp' in self.term.protocol) or
+        (self.af == 'inet' and 'icmpv6' in self.term.protocol)):
+      logging.debug(self.NO_AF_LOG_PROTO.substitute(term=self.term.name,
+                                                    proto=self.term.protocol,
+                                                    af=self.af))
+      return ''
+
+    # Term verbatim output - this will skip over most normal term
+    # creation code by returning early. Warnings provided in policy.py.
+    if self.term.verbatim: (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.cisco:734
+==lib.nsxv:462
+        if term.expiration:
+          if term.expiration <= exp_info_date:
+            logging.info('INFO: Term %s in policy %s expires '
+                         'in less than two weeks.', term.name, filter_name)
+          if term.expiration <= current_date:
+            logging.warn('WARNING: Term %s in policy %s is expired and '
+                         'will not be rendered.', term.name, filter_name)
+            continue
+        # Get the mapped action value
+        # If there is no mapped action value term is not rendered (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.pcap:347
+==lib.windows:253
+    for header, terms in pol.filters:
+      filter_type = None
+      if self._PLATFORM not in header.platforms:
+        continue
+
+      filter_options = header.FilterOptions(self._PLATFORM)[1:]
+      filter_name = header.FilterName(self._PLATFORM)
+
+      # ensure all options after the filter name are expected
+      for opt in filter_options: (duplicate-code)
+R:  1, 0: Similar lines in 3 files
+==lib.iptables:108
+==lib.juniper:174
+==lib.windows:63
+  def __str__(self):
+    # Verify platform specific terms. Skip whole term if platform does not
+    # match.
+    if self.term.platform:
+      if self._PLATFORM not in self.term.platform:
+        return ''
+    if self.term.platform_exclude:
+      if self._PLATFORM in self.term.platform_exclude:
+        return ''
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.gce:198
+==lib.juniper:778
+    current_date = datetime.datetime.utcnow().date()
+    exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
+
+    for header, terms in pol.filters:
+      if self._PLATFORM not in header.platforms:
+        continue
+
+      filter_options = header.FilterOptions(self._PLATFORM)
+      filter_name = header.FilterName(self._PLATFORM)
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.brocade_test:28
+==tests.lib.cisco_test:161
+}
+"""
+GOOD_TERM = """
+term good-term-3 {
+  protocol:: tcp
+  option:: tcp-established
+  action:: accept
+}
+"""
+# Print a info message when a term is set to expire in that many weeks. (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.iptables:669
+==lib.packetfilter:397
+    all_protocols_stateful = True
+
+    for header, terms in pol.filters:
+      filter_type = None
+      if self._PLATFORM not in header.platforms:
+        continue
+
+      filter_options = header.FilterOptions(self._PLATFORM)[1:]
+      filter_name = header.FilterName(self._PLATFORM) (duplicate-code)
+R:  1, 0: Similar lines in 9 files
+==lib.cisco:734
+==lib.ciscoasa:422
+==lib.gce:224
+==lib.iptables:736
+==lib.juniper:816
+==lib.nsxv:462
+==lib.packetfilter:489
+==lib.pcap:388
+==lib.windows:301
+        if term.expiration:
+          if term.expiration <= exp_info_date:
+            logging.info('INFO: Term %s in policy %s expires '
+                         'in less than two weeks.', term.name, filter_name)
+          if term.expiration <= current_date:
+            logging.warn('WARNING: Term %s in policy %s is expired and '
+                         'will not be rendered.', term.name, filter_name)
+            continue
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.juniper_test:83
+==tests.lib.policy_test:78
+  action:: accept
+}
+"""
+GOOD_TERM_1 = """
+term good-term-1 {
+  protocol:: icmp
+  action:: accept
+}
+ (duplicate-code)
+R:  1, 0: Similar lines in 3 files
+==tests.lib.ciscoxr_test:18
+==tests.lib.ipset_test:19
+==tests.lib.iptables_test:22
+from lib import nacaddr
+from lib import naming
+from lib import policy
+import mock
+
+
+GOOD_HEADER_1 = """
+header {
+  comment:: "this is a test acl" (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.cisco:450
+==lib.ciscoasa:112
+    if self.term.source_address:
+      source_address = self.term.GetAddressOfVersion('source_address', self.af)
+      source_address_exclude = self.term.GetAddressOfVersion(
+          'source_address_exclude', self.af)
+      if source_address_exclude:
+        source_address = nacaddr.ExcludeAddrs(
+            source_address,
+            source_address_exclude) (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.nftables:84
+==lib.windows:76
+    if ((self.af == 'inet6' and 'icmp' in self.term.protocol) or
+        (self.af == 'inet' and 'icmpv6' in self.term.protocol)):
+      logging.debug(self.NO_AF_LOG_PROTO.substitute(term=self.term.name,
+                                                    proto=self.term.protocol,
+                                                    af=self.af))
+      return ''
+
+    # append comments to output (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.iptables:766
+==lib.windows:316
+  def __str__(self):
+    target = []
+    pretty_platform = '%s%s' % (self._PLATFORM[0].upper(), self._PLATFORM[1:])
+
+    if self._RENDER_PREFIX:
+      target.append(self._RENDER_PREFIX)
+
+    for (header, filter_name, filter_type, default_action, terms (duplicate-code)
+R:  1, 0: Similar lines in 3 files
+==lib.iptables:671
+==lib.pcap:347
+==lib.windows:253
+    for header, terms in pol.filters:
+      filter_type = None
+      if self._PLATFORM not in header.platforms:
+        continue
+
+      filter_options = header.FilterOptions(self._PLATFORM)[1:]
+      filter_name = header.FilterName(self._PLATFORM)
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.iptables:91
+==lib.windows:50
+    self.term = term  # term object
+    self.filter = filter_name  # actual name of filter
+    self.default_action = filter_action
+    self.options = []
+    self.af = af
+
+    if af == 'inet6':
+      self._all_ips = nacaddr.IPv6('::/0') (duplicate-code)
+R:  1, 0: Similar lines in 3 files
+==lib.iptables:111
+==lib.packetfilter:114
+==lib.windows:66
+    if self.term.platform:
+      if self._PLATFORM not in self.term.platform:
+        return ''
+    if self.term.platform_exclude:
+      if self._PLATFORM in self.term.platform_exclude:
+        return ''
+
+    ret_str = [] (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.juniper:781
+==lib.nsxv:432
+    for header, terms in pol.filters:
+      if self._PLATFORM not in header.platforms:
+        continue
+
+      filter_options = header.FilterOptions(self._PLATFORM)
+      filter_name = header.FilterName(self._PLATFORM)
+
+      # Check for the position independent options and remove them from (duplicate-code)
+R:  1, 0: Similar lines in 10 files
+==lib.cisco:734
+==lib.ciscoasa:422
+==lib.demo:204
+==lib.gce:224
+==lib.iptables:736
+==lib.juniper:816
+==lib.nsxv:462
+==lib.packetfilter:489
+==lib.pcap:388
+==lib.windows:301
+        if term.expiration:
+          if term.expiration <= exp_info_date:
+            logging.info('INFO: Term %s in policy %s expires '
+                         'in less than two weeks.', term.name, filter_name)
+          if term.expiration <= current_date:
+            logging.warn('WARNING: Term %s in policy %s is expired and '
+                         'will not be rendered.', term.name, filter_name)
+            continue (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.cisco_test:149
+==tests.lib.policy_test:82
+term good-term-1 {
+  protocol:: icmp
+  action:: accept
+}
+"""
+GOOD_TERM_2 = """
+term good-term-2 {
+  protocol:: tcp (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.iptables_test:252
+==tests.lib.packetfilter_test:204
+term tcp-established-only {
+  protocol:: tcp
+  option:: established
+  action:: accept
+}
+"""
+
+STATEFUL_ONLY_TERM = """ (duplicate-code)
+R:  1, 0: Similar lines in 3 files
+==tests.lib.arista_test:18
+==tests.lib.brocade_test:19
+==tests.lib.cisco_test:23
+from lib import naming
+from lib import policy
+import mock
+
+
+GOOD_HEADER = """
+header {
+  comment:: "this is a test acl" (duplicate-code)
+R:  1, 0: Similar lines in 3 files
+==tests.lib.cisco_test:22
+==tests.lib.gce_test:21
+==tests.lib.junipersrx_test:23
+from lib import nacaddr
+from lib import naming
+from lib import policy
+import mock
+
+
+GOOD_HEADER = """
+header { (duplicate-code)
+R:  1, 0: Similar lines in 4 files
+==tests.lib.aclgenerator_test:19
+==tests.lib.ciscoxr_test:19
+==tests.lib.ipset_test:20
+==tests.lib.iptables_test:23
+from lib import naming
+from lib import policy
+import mock
+
+
+GOOD_HEADER_1 = """
+header {
+  comment:: "this is a test acl" (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.juniper_test:97
+==tests.lib.srxlo_test:28
+}
+"""
+GOOD_TERM_1 = """
+term good-term-1 {
+  protocol:: icmpv6
+  action:: accept
+}
+""" (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.cisco:315
+==lib.iptables:130
+    if self.term.verbatim:
+      for next_verbatim in self.term.verbatim:
+        if next_verbatim.value[0] == self._PLATFORM:
+          ret_str.append(str(next_verbatim.value[1]))
+      return '\n'.join(ret_str)
+
+    # We don't support these keywords for filtering, so unless users (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.cisco:340
+==lib.ciscoasa:149
+    source_port = [()]
+    destination_port = [()]
+    if self.term.source_port:
+      source_port = self.term.source_port
+    if self.term.destination_port:
+      destination_port = self.term.destination_port
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.iptables:716
+==lib.windows:289
+            '\nOnly', ', '.join(good_default_actions),
+            'default filter action allowed;', default_action, 'used.'))
+
+      # add the terms
+      new_terms = []
+      term_names = set()
+      for term in terms: (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.iptables:708
+==lib.windows:281
+      for next_target in header.target:
+        if next_target.platform == self._PLATFORM:
+          if len(next_target.options) > 1:
+            for arg in next_target.options:
+              if arg in good_default_actions:
+                default_action = arg
+      if default_action and default_action not in good_default_actions: (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.pcap:318
+==lib.windows:234
+  _TERM = Term
+  _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
+                                      'expiration',
+                                      'logging',
+                                      'qos',
+                                     ])
+ (duplicate-code)
+R:  1, 0: Similar lines in 3 files
+==lib.packetfilter:399
+==lib.pcap:347
+==lib.windows:253
+    for header, terms in pol.filters:
+      filter_type = None
+      if self._PLATFORM not in header.platforms:
+        continue
+
+      filter_options = header.FilterOptions(self._PLATFORM)[1:]
+      filter_name = header.FilterName(self._PLATFORM) (duplicate-code)
+R:  1, 0: Similar lines in 5 files
+==lib.iptables:111
+==lib.juniper:177
+==lib.packetfilter:114
+==lib.pcap:112
+==lib.windows:66
+    if self.term.platform:
+      if self._PLATFORM not in self.term.platform:
+        return ''
+    if self.term.platform_exclude:
+      if self._PLATFORM in self.term.platform_exclude:
+        return ''
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.gce:201
+==lib.nsxv:432
+    for header, terms in pol.filters:
+      if self._PLATFORM not in header.platforms:
+        continue
+
+      filter_options = header.FilterOptions(self._PLATFORM)
+      filter_name = header.FilterName(self._PLATFORM)
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.arista_test:32
+==tests.lib.cisco_test:164
+term good-term-3 {
+  protocol:: tcp
+  option:: tcp-established
+  action:: accept
+}
+"""
+GOOD_TERM_4 = """ (duplicate-code)
+R:  1, 0: Similar lines in 4 files
+==tests.lib.arista_test:18
+==tests.lib.brocade_test:19
+==tests.lib.gce_test:22
+==tests.lib.junipersrx_test:24
+from lib import naming
+from lib import policy
+import mock
+
+
+GOOD_HEADER = """
+header { (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.windows_advfirewall_test:15
+==tests.lib.windows_ipsec_test:15
+import datetime
+import unittest
+
+from lib import aclgenerator
+from lib import nacaddr
+from lib import naming
+from lib import policy (duplicate-code)
+R:  1, 0: Similar lines in 4 files
+==tests.lib.arista_test:19
+==tests.lib.brocade_test:20
+==tests.lib.cisco_test:24
+==tests.lib.pcap_test:22
+from lib import policy
+import mock
+
+
+GOOD_HEADER = """
+header {
+  comment:: "this is a test acl" (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.nsxv_test:293
+==tests.lib.nsxv_unittest:175
+        if value not in exp_ipv4dest:
+          self.fail('IPv4Address not found in test_nsxv_str()')
+      else:
+        if value not in exp_ipv6dest:
+          self.fail('IPv6Address not found in test_nsxv_str()')
+
+    #check protocol (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.nsxv_test:173
+==tests.lib.nsxv_unittest:90
+    for destination in root.findall('./destinations/destination'):
+      self.assertEqual((destination.find('type').text), 'Ipv4Address')
+      value = (destination.find('value').text)
+      if value not in exp_destaddr:
+        self.fail('IPv4Address destination not found in test_str_forinet()')
+
+    #check protocol (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==tests.lib.nsxv_test:165
+==tests.lib.nsxv_unittest:82
+    for destination in root.findall('./sources/source'):
+      self.assertEqual((destination.find('type').text), 'Ipv4Address')
+      value = (destination.find('value').text)
+      if value not in exp_sourceaddr:
+        self.fail('IPv4Address source address not found in test_str_forinet()')
+
+    #check destination address (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.iptables:698
+==lib.packetfilter:431
+                '\nMay only specify one of', good_afs, 'in filter options:',
+                filter_options))
+          filter_type = address_family
+      if filter_type is None:
+        filter_type = 'inet'
+ (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.packetfilter:188
+==lib.pcap:171
+        af = 'inet6'
+      else:
+        raise aclgenerator.UnsupportedFilterError('%s %s %s' % (
+            '\n', self.term.name,
+            'icmp protocol is not defined or not supported.'))
+      icmp_types = self.NormalizeIcmpTypes( (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.packetfilter:163
+==lib.pcap:141
+    term_daddrs = self._CheckAddressAf(self.term.destination_address)
+    if not term_daddrs:
+      logging.debug(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
+                                                   direction='destination',
+                                                   af=self.af))
+      return '' (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.packetfilter:153
+==lib.pcap:130
+    term_saddrs = self._CheckAddressAf(self.term.source_address)
+    if not term_saddrs:
+      logging.debug(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
+                                                   direction='source',
+                                                   af=self.af))
+      return '' (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.packetfilter:100
+==lib.pcap:100
+    super(Term, self).__init__(term)
+    self.term = term  # term object
+    self.filter = filter_name  # actual name of filter
+    self.options = []
+    self.default_action = 'deny'
+    self.af = af (duplicate-code)
+R:  1, 0: Similar lines in 4 files
+==tests.lib.packetfilter_test:16
+==tests.lib.pcap_test:15
+==tests.lib.windows_advfirewall_test:15
+==tests.lib.windows_ipsec_test:15
+import datetime
+import unittest
+
+from lib import aclgenerator
+from lib import nacaddr
+from lib import naming (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.cisco:475
+==lib.nsxv:223
+        if destination_address_exclude:
+          destination_address = nacaddr.ExcludeAddrs(
+              destination_address,
+              destination_address_exclude)
+        if not destination_address: (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.cisco:454
+==lib.nsxv:203
+        if source_address_exclude:
+          source_address = nacaddr.ExcludeAddrs(
+              source_address,
+              source_address_exclude)
+        if not source_address: (duplicate-code)
+R:  1, 0: Similar lines in 2 files
+==lib.pcap:382
+==lib.windows:294
+      term_names = set()
+      for term in terms:
+        if term.name in term_names:
+          raise aclgenerator.DuplicateTermError(
+              'You have a duplicate term: %s' % term.name) (duplicate-code)
+[ERROR] Fix the issues reported by the linter
