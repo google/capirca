@@ -1154,7 +1154,7 @@ R0201:  33 YamlValidator.CheckConfigurationItem: Method could be a function[no-s
 ************* Module definate.definition_filter
 R0903:  25 Container: Too few public methods (0/2)[too-few-public-methods]
 R0903:  47 DefinitionFilter: Too few public methods (1/2)[too-few-public-methods]
-R0201: 104 SortFilter._asdasdRemoveDuplicateNetworks: Method could be a function[no-self-use]
+R0201: 104 SortFilter._RemoveDuplicateNetworks: Method could be a function[no-self-use]
 R0903:  66 SortFilter: Too few public methods (1/2)[too-few-public-methods]
 R0903: 123 AlignFilter: Too few public methods (1/2)[too-few-public-methods]
 ************* Module setup
@@ -1164,4 +1164,3 @@ R0922:  33 Generator: Abstract class is only referenced 1 times[abstract-class-l
 R0923: 148 DestinationInterface: Interface not implemented[interface-not-implemented]
 R0923: 256 SourceInterface: Interface not implemented[interface-not-implemented]
 
-asdasd
