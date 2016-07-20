@@ -71,7 +71,7 @@ class Term(object):
   """Generic framework for a generator Term."""
   ICMP_TYPE = policy.Term.ICMP_TYPE
   PROTO_MAP = {'hop-by-hop': 0,
-                   'icmp': 1,
+               'icmp': 1,
                'igmp': 2,
                'ggp': 3,
                'ipencap': 4,
