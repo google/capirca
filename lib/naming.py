@@ -46,6 +46,7 @@ DNS = 53/tcp
 
 import glob
 import os
+
 from lib import nacaddr
 from lib import port as portlib
 
