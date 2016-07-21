@@ -27,10 +27,8 @@ new_diff=$(diff -u tools/current_lint_errors.txt tools/new_lint_errors.txt | gre
 
 if [ "$new_diff" == "" ]
 then
-    echo 'foo'
     echo "[OK] The codebase passes the linter tests!";
 else
-
     echo "[ERROR] There are additional new lint errors present in your changes."
     echo "$new_diff"
     exit 1
