@@ -97,7 +97,8 @@ class PPP(object):
   def __contains__(self, other):
     # determine if a single-port object is within another objects' range
     try:
-      return (int(self.start) <= int(other.port) <= int(self.end))
+      return ((int(self.start) <= int(other.port) <= int(self.end)) and
+              self.protocol == other.protocol)
     except:
       raise InvalidRange('%s must be a range' % self.port)
 
@@ -140,10 +141,8 @@ class PPP(object):
   def __eq__(self, other):
     if self.is_single_port:
       try:
-        return (
-            int(self.port) == int(other.port) and
-            self.protocol == other.protocol
-        )
+        return (int(self.port) == int(other.port) and
+                self.protocol == other.protocol)
       except:
         return False
     else:
