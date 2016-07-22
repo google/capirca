@@ -507,25 +507,17 @@ class CgrepTest(unittest.TestCase):
 
   # 33434/tcp should only be in HIGH_PORTS (not also TRACEROUTE)
   def test_get_port_parents_range_tcp(self):
-      expected_results = (
-          r'33434', r'tcp', ['HIGH_PORTS']
-      )
-      options = Namespace(
-          port=('33434', 'tcp'),
-      )
-      results = get_services(options, self.db)
-      self.assertEquals(results, expected_results)
+    expected_results = (r'33434', r'tcp', ['HIGH_PORTS'])
+    options = Namespace(port=('33434', 'tcp'),)
+    results = get_services(options, self.db)
+    self.assertEquals(results, expected_results)
 
   # 33434/udp should be in HIGH_PORTS and TRACEROUTE
   def test_get_port_parents_range_udp(self):
-      expected_results = (
-          r'33434', r'udp', ['HIGH_PORTS', 'TRACEROUTE']
-      )
-      options = Namespace(
-          port=('33434', 'udp'),
-      )
-      results = get_services(options, self.db)
-      self.assertEquals(results, expected_results)
+    expected_results = (r'33434', r'udp', ['HIGH_PORTS', 'TRACEROUTE'])
+    options = Namespace(port=('33434', 'udp'),)
+    results = get_services(options, self.db)
+    self.assertEquals(results, expected_results)
 
   #
   # test IP validity
