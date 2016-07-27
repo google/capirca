@@ -12,8 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-find . -name "*.py" | \
+find . -name "*.py" | sort |\
 xargs pylint --rcfile tools/pylintrc --msg-template='{msg_id}:{line:4} {obj}: {msg}[{symbol}]' > ./tools/new_lint_errors.txt
 
 # Cannot disable the following errors, seems this is a known issue from searching online.
@@ -33,3 +32,4 @@ else
     echo "$new_diff"
     exit 1
 fi
+
