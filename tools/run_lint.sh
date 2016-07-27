@@ -32,4 +32,3 @@ else
     echo "$new_diff"
     exit 1
 fi
-

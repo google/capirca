@@ -31,7 +31,9 @@ disable-report=R0001,R0002,R0003,R0004,R0101,R0102,R0201,R0202,R0220,R0401,R0402
 enable=old-raise-syntax
 
 # List of checkers and warnings to disable.
-disable=design,similarities,no-self-use,attribute-defined-outside-init,locally-disabled,star-args,pointless-except,bad-option-value,global-statement,fixme,suppressed-message,useless-suppression,locally-enabled,file-ignored
+disable=abstract-method,access-member-before-definition,arguments-differ,attribute-defined-outside-init,bad-option-value,design,file-ignored,fixme,global-statement,import-error,interface-is-not-class,locally-disabled,locally-enabled,maybe-no-member,method-hidden,missing-interface-method,no-init,no-member,no-name-in-module,no-self-use,pointless-except,relative-import,signature-differs,similarities,star-args,suppressed-message,unresolved-interface,unused-wildcard-import,useless-suppression
+
+confidence=HIGH,INFERENCE,UNDEFINED
 
 
 [BASIC]
@@ -192,13 +194,3 @@ logging-modules=logging
 
 # List of note tags to take in consideration, separated by a comma.
 notes=
-
-
-[MESSAGES CONTROL]
-
-# List of checkers and msgs to disable when --single-file=y is given.
-# These are frequent false positives that are almost all due to type inference not being possible to
-# due missing imports.
-disable=import-error,relative-import,unused-wildcard-import,no-name-in-module,method-hidden,access-member-before-definition,attribute-defined-outside-init,interface-is-not-class,missing-interface-method,arguments-differ,signature-differs,abstract-method,unresolved-interface,no-init,no-member,maybe-no-member
-
-confidence=HIGH,INFERENCE,UNDEFINED
