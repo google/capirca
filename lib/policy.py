@@ -357,7 +357,7 @@ class Term(object):
     self.destination_address_exclude = []
     self.destination_port = []
     self.destination_prefix = []
-    self.forwarding_class = None
+    self.forwarding_class = []
     self.logging = []
     self.loss_priority = None
     self.option = []
@@ -530,6 +530,9 @@ class Term(object):
     if self.forwarding_class:
       if not other.forwarding_class:
         return False
+      for fc in other.forwarding_class:
+        if fc not in self.forwarding_class:
+          return False
     if self.next_ip:
       if not other.next_ip:
         return False
@@ -751,7 +754,7 @@ class Term(object):
       return False
 
     # forwarding-class
-    if self.forwarding_class != other.forwarding_class:
+    if sorted(self.forwarding_class) != sorted(other.forwarding_class):
       return False
 
     # next_ip
@@ -926,7 +929,7 @@ class Term(object):
         elif x.var_type is VarType.PRECEDENCE:
           self.precedence.append(x.value)
         elif x.var_type is VarType.FORWARDING_CLASS:
-          self.forwarding_class = obj.value
+          self.forwarding_class.append(x.value)
         elif x.var_type is VarType.NEXT_IP:
           self.next_ip = DEFINITIONS.GetNetAddr(x.value)
         elif x.var_type is VarType.PLATFORM:
@@ -960,7 +963,7 @@ class Term(object):
       elif obj.var_type is VarType.PRECEDENCE:
         self.precedence = obj.value
       elif obj.var_type is VarType.FORWARDING_CLASS:
-        self.forwarding_class = obj.value
+        self.forwarding_class.append(obj.value)
       elif obj.var_type is VarType.NEXT_IP:
         self.next_ip = DEFINITIONS.GetNetAddr(obj.value)
       elif obj.var_type is VarType.VERBATIM:
@@ -1734,8 +1737,10 @@ def p_precedence_spec(p):
 
 
 def p_forwarding_class_spec(p):
-  """ forwarding_class_spec : FORWARDING_CLASS ':' ':' STRING """
-  p[0] = VarType(VarType.FORWARDING_CLASS, p[4])
+  """ forwarding_class_spec : FORWARDING_CLASS ':' ':' one_or_more_strings """
+  p[0] = []
+  for fclass in p[4]:
+    p[0].append(VarType(VarType.FORWARDING_CLASS, fclass))
 
 
 def p_next_ip_spec(p):

@@ -376,7 +376,8 @@ class Term(aclgenerator.Term):
 
       # forwarding-class
       if self.term.forwarding_class:
-        config.Append('forwarding-class %s;' % self.term.forwarding_class)
+        config.Append('forwarding-class %s' % self._Group(
+            self.term.forwarding_class))
 
       # source prefix list
       if self.term.source_prefix:

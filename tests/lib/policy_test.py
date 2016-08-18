@@ -325,6 +325,12 @@ term good-term-35 {
   next-ip:: NEXT_IP
 }
 """
+GOOD_TERM_36 = """
+term good-term-36 {
+  forwarding-class:: flashy fritzy
+  action:: accept
+}
+"""
 GOOD_TERM_V6_1 = """
 term good-term-v6-1 {
   hop-limit:: 5
@@ -1066,7 +1072,12 @@ class PolicyTest(unittest.TestCase):
 
   def testForwardingClassPolicy(self):
     pol = policy.ParsePolicy(HEADER + GOOD_TERM_32, self.naming)
-    self.assertEquals('fritzy', pol.filters[0][1][0].forwarding_class)
+    self.assertEquals(['fritzy'], pol.filters[0][1][0].forwarding_class)
+
+  def testMultipleForwardingClassPolicy(self):
+    pol = policy.ParsePolicy(HEADER + GOOD_TERM_36, self.naming)
+    self.assertEquals(['flashy', 'fritzy'],
+                      pol.filters[0][1][0].forwarding_class)
 
   def testForwardingClassEqual(self):
     pol_text = HEADER + GOOD_TERM_32 + GOOD_TERM_33

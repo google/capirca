@@ -305,6 +305,12 @@ term good_term_28 {
   next-ip:: TEST_NEXT
 }
 """
+GOOD_TERM_29 = """
+term multiple-forwarding-class {
+  forwarding-class:: floop fluup fleep
+  action:: deny
+}
+"""
 BAD_TERM_1 = """
 term bad-term-1 {
   protocol:: tcp udp
@@ -914,6 +920,14 @@ class JuniperTest(unittest.TestCase):
                           EXP_INFO)
     output = str(jcl)
     self.failUnless('forwarding-class floop;' in output, output)
+
+  def testMultipleForwardingClass(self):
+    policy_text = GOOD_HEADER + GOOD_TERM_29
+    jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
+                          EXP_INFO)
+    output = str(jcl)
+    self.failUnless('forwarding-class [ floop fluup fleep ];' in output,
+                    output)
 
   def testLongPolicer(self):
     with mock.patch.object(juniper.logging, 'warn', spec=logging.warn) as warn:
