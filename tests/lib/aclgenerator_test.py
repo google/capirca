@@ -158,6 +158,23 @@ class ACLGeneratorTest(unittest.TestCase):
         self.assertRaises(aclgenerator.TermNameTooLongError,
                           acl.FixTermLength, term.name, True, False)
 
+  def testProtocolNameToNumber(self):
+    protoMap = {'icmp': 1,
+                'ipip': 4,
+                'tcp': 6,
+                'gre': 47,
+               }
+    protoConvert = ['gre', 'tcp']
+
+    protocolList = ['icmp', 'gre', 'tcp', 'ipip']
+    expectedProtocolList = ['icmp', 47, 6, 'ipip']
+
+    retProtocolList = aclgenerator.ProtocolNameToNumber(protocolList,
+                                                        protoConvert,
+                                                        protoMap)
+
+    self.assertItemsEqual(expectedProtocolList, retProtocolList)
+
   def testAddRepositoryTags(self):
     # Format print the '$' into the RCS tags in order prevent the tags from
     # being interpolated here.

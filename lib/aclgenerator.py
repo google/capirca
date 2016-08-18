@@ -74,7 +74,7 @@ class Term(object):
                'icmp': 1,
                'igmp': 2,
                'ggp': 3,
-               'ipencap': 4,
+               'ipip': 4,
                'tcp': 6,
                'egp': 8,
                'igp': 9,
@@ -91,7 +91,6 @@ class Term(object):
                'ipv6-nonxt': 59,
                'ipv6-opts': 60,
                'ospf': 89,
-               'ipip': 94,
                'pim': 103,
                'vrrp': 112,
                'l2tp': 115,
@@ -101,6 +100,10 @@ class Term(object):
             'inet6': 6,
             'bridge': 4  # if this doesn't exist, output includes v4 & v6
            }
+  # These protos are always expressed as numbers instead of name
+  #  due to inconsistencies on the end platform's name-to-number
+  #  mapping.
+  ALWAYS_PROTO_NUM = ['ipip']
   # provide flipped key/value dicts
   PROTO_MAP_BY_NUMBER = dict([(v, k) for (k, v) in PROTO_MAP.iteritems()])
   AF_MAP_BY_NUMBER = dict([(v, k) for (k, v) in AF_MAP.iteritems()])
@@ -121,6 +124,10 @@ class Term(object):
             protocol not in [str(p) for p in self.PROTO_MAP_BY_NUMBER]):
           raise UnsupportedFilterError('Protocol(s) %s are not supported.'
                                        % str(term.protocol))
+
+      term.protocol = ProtocolNameToNumber(term.protocol,
+                                                self.ALWAYS_PROTO_NUM,
+                                                self.PROTO_MAP)
 
   def NormalizeAddressFamily(self, af):
     """Convert (if necessary) address family name to numeric value.
@@ -382,6 +389,27 @@ class ACLGenerator(object):
                                 self._TERM_MAX_LENGTH,
                                 len(new_term)))
 
+def ProtocolNameToNumber(protocols, protoToNumber, nameToNumberMap):
+  """Convert (if present in protoToNumber) a protocol name to a numeric
+     value.
+
+  Args:
+    protocols: list of protocol names to inspect
+    protoToNumber: list of protocol names that should be converted to numbers
+    nameToNumberMap: map of protocol names to protocol numbers
+
+  Returns:
+    returnProto: list of protocol names, converted if applicable
+  """
+  returnProto = []
+
+  for protocol in protocols:
+    if protocol in protoToNumber:
+      returnProto.append(nameToNumberMap[protocol])
+    else:
+      returnProto.append(protocol)
+
+  return returnProto
 
 def AddRepositoryTags(prefix='', rid=True, date=True, revision=True):
   """Add repository tagging into the output.
