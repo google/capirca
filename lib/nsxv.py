@@ -211,7 +211,7 @@ class Term(aclgenerator.Term):
                                                       af=self.filter_type))
           return ''
         if not source_addr:
-          source_addr.append(source_address)
+          source_addr.extend(source_address)
         else:
           source_addr = source_address
 
@@ -230,11 +230,7 @@ class Term(aclgenerator.Term):
                                                       direction='destination',
                                                       af=self.filter_type))
           return ''
-        destination_addr.append(destination_address)
-    # creating single list out of lists of lists
-    source_addresses = [val for sublist in source_addr for val in sublist]
-    destination_addresses = [val for sublist in destination_addr
-                             for val in sublist]
+        destination_addr.extend(destination_address)
 
     # ports
     source_port = None
@@ -250,9 +246,9 @@ class Term(aclgenerator.Term):
       log = 'true'
 
     sources = ''
-    if source_addresses:
+    if source_addr:
       sources = '<sources excluded="false">'
-      for saddr in source_addresses:
+      for saddr in source_addr:
 
         # inet4
         if type(saddr) is nacaddr.IPv4:
@@ -278,9 +274,9 @@ class Term(aclgenerator.Term):
       sources = '%s%s' %(sources, '</sources>')
 
     destinations = ''
-    if destination_addresses:
+    if destination_addr:
       destinations = '<destinations excluded="false">'
-      for daddr in destination_addresses:
+      for daddr in destination_addr:
         # inet4
         if type(daddr) is nacaddr.IPv4:
           if daddr.numhosts > 1:
