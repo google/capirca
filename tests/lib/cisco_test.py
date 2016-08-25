@@ -322,7 +322,7 @@ class CiscoTest(unittest.TestCase):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
                                          self.naming), EXP_INFO)
     self.failUnless('ip access-list extended test-filter' in str(acl), str(acl))
-    self.failUnless('remark good-term-1' in str(acl), str(acl))
+    self.failUnless(' remark good-term-1' in str(acl), str(acl))
 
   def testRemark(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
@@ -331,7 +331,7 @@ class CiscoTest(unittest.TestCase):
     acl = cisco.Cisco(policy.ParsePolicy(
         GOOD_EXTENDED_NUMBERED_HEADER + GOOD_TERM_1, self.naming), EXP_INFO)
     self.failUnless('ip access-list extended 150' in str(acl), str(acl))
-    self.failUnless('remark numbered extended' in str(acl), str(acl))
+    self.failUnless(' remark numbered extended' in str(acl), str(acl))
     self.failIf('150 remark' in str(acl), str(acl))
     # Extended ACLs should have extended remark style.
     acl = cisco.Cisco(policy.ParsePolicy(
@@ -624,7 +624,7 @@ class CiscoTest(unittest.TestCase):
   def testOwnerTerm(self):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER +
                                          GOOD_TERM_13, self.naming), EXP_INFO)
-    self.failUnless(re.search('remark Owner: foo@google.com',
+    self.failUnless(re.search(' remark Owner: foo@google.com',
                               str(acl)), str(acl))
 
   def testRemoveTrailingCommentWhitespace(self):

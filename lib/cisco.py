@@ -154,12 +154,12 @@ class TermStandard(object):
                                                      self.logstring,
                                                      self.dscpstring))
     else:
-      ret_str.append('remark ' + self.term.name)
+      ret_str.append(' remark ' + self.term.name)
       comment_max_width = 70
       comments = aclgenerator.WrapWords(self.term.comment, comment_max_width)
       if comments and comments[0]:
         for comment in comments:
-          ret_str.append('remark ' + str(comment))
+          ret_str.append(' remark ' + str(comment))
 
       action = _ACTION_TABLE.get(str(self.term.action[0]))
       if v4_addresses:
@@ -304,12 +304,12 @@ class ObjectGroupTerm(aclgenerator.Term):
     source_address_set = set()
     destination_address_set = set()
     ret_str = ['\n']
-    ret_str.append('remark %s' % self.term.name)
+    ret_str.append(' remark %s' % self.term.name)
     comment_max_width = 70
     comments = aclgenerator.WrapWords(self.term.comment, comment_max_width)
     if comments and comments[0]:
       for comment in comments:
-        ret_str.append('remark %s' % str(comment))
+        ret_str.append(' remark %s' % str(comment))
 
     # Term verbatim output - this will skip over normal term creation
     # code by returning early.  Warnings provided in policy.py.
@@ -418,12 +418,12 @@ class Term(aclgenerator.Term):
       return ''
 
     if self.term_remark:
-      ret_str.append('remark ' + self.term.name)
+      ret_str.append(' remark ' + self.term.name)
     if self.term.owner:
       self.term.comment.append('Owner: %s' % self.term.owner)
     for comment in self.term.comment:
       for line in comment.split('\n'):
-        ret_str.append('remark ' + str(line)[:100].rstrip())
+        ret_str.append(' remark ' + str(line)[:100].rstrip())
 
     # Term verbatim output - this will skip over normal term creation
     # code by returning early.  Warnings provided in policy.py.
@@ -822,12 +822,12 @@ class Cisco(aclgenerator.ACLGenerator):
                   date=False, revision=False))
         else:
           target.extend(aclgenerator.AddRepositoryTags(
-              'remark ', date=False, revision=False))
+              ' remark ', date=False, revision=False))
 
         # add a header comment if one exists
         for comment in header.comment:
           for line in comment.split('\n'):
-            target.append('remark %s' % line)
+            target.append(' remark %s' % line)
 
         # now add the terms
         for term in terms:
