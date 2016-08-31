@@ -23,6 +23,7 @@ very, very limited subset of possible acls.
 __author__ = 'cburgoyne@google.com (Chris Burgoyne)'
 
 from lib import aclgenerator
+import logging
 
 
 class Error(Exception):
@@ -42,31 +43,6 @@ class Term(aclgenerator.Term):
     super(Term, self).__init__(term)
     self.term = term
     self.ip_ver = ip_ver
-    # Ensuring no unused options have been set.
-    if self.term.action and self.term.action[0] != 'accept':
-      raise UnsupportedArubaAccessListError(
-          'Aruba ACL action must be "accept".')
-    if self.term.protocol:
-      raise UnsupportedArubaAccessListError(
-          'Aruba ACLs cannot specify protocols')
-    if self.term.icmp_type:
-      raise UnsupportedArubaAccessListError(
-          'ICMP Type specifications are not permissible in Aruba ACLs')
-    if (self.term.address
-        or self.term.source_address_exclude
-        or self.term.destination_address
-        or self.term.destination_address_exclude):
-      raise UnsupportedArubaAccessListError(
-          'Aruba ACLs cannot use address:: or destination-addresses')
-    if self.term.option:
-      raise UnsupportedArubaAccessListError(
-          'Aruba ACLs prohibit use of options')
-    if self.term.source_port or self.term.destination_port:
-      raise UnsupportedArubaAccessListError(
-          'Aruba ACLs prohibit use of port numbers')
-    if self.term.counter:
-      raise UnsupportedArubaAccessListError(
-          'Counters are not implemented in Aruba ACLs')
 
   def __str__(self):
     ret_str = []
@@ -84,7 +60,26 @@ class Aruba(aclgenerator.ACLGenerator):
 
   _PLATFORM = 'aruba'
   SUFFIX = '.aruba'
-  _OPTIONAL_SUPPORTED_KEYWORDS = set([])
+
+  def _buildTokens(self):
+    """build supported tokens for platform
+
+    Args:
+      supported_tokens: a set of default tokens a platform should implement
+      supported_sub_tokens: a set of default sub tokens
+    Returns:
+      tuple of two sets
+    """
+    # aruba supports so little, it's easier to build by hand and not call the
+    # the super class for the usual defaults.
+    supported_tokens = {'action',
+                        'source_address',
+                        'comment',  # we allow this to save our sanity
+                        'name',  # obj attribute, not token
+                        'translated',  # obj attribute, not token
+                        }
+    supported_sub_tokens = {'action': {'accept', }, }
+    return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):
     self.aruba_policies = []
@@ -96,6 +91,13 @@ class Aruba(aclgenerator.ACLGenerator):
       if 'ipv6' in filter_options:
         ip_ver = 6
       new_terms = []
+      for t in terms:
+        if t.comment:
+          logging.warn('filter %s contains comments, these are not implemented '
+                   'on aruba! The comments will not be rendered.'
+                   % filter_name)
+          break
+
       for term in terms:
         new_terms.append(Term(term, ip_ver))
       self.aruba_policies.append((filter_name, new_terms, ip_ver))

@@ -65,28 +65,15 @@ class Term(aclgenerator.Term):
   def __init__(self, term):
     super(Term, self).__init__(term)
     self.term = term
-    if self.term.action and self.term.action[0] != 'accept':
-      raise GceFirewallError(
-          'GCE firewall action must be "accept".')
-    if (self.term.destination_address
-        or self.term.destination_address_exclude):
-      raise GceFirewallError(
-          'GCE firewall does not support destination addresses or address '
-          'excludes.')
+
     if self.term.source_address_exclude and not self.term.source_address:
       raise GceFirewallError(
           'GCE firewall does not support address exclusions without a source '
           'address list.')
-    if self.term.icmp_type:
-      raise GceFirewallError(
-          'ICMP Type specifications are not permissible in GCE firewalls.')
     if (bool(set(self.term.protocol) - set(['udp', 'tcp']))
         and self.term.destination_port):
       raise GceFirewallError(
           'Only TCP and UDP protocols support destination ports.')
-    if self.term.option:
-      raise GceFirewallError(
-          'GCE firewall does not support options.')
     if not self.term.source_address and not self.term.source_tag:
       raise GceFirewallError(
           'GCE firewall needs either to specify source address or source tags.')
@@ -192,6 +179,36 @@ class GCE(aclgenerator.ACLGenerator):
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',
                                       'destination_tag',
                                       'source_tag'])
+
+  def _buildTokens(self):
+    """build supported tokens for platform
+
+    Args:
+      supported_tokens: a set of default tokens a platform should implement
+      supported_sub_tokens: a set of default sub tokens
+    Returns:
+      tuple of two sets
+    """
+    supported_tokens, _ = super(GCE, self)._buildTokens()
+
+    # add extra things
+    supported_tokens |= {'destination_tag',
+                         'expiration',
+                         'owner',
+                         'source_tag', }
+
+    # remove unsupported things
+    supported_tokens -= {'destination_address',
+                         'destination_address_exclude',
+                         'icmp_type',
+                         'option',
+                         'platform',
+                         'platform_exclude',
+                         'verbatim', }
+    # easier to make a new structure
+    supported_sub_tokens = {'action': {'accept', }, }
+
+    return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):
     self.gce_policies = []

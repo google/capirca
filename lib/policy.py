@@ -155,6 +155,7 @@ class Policy(object):
       filters: list of tuples containing (header, terms).
     """
     self.filters = []
+    self.filename = ''
     self.AddFilter(header, terms)
 
   def AddFilter(self, header, terms):
@@ -2155,12 +2156,12 @@ def ParseFile(filename, definitions=None, optimize=True, base_dir='',
   """
   data = _ReadFile(filename)
   p = ParsePolicy(data, definitions, optimize, base_dir=base_dir,
-                  shade_check=shade_check)
+                  shade_check=shade_check, filename=filename)
   return p
 
 
 def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
-                shade_check=False):
+                shade_check=False, filename=''):
   """Parse the policy in 'data', optionally provide a naming object.
 
   Parse a blob of policy text into a policy object.
@@ -2189,8 +2190,9 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
 
     preprocessed_data = '\n'.join(_Preprocess(data, base_dir=base_dir))
     p = yacc.yacc(write_tables=False, debug=0, errorlog=yacc.NullLogger())
-
-    return p.parse(preprocessed_data, lexer=lexer)
+    policy = p.parse(preprocessed_data, lexer=lexer)
+    policy.filename = filename
+    return policy
 
   except IndexError:
     return False
@@ -2202,7 +2204,7 @@ if __name__ == '__main__':
   ret = 0
   if len(sys.argv) > 1:
     try:
-      ret = ParsePolicy(open(sys.argv[1], 'r').read())
+      ret = ParsePolicy(open(sys.argv[1], 'r').read(), filename=sys.argv[1])
     except IOError:
       print('ERROR: \'%s\' either does not exist or is not readable' %
             (sys.argv[1]))

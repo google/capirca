@@ -403,10 +403,26 @@ class CiscoASA(aclgenerator.ACLGenerator):
   _DEFAULT_PROTOCOL = 'ip'
   SUFFIX = '.asa'
 
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',
-                                      'logging',
-                                      'owner',
-                                     ])
+  def _buildTokens(self):
+    """build supported tokens for platform
+
+    Args:
+      supported_tokens: a set of default tokens a platform should implement
+      supported_sub_tokens: a set of default sub tokens
+    Returns:
+      tuple of two sets
+    """
+    supported_tokens, supported_sub_tokens = super(
+      CiscoASA, self)._buildTokens()
+
+    supported_tokens |= {'logging', 'owner', }
+
+    supported_sub_tokens.update({'option': {'established', 'tcp-established'},
+                                 # Warning, some of these are mapped
+                                 # differently. See _ACTION_TABLE
+                                 'action': {'accept', 'deny', 'reject', 'next',
+                                            'reject-with-tcp-rst'}, })
+    return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):
     self.ciscoasa_policies = []

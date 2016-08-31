@@ -104,11 +104,6 @@ class Term(aclgenerator.Term):
     else:
       protocols = ['any']
 
-    if self.term.protocol_except:
-      raise aclgenerator.UnsupportedFilterError('%s %s %s' % (
-          '\n', self.term.name,
-          'protocol_except logic not currently supported.'))
-
     # addresses
     src_addr = self.term.source_address
     if not src_addr:
@@ -122,13 +117,6 @@ class Term(aclgenerator.Term):
         self.term.destination_address_exclude):
       raise aclgenerator.UnsupportedFilterError('\n%s %s %s %s' % (
           'address exclusions unsupported by', self._PLATFORM,
-          '\nError in term:', self.term.name))
-
-    # bail on any other options; windows firewalls don't even support checking
-    # TCP flags
-    if self.term.option:
-      raise aclgenerator.UnsupportedFilterError('\n%s %s %s %s' % (
-          'option specifications unsupported by', self._PLATFORM,
           '\nError in term:', self.term.name))
 
     # ports = Map the ports in a straight list since multiports aren't supported
@@ -233,13 +221,27 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
   _RENDER_PREFIX = None
   _DEFAULT_ACTION = 'block'
   _TERM = Term
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
-                                      'expiration',
-                                      'logging',
-                                      'qos',
-                                     ])
 
   _GOOD_AFS = ['inet', 'inet6']
+
+  def _buildTokens(self):
+    """build supported tokens for platform
+
+    Args:
+      supported_tokens: a set of default tokens a platform should implement
+      supported_sub_tokens: a set of default sub tokens
+    Returns:
+      tuple of two sets
+    """
+    supported_tokens, supported_sub_tokens = super(
+      WindowsGenerator, self)._buildTokens()
+
+    supported_tokens |= {'option', }
+    supported_tokens -= {'verbatim', }
+
+    supported_sub_tokens.update({'action': {'accept', 'deny', }, })
+    del supported_sub_tokens['option']
+    return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):
     """Translate a policy from objects into strings."""

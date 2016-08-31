@@ -181,6 +181,22 @@ class WindowsIPSec(windows.WindowsGenerator):
 
   _GOOD_AFS = ['inet']
 
+  def _buildTokens(self):
+    """build supported tokens for platform
+
+    Args:
+      supported_tokens: a set of default tokens a platform should implement
+      supported_sub_tokens: a set of default sub tokens
+    Returns:
+      tuple of two sets
+    """
+    supported_tokens, supported_sub_tokens = super(
+      WindowsIPSec, self)._buildTokens()
+
+    supported_tokens -= {'icmp_type'}
+    del supported_sub_tokens['icmp_type']
+    return supported_tokens, supported_sub_tokens
+
   def _HandlePolicyHeader(self, header, target):
     policy_name = header.FilterName(self._PLATFORM) + self._POLICY_SUFFIX
     target.append(Term.CMD_PREFIX +

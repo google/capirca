@@ -15,16 +15,13 @@
 """Unittest for Nftables rendering module."""
 
 import datetime
+import logging
+import mock
 import unittest
-
 
 from lib import nacaddr
 from lib import nftables
 from lib import policy
-import mock
-
-import logging
-
 
 
 BAD_HEADER = """
@@ -165,6 +162,88 @@ term good-term-11 {
   action:: accept
 }
 """
+
+GOOD_TERM_12 = """
+term good-term-12 {
+  policer:: batman
+  action:: accept
+}
+"""
+
+SUPPORTED_TOKENS = {
+  'action',
+  'comment',
+  'destination_address',
+  'destination_address_exclude',
+  'destination_port',
+  'expiration',
+  'icmp_type',
+  'name',
+  'option',
+  'owner',
+  'platform',
+  'platform_exclude',
+  'protocol',
+  'source_address',
+  'source_address_exclude',
+  'source_port',
+  'translated',
+  'verbatim',
+}
+
+SUPPORTED_SUB_TOKENS = {
+  'action': {
+    'accept',
+    'deny',
+    'next',
+    'reject',
+    'reject-with-tcp-rst',
+  },
+  'icmp_type': {
+    'alternate-address',
+    'certification-path-advertisement',
+    'certification-path-solicitation',
+    'conversion-error',
+    'destination-unreachable',
+    'echo-reply',
+    'echo-request',
+    'mobile-redirect',
+    'home-agent-address-discovery-reply',
+    'home-agent-address-discovery-request',
+    'icmp-node-information-query',
+    'icmp-node-information-response',
+    'information-request',
+    'inverse-neighbor-discovery-advertisement',
+    'inverse-neighbor-discovery-solicitation',
+    'mask-reply',
+    'mask-request',
+    'information-reply',
+    'mobile-prefix-advertisement',
+    'mobile-prefix-solicitation',
+    'multicast-listener-done',
+    'multicast-listener-query',
+    'multicast-listener-report',
+    'multicast-router-advertisement',
+    'multicast-router-solicitation',
+    'multicast-router-termination',
+    'neighbor-advertisement',
+    'neighbor-solicit',
+    'packet-too-big',
+    'parameter-problem',
+    'redirect',
+    'redirect-message',
+    'router-advertisement',
+    'router-renumbering',
+    'router-solicit',
+    'router-solicitation',
+    'source-quench',
+    'time-exceeded',
+    'timestamp-reply',
+    'timestamp-request',
+    'unreachable',
+    'version-2-multicast-listener-report',
+  },
+}
 
 # Print a info message when a term is set to expire in that many weeks.
 # This is normally passed from command line.
@@ -376,6 +455,20 @@ class NftablesTest(unittest.TestCase):
                   '10.4.0.0/14, 10.8.0.0/13, 10.16.0.0/12, 10.32.0.0/11, '
                   '10.64.0.0/10, 10.128.0.0/9, 11.0.0.0/8, 12.0.0.0/6, '
                   '16.0.0.0/4, 32.0.0.0/3, 64.0.0.0/2, 128.0.0.0/1}', nft)
+
+  def testBuildTokens(self):
+    pol1 = nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
+                             self.mock_naming), EXP_INFO)
+    st, sst = pol1._buildTokens()
+    self.assertEquals(st, SUPPORTED_TOKENS)
+    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+
+  def testBuildWarningTokens(self):
+    pol1 = nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_12,
+                             self.mock_naming), EXP_INFO)
+    st, sst = pol1._buildTokens()
+    self.assertEquals(st, SUPPORTED_TOKENS)
+    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
 
 if __name__ == '__main__':

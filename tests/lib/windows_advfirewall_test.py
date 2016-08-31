@@ -14,6 +14,7 @@
 """Unittest for windows_advfirewall rendering module."""
 
 import datetime
+import mock
 import unittest
 
 from lib import aclgenerator
@@ -21,7 +22,6 @@ from lib import nacaddr
 from lib import naming
 from lib import policy
 from lib import windows_advfirewall
-import mock
 
 
 GOOD_HEADER_OUT = """
@@ -35,6 +35,21 @@ GOOD_HEADER_IN = """
 header {
   comment:: "this is an in test acl"
   target:: windows_advfirewall in inet
+}
+"""
+
+GOOD_SIMPLE = """
+term good-simple {
+  protocol:: tcp
+  action:: accept
+}
+"""
+
+GOOD_SIMPLE_WARNING = """
+term good-simple-warning {
+  protocol:: tcp
+  policer:: batman
+  action:: accept
 }
 """
 
@@ -148,6 +163,71 @@ term deny-to-google {
 }
 """
 
+SUPPORTED_TOKENS = {
+  'action',
+  'comment',
+  'destination_address',
+  'destination_address_exclude',
+  'destination_port',
+  'expiration',
+  'icmp_type',
+  'name',
+  'option',
+  'platform',
+  'platform_exclude',
+  'protocol',
+  'source_address',
+  'source_address_exclude',
+  'source_port',
+  'translated',
+}
+
+SUPPORTED_SUB_TOKENS = {
+  'action': {'accept', 'deny'},
+  'icmp_type': {
+    'alternate-address',
+    'certification-path-advertisement',
+    'certification-path-solicitation',
+    'conversion-error',
+    'destination-unreachable',
+    'echo-reply',
+    'echo-request', 'mobile-redirect',
+    'home-agent-address-discovery-reply',
+    'home-agent-address-discovery-request',
+    'icmp-node-information-query',
+    'icmp-node-information-response',
+    'information-request',
+    'inverse-neighbor-discovery-advertisement',
+    'inverse-neighbor-discovery-solicitation',
+    'mask-reply',
+    'mask-request', 'information-reply',
+    'mobile-prefix-advertisement',
+    'mobile-prefix-solicitation',
+    'multicast-listener-done',
+    'multicast-listener-query',
+    'multicast-listener-report',
+    'multicast-router-advertisement',
+    'multicast-router-solicitation',
+    'multicast-router-termination',
+    'neighbor-advertisement',
+    'neighbor-solicit',
+    'packet-too-big',
+    'parameter-problem',
+    'redirect',
+    'redirect-message',
+    'router-advertisement',
+    'router-renumbering',
+    'router-solicit',
+    'router-solicitation',
+    'source-quench',
+    'time-exceeded',
+    'timestamp-reply',
+    'timestamp-request',
+    'unreachable',
+    'version-2-multicast-listener-report',
+  },
+}
+
 # Print a info message when a term is set to expire in that many weeks.
 # This is normally passed from command line.
 EXP_INFO = 2
@@ -247,21 +327,20 @@ class WindowsAdvFirewallTest(unittest.TestCase):
         result,
         'did not find actual term for multi-proto')
 
-  def testDirectionIn(self):
-    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
-    self.naming.GetServiceByProto.return_value = ['25']
+  def testBuildTokens(self):
+    pol1 = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
+        GOOD_HEADER_IN + GOOD_SIMPLE, self.naming), EXP_INFO)
+    st, sst = pol1._buildTokens()
+    self.assertEquals(st, SUPPORTED_TOKENS)
+    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
-    acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
-        GOOD_HEADER_IN + GOOD_TERM_TCP, self.naming), EXP_INFO)
-    result = str(acl)
-    self.FailUnless(
-        ['name=i_good-term-tcp enable=yes interfacetype=any dir=in remoteip=any'
-         ' localip=10.0.0.0/8 localport=25 protocol=tcp action=allow'],
-        result,
-        'did not find actual term for good-term-tcp-direction-in')
+  def testBuildWarningTokens(self):
+    pol1 = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
+      GOOD_HEADER_IN + GOOD_SIMPLE_WARNING, self.naming), EXP_INFO)
+    st, sst = pol1._buildTokens()
+    self.assertEquals(st, SUPPORTED_TOKENS)
+    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
-    self.naming.GetNetAddr.assert_called_once_with('PROD_NETWRK')
-    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
 if __name__ == '__main__':
   unittest.main()
