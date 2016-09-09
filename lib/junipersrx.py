@@ -113,7 +113,6 @@ class Term(aclgenerator.Term):
 
     ret_str.append(JuniperSRX.INDENT * 3 + 'policy ' + self.term.name + ' {')
     ret_str.append(JuniperSRX.INDENT * 4 + 'match {')
-
     # SOURCE-ADDRESS
     if self.term.source_address:
       saddr_check = set()
@@ -323,7 +322,6 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     # list is used for check if policy only utilizes one type of address book.
     # (global or zone)
     addr_book_types = []
-    self._FixLargePolices()
     for header, terms in pol.filters:
       if self._PLATFORM not in header.platforms:
         continue
@@ -415,6 +413,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
 
       term_dup_check = set()
       new_terms = []
+      self._FixLargePolices(terms, filter_type)
       for term in terms:
         term.name = self.FixTermLength(term.name)
         if term.name in term_dup_check:
@@ -497,8 +496,12 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       raise MixedAddrBookTypes('Global and Zone address-book-types cannot '
                                'be used in the same policy')
 
-  def _FixLargePolices(self):
+  def _FixLargePolices(self, terms, address_family):
     """Loops over all terms finding terms exceeding SRXs policy limit.
+
+    Args:
+      terms: List of terms from a policy.
+      address_family: Tuple containing address family versions.
 
     See the following URL for more information
     http://www.juniper.net/techpubs/en_US/junos12.1x44/topics/reference/
@@ -523,39 +526,38 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         return_list[index].append(i)
       return return_list
 
-    for (unused_header, terms) in self.policy.filters:
-      expanded_terms = []
-      for term in terms:
-        if term.AddressesByteLength() > self._ADDRESS_LENGTH_LIMIT:
-          logging.warn('LARGE TERM ENCOUNTERED')
-          src_chunks = Chunks(term.source_address)
-          counter = 0
+    expanded_terms = []
+    for term in terms:
+      if (term.AddressesByteLength(
+          self._AF_MAP[address_family]) > self._ADDRESS_LENGTH_LIMIT):
+        logging.warn('LARGE TERM ENCOUNTERED')
+        src_chunks = Chunks(term.source_address)
+        counter = 0
+        for chunk in src_chunks:
+          for ip in chunk:
+            ip.parent_token = 'src_' + term.name + str(counter)
+          counter += 1
+        dst_chunks = Chunks(term.destination_address)
+        counter = 0
+        for chunk in dst_chunks:
+          for ip in chunk:
+            ip.parent_token = 'dst_' + term.name + str(counter)
+          counter += 1
 
-          for chunk in src_chunks:
-            for ip in chunk:
-              ip.parent_token = 'src_' + term.name + str(counter)
-            counter += 1
-          dst_chunks = Chunks(term.destination_address)
-          counter = 0
-          for chunk in dst_chunks:
-            for ip in chunk:
-              ip.parent_token = 'dst_' + term.name + str(counter)
-            counter += 1
-
-          src_dst_products = itertools.product(src_chunks, dst_chunks)
-          counter = 0
-          for src_dst_list in src_dst_products:
-            new_term = copy.copy(term)
-            new_term.source_address = src_dst_list[0]
-            new_term.destination_address = src_dst_list[1]
-            new_term.name = new_term.name + '_' + str(counter)
-            expanded_terms.append(new_term)
-            counter += 1
-        else:
-          expanded_terms.append(term)
-      if expanded_terms:
-        del terms[:]
-        terms.extend(expanded_terms)
+        src_dst_products = itertools.product(src_chunks, dst_chunks)
+        counter = 0
+        for src_dst_list in src_dst_products:
+          new_term = copy.copy(term)
+          new_term.source_address = src_dst_list[0]
+          new_term.destination_address = src_dst_list[1]
+          new_term.name = new_term.name + '_' + str(counter)
+          expanded_terms.append(new_term)
+          counter += 1
+      else:
+        expanded_terms.append(term)
+    if expanded_terms:
+      del terms[:]
+      terms.extend(expanded_terms)
 
   def _BuildAddressBook(self, zone, address):
     """Create the address book configuration entries.

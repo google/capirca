@@ -342,6 +342,7 @@ class Term(object):
                    'multicast-router-termination': 153,
                   },
               }
+  _IPV4_BYTE_SIZE = 1
   _IPV6_BYTE_SIZE = 4
 
   def __init__(self, obj):
@@ -766,25 +767,28 @@ class Term(object):
   def __ne__(self, other):
     return not self.__eq__(other)
 
-  def AddressesByteLength(self):
+  def AddressesByteLength(self, address_family=(4, 6)):
     """Returns the byte length of all IP addresses in the term.
 
     This is used in the srx generator due to a address size limitation.
+
+    Args:
+      address_family: Address families to include for determining byte length.
 
     Returns:
       counter: Byte length of the sum of both source and destination IPs.
     """
     counter = 0
     for i in self.source_address:
-      if i.version == 6:
+      if i.version == 6 and i.version in address_family:
         counter += self._IPV6_BYTE_SIZE
-      else:
-        counter += 1
+      elif i.version == 4 and i.version in address_family:
+        counter += self._IPV4_BYTE_SIZE
     for i in self.destination_address:
-      if i.version == 6:
+      if i.version == 6 and i.version in address_family:
         counter += self._IPV6_BYTE_SIZE
-      else:
-        counter += 1
+      elif i.version == 4 and i.version in address_family:
+        counter += self._IPV4_BYTE_SIZE
     return counter
 
   def FlattenAll(self):

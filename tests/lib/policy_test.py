@@ -1123,6 +1123,19 @@ class PolicyTest(unittest.TestCase):
     pol = policy.ParsePolicy(HEADER_4 + GOOD_TERM_30, self.naming)
     logging.info('Ensuring string formatting doesn\'t throw errors: %s', pol)
 
+  def testTermAddressByteLength(self):
+    """Tests the AddressByteLength function."""
+    pol = HEADER + GOOD_TERM_2
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IPv4('10.0.0.1/32'), nacaddr.IPv4('10.0.0.2/32'),
+        nacaddr.IPv6('2001:4860:4860::8844/128'),
+        nacaddr.IPv6('2001:4860:4860::8888/128')]
+    ret = policy.ParsePolicy(pol, self.naming)
+    term = ret.filters[0][1][0]
+    self.assertEqual(2, term.AddressesByteLength([4]))
+    self.assertEqual(8, term.AddressesByteLength([6]))
+    self.assertEqual(10, term.AddressesByteLength())
+
 # pylint: enable=maybe-no-member
 
 

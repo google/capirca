@@ -839,6 +839,33 @@ class JuniperSRXTest(unittest.TestCase):
         mock.call('SOME_HOST')])
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
+  def testLargeTermSplitIgnoreV6(self):
+    ips = list(nacaddr.IP('2620:0:1000:3103:eca0:2c09:6b32:e000/119'
+                         ).iter_subnets(new_prefix=128))
+    mo_ips = []
+    counter = 0
+    for ip in ips:
+      if counter%2 == 0:
+        mo_ips.append(nacaddr.IP(ip))
+      counter += 1
+
+    ips = list(nacaddr.IP('2720:0:1000:3103:eca0:2c09:6b32:e000/119'
+                         ).iter_subnets(new_prefix=128))
+    ips.append(nacaddr.IPv4('10.0.0.1/32'))
+    prodcolos_ips = []
+    counter = 0
+    for ip in ips:
+      if counter%2 == 0:
+        prodcolos_ips.append(nacaddr.IP(ip))
+      counter += 1
+
+    self.naming.GetNetAddr.side_effect = [mo_ips, prodcolos_ips]
+    self.naming.GetServiceByProto.return_value = ['25']
+
+    pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_14, self.naming)
+    srx = junipersrx.JuniperSRX(pol, EXP_INFO)
+    self.assertEqual(len(srx.policy.filters[0][1]), 1)
+
   def testDuplicateTermsInDifferentZones(self):
     self.naming.GetNetAddr.return_value = _IPSET
     self.naming.GetServiceByProto.side_effect = [['25'], ['26']]
