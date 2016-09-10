@@ -521,7 +521,7 @@ class CiscoTest(unittest.TestCase):
 
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_DSMO_HEADER + GOOD_TERM_8,
                                          self.naming), EXP_INFO)
-    self.failUnless('permit 6 any 192.168.0.64 0.0.255.31' in str(acl))
+    self.assertIn('permit 6 any 192.168.0.64 0.0.255.31', str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 

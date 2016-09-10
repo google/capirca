@@ -521,11 +521,19 @@ class Term(aclgenerator.Term):
       icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type,
                                            self.term.protocol, self.af)
 
-    for saddr in source_address:
-      for daddr in destination_address:
-        for sport in source_port:
-          for dport in destination_port:
+    fixed_src_addresses = [self._GetIpString(x) for x in source_address]
+    fixed_dst_addresses = [self._GetIpString(x) for x in destination_address]
+    fixed_src_ports = [self._FormatPort(x) for x in source_port]
+    fixed_dst_ports = [self._FormatPort(x) for x in destination_port]
+    fixed_opts = {}
+    for p in protocol:
+      fixed_opts[p] = self._FixOptions(p, self.options)
+    for saddr in fixed_src_addresses:
+      for daddr in fixed_dst_addresses:
+        for sport in fixed_src_ports:
+          for dport in fixed_dst_ports:
             for proto in protocol:
+              opts = fixed_opts[proto]
               for icmp_type in icmp_types:
                 ret_str.extend(self._TermletToStr(
                     _ACTION_TABLE.get(str(self.term.action[0])),
@@ -535,9 +543,63 @@ class Term(aclgenerator.Term):
                     daddr,
                     dport,
                     icmp_type,
-                    self.options))
+                    opts))
 
     return '\n'.join(ret_str)
+
+  def _GetIpString(self, addr):
+    """Formats the address object for printing in the ACL.
+
+    Args:
+      addr: str or ipaddr, address
+    Returns:
+      An address string suitable for the ACL.
+    """
+    if type(addr) is nacaddr.IPv4 or type(addr) is ipaddr.IPv4Network:
+      if addr.numhosts > 1:
+        return '%s %s' % (addr.ip, addr.hostmask)
+      return 'host %s' % (addr.ip)
+    if type(addr) is nacaddr.IPv6 or type(addr) is ipaddr.IPv6Network:
+      if addr.numhosts > 1:
+        return '%s' % (addr.with_prefixlen)
+      return 'host %s' % (addr.ip)
+    # DSMO enabled
+    if type(addr) is tuple:
+      return '%s %s' % summarizer.ToDottedQuad(addr, negate=True)
+    return addr
+
+  def _FormatPort(self, port):
+    """Returns a formatted port string for the range.
+
+    Args:
+      port: str list or none, the port range
+    Returns:
+      A string suitable for the ACL.
+    """
+    if not port:
+      return ''
+    if port[0] != port[1]:
+      return 'range %d %d' % (port[0], port[1])
+    return 'eq %d' % (port[0])
+
+  def _FixOptions(self, proto, option):
+    """Returns a set of options suitable for the given protocol
+
+    In practice this is only used to filter out 'established' for UDP.
+
+    Args:
+      proto: str or int, protocol
+      option: list or none, optional, eg. 'logging' tokens.
+    Returns:
+      A list of options suitable for that protocol.
+    """
+    # Prevent UDP from appending 'established' to ACL line
+    sane_options = list(option)
+    if ((proto == self.PROTO_MAP['udp'] or proto == 'udp')
+        and 'established' in sane_options):
+      sane_options.remove('established')
+    return sane_options
+
 
   def _TermletToStr(self, action, proto, saddr, sport, daddr, dport,
                     icmp_type, option):
@@ -546,10 +608,10 @@ class Term(aclgenerator.Term):
     Args:
       action: str, action
       proto: str or int, protocol
-      saddr: str or ipaddr, source address
-      sport: str list or none, the source port
-      daddr: str or ipaddr, the destination address
-      dport: str list or none, the destination port
+      saddr: str, source address
+      sport: str, the source port
+      daddr: str, the destination address
+      dport: str, the destination port
       icmp_type: icmp-type numeric specification (if any)
       option: list or none, optional, eg. 'logging' tokens.
 
@@ -559,76 +621,12 @@ class Term(aclgenerator.Term):
     Raises:
       UnsupportedCiscoAccessListError: When unknown icmp-types specified
     """
-    # inet4
-    if type(saddr) is nacaddr.IPv4 or type(saddr) is ipaddr.IPv4Network:
-      if saddr.numhosts > 1:
-        saddr = '%s %s' % (saddr.ip, saddr.hostmask)
-      else:
-        saddr = 'host %s' % (saddr.ip)
-    if type(daddr) is nacaddr.IPv4 or type(daddr) is ipaddr.IPv4Network:
-      if daddr.numhosts > 1:
-        daddr = '%s %s' % (daddr.ip, daddr.hostmask)
-      else:
-        daddr = 'host %s' % (daddr.ip)
-    # inet6
-    if type(saddr) is nacaddr.IPv6 or type(saddr) is ipaddr.IPv6Network:
-      if saddr.numhosts > 1:
-        saddr = '%s' % (saddr.with_prefixlen)
-      else:
-        saddr = 'host %s' % (saddr.ip)
-    if type(daddr) is nacaddr.IPv6 or type(daddr) is ipaddr.IPv6Network:
-      if daddr.numhosts > 1:
-        daddr = '%s' % (daddr.with_prefixlen)
-      else:
-        daddr = 'host %s' % (daddr.ip)
-    # DSMO enabled
-    if type(saddr) is tuple:
-      saddr = '%s %s' % summarizer.ToDottedQuad(saddr, negate=True)
-    if type(daddr) is tuple:
-      daddr = '%s %s' % summarizer.ToDottedQuad(daddr, negate=True)
-
-    # fix ports
-    if not sport:
-      sport = ''
-    elif sport[0] != sport[1]:
-      sport = 'range %d %d' % (sport[0], sport[1])
-    else:
-      sport = 'eq %d' % (sport[0])
-
-    if not dport:
-      dport = ''
-    elif dport[0] != dport[1]:
-      dport = 'range %d %d' % (dport[0], dport[1])
-    else:
-      dport = 'eq %d' % (dport[0])
-
-    if not option:
-      option = ['']
-
-    # Prevent UDP from appending 'established' to ACL line
-    sane_options = list(option)
-    if ((proto == self.PROTO_MAP['udp'] or proto == 'udp')
-        and 'established' in sane_options):
-      sane_options.remove('established')
-    ret_lines = []
-
     # str(icmp_type) is needed to ensure 0 maps to '0' instead of FALSE
     icmp_type = str(icmp_type)
-    if icmp_type:
-      ret_lines.append(' %s %s %s %s %s %s %s %s' % (action, proto, saddr,
-                                                     sport, daddr, dport,
-                                                     icmp_type,
-                                                     ' '.join(sane_options)
-                                                    ))
-    else:
-      ret_lines.append(' %s %s %s %s %s %s %s' % (action, proto, saddr,
-                                                  sport, daddr, dport,
-                                                  ' '.join(sane_options)
-                                                 ))
-
-    # remove any trailing spaces and replace multiple spaces with singles
-    stripped_ret_lines = [re.sub(r'\s+', ' ', x).rstrip() for x in ret_lines]
-    return stripped_ret_lines
+    all_elements = [action, str(proto), saddr, sport, daddr, dport, icmp_type,
+                    ' '.join(option)]
+    non_empty_elements = [x for x in all_elements if x]
+    return [' ' + ' '.join(non_empty_elements)]
 
   def _FixConsecutivePorts(self, port_list):
     """Takes a list of tuples and expands the tuple if the range is two.
