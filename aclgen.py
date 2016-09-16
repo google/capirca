@@ -54,6 +54,7 @@ import gflags as flags
 import logging
 
 
+
 FLAGS = flags.FLAGS
 flags.DEFINE_string(
     'base_directory',
