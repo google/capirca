@@ -3,14 +3,14 @@
 ! $Revision:$
 no ip access-list extended edge-inbound
 ip access-list extended edge-inbound
-remark $Id:$
-remark this is a sample edge input filter that generates
-remark multiple output formats.
+ remark $Id:$
+ remark this is a sample edge input filter that generates
+ remark multiple output formats.
 
 
-remark this is a sample edge input filter with a very very very long and
-remark multi-line comment that
-remark also has multiple entries.
+ remark this is a sample edge input filter with a very very very long and
+ remark multi-line comment that
+ remark also has multiple entries.
  deny ip 0.0.0.0 0.255.255.255 any
  deny ip 192.0.0.0 0.0.0.255 any
  deny ip 192.0.2.0 0.0.0.255 any
