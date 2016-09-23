@@ -654,8 +654,9 @@ class Iptables(aclgenerator.ACLGenerator):
     """Emit a warning if a policy's default target is not a built-in chain."""
     if target not in self._GOOD_FILTERS:
       logging.warn('Filter is generating a non-standard chain that will not '
-                   'apply to traffic unless linked from INPUT, OUTPUT, FORWARD,'
-                   'or POSTROUTING filters. New chain name is: %s', target)
+                   'apply to traffic unless linked from INPUT, OUTPUT, '
+                   'FORWARD, or POSTROUTING filters. New chain name is: %s',
+                   target)
 
   def _TranslatePolicy(self, pol, exp_info):
     """Translate a policy from objects into strings."""
