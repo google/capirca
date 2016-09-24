@@ -181,6 +181,10 @@ class FragmentOffset(Field):
   """A fragment-offset field."""
 
 
+class ForwardingClass(Field):
+  """A forwarding-class field."""
+
+
 class IcmpType(Field):
   """A icmp-type field."""
 
@@ -308,6 +312,7 @@ field_map = {
     'ether-type': EtherType,
     'expiration': Expiration,
     'fragment-offset': FragmentOffset,
+    'forwarding-class': ForwardingClass,
     'icmp-type': IcmpType,
     'logging': Logging,
     'loss-priority': LossPriority,
