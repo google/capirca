@@ -30,7 +30,6 @@ from ply import yacc
 
 import logging
 
-
 DEFINITIONS = None
 DEFAULT_DEFINITIONS = './def'
 ACTIONS = set(('accept', 'deny', 'reject', 'next', 'reject-with-tcp-rst'))
@@ -167,6 +166,8 @@ class Policy(object):
   def _TranslateTerms(self, terms):
     """."""
     if not terms:
+      if globals().get('LINT_MODE'):
+        return
       raise NoTermsError('no terms found')
     for term in terms:
       # TODO(pmoody): this probably belongs in Term.SanityCheck(),
@@ -2160,7 +2161,7 @@ def ParseFile(filename, definitions=None, optimize=True, base_dir='',
 
 
 def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
-                shade_check=False):
+                shade_check=False, track=False, filename=""):
   """Parse the policy in 'data', optionally provide a naming object.
 
   Parse a blob of policy text into a policy object.
@@ -2171,6 +2172,9 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
     optimize: bool - whether to summarize networks and services.
     base_dir: base path string to look for acls or include files.
     shade_check: bool - whether to raise an exception when a term is shaded.
+    track: bool - whether or not to use original file content and track all
+                  locations of strings. useful for linting.
+    filename: the policy filename, foo.pol, etc.
 
   Returns:
     policy object or False (if parse error).
@@ -2187,10 +2191,30 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
 
     lexer = lex.lex()
 
-    preprocessed_data = '\n'.join(_Preprocess(data, base_dir=base_dir))
+    def trackfn(*args, **kwargs):
+      """
+      Token handling wrapper to automatically track line numbers
+      for all strings
+      """
+      r = lexer.token(*args, **kwargs)
+      if not r:
+        # EOF is None
+        return
+      r.value = naming.TrackStr(r.value, lineno=r.lineno)
+      return r
+
+    if track:
+      tokenfunc = trackfn
+      globals()['LINT_MODE'] = True
+    else:
+      data = '\n'.join(_Preprocess(data, base_dir=base_dir))
+      tokenfunc = lexer.token
+
     p = yacc.yacc(write_tables=False, debug=0, errorlog=yacc.NullLogger())
 
-    return p.parse(preprocessed_data, lexer=lexer)
+    policy = p.parse(data, lexer=lexer, tokenfunc=tokenfunc)
+    policy.filename = filename
+    return policy
 
   except IndexError:
     return False
