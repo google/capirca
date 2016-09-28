@@ -47,6 +47,7 @@ from lib import packetfilter
 from lib import pcap
 from lib import policy
 from lib import speedway
+from lib import squid
 from lib import srxlo
 from lib import windows_advfirewall
 
@@ -174,6 +175,7 @@ def RenderFile(input_file, output_directory, definitions,
   nft = False
   win_afw = False
   xacl = False
+  sqd = False
 
   try:
     conf = open(input_file).read()
@@ -234,6 +236,8 @@ def RenderFile(input_file, output_directory, definitions,
     nft = copy.deepcopy(pol)
   if 'gce' in platforms:
     gcefw = copy.deepcopy(pol)
+  if 'squid' in platforms:
+    sqd = copy.deepcopy(pol)
 
   if not output_directory.endswith('/'):
     output_directory += '/'
@@ -315,10 +319,15 @@ def RenderFile(input_file, output_directory, definitions,
       acl_obj = gce.GCE(gcefw, exp_info)
       RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
                 input_file, write_files)
+    if sqd:
+      acl_obj = squid.Squid(sqd, exp_info)
+      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
+                input_file, write_files)
   # TODO(robankeny) add additional errors.
   except (juniper.Error, junipersrx.Error, cisco.Error, ipset.Error,
           iptables.Error, speedway.Error, pcap.Error,
-          aclgenerator.Error, aruba.Error, nftables.Error, gce.Error):
+          aclgenerator.Error, aruba.Error, nftables.Error, gce.Error,
+          squid.Error):
     raise ACLGeneratorError('Error generating target ACL for %s:\n%s%s' % (
         input_file, sys.exc_info()[0], sys.exc_info()[1]))
 

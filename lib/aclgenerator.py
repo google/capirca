@@ -16,6 +16,7 @@
 """ACL Generator base class."""
 
 import copy
+import hashlib
 import re
 from string import Template
 
@@ -353,7 +354,8 @@ class ACLGenerator(object):
 
     return mod
 
-  def FixTermLength(self, term_name, abbreviate=False, truncate=False):
+  def FixTermLength(self, term_name, abbreviate=False, truncate=False,
+                    hash_md5=False):
     """Return a term name which is equal or shorter than _TERM_MAX_LENGTH.
 
        New term is obtained in two steps. First, if allowed, automatic
@@ -364,6 +366,7 @@ class ACLGenerator(object):
       term_name: Name to abbreviate if necessary.
       abbreviate: Whether to allow abbreviations to shorten the length.
       truncate: Whether to allow truncation to shorten the length.
+      hash_md5: Whether to allow md5 hashes to shorten the length.
     Returns:
        A string based on term_name, that is equal or shorter than
        _TERM_MAX_LENGTH abbreviated and truncated as necessary.
@@ -377,6 +380,8 @@ class ACLGenerator(object):
         if len(new_term) <= self._TERM_MAX_LENGTH:
           return new_term
         new_term = re.sub(word, abbrev, new_term)
+    if hash_md5 and len(new_term) > self._TERM_MAX_LENGTH:
+      return hashlib.md5(new_term).hexdigest()[:self._TERM_MAX_LENGTH]
     if truncate:
       new_term = new_term[:self._TERM_MAX_LENGTH]
     if len(new_term) <= self._TERM_MAX_LENGTH:
