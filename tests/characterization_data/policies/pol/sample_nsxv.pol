@@ -144,13 +144,6 @@ term allow-dns-fragments {
   action:: accept
 }
 
-term ratelimit-large-dns {
-  destination-address:: GOOGLE_DNS
-  destination-port:: DNS
-  protocol:: udp
-  action:: next
-}
-
 term reject-large-dns {
   destination-address:: GOOGLE_DNS
   destination-port:: DNS
