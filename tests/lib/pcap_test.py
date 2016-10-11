@@ -14,6 +14,7 @@
 """Unittest for pcap rendering module."""
 
 import datetime
+import mock
 import unittest
 
 from lib import aclgenerator
@@ -21,7 +22,6 @@ from lib import nacaddr
 from lib import naming
 from lib import pcap
 from lib import policy
-import mock
 
 
 GOOD_HEADER = """
@@ -87,6 +87,17 @@ term good-term-tcp {
   destination-address:: PROD_NETWRK
   destination-port:: SMTP
   protocol:: tcp
+  action:: accept
+}
+"""
+
+GOOD_WARNING_TERM = """
+term good-warning-term {
+  comment:: "Test term 1"
+  destination-address:: PROD_NETWRK
+  destination-port:: SMTP
+  protocol:: tcp
+  policer:: batman
   action:: accept
 }
 """
@@ -162,6 +173,83 @@ term good-term-hbh {
   action:: accept
 }
 """
+
+SUPPORTED_TOKENS = {
+  'action',
+  'comment',
+  'destination_address',
+  'destination_address_exclude',
+  'destination_port',
+  'expiration',
+  'icmp_type',
+  'logging',
+  'name',
+  'option',
+  'platform',
+  'platform_exclude',
+  'protocol',
+  'source_address',
+  'source_address_exclude',
+  'source_port',
+  'translated',
+}
+
+SUPPORTED_SUB_TOKENS = {
+  'action': {'accept', 'deny', 'reject', 'next', },
+  'icmp_type': {
+    'alternate-address',
+    'certification-path-advertisement',
+    'certification-path-solicitation',
+    'conversion-error',
+    'destination-unreachable',
+    'echo-reply',
+    'echo-request',
+    'mobile-redirect',
+    'home-agent-address-discovery-reply',
+    'home-agent-address-discovery-request',
+    'icmp-node-information-query',
+    'icmp-node-information-response',
+    'information-request',
+    'inverse-neighbor-discovery-advertisement',
+    'inverse-neighbor-discovery-solicitation',
+    'mask-reply',
+    'mask-request',
+    'information-reply',
+    'mobile-prefix-advertisement',
+    'mobile-prefix-solicitation',
+    'multicast-listener-done',
+    'multicast-listener-query',
+    'multicast-listener-report',
+    'multicast-router-advertisement',
+    'multicast-router-solicitation',
+    'multicast-router-termination',
+    'neighbor-advertisement',
+    'neighbor-solicit',
+    'packet-too-big',
+    'parameter-problem',
+    'redirect',
+    'redirect-message',
+    'router-advertisement',
+    'router-renumbering',
+    'router-solicit',
+    'router-solicitation',
+    'source-quench',
+    'time-exceeded',
+    'timestamp-reply',
+    'timestamp-request',
+    'unreachable',
+    'version-2-multicast-listener-report',
+  },
+  'option': {'syn',
+             'ack',
+             'fin',
+             'rst',
+             'urg',
+             'psh',
+             'all',
+             'none',
+             'tcp-established', }
+}
 
 # Print a info message when a term is set to expire in that many weeks.
 # This is normally passed from command line.
@@ -316,6 +404,26 @@ class PcapFilter(unittest.TestCase):
     self.failUnless(
         '(ip6 protochain 0)' in result,
         'did not find actual terms for unicast-term')
+
+  def testBuildTokens(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    self.naming.GetServiceByProto.return_value = ['25']
+    pol1 = pcap.PcapFilter(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_TCP,
+                           self.naming), EXP_INFO)
+    st, sst = pol1._buildTokens()
+    self.assertEquals(st, SUPPORTED_TOKENS)
+    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+
+  def testBuildWarningTokens(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    self.naming.GetServiceByProto.return_value = ['25']
+
+    pol1 = pcap.PcapFilter(
+      policy.ParsePolicy(GOOD_HEADER + GOOD_WARNING_TERM,
+                         self.naming), EXP_INFO)
+    st, sst = pol1._buildTokens()
+    self.assertEquals(st, SUPPORTED_TOKENS)
+    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
 
 if __name__ == '__main__':

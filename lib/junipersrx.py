@@ -203,15 +203,6 @@ class Term(aclgenerator.Term):
 
       ret_str.append(JuniperSRX.INDENT * 3 + '}')
 
-    # OPTIONS
-    if self.term.option:
-      raise SRXOptionError('Options are not implemented yet, please remove ' +
-                           'from term %s' % self.term.name)
-
-    # VERBATIM
-    if self.term.verbatim:
-      raise SRXVerbatimError('Verbatim is not implemented, please remove ' +
-                             'the offending term %s.' % self.term.name)
     return '\n'.join(ret_str)
 
   def _Group(self, group):
@@ -272,17 +263,6 @@ class JuniperSRX(aclgenerator.ACLGenerator):
              'mixed': (4, 6)}
   _AF_ICMP_MAP = {'icmp': 'inet',
                   'icmpv6': 'inet6'}
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['dscp_except',
-                                      'dscp_match',
-                                      'dscp_set',
-                                      'expiration',
-                                      'logging',
-                                      'owner',
-                                      'routing_instance',    # safe to skip
-                                      'timeout',
-                                      'qos',                 # safely ignored
-                                      'counter',             # safely ignored
-                                      'vpn'])
   INDENT = '    '
   _MAX_HEADER_COMMENT_LENGTH = 71
   # The SRX platform is limited in how many IP addresses can be used in
@@ -290,6 +270,34 @@ class JuniperSRX(aclgenerator.ACLGenerator):
   _ADDRESS_LENGTH_LIMIT = 1023
   # IPv6 are 32 bytes compared to IPv4, this is used as a multiplier.
   _IPV6_SIZE = 4
+
+  def _buildTokens(self):
+    """build supported tokens for platform
+
+    Args:
+      supported_tokens: a set of default tokens a platform should implement
+      supported_sub_tokens: a set of default sub tokens
+    Returns:
+      tuple of two sets
+    """
+    supported_tokens, supported_sub_tokens = super(
+      JuniperSRX, self)._buildTokens()
+
+    supported_tokens |= {'dscp_except',
+                         'dscp_match',
+                         'dscp_set',
+                         'logging',
+                         'option',
+                         'owner',
+                         'timeout',
+                         'verbatim',
+                         'vpn'}
+
+    supported_sub_tokens.update(
+      {'action': {'accept', 'deny', 'reject', 'count', 'log', 'dscp'},
+    })
+    del supported_sub_tokens['option']
+    return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):
     """Transform a policy object into a JuniperSRX object.

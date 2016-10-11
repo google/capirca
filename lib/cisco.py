@@ -84,9 +84,6 @@ class TermStandard(object):
     if self.term.source_port or self.term.destination_port:
       raise StandardAclTermError(
           'Standard ACLs prohibit use of port numbers')
-    if self.term.counter:
-      raise StandardAclTermError(
-          'Counters are not implemented in standard ACLs')
     if self.term.logging:
       logging.warn(
           'WARNING: Standard ACL logging is set in filter %s, term %s and '
@@ -659,18 +656,30 @@ class Cisco(aclgenerator.ACLGenerator):
   _PROTO_INT = True
   _TERM_REMARK = True
 
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['address',
-                                      'counter',
-                                      'dscp_match',
-                                      'expiration',
-                                      'logging',
-                                      'loss_priority',
-                                      'owner',
-                                      'policer',
-                                      'port',
-                                      'qos',
-                                      'routing_instance',
-                                     ])
+  def _buildTokens(self):
+    """build supported tokens for platform
+
+    Args:
+      supported_tokens: a set of default tokens a platform should implement
+      supported_sub_tokens: a set of default sub tokens
+    Returns:
+      tuple of two sets
+    """
+    supported_tokens, supported_sub_tokens = super(Cisco, self)._buildTokens()
+
+    supported_tokens |= {'address',
+                         # todo, implement address_exclude
+                         # 'address_exclude',
+                         'dscp_match',
+                         'logging',
+                         'owner', }
+
+    supported_sub_tokens.update({'option': {'established', 'tcp-established'},
+                                 # Warning, some of these are mapped
+                                 # differently. See _ACTION_TABLE
+                                 'action': {'accept', 'deny', 'reject', 'next',
+                                            'reject-with-tcp-rst'}, })
+    return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):
     self.cisco_policies = []

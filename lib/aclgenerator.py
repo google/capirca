@@ -16,6 +16,7 @@
 """ACL Generator base class."""
 
 import copy
+import logging
 import re
 from string import Template
 
@@ -206,31 +207,19 @@ class ACLGenerator(object):
   # Default protocol to apply when no protocol is specified.
   _DEFAULT_PROTOCOL = 'ip'
   # Unsupported protocols by address family.
-  _SUPPORTED_AF = set(('inet', 'inet6'))
+  _SUPPORTED_AF = {'inet', 'inet6'}
   # Commonly misspelled protocols that the generator should reject.
   _FILTER_BLACKLIST = {}
 
-  # Set of required keywords that every generator must support.
-  _REQUIRED_KEYWORDS = set(['action',
-                            'comment',
-                            'destination_address',
-                            'destination_address_exclude',
-                            'destination_port',
-                            'icmp_type',
-                            'name',         # obj attribute, not keyword
-                            'option',
-                            'owner',
-                            'protocol',
-                            'platform',
-                            'platform_exclude',
-                            'source_address',
-                            'source_address_exclude',
-                            'source_port',
-                            'translated',  # obj attribute, not keyword
-                            'verbatim',
-                           ])
-  # Generators should redefine this in subclass as optional support is added
-  _OPTIONAL_SUPPORTED_KEYWORDS = set([])
+  # Only warn if these tokens are not implemented by a platform. These are not
+  # meant to be overridden in subclasses like supported tokens/sub tokens.
+  WARN_IF_UNSUPPORTED = {'counter',
+                         'logging',
+                         'loss_priority',
+                         'owner',
+                         'qos',
+                         'routing_instance',
+                         'policer'}
 
   # Abbreviation table used to automatically abbreviate terms that exceed
   # specified limit. We use uppercase for abbreviations to distinguish
@@ -271,47 +260,129 @@ class ACLGenerator(object):
 
   def __init__(self, pol, exp_info):
     """Initialise an ACLGenerator.  Store policy structure for processing."""
-    object.__init__(self)
-
-    # The default list of valid keyword tokens for generators
-    self._valid_keywords = self._REQUIRED_KEYWORDS.union(
-        self._OPTIONAL_SUPPORTED_KEYWORDS)
+    supported_tokens, supported_sub_tokens = self._getSupportedTokens()
 
     self.policy = pol
-
+    all_err = []
+    all_warn = []
     for header, terms in pol.filters:
       if self._PLATFORM in header.platforms:
         # Verify valid keywords
         # error on unsupported optional keywords that could result
         # in dangerous or unexpected results
         for term in terms:
+          if term.platform:    
+            if self._PLATFORM not in term.platform:   
+              continue    
+          if term.platform_exclude:   
+            if self._PLATFORM in term.platform_exclude:   
+              continue
           # Only verify optional keywords if the term is active on the platform.
           err = []
-          if term.platform:
-            if self._PLATFORM not in term.platform:
-              continue
-          if term.platform_exclude:
-            if self._PLATFORM in term.platform_exclude:
-              continue
+          warn = []
           for el, val in term.__dict__.items():
             # Private attributes do not need to be valid keywords.
-            if (val and el not in self._valid_keywords
-                and not el.startswith('flatten')):
-              err.append(el)
+            if (val and el not in supported_tokens and not
+                  el.startswith('flatten')):
+              if (val and el not in self.WARN_IF_UNSUPPORTED):
+                err.append(el)
+              else:
+                warn.append(el)
+            # ignore Liskov's rule.
+            if (val and type(val) is list and
+                el in supported_sub_tokens):
+                ns = set(val) - supported_sub_tokens[el]
+                # hack support for ArbitraryOptions in junos. todo, add the
+                # junos options into the lexer, then we can nuke .*
+                # shenanigans.
+                if ns and '.*' not in supported_sub_tokens[el]:
+                  err.append(' '.join(ns))
           if err:
-            raise UnsupportedFilterError(
-                'Unsupported optional keyword(s): %s in term %s of policy %s '
-                'for platform %s' % (' '.join(err), term.name,
-                                     header.FilterName(self._PLATFORM),
-                                     self._PLATFORM))
+            all_err.append(
+              '%s contains unsupported keywords (%s) for target %s in policy %s'
+              % (term.name, ' '.join(err), self._PLATFORM, pol.filename))
+          if warn:
+            all_warn.append(
+              '%s contains unimplemented keywords (%s) for target %s in policy %s'
+              % (term.name, ' '.join(warn), self._PLATFORM, pol.filename))
         continue
-
+    if all_err:
+      raise UnsupportedFilterError('\n %s' % '\n'.join(all_err))
+    if all_warn:
+      logging.debug('\n %s' % '\n'.join(all_warn))
     self._TranslatePolicy(pol, exp_info)
 
   def _TranslatePolicy(self, pol, exp_info):
     # pylint: disable=unused-argument
     """Translate policy contents to platform specific data structures."""
     raise Error('%s does not implement _TranslatePolicies()' % self._PLATFORM)
+
+  def _buildTokens(self):
+    """provide a default for supported tokens and sub tokens.
+
+    Returns:
+      tuple
+    """
+    # Set of supported keywords for a given platform.  Values should be in
+    # undercase form, eg, icmp_type (not icmp-type)
+    supported_tokens = {'action',
+                        'comment',
+                        'destination_address',
+                        'destination_address_exclude',
+                        'destination_port',
+                        'expiration',
+                        'icmp_type',
+                        'name',  # obj attribute, not token
+                        'option',
+                        'protocol',
+                        'platform',
+                        'platform_exclude',
+                        'source_address',
+                        'source_address_exclude',
+                        'source_port',
+                        'translated',  # obj attribute, not token
+                        'verbatim'}
+
+    # These keys must be also listed in supported_tokens.
+    # Keys should be in undercase form, eg, icmp_type (not icmp-type). Values
+    # should be in dash form, icmp-type (not icmp_type)
+    supported_sub_tokens = {
+        'option': {
+          'established',
+          'first-fragment',
+          'is-fragment',
+          'initial',
+          'rst',
+          'sample',
+          'tcp-established',
+        },
+        'action': {
+          'accept',
+          'deny',
+          'next',
+          'reject',
+          'reject-with-tcp-rst',
+        },
+        'icmp_type': set(Term.ICMP_TYPE[4].keys() + Term.ICMP_TYPE[6].keys())
+    }
+    return supported_tokens, supported_sub_tokens
+
+  def _getSupportedTokens(self):
+    """build our supported tokens and sub tokens
+
+    Returns:
+      tuple
+    """
+    supported_tokens, supported_sub_tokens = self._buildTokens()
+    # make sure we don't have subtokens that are not listed. This should not
+    # occur unless a platform's tokens/subtokens are changed.
+    undefined_st = set(supported_sub_tokens) - supported_tokens
+    if undefined_st:
+      raise UnsupportedFilterError(
+        'Found undefined sub tokens missing from the supported token list! '
+        'These must match. (%s)' % ' '.join(undefined_st))
+    # all good.
+    return supported_tokens, supported_sub_tokens
 
   def FixHighPorts(self, term, af='inet', all_protocols_stateful=False):
     """Evaluate protocol and ports of term, return sane version of term."""

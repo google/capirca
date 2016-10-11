@@ -14,6 +14,7 @@
 """Unittest for windows_ipsec rendering module."""
 
 import datetime
+import mock
 import unittest
 
 from lib import aclgenerator
@@ -21,13 +22,27 @@ from lib import nacaddr
 from lib import naming
 from lib import policy
 from lib import windows_ipsec
-import mock
 
 
 GOOD_HEADER = """
 header {
   comment:: "this is a test acl"
   target:: windows_ipsec test-filter
+}
+"""
+
+GOOD_SIMPLE = """
+term good-simple {
+  protocol:: tcp
+  action:: accept
+}
+"""
+
+GOOD_SIMPLE_WARNING = """
+term good-simple-warning {
+  protocol:: tcp
+  policer:: batman
+  action:: accept
 }
 """
 
@@ -75,6 +90,26 @@ term multi-proto {
   action:: accept
 }
 """
+
+SUPPORTED_TOKENS = {
+  'action',
+  'comment',
+  'destination_address',
+  'destination_address_exclude',
+  'destination_port',
+  'expiration',
+  'name',
+  'option',
+  'platform',
+  'platform_exclude',
+  'protocol',
+  'source_address',
+  'source_address_exclude',
+  'source_port',
+  'translated',
+}
+
+SUPPORTED_SUB_TOKENS = {'action': {'accept', 'deny'}, }
 
 # Print a info message when a term is set to expire in that many weeks.
 # This is normally passed from command line.
@@ -144,11 +179,6 @@ class WindowsIPSecTest(unittest.TestCase):
         result,
         'good-term-icmp')
 
-  def testBadIcmp(self):
-    acl = windows_ipsec.WindowsIPSec(policy.ParsePolicy(
-        GOOD_HEADER + BAD_TERM_ICMP, self.naming), EXP_INFO)
-    self.assertRaises(aclgenerator.UnsupportedFilterError, str, acl)
-
   @mock.patch.object(windows_ipsec.logging, 'warn')
   def testExpiredTerm(self, mock_warn):
     windows_ipsec.WindowsIPSec(policy.ParsePolicy(
@@ -188,6 +218,20 @@ class WindowsIPSecTest(unittest.TestCase):
          ' filterlist=t_multi-proto-list filteraction=t_multi-proto-action'],
         result,
         'multi-proto')
+
+  def testBuildTokens(self):
+    pol1 = windows_ipsec.WindowsIPSec(policy.ParsePolicy(
+        GOOD_HEADER + GOOD_SIMPLE, self.naming), EXP_INFO)
+    st, sst = pol1._buildTokens()
+    self.assertEquals(st, SUPPORTED_TOKENS)
+    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+
+  def testBuildWarningTokens(self):
+    pol1 = windows_ipsec.WindowsIPSec(policy.ParsePolicy(
+      GOOD_HEADER + GOOD_SIMPLE_WARNING, self.naming), EXP_INFO)
+    st, sst = pol1._buildTokens()
+    self.assertEquals(st, SUPPORTED_TOKENS)
+    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
 
 if __name__ == '__main__':

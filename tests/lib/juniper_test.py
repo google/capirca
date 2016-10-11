@@ -370,6 +370,103 @@ term long-policer-term-1 {
 }
 """
 
+SUPPORTED_TOKENS = {
+  'action',
+  'address',
+  'comment',
+  'counter',
+  'destination_address',
+  'destination_address_exclude',
+  'destination_port',
+  'destination_prefix',
+  'dscp_except',
+  'dscp_match',
+  'dscp_set',
+  'ether_type',
+  'expiration',
+  'forwarding_class',
+  'fragment_offset',
+  'hop_limit',
+  'icmp_type',
+  'logging',
+  'loss_priority',
+  'name',
+  'next_ip',
+  'option',
+  'owner',
+  'packet_length',
+  'platform',
+  'platform_exclude',
+  'policer',
+  'port',
+  'precedence',
+  'protocol',
+  'protocol_except',
+  'qos',
+  'routing_instance',
+  'source_address',
+  'source_address_exclude',
+  'source_port',
+  'source_prefix',
+  'traffic_type',
+  'translated',
+  'verbatim',
+}
+
+SUPPORTED_SUB_TOKENS = {
+  'action': {'accept', 'deny', 'reject', 'next', 'reject-with-tcp-rst'},
+  'icmp_type': {
+    'alternate-address',
+    'certification-path-advertisement',
+    'certification-path-solicitation',
+    'conversion-error',
+    'destination-unreachable',
+    'echo-reply',
+    'echo-request',
+    'mobile-redirect',
+    'home-agent-address-discovery-reply',
+    'home-agent-address-discovery-request',
+    'icmp-node-information-query',
+    'icmp-node-information-response',
+    'information-request',
+    'inverse-neighbor-discovery-advertisement',
+    'inverse-neighbor-discovery-solicitation',
+    'mask-reply',
+    'mask-request',
+    'information-reply',
+    'mobile-prefix-advertisement',
+    'mobile-prefix-solicitation',
+    'multicast-listener-done',
+    'multicast-listener-query',
+    'multicast-listener-report',
+    'multicast-router-advertisement',
+    'multicast-router-solicitation',
+    'multicast-router-termination',
+    'neighbor-advertisement',
+    'neighbor-solicit',
+    'packet-too-big',
+    'parameter-problem',
+    'redirect',
+    'redirect-message',
+    'router-advertisement',
+    'router-renumbering',
+    'router-solicit',
+    'router-solicitation',
+    'source-quench',
+    'time-exceeded',
+    'timestamp-reply',
+    'timestamp-request',
+    'unreachable',
+    'version-2-multicast-listener-report',
+  },
+  'option': {'established',
+             'first-fragment',
+             '.*',  # not actually a lex token!
+             'sample',
+             'tcp-established',
+             'tcp-initial', }
+}
+
 # Print a info message when a term is set to expire in that many weeks.
 # This is normally passed from command line.
 EXP_INFO = 2
@@ -995,6 +1092,22 @@ class JuniperTest(unittest.TestCase):
     self.assertRaises(juniper.JuniperNextIpError, str, jcl)
 
     self.naming.GetNetAddr.assert_called_once_with('TEST_NEXT')
+
+  def testBuildTokens(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/26')]
+
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
+                                             self.naming), EXP_INFO)
+    st, sst = jcl._buildTokens()
+    self.assertEquals(st, SUPPORTED_TOKENS)
+    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+
+  def testBuildWarningTokens(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
+                                             self.naming), EXP_INFO)
+    st, sst = jcl._buildTokens()
+    self.assertEquals(st, SUPPORTED_TOKENS)
+    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
 
 if __name__ == '__main__':

@@ -134,23 +134,6 @@ class Term(aclgenerator.Term):
           ret_str.append(str(next_verbatim.value[1]))
       return '\n'.join(ret_str)
 
-    # We don't support these keywords for filtering, so unless users
-    # put in a "verbatim:: iptables" statement, any output we emitted
-    # would misleadingly suggest that we applied their filters.
-    # Instead, we fail loudly.
-    if self.term.ether_type:
-      raise UnsupportedFilterError('\n%s %s %s %s' % (
-          'ether_type unsupported by', self._PLATFORM,
-          '\nError in term', self.term.name))
-    if self.term.address:
-      raise UnsupportedFilterError('\n%s %s %s %s %s' % (
-          'address unsupported by', self._PLATFORM,
-          '- specify source or dest', '\nError in term:', self.term.name))
-    if self.term.port:
-      raise UnsupportedFilterError('\n%s %s %s %s %s' % (
-          'port unsupported by', self._PLATFORM,
-          '- specify source or dest', '\nError in term:', self.term.name))
-
     # Create a new term
     self._SetDefaultAction()
     if self._TERM_FORMAT:
@@ -198,10 +181,6 @@ class Term(aclgenerator.Term):
       protocol = self.term.protocol
     else:
       protocol = ['all']
-    if self.term.protocol_except:
-      raise UnsupportedFilterError('%s %s %s' % (
-          '\n', self.term.name,
-          'protocol_except logic not currently supported.'))
 
     (term_saddr, exclude_saddr,
      term_daddr, exclude_daddr) = self._CalculateAddresses(
@@ -634,21 +613,49 @@ class Iptables(aclgenerator.ACLGenerator):
   _DEFAULT_ACTION = 'DROP'
   _TERM = Term
   _TERM_MAX_LENGTH = 24
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
-                                      'destination_interface',
-                                      'destination_prefix',  # skips these terms
-                                      'expiration',
-                                      'fragment_offset',
-                                      'logging',
-                                      'owner',
-                                      'packet_length',
-                                      'policer',             # safely ignored
-                                      'qos',
-                                      'routing_instance',    # safe to skip
-                                      'source_interface',
-                                      'source_prefix',       # skips these terms
-                                     ])
   _GOOD_FILTERS = ['INPUT', 'OUTPUT', 'FORWARD']
+
+  def _buildTokens(self):
+    """build supported tokens for platform
+
+    Args:
+      supported_tokens: a set of default tokens a platform should implement
+      supported_sub_tokens: a set of default sub tokens
+    Returns:
+      tuple of two sets
+    """
+    supported_tokens, supported_sub_tokens = super(
+      Iptables, self)._buildTokens()
+
+    supported_tokens |= {'counter',
+                         'destination_interface',
+                         'destination_prefix',
+                         'fragment_offset',
+                         'logging',
+                         'owner',
+                         'packet_length',
+                         'routing_instance',
+                         'source_interface',
+                         'source_prefix', }
+
+    supported_sub_tokens.update(
+      {'option':
+        {'established',
+         'first-fragment',
+         'initial',
+         'sample',
+         'tcp-established',
+         'tcp-initial',
+         'syn',
+         'ack',
+         'fin',
+         'rst',
+         'urg',
+         'psh',
+         'all',
+         'none', },
+    })
+    return supported_tokens, supported_sub_tokens
 
   def _WarnIfCustomTarget(self, target):
     """Emit a warning if a policy's default target is not a built-in chain."""

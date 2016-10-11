@@ -15,6 +15,7 @@
 """Unittest for GCE firewall rendering module."""
 
 import json
+import mock
 import unittest
 
 from lib import aclgenerator
@@ -22,7 +23,6 @@ from lib import gce
 from lib import nacaddr
 from lib import naming
 from lib import policy
-import mock
 
 
 GOOD_HEADER = """
@@ -46,6 +46,18 @@ term good-term-1 {
   destination-tag:: dns-servers
   destination-port:: DNS
   protocol:: udp tcp
+  action:: accept
+}
+"""
+
+GOOD_TERM_2 = """
+term good-term-2 {
+  comment:: "DNS access from corp."
+  source-address:: CORP_EXTERNAL
+  destination-tag:: dns-servers
+  destination-port:: DNS
+  protocol:: udp tcp
+  policer:: batman
   action:: accept
 }
 """
@@ -277,6 +289,24 @@ GOOD_TERM_EXCLUDE_RANGE = """
 ]
 """
 
+SUPPORTED_TOKENS = {
+  'action',
+  'comment',
+  'destination_port',
+  'destination_tag',
+  'expiration',
+  'name',
+  'owner',
+  'protocol',
+  'source_address',
+  'source_address_exclude',
+  'source_port',
+  'source_tag',
+  'translated',
+}
+
+SUPPORTED_SUB_TOKENS = {'action': {'accept', }, }
+
 # Print a info message when a term is set to expire in that many weeks.
 # This is normally passed from command line.
 EXP_INFO = 2
@@ -395,21 +425,6 @@ class GCETest(unittest.TestCase):
         mock.call('DNS', 'udp'),
         mock.call('DNS', 'tcp')])
 
-  def testRaisesWithUnsupportedAction(self):
-    self.naming.GetNetAddr.return_value = TEST_IPS
-    self.naming.GetServiceByProto.return_value = ['22']
-
-    self.assertRaisesRegexp(
-        gce.GceFirewallError,
-        'GCE firewall action must be "accept".',
-        gce.GCE,
-        policy.ParsePolicy(
-            GOOD_HEADER + BAD_TERM_UNSUPPORTED_ACTION, self.naming),
-        EXP_INFO)
-
-    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
-    self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
-
   def testRaisesWithoutSource(self):
     self.naming.GetServiceByProto.return_value = ['22']
 
@@ -504,6 +519,25 @@ class GCETest(unittest.TestCase):
     self.naming.GetServiceByProto.assert_has_calls([
         mock.call('SSH', 'tcp'),
         mock.call('SSH', 'icmp')])
+
+  def testBuildTokens(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    pol1 = gce.GCE(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM,
+                   self.naming), EXP_INFO)
+    st, sst = pol1._buildTokens()
+    self.assertEquals(st, SUPPORTED_TOKENS)
+    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+
+  def testBuildWarningTokens(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+
+    pol1 = gce.GCE(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_2,
+                                      self.naming), EXP_INFO)
+    st, sst = pol1._buildTokens()
+    self.assertEquals(st, SUPPORTED_TOKENS)
+    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
 
 if __name__ == '__main__':

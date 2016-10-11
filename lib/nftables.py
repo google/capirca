@@ -168,10 +168,6 @@ class Term(aclgenerator.Term):
     if self.term.comment:
       output.append('comment "%s"' % ' '.join(self.term.comment))
 
-    # Option
-    if self.term.option:
-      raise NotImplementedError('Options are currently not supported.')
-
     return ' '.join(output)
 
   def _CalculateAddrs(self, addr_list, addr_exclude_list):
@@ -212,10 +208,25 @@ class Nftables(aclgenerator.ACLGenerator):
   SUFFIX = '.nft'
   _PLATFORM = 'nftables'
   _TERM = Term
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration'])
   _VALID_ADDRESS_FAMILIES = {'inet': 'ip', 'inet6': 'ip6'}
   _VALID_HOOK_NAMES = set(['prerouting', 'input', 'forward',
                            'output', 'postrouting'])
+
+  def _buildTokens(self):
+    """build supported tokens for platform
+
+    Args:
+      supported_tokens: a set of default tokens a platform should implement
+      supported_sub_tokens: a set of default sub tokens
+    Returns:
+      tuple of two sets
+    """
+    supported_tokens, supported_sub_tokens = super(
+      Nftables, self)._buildTokens()
+
+    supported_tokens |= {'owner', }
+    del supported_sub_tokens['option']
+    return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, policy, expiration):
     """Translates policy contents to platform specific data structures.

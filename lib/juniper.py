@@ -749,31 +749,50 @@ class Juniper(aclgenerator.ACLGenerator):
   _TERM = Term
   SUFFIX = '.jcl'
 
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['address',
-                                      'counter',
-                                      'destination_prefix',
-                                      'dscp_except',
-                                      'dscp_match',
-                                      'dscp_set',
-                                      'ether_type',
-                                      'expiration',
-                                      'forwarding_class',
-                                      'fragment_offset',
-                                      'hop_limit',
-                                      'logging',
-                                      'loss_priority',
-                                      'next_ip',
-                                      'owner',
-                                      'packet_length',
-                                      'policer',
-                                      'port',
-                                      'precedence',
-                                      'protocol_except',
-                                      'qos',
-                                      'routing_instance',
-                                      'source_prefix',
-                                      'traffic_type',
-                                     ])
+  def _buildTokens(self):
+    """build supported tokens for platform
+
+    Args:
+      supported_tokens: a set of default tokens a platform should implement
+      supported_sub_tokens: a set of default sub tokens
+    Returns:
+      tuple of two sets
+    """
+    supported_tokens, supported_sub_tokens = super(Juniper, self)._buildTokens()
+
+    supported_tokens |= {'address',
+                         'counter',
+                         'destination_prefix',
+                         'dscp_except',
+                         'dscp_match',
+                         'dscp_set',
+                         'ether_type',
+                         'forwarding_class',
+                         'fragment_offset',
+                         'hop_limit',
+                         'logging',
+                         'loss_priority',
+                         'next_ip',
+                         'owner',
+                         'packet_length',
+                         'policer',
+                         'port',
+                         'precedence',
+                         'protocol_except',
+                         'qos',
+                         'routing_instance',
+                         'source_prefix',
+                         'traffic_type'}
+    supported_sub_tokens.update({
+      'option': {
+        'established',
+        'first-fragment',
+        '.*',  # make ArbitraryOptions work, yolo. todo, add all options to lex.
+        'sample',
+        'tcp-established',
+        'tcp-initial', },
+      })
+    return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):
     self.juniper_policies = []

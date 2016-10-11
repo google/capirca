@@ -16,15 +16,14 @@
 
 import copy
 import datetime
+import mock
 import unittest
-
 
 from lib import aclgenerator
 from lib import junipersrx
 from lib import nacaddr
 from lib import naming
 from lib import policy
-import mock
 
 
 GOOD_HEADER = """
@@ -168,12 +167,14 @@ term good-term-4 {
   vpn:: good-vpn-4 policy-4
 }
 """
-GOOD_TERM_5 = '''
+
+GOOD_TERM_5 = """
 term good-term-5 {
   action:: accept
   logging:: log-both
 }
-'''
+"""
+
 GOOD_TERM_10 = """
 term good-term-10 {
   destination-address:: SOME_HOST
@@ -181,6 +182,7 @@ term good-term-10 {
   dscp-set:: b111000
 }
 """
+
 GOOD_TERM_11 = """
 term good-term-11 {
   destination-address:: SOME_HOST
@@ -209,13 +211,22 @@ term dup-of-term-1 {
 }
 """
 
-
 GOOD_TERM_14 = """
 term term_to_split {
   source-address:: FOOBAR
   destination-address:: SOME_HOST
   destination-port:: SMTP
   protocol:: tcp
+  action:: accept
+}
+"""
+
+GOOD_TERM_15 = """
+term good-term-15 {
+  destination-address:: SOME_HOST
+  destination-port:: SMTP
+  protocol:: tcp
+  policer:: batman
   action:: accept
 }
 """
@@ -299,6 +310,81 @@ term timeout-term {
   action:: accept
 }
 """
+
+SUPPORTED_TOKENS = {
+  'action',
+  'comment',
+  'destination_address',
+  'destination_address_exclude',
+  'destination_port',
+  'dscp_except',
+  'dscp_match',
+  'dscp_set',
+  'expiration',
+  'icmp_type',
+  'logging',
+  'name',
+  'option',
+  'owner',
+  'platform',
+  'platform_exclude',
+  'protocol',
+  'source_address',
+  'source_address_exclude',
+  'source_port',
+  'timeout',
+  'translated',
+  'verbatim',
+  'vpn'
+}
+
+SUPPORTED_SUB_TOKENS = {
+  'action': {'accept', 'deny', 'reject', 'count', 'log', 'dscp'},
+  'icmp_type': {
+    'alternate-address',
+    'certification-path-advertisement',
+    'certification-path-solicitation',
+    'conversion-error',
+    'destination-unreachable',
+    'echo-reply',
+    'echo-request',
+    'mobile-redirect',
+    'home-agent-address-discovery-reply',
+    'home-agent-address-discovery-request',
+    'icmp-node-information-query',
+    'icmp-node-information-response',
+    'information-request',
+    'inverse-neighbor-discovery-advertisement',
+    'inverse-neighbor-discovery-solicitation',
+    'mask-reply',
+    'mask-request',
+    'information-reply',
+    'mobile-prefix-advertisement',
+    'mobile-prefix-solicitation',
+    'multicast-listener-done',
+    'multicast-listener-query',
+    'multicast-listener-report',
+    'multicast-router-advertisement',
+    'multicast-router-solicitation',
+    'multicast-router-termination',
+    'neighbor-advertisement',
+    'neighbor-solicit',
+    'packet-too-big',
+    'parameter-problem',
+    'redirect',
+    'redirect-message',
+    'router-advertisement',
+    'router-renumbering',
+    'router-solicit',
+    'router-solicitation',
+    'source-quench',
+    'time-exceeded',
+    'timestamp-reply',
+    'timestamp-request',
+    'unreachable',
+    'version-2-multicast-listener-report',
+  },
+}
 
 # Print a info message when a term is set to expire in that many weeks.
 # This is normally passed from command line.
@@ -879,6 +965,23 @@ class JuniperSRXTest(unittest.TestCase):
         [mock.call('SOME_HOST')] * 2)
     self.naming.GetServiceByProto.assert_has_calls(
         [mock.call('SMTP', 'tcp')] * 2)
+
+  def testBuildTokens(self):
+    self.naming.GetServiceByProto.side_effect = [['25'], ['26']]
+    pol1 = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_2,
+                                 self.naming), EXP_INFO)
+    st, sst = pol1._buildTokens()
+    self.assertEquals(st, SUPPORTED_TOKENS)
+    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+
+  def testBuildWarningTokens(self):
+    self.naming.GetServiceByProto.side_effect = [['25'], ['26']]
+
+    pol1 = junipersrx.JuniperSRX(policy.ParsePolicy(
+      GOOD_HEADER + GOOD_TERM_15, self.naming), EXP_INFO)
+    st, sst = pol1._buildTokens()
+    self.assertEquals(st, SUPPORTED_TOKENS)
+    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
 
 if __name__ == '__main__':

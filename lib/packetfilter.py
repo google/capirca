@@ -145,10 +145,6 @@ class Term(aclgenerator.Term):
       protocol = self.term.protocol
     else:
       protocol = []
-    if self.term.protocol_except:
-      raise aclgenerator.UnsupportedFilterError('%s %s %s' % (
-          '\n', self.term.name,
-          'protocol_except logic not currently supported.'))
 
     # source address
     term_saddrs = self._CheckAddressAf(self.term.source_address)
@@ -379,12 +375,35 @@ class PacketFilter(aclgenerator.ACLGenerator):
   _DEFAULT_PROTOCOL = 'all'
   SUFFIX = '.pf'
   _TERM = Term
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
-                                      'expiration',
-                                      'logging',
-                                      'routing_instance',
-                                      'qos',
-                                     ])
+
+  def _buildTokens(self):
+    """build supported tokens for platform
+
+    Args:
+      supported_tokens: a set of default tokens a platform should implement
+      supported_sub_tokens: a set of default sub tokens
+    Returns:
+      tuple of two sets
+    """
+    supported_tokens, supported_sub_tokens = super(
+      PacketFilter, self)._buildTokens()
+
+    supported_tokens |= {'logging', }
+    supported_sub_tokens.update({
+      'action': {'accept', 'deny', 'reject', 'next'},
+      'option': {
+        'established',
+        'tcp-established',
+        'syn',
+        'ack',
+        'fin',
+        'rst',
+        'urg',
+        'psh',
+        'all', },
+    })
+
+    return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):
     self.pf_policies = []

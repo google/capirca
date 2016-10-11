@@ -283,9 +283,7 @@ class Term(aclgenerator.Term):
       if next_opt == 'tcp-established':
         tcp_flags_set.append(self._TCP_FLAGS_TABLE['ack'])
         tcp_flags_check.extend([self._TCP_FLAGS_TABLE['ack']])
-      elif next_opt == 'established':
-        logging.warn('WARNING: option %s unsupported by %s ignoring term %s.',
-                     next_opt, self._PLATFORM, self.term.name)
+
       else:
         # Iterate through flags table, and create list of tcp-flags to append
         for next_flag in self._TCP_FLAGS_TABLE:
@@ -317,11 +315,6 @@ class PcapFilter(aclgenerator.ACLGenerator):
   _DEFAULT_PROTOCOL = 'all'
   SUFFIX = '.pcap'
   _TERM = Term
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['counter',
-                                      'expiration',
-                                      'logging',
-                                      'qos',
-                                     ])
 
   def __init__(self, *args, **kwargs):
     """Initialize a PcapFilter generator.
@@ -335,6 +328,37 @@ class PcapFilter(aclgenerator.ACLGenerator):
       self._invert = kwargs['invert']
       del kwargs['invert']
     super(PcapFilter, self).__init__(*args, **kwargs)
+
+  def _buildTokens(self):
+    """build supported tokens for platform
+
+    Args:
+      supported_tokens: a set of default tokens a platform should implement
+      supported_sub_tokens: a set of default sub tokens
+    Returns:
+      tuple of two sets
+    """
+    supported_tokens, supported_sub_tokens = super(
+      PcapFilter, self)._buildTokens()
+
+    supported_tokens |= {'logging', }
+    supported_tokens -= {'verbatim', }
+
+    supported_sub_tokens.update(
+      {'action': {'accept', 'deny', 'reject', 'next'},
+        'option': {
+          'tcp-established',
+          'syn',
+          'ack',
+          'fin',
+          'rst',
+          'urg',
+          'psh',
+          'all',
+          'none', },
+      })
+
+    return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):
     self.pcap_policies = []

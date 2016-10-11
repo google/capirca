@@ -418,6 +418,23 @@ class Nsxv(aclgenerator.ACLGenerator):
                                       'logging',
                                      ])
 
+  def _buildTokens(self):
+    """build supported tokens for platform
+
+    Args:
+      supported_tokens: a set of default tokens a platform should implement
+      supported_sub_tokens: a set of default sub tokens
+    Returns:
+      tuple of two sets
+    """
+    supported_tokens, supported_sub_tokens = super(Nsxv, self)._buildTokens()
+
+    supported_tokens |= {'logging', }
+    supported_sub_tokens.update({'action': {'accept', 'deny', 'reject',
+                                            'reject-with-tcp-rst'}})
+    del supported_sub_tokens['option']
+    return supported_tokens, supported_sub_tokens
+
   def _TranslatePolicy(self, pol, exp_info):
     self.nsxv_policies = []
     current_date = datetime.datetime.utcnow().date()
