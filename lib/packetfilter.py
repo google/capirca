@@ -376,31 +376,28 @@ class PacketFilter(aclgenerator.ACLGenerator):
   SUFFIX = '.pf'
   _TERM = Term
 
-  def _buildTokens(self):
-    """build supported tokens for platform
+  def _BuildTokens(self):
+    """Build supported tokens for platform.
 
-    Args:
-      supported_tokens: a set of default tokens a platform should implement
-      supported_sub_tokens: a set of default sub tokens
     Returns:
-      tuple of two sets
+      tuple containing both supported tokens and sub tokens
     """
     supported_tokens, supported_sub_tokens = super(
-      PacketFilter, self)._buildTokens()
+        PacketFilter, self)._BuildTokens()
 
-    supported_tokens |= {'logging', }
+    supported_tokens |= {'logging'}
     supported_sub_tokens.update({
-      'action': {'accept', 'deny', 'reject', 'next'},
-      'option': {
-        'established',
-        'tcp-established',
-        'syn',
-        'ack',
-        'fin',
-        'rst',
-        'urg',
-        'psh',
-        'all', },
+        'action': {'accept', 'deny', 'reject', 'next'},
+        'option': {
+            'established',
+            'tcp-established',
+            'syn',
+            'ack',
+            'fin',
+            'rst',
+            'urg',
+            'psh',
+            'all'},
     })
 
     return supported_tokens, supported_sub_tokens

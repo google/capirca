@@ -13,13 +13,12 @@
 # limitations under the License.
 """Tests for arista acl rendering module."""
 
-import mock
 import unittest
 
 from lib import arista
 from lib import naming
 from lib import policy
-
+import mock
 
 GOOD_HEADER = """
 header {
@@ -47,77 +46,78 @@ term good-term-1 {
 """
 
 SUPPORTED_TOKENS = {
-  'action',
-  'address',
-  'comment',
-  'destination_address',
-  'destination_address_exclude',
-  'destination_port',
-  'dscp_match',
-  'expiration',
-  'icmp_type',
-  'logging',
-  'name',
-  'option',
-  'owner',
-  'platform',
-  'platform_exclude',
-  'protocol',
-  'source_address',
-  'source_address_exclude',
-  'source_port',
-  'translated',
-  'verbatim',
+    'action',
+    'address',
+    'comment',
+    'destination_address',
+    'destination_address_exclude',
+    'destination_port',
+    'dscp_match',
+    'expiration',
+    'icmp_type',
+    'logging',
+    'name',
+    'option',
+    'owner',
+    'platform',
+    'platform_exclude',
+    'protocol',
+    'source_address',
+    'source_address_exclude',
+    'source_port',
+    'translated',
+    'verbatim',
 }
 
 SUPPORTED_SUB_TOKENS = {
-  'action': {'accept', 'deny', 'reject', 'next',
-             'reject-with-tcp-rst'},
-  'icmp_type': {
-    'alternate-address',
-    'certification-path-advertisement',
-    'certification-path-solicitation',
-    'conversion-error',
-    'destination-unreachable',
-    'echo-reply',
-    'echo-request',
-    'mobile-redirect',
-    'home-agent-address-discovery-reply',
-    'home-agent-address-discovery-request',
-    'icmp-node-information-query',
-    'icmp-node-information-response',
-    'information-request',
-    'inverse-neighbor-discovery-advertisement',
-    'inverse-neighbor-discovery-solicitation',
-    'mask-reply',
-    'mask-request',
-    'information-reply',
-    'mobile-prefix-advertisement',
-    'mobile-prefix-solicitation',
-    'multicast-listener-done',
-    'multicast-listener-query',
-    'multicast-listener-report',
-    'multicast-router-advertisement',
-    'multicast-router-solicitation',
-    'multicast-router-termination',
-    'neighbor-advertisement',
-    'neighbor-solicit',
-    'packet-too-big',
-    'parameter-problem',
-    'redirect',
-    'redirect-message',
-    'router-advertisement',
-    'router-renumbering',
-    'router-solicit',
-    'router-solicitation',
-    'source-quench',
-    'time-exceeded',
-    'timestamp-reply',
-    'timestamp-request',
-    'unreachable',
-    'version-2-multicast-listener-report',
-  },
-  'option': {'established', 'tcp-established'}
+    'action': {'accept', 'deny', 'reject', 'next',
+               'reject-with-tcp-rst'},
+    'icmp_type': {
+        'alternate-address',
+        'certification-path-advertisement',
+        'certification-path-solicitation',
+        'conversion-error',
+        'destination-unreachable',
+        'echo-reply',
+        'echo-request',
+        'mobile-redirect',
+        'home-agent-address-discovery-reply',
+        'home-agent-address-discovery-request',
+        'icmp-node-information-query',
+        'icmp-node-information-response',
+        'information-request',
+        'inverse-neighbor-discovery-advertisement',
+        'inverse-neighbor-discovery-solicitation',
+        'mask-reply',
+        'mask-request',
+        'information-reply',
+        'mobile-prefix-advertisement',
+        'mobile-prefix-solicitation',
+        'multicast-listener-done',
+        'multicast-listener-query',
+        'multicast-listener-report',
+        'multicast-router-advertisement',
+        'multicast-router-solicitation',
+        'multicast-router-termination',
+        'neighbor-advertisement',
+        'neighbor-solicit',
+        'packet-too-big',
+        'parameter-problem',
+        'redirect',
+        'redirect-message',
+        'router-advertisement',
+        'router-renumbering',
+        'router-solicit',
+        'router-solicitation',
+        'source-quench',
+        'time-exceeded',
+        'timestamp-reply',
+        'timestamp-request',
+        'unreachable',
+        'version-2-multicast-listener-report',
+    },
+    'option': {'established',
+               'tcp-established'}
 }
 
 # Print a info message when a term is set to expire in that many weeks.
@@ -140,14 +140,14 @@ class AristaTest(unittest.TestCase):
   def testBuildTokens(self):
     pol1 = arista.Arista(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM,
                                             self.naming), EXP_INFO)
-    st, sst = pol1._buildTokens()
+    st, sst = pol1._BuildTokens()
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
   def testBuildWarningTokens(self):
     pol1 = arista.Arista(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
                                             self.naming), EXP_INFO)
-    st, sst = pol1._buildTokens()
+    st, sst = pol1._BuildTokens()
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 

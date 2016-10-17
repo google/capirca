@@ -261,7 +261,7 @@ class ACLGenerator(object):
 
   def __init__(self, pol, exp_info):
     """Initialise an ACLGenerator.  Store policy structure for processing."""
-    supported_tokens, supported_sub_tokens = self._getSupportedTokens()
+    supported_tokens, supported_sub_tokens = self._GetSupportedTokens()
 
     self.policy = pol
     all_err = []
@@ -272,11 +272,11 @@ class ACLGenerator(object):
         # error on unsupported optional keywords that could result
         # in dangerous or unexpected results
         for term in terms:
-          if term.platform:    
-            if self._PLATFORM not in term.platform:   
-              continue    
-          if term.platform_exclude:   
-            if self._PLATFORM in term.platform_exclude:   
+          if term.platform:
+            if self._PLATFORM not in term.platform:
+              continue
+          if term.platform_exclude:
+            if self._PLATFORM in term.platform_exclude:
               continue
           # Only verify optional keywords if the term is active on the platform.
           err = []
@@ -284,33 +284,34 @@ class ACLGenerator(object):
           for el, val in term.__dict__.items():
             # Private attributes do not need to be valid keywords.
             if (val and el not in supported_tokens and not
-                  el.startswith('flatten')):
-              if (val and el not in self.WARN_IF_UNSUPPORTED):
+                el.startswith('flatten')):
+              if val and el not in self.WARN_IF_UNSUPPORTED:
                 err.append(el)
               else:
                 warn.append(el)
             # ignore Liskov's rule.
-            if (val and type(val) is list and
+            if (val and isinstance(val, list) and
                 el in supported_sub_tokens):
-                ns = set(val) - supported_sub_tokens[el]
-                # hack support for ArbitraryOptions in junos. todo, add the
-                # junos options into the lexer, then we can nuke .*
-                # shenanigans.
-                if ns and '.*' not in supported_sub_tokens[el]:
-                  err.append(' '.join(ns))
+              ns = set(val) - supported_sub_tokens[el]
+              # hack support for ArbitraryOptions in junos. todo, add the
+              # junos options into the lexer, then we can nuke .*
+              # shenanigans.
+              if ns and '.*' not in supported_sub_tokens[el]:
+                err.append(' '.join(ns))
           if err:
-            all_err.append(
-              '%s contains unsupported keywords (%s) for target %s in policy %s'
-              % (term.name, ' '.join(err), self._PLATFORM, pol.filename))
+            all_err.append(('%s contains unsupported keywords (%s) for target '
+                            '%s in policy %s') % (term.name, ' '.join(err),
+                                                  self._PLATFORM, pol.filename))
           if warn:
             all_warn.append(
-              '%s contains unimplemented keywords (%s) for target %s in policy %s'
-              % (term.name, ' '.join(warn), self._PLATFORM, pol.filename))
+                ('%s contains unimplemented keywords (%s) for '
+                 'target %s in policy %s') % (term.name, ' '.join(warn),
+                                              self._PLATFORM, pol.filename))
         continue
     if all_err:
       raise UnsupportedFilterError('\n %s' % '\n'.join(all_err))
     if all_warn:
-      logging.debug('\n %s' % '\n'.join(all_warn))
+      logging.debug('\n %s', '\n'.join(all_warn))
     self._TranslatePolicy(pol, exp_info)
 
   def _TranslatePolicy(self, pol, exp_info):
@@ -318,11 +319,11 @@ class ACLGenerator(object):
     """Translate policy contents to platform specific data structures."""
     raise Error('%s does not implement _TranslatePolicies()' % self._PLATFORM)
 
-  def _buildTokens(self):
-    """provide a default for supported tokens and sub tokens.
+  def _BuildTokens(self):
+    """Provide a default for supported tokens and sub tokens.
 
     Returns:
-      tuple
+      tuple containing both supported tokens and sub tokens
     """
     # Set of supported keywords for a given platform.  Values should be in
     # undercase form, eg, icmp_type (not icmp-type)
@@ -349,39 +350,41 @@ class ACLGenerator(object):
     # should be in dash form, icmp-type (not icmp_type)
     supported_sub_tokens = {
         'option': {
-          'established',
-          'first-fragment',
-          'is-fragment',
-          'initial',
-          'rst',
-          'sample',
-          'tcp-established',
+            'established',
+            'first-fragment',
+            'is-fragment',
+            'initial',
+            'rst',
+            'sample',
+            'tcp-established',
         },
         'action': {
-          'accept',
-          'deny',
-          'next',
-          'reject',
-          'reject-with-tcp-rst',
+            'accept',
+            'deny',
+            'next',
+            'reject',
+            'reject-with-tcp-rst',
         },
         'icmp_type': set(Term.ICMP_TYPE[4].keys() + Term.ICMP_TYPE[6].keys())
     }
     return supported_tokens, supported_sub_tokens
 
-  def _getSupportedTokens(self):
-    """build our supported tokens and sub tokens
+  def _GetSupportedTokens(self):
+    """Build our supported tokens and sub tokens.
 
     Returns:
-      tuple
+      tuple containing the supported tokens and sub tokens.
+    Raises:
+      UnsupportedFilterError: Raised when token is not supported.
     """
-    supported_tokens, supported_sub_tokens = self._buildTokens()
+    supported_tokens, supported_sub_tokens = self._BuildTokens()
     # make sure we don't have subtokens that are not listed. This should not
     # occur unless a platform's tokens/subtokens are changed.
     undefined_st = set(supported_sub_tokens) - supported_tokens
     if undefined_st:
       raise UnsupportedFilterError(
-        'Found undefined sub tokens missing from the supported token list! '
-        'These must match. (%s)' % ' '.join(undefined_st))
+          'Found undefined sub tokens missing from the supported token list! '
+          'These must match. (%s)' % ' '.join(undefined_st))
     # all good.
     return supported_tokens, supported_sub_tokens
 

@@ -180,22 +180,19 @@ class GCE(aclgenerator.ACLGenerator):
                                       'destination_tag',
                                       'source_tag'])
 
-  def _buildTokens(self):
-    """build supported tokens for platform
+  def _BuildTokens(self):
+    """Build supported tokens for platform.
 
-    Args:
-      supported_tokens: a set of default tokens a platform should implement
-      supported_sub_tokens: a set of default sub tokens
     Returns:
-      tuple of two sets
+      tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, _ = super(GCE, self)._buildTokens()
+    supported_tokens, _ = super(GCE, self)._BuildTokens()
 
     # add extra things
     supported_tokens |= {'destination_tag',
                          'expiration',
                          'owner',
-                         'source_tag', }
+                         'source_tag'}
 
     # remove unsupported things
     supported_tokens -= {'destination_address',
@@ -204,9 +201,9 @@ class GCE(aclgenerator.ACLGenerator):
                          'option',
                          'platform',
                          'platform_exclude',
-                         'verbatim', }
+                         'verbatim'}
     # easier to make a new structure
-    supported_sub_tokens = {'action': {'accept', }, }
+    supported_sub_tokens = {'action': {'accept'}}
 
     return supported_tokens, supported_sub_tokens
 

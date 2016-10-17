@@ -212,19 +212,16 @@ class Nftables(aclgenerator.ACLGenerator):
   _VALID_HOOK_NAMES = set(['prerouting', 'input', 'forward',
                            'output', 'postrouting'])
 
-  def _buildTokens(self):
-    """build supported tokens for platform
+  def _BuildTokens(self):
+    """Build supported tokens for platform.
 
-    Args:
-      supported_tokens: a set of default tokens a platform should implement
-      supported_sub_tokens: a set of default sub tokens
     Returns:
-      tuple of two sets
+      tuple containing both supported tokens and sub tokens
     """
     supported_tokens, supported_sub_tokens = super(
-      Nftables, self)._buildTokens()
+        Nftables, self)._BuildTokens()
 
-    supported_tokens |= {'owner', }
+    supported_tokens |= {'owner'}
     del supported_sub_tokens['option']
     return supported_tokens, supported_sub_tokens
 

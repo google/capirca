@@ -15,7 +15,6 @@
 """Unittest for iptables rendering module."""
 
 import datetime
-import mock
 import re
 import unittest
 
@@ -24,6 +23,7 @@ from lib import iptables
 from lib import nacaddr
 from lib import naming
 from lib import policy
+import mock
 
 
 GOOD_HEADER_1 = """
@@ -410,95 +410,95 @@ term good-warning-term {
 """
 
 SUPPORTED_TOKENS = {
-  'action',
-  'comment',
-  'counter',
-  'destination_address',
-  'destination_address_exclude',
-  'destination_interface',
-  'destination_port',
-  'destination_prefix',
-  'expiration',
-  'fragment_offset',
-  'icmp_type',
-  'logging',
-  'name',
-  'option',
-  'owner',
-  'packet_length',
-  'platform',
-  'platform_exclude',
-  'protocol',
-  'routing_instance',
-  'source_address',
-  'source_address_exclude',
-  'source_interface',
-  'source_port',
-  'source_prefix',
-  'translated',
-  'verbatim',
+    'action',
+    'comment',
+    'counter',
+    'destination_address',
+    'destination_address_exclude',
+    'destination_interface',
+    'destination_port',
+    'destination_prefix',
+    'expiration',
+    'fragment_offset',
+    'icmp_type',
+    'logging',
+    'name',
+    'option',
+    'owner',
+    'packet_length',
+    'platform',
+    'platform_exclude',
+    'protocol',
+    'routing_instance',
+    'source_address',
+    'source_address_exclude',
+    'source_interface',
+    'source_port',
+    'source_prefix',
+    'translated',
+    'verbatim',
 }
 
 SUPPORTED_SUB_TOKENS = {
-  'action': {'accept', 'deny', 'reject', 'next', 'reject-with-tcp-rst'},
-  'icmp_type': {
-    'alternate-address',
-    'certification-path-advertisement',
-    'certification-path-solicitation',
-    'conversion-error',
-    'destination-unreachable',
-    'echo-reply',
-    'echo-request',
-    'mobile-redirect',
-    'home-agent-address-discovery-reply',
-    'home-agent-address-discovery-request',
-    'icmp-node-information-query',
-    'icmp-node-information-response',
-    'information-request',
-    'inverse-neighbor-discovery-advertisement',
-    'inverse-neighbor-discovery-solicitation',
-    'mask-reply',
-    'mask-request',
-    'information-reply',
-    'mobile-prefix-advertisement',
-    'mobile-prefix-solicitation',
-    'multicast-listener-done',
-    'multicast-listener-query',
-    'multicast-listener-report',
-    'multicast-router-advertisement',
-    'multicast-router-solicitation',
-    'multicast-router-termination',
-    'neighbor-advertisement',
-    'neighbor-solicit',
-    'packet-too-big',
-    'parameter-problem',
-    'redirect',
-    'redirect-message',
-    'router-advertisement',
-    'router-renumbering',
-    'router-solicit',
-    'router-solicitation',
-    'source-quench',
-    'time-exceeded',
-    'timestamp-reply',
-    'timestamp-request',
-    'unreachable',
-    'version-2-multicast-listener-report',
-  },
-  'option': {'established',
-             'first-fragment',
-             'initial',
-             'sample',
-             'tcp-established',
-             'tcp-initial',
-             'syn',
-             'ack',
-             'fin',
-             'rst',
-             'urg',
-             'psh',
-             'all',
-             'none', }
+    'action': {'accept', 'deny', 'reject', 'next', 'reject-with-tcp-rst'},
+    'icmp_type': {
+        'alternate-address',
+        'certification-path-advertisement',
+        'certification-path-solicitation',
+        'conversion-error',
+        'destination-unreachable',
+        'echo-reply',
+        'echo-request',
+        'mobile-redirect',
+        'home-agent-address-discovery-reply',
+        'home-agent-address-discovery-request',
+        'icmp-node-information-query',
+        'icmp-node-information-response',
+        'information-request',
+        'inverse-neighbor-discovery-advertisement',
+        'inverse-neighbor-discovery-solicitation',
+        'mask-reply',
+        'mask-request',
+        'information-reply',
+        'mobile-prefix-advertisement',
+        'mobile-prefix-solicitation',
+        'multicast-listener-done',
+        'multicast-listener-query',
+        'multicast-listener-report',
+        'multicast-router-advertisement',
+        'multicast-router-solicitation',
+        'multicast-router-termination',
+        'neighbor-advertisement',
+        'neighbor-solicit',
+        'packet-too-big',
+        'parameter-problem',
+        'redirect',
+        'redirect-message',
+        'router-advertisement',
+        'router-renumbering',
+        'router-solicit',
+        'router-solicitation',
+        'source-quench',
+        'time-exceeded',
+        'timestamp-reply',
+        'timestamp-request',
+        'unreachable',
+        'version-2-multicast-listener-report',
+    },
+    'option': {'established',
+               'first-fragment',
+               'initial',
+               'sample',
+               'tcp-established',
+               'tcp-initial',
+               'syn',
+               'ack',
+               'fin',
+               'rst',
+               'urg',
+               'psh',
+               'all',
+               'none'}
 }
 
 # Print a info message when a term is set to expire in that many weeks.
@@ -1129,8 +1129,8 @@ class AclCheckTest(unittest.TestCase):
 
   def testBuildTokens(self):
     pol1 = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_5,
-                             self.naming), EXP_INFO)
-    st, sst = pol1._buildTokens()
+                                                self.naming), EXP_INFO)
+    st, sst = pol1._BuildTokens()
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
@@ -1138,9 +1138,9 @@ class AclCheckTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['80']
 
     pol1 = iptables.Iptables(
-      policy.ParsePolicy(GOOD_HEADER_1 + GOOD_WARNING_TERM,
-                         self.naming), EXP_INFO)
-    st, sst = pol1._buildTokens()
+        policy.ParsePolicy(GOOD_HEADER_1 + GOOD_WARNING_TERM,
+                           self.naming), EXP_INFO)
+    st, sst = pol1._BuildTokens()
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 

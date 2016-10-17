@@ -2172,6 +2172,7 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
     optimize: bool - whether to summarize networks and services.
     base_dir: base path string to look for acls or include files.
     shade_check: bool - whether to raise an exception when a term is shaded.
+    filename: string - filename used by the policy.
 
   Returns:
     policy object or False (if parse error).

@@ -329,34 +329,32 @@ class PcapFilter(aclgenerator.ACLGenerator):
       del kwargs['invert']
     super(PcapFilter, self).__init__(*args, **kwargs)
 
-  def _buildTokens(self):
-    """build supported tokens for platform
+  def _BuildTokens(self):
+    """Build supported tokens for platform.
 
-    Args:
-      supported_tokens: a set of default tokens a platform should implement
-      supported_sub_tokens: a set of default sub tokens
     Returns:
-      tuple of two sets
+      tuple containing both supported tokens and sub tokens
     """
     supported_tokens, supported_sub_tokens = super(
-      PcapFilter, self)._buildTokens()
+        PcapFilter, self)._BuildTokens()
 
-    supported_tokens |= {'logging', }
-    supported_tokens -= {'verbatim', }
+    supported_tokens |= {'logging'}
+    supported_tokens -= {'verbatim'}
 
     supported_sub_tokens.update(
-      {'action': {'accept', 'deny', 'reject', 'next'},
-        'option': {
-          'tcp-established',
-          'syn',
-          'ack',
-          'fin',
-          'rst',
-          'urg',
-          'psh',
-          'all',
-          'none', },
-      })
+        {'action': {'accept', 'deny', 'reject', 'next'},
+         'option': {
+             'tcp-established',
+             'established',
+             'syn',
+             'ack',
+             'fin',
+             'rst',
+             'urg',
+             'psh',
+             'all',
+             'none'},
+        })
 
     return supported_tokens, supported_sub_tokens
 

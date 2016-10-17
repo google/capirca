@@ -656,29 +656,25 @@ class Cisco(aclgenerator.ACLGenerator):
   _PROTO_INT = True
   _TERM_REMARK = True
 
-  def _buildTokens(self):
-    """build supported tokens for platform
+  def _BuildTokens(self):
+    """Build supported tokens for platform.
 
-    Args:
-      supported_tokens: a set of default tokens a platform should implement
-      supported_sub_tokens: a set of default sub tokens
     Returns:
-      tuple of two sets
+      tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(Cisco, self)._buildTokens()
+    supported_tokens, supported_sub_tokens = super(Cisco, self)._BuildTokens()
 
     supported_tokens |= {'address',
-                         # todo, implement address_exclude
-                         # 'address_exclude',
                          'dscp_match',
                          'logging',
-                         'owner', }
+                         'owner'}
 
-    supported_sub_tokens.update({'option': {'established', 'tcp-established'},
+    supported_sub_tokens.update({'option': {'established',
+                                            'tcp-established'},
                                  # Warning, some of these are mapped
                                  # differently. See _ACTION_TABLE
                                  'action': {'accept', 'deny', 'reject', 'next',
-                                            'reject-with-tcp-rst'}, })
+                                            'reject-with-tcp-rst'}})
     return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):

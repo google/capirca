@@ -14,14 +14,13 @@
 
 """Unittest for Aruba acl rendering module."""
 
-import mock
 import unittest
 
 from lib import aruba
 from lib import nacaddr
 from lib import naming
 from lib import policy
-
+import mock
 
 GOOD_HEADER_IPV4 = """
 header {
@@ -71,14 +70,14 @@ term good-term-ipv4-1 {
 """
 
 SUPPORTED_TOKENS = {
-  'action',
-  'source_address',
-  'comment',  # this isn't actually implemented, but it's crazy not to have it.
-  'name',  # obj attribute, not token
-  'translated',  # obj attribute, not token
+    'action',
+    'source_address',
+    'comment',  # this isn't actually implemented.
+    'name',  # obj attribute, not token
+    'translated',  # obj attribute, not token
 }
 
-SUPPORTED_SUB_TOKENS = {'action': {'accept', }, }
+SUPPORTED_SUB_TOKENS = {'action': {'accept'}}
 
 # Print a info message when a term is set to expire in that many weeks.
 # This is normally passed from command line.
@@ -116,17 +115,17 @@ class ArubaTest(unittest.TestCase):
     self.naming.GetNetAddr.assert_called_once_with('SERVERS')
 
   def testBuildTokens(self):
-    '''test also covers all platform subclasses'''
+    """Test also covers all platform subclasses."""
     pol1 = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_IPV4 + GOOD_TERM_IPV4,
                                           self.naming), EXP_INFO)
-    st, sst = pol1._buildTokens()
+    st, sst = pol1._BuildTokens()
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
   def testBuildWarningTokens(self):
     t = GOOD_HEADER_IPV4 + GOOD_TERM_IPV4_1
     pol1 = aruba.Aruba(policy.ParsePolicy(t, self.naming), EXP_INFO)
-    st, sst = pol1._buildTokens()
+    st, sst = pol1._BuildTokens()
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 

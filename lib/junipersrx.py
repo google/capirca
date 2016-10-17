@@ -271,17 +271,14 @@ class JuniperSRX(aclgenerator.ACLGenerator):
   # IPv6 are 32 bytes compared to IPv4, this is used as a multiplier.
   _IPV6_SIZE = 4
 
-  def _buildTokens(self):
-    """build supported tokens for platform
+  def _BuildTokens(self):
+    """Build supported tokens for platform.
 
-    Args:
-      supported_tokens: a set of default tokens a platform should implement
-      supported_sub_tokens: a set of default sub tokens
     Returns:
-      tuple of two sets
+      tuple containing both supported tokens and sub tokens
     """
     supported_tokens, supported_sub_tokens = super(
-      JuniperSRX, self)._buildTokens()
+        JuniperSRX, self)._BuildTokens()
 
     supported_tokens |= {'dscp_except',
                          'dscp_match',
@@ -294,8 +291,8 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                          'vpn'}
 
     supported_sub_tokens.update(
-      {'action': {'accept', 'deny', 'reject', 'count', 'log', 'dscp'},
-    })
+        {'action': {'accept', 'deny', 'reject', 'count', 'log', 'dscp'},
+        })
     del supported_sub_tokens['option']
     return supported_tokens, supported_sub_tokens
 

@@ -13,14 +13,15 @@
 # limitations under the License.
 """UnitTest class for nsxv.py."""
 
-import mock
 import unittest
 from xml.etree import ElementTree as ET
+
 
 from lib import nacaddr
 from lib import naming
 from lib import nsxv
 from lib import policy
+import mock
 
 
 INET_TERM = """\
@@ -129,73 +130,73 @@ POLICY_NO_ACTION = """\
   """
 
 SUPPORTED_TOKENS = {
-  'action',
-  'comment',
-  'destination_address',
-  'destination_address_exclude',
-  'destination_port',
-  'expiration',
-  'expiration',
-  'icmp_type',
-  'logging',
-  'name',
-  'protocol',
-  'source_address',
-  'source_address_exclude',
-  'source_port',
-  'option',
-  'platform',
-  'platform_exclude',
-  'translated',
-  'verbatim',
+    'action',
+    'comment',
+    'destination_address',
+    'destination_address_exclude',
+    'destination_port',
+    'expiration',
+    'expiration',
+    'icmp_type',
+    'logging',
+    'name',
+    'protocol',
+    'source_address',
+    'source_address_exclude',
+    'source_port',
+    'option',
+    'platform',
+    'platform_exclude',
+    'translated',
+    'verbatim',
 }
 
 SUPPORTED_SUB_TOKENS = {
-  'action': {'accept', 'deny', 'reject', 'reject-with-tcp-rst'},
-  'icmp_type': {
-    'alternate-address',
-    'certification-path-advertisement',
-    'certification-path-solicitation',
-    'conversion-error',
-    'destination-unreachable',
-    'echo-reply',
-    'echo-request',
-    'mobile-redirect',
-    'home-agent-address-discovery-reply',
-    'home-agent-address-discovery-request',
-    'icmp-node-information-query',
-    'icmp-node-information-response',
-    'information-request',
-    'inverse-neighbor-discovery-advertisement',
-    'inverse-neighbor-discovery-solicitation',
-    'mask-reply',
-    'mask-request',
-    'information-reply',
-    'mobile-prefix-advertisement',
-    'mobile-prefix-solicitation',
-    'multicast-listener-done',
-    'multicast-listener-query',
-    'multicast-listener-report',
-    'multicast-router-advertisement',
-    'multicast-router-solicitation',
-    'multicast-router-termination',
-    'neighbor-advertisement',
-    'neighbor-solicit',
-    'packet-too-big',
-    'parameter-problem',
-    'redirect',
-    'redirect-message',
-    'router-advertisement',
-    'router-renumbering',
-    'router-solicit',
-    'router-solicitation',
-    'source-quench',
-    'time-exceeded',
-    'timestamp-reply',
-    'timestamp-request',
-    'unreachable',
-    'version-2-multicast-listener-report',
-  },
+    'action': {'accept', 'deny', 'reject', 'reject-with-tcp-rst'},
+    'icmp_type': {
+        'alternate-address',
+        'certification-path-advertisement',
+        'certification-path-solicitation',
+        'conversion-error',
+        'destination-unreachable',
+        'echo-reply',
+        'echo-request',
+        'mobile-redirect',
+        'home-agent-address-discovery-reply',
+        'home-agent-address-discovery-request',
+        'icmp-node-information-query',
+        'icmp-node-information-response',
+        'information-request',
+        'inverse-neighbor-discovery-advertisement',
+        'inverse-neighbor-discovery-solicitation',
+        'mask-reply',
+        'mask-request',
+        'information-reply',
+        'mobile-prefix-advertisement',
+        'mobile-prefix-solicitation',
+        'multicast-listener-done',
+        'multicast-listener-query',
+        'multicast-listener-report',
+        'multicast-router-advertisement',
+        'multicast-router-solicitation',
+        'multicast-router-termination',
+        'neighbor-advertisement',
+        'neighbor-solicit',
+        'packet-too-big',
+        'parameter-problem',
+        'redirect',
+        'redirect-message',
+        'router-advertisement',
+        'router-renumbering',
+        'router-solicit',
+        'router-solicitation',
+        'source-quench',
+        'time-exceeded',
+        'timestamp-reply',
+        'timestamp-request',
+        'unreachable',
+        'version-2-multicast-listener-report',
+    },
 }
 
 
@@ -407,7 +408,7 @@ class TermTest(unittest.TestCase):
                                                   nacaddr.IP('192.168.0.0/16')])
     self.naming.GetServiceByProto.return_value = ['123']
     pol1 = nsxv.Nsxv(policy.ParsePolicy(INET_FILTER, self.naming), 2)
-    st, sst = pol1._buildTokens()
+    st, sst = pol1._BuildTokens()
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
@@ -420,7 +421,7 @@ class TermTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['123']
 
     pol1 = nsxv.Nsxv(policy.ParsePolicy(INET_FILTER_2, self.naming), 2)
-    st, sst = pol1._buildTokens()
+    st, sst = pol1._BuildTokens()
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 

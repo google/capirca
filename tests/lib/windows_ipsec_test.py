@@ -14,14 +14,14 @@
 """Unittest for windows_ipsec rendering module."""
 
 import datetime
-import mock
 import unittest
 
-from lib import aclgenerator
+
 from lib import nacaddr
 from lib import naming
 from lib import policy
 from lib import windows_ipsec
+import mock
 
 
 GOOD_HEADER = """
@@ -92,24 +92,24 @@ term multi-proto {
 """
 
 SUPPORTED_TOKENS = {
-  'action',
-  'comment',
-  'destination_address',
-  'destination_address_exclude',
-  'destination_port',
-  'expiration',
-  'name',
-  'option',
-  'platform',
-  'platform_exclude',
-  'protocol',
-  'source_address',
-  'source_address_exclude',
-  'source_port',
-  'translated',
+    'action',
+    'comment',
+    'destination_address',
+    'destination_address_exclude',
+    'destination_port',
+    'expiration',
+    'name',
+    'option',
+    'platform',
+    'platform_exclude',
+    'protocol',
+    'source_address',
+    'source_address_exclude',
+    'source_port',
+    'translated',
 }
 
-SUPPORTED_SUB_TOKENS = {'action': {'accept', 'deny'}, }
+SUPPORTED_SUB_TOKENS = {'action': {'accept', 'deny'}}
 
 # Print a info message when a term is set to expire in that many weeks.
 # This is normally passed from command line.
@@ -222,14 +222,14 @@ class WindowsIPSecTest(unittest.TestCase):
   def testBuildTokens(self):
     pol1 = windows_ipsec.WindowsIPSec(policy.ParsePolicy(
         GOOD_HEADER + GOOD_SIMPLE, self.naming), EXP_INFO)
-    st, sst = pol1._buildTokens()
+    st, sst = pol1._BuildTokens()
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
   def testBuildWarningTokens(self):
     pol1 = windows_ipsec.WindowsIPSec(policy.ParsePolicy(
-      GOOD_HEADER + GOOD_SIMPLE_WARNING, self.naming), EXP_INFO)
-    st, sst = pol1._buildTokens()
+        GOOD_HEADER + GOOD_SIMPLE_WARNING, self.naming), EXP_INFO)
+    st, sst = pol1._BuildTokens()
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 

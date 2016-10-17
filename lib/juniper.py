@@ -752,16 +752,13 @@ class Juniper(aclgenerator.ACLGenerator):
   _TERM = Term
   SUFFIX = '.jcl'
 
-  def _buildTokens(self):
-    """build supported tokens for platform
+  def _BuildTokens(self):
+    """Build supported tokens for platform.
 
-    Args:
-      supported_tokens: a set of default tokens a platform should implement
-      supported_sub_tokens: a set of default sub tokens
     Returns:
-      tuple of two sets
+      tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(Juniper, self)._buildTokens()
+    supported_tokens, supported_sub_tokens = super(Juniper, self)._BuildTokens()
 
     supported_tokens |= {'address',
                          'counter',
@@ -787,14 +784,15 @@ class Juniper(aclgenerator.ACLGenerator):
                          'source_prefix',
                          'traffic_type'}
     supported_sub_tokens.update({
-      'option': {
-        'established',
-        'first-fragment',
-        '.*',  # make ArbitraryOptions work, yolo. todo, add all options to lex.
-        'sample',
-        'tcp-established',
-        'tcp-initial', },
-      })
+        'option': {
+            'established',
+            'first-fragment',
+            # TODO(sneakywombat): add all options to lex.
+            '.*',  # make ArbitraryOptions work, yolo.
+            'sample',
+            'tcp-established',
+            'tcp-initial'}
+        })
     return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):

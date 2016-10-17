@@ -22,8 +22,9 @@ very, very limited subset of possible acls.
 
 __author__ = 'cburgoyne@google.com (Chris Burgoyne)'
 
-from lib import aclgenerator
 import logging
+
+from lib import aclgenerator
 
 
 class Error(Exception):
@@ -61,14 +62,11 @@ class Aruba(aclgenerator.ACLGenerator):
   _PLATFORM = 'aruba'
   SUFFIX = '.aruba'
 
-  def _buildTokens(self):
-    """build supported tokens for platform
+  def _BuildTokens(self):
+    """Build supported tokens for platform.
 
-    Args:
-      supported_tokens: a set of default tokens a platform should implement
-      supported_sub_tokens: a set of default sub tokens
     Returns:
-      tuple of two sets
+      tuple containing both supported tokens and sub tokens
     """
     # aruba supports so little, it's easier to build by hand and not call the
     # the super class for the usual defaults.
@@ -77,8 +75,8 @@ class Aruba(aclgenerator.ACLGenerator):
                         'comment',  # we allow this to save our sanity
                         'name',  # obj attribute, not token
                         'translated',  # obj attribute, not token
-                        }
-    supported_sub_tokens = {'action': {'accept', }, }
+                       }
+    supported_sub_tokens = {'action': {'accept',}}
     return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):
@@ -94,8 +92,8 @@ class Aruba(aclgenerator.ACLGenerator):
       for t in terms:
         if t.comment:
           logging.warn('filter %s contains comments, these are not implemented '
-                   'on aruba! The comments will not be rendered.'
-                   % filter_name)
+                       'on aruba! The comments will not be rendered.',
+                       filter_name)
           break
 
       for term in terms:

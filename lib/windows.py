@@ -224,22 +224,19 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
 
   _GOOD_AFS = ['inet', 'inet6']
 
-  def _buildTokens(self):
-    """build supported tokens for platform
+  def _BuildTokens(self):
+    """Build supported tokens for platform.
 
-    Args:
-      supported_tokens: a set of default tokens a platform should implement
-      supported_sub_tokens: a set of default sub tokens
     Returns:
-      tuple of two sets
+      tuple containing both supported tokens and sub tokens
     """
     supported_tokens, supported_sub_tokens = super(
-      WindowsGenerator, self)._buildTokens()
+        WindowsGenerator, self)._BuildTokens()
 
-    supported_tokens |= {'option', }
-    supported_tokens -= {'verbatim', }
+    supported_tokens |= {'option'}
+    supported_tokens -= {'verbatim'}
 
-    supported_sub_tokens.update({'action': {'accept', 'deny', }, })
+    supported_sub_tokens.update({'action': {'accept', 'deny'}})
     del supported_sub_tokens['option']
     return supported_tokens, supported_sub_tokens
 

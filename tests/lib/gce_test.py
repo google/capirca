@@ -15,7 +15,6 @@
 """Unittest for GCE firewall rendering module."""
 
 import json
-import mock
 import unittest
 
 from lib import aclgenerator
@@ -23,7 +22,7 @@ from lib import gce
 from lib import nacaddr
 from lib import naming
 from lib import policy
-
+import mock
 
 GOOD_HEADER = """
 header {
@@ -290,22 +289,22 @@ GOOD_TERM_EXCLUDE_RANGE = """
 """
 
 SUPPORTED_TOKENS = {
-  'action',
-  'comment',
-  'destination_port',
-  'destination_tag',
-  'expiration',
-  'name',
-  'owner',
-  'protocol',
-  'source_address',
-  'source_address_exclude',
-  'source_port',
-  'source_tag',
-  'translated',
+    'action',
+    'comment',
+    'destination_port',
+    'destination_tag',
+    'expiration',
+    'name',
+    'owner',
+    'protocol',
+    'source_address',
+    'source_address_exclude',
+    'source_port',
+    'source_tag',
+    'translated',
 }
 
-SUPPORTED_SUB_TOKENS = {'action': {'accept', }, }
+SUPPORTED_SUB_TOKENS = {'action': {'accept'}}
 
 # Print a info message when a term is set to expire in that many weeks.
 # This is normally passed from command line.
@@ -524,8 +523,8 @@ class GCETest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
     pol1 = gce.GCE(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM,
-                   self.naming), EXP_INFO)
-    st, sst = pol1._buildTokens()
+                                      self.naming), EXP_INFO)
+    st, sst = pol1._BuildTokens()
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
@@ -535,7 +534,7 @@ class GCETest(unittest.TestCase):
 
     pol1 = gce.GCE(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_2,
                                       self.naming), EXP_INFO)
-    st, sst = pol1._buildTokens()
+    st, sst = pol1._BuildTokens()
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
