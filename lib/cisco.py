@@ -436,7 +436,7 @@ class Term(aclgenerator.Term):
         protocol = ['ipv6']
       else:
         protocol = ['ip']
-    elif self.term.protocol == ['hop-by-hop']:
+    elif self.term.protocol == ['hopopt']:
       protocol = ['hbh']
     elif self.proto_int:
       # pylint: disable=g-long-lambda

@@ -169,7 +169,7 @@ term unicast-term {
 
 GOOD_TERM_HBH = """
 term good-term-hbh {
-  protocol:: hop-by-hop
+  protocol:: hopopt
   action:: accept
 }
 """

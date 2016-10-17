@@ -283,7 +283,7 @@ term multiple-name {
 
 BAD_PROTO_TERM = """
 term bad-proto {
-  protocol:: hop-by-hop
+  protocol:: hopopt
   action:: accept
 }
 """

@@ -71,7 +71,8 @@ class TermNameTooLongError(Error):
 class Term(object):
   """Generic framework for a generator Term."""
   ICMP_TYPE = policy.Term.ICMP_TYPE
-  PROTO_MAP = {'hop-by-hop': 0,
+  # http://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
+  PROTO_MAP = {'hopopt': 0,
                'icmp': 1,
                'igmp': 2,
                'ggp': 3,

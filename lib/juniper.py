@@ -165,6 +165,9 @@ class Term(aclgenerator.Term):
 
     if term_type not in self._TERM_TYPE:
       raise ValueError('Unknown Filter Type: %s' % term_type)
+    if 'hopopt' in self.term.protocol:
+      loc = self.term.protocol.index('hopopt')
+      self.term.protocol[loc] = 'hop-by-hop'
 
     # some options need to modify the actions
     self.extra_actions = []

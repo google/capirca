@@ -83,7 +83,7 @@ class Term(aclgenerator.Term):
       # bpf supports "\vrrp", but some winpcap version dont' recognize it,
       # so use the IANA protocol number for it:
       'vrrp': 'proto 112',
-      'hop-by-hop': 'ip6 protochain 0',
+      'hopopt': 'ip6 protochain 0',
       }
 
   def __init__(self, term, filter_name, af='inet', direction=''):

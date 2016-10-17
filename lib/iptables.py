@@ -432,7 +432,7 @@ class Term(aclgenerator.Term):
     # TODO(vklimovs): generalize to all v6 special cases
     # Use u32 module as named modules are not available
     # everywhere.
-    if protocol == 'hop-by-hop':
+    if protocol == 'hopopt':
       proto = ''
       # Select 4 bytes at offset 0x3, mask out all but
       # last byte. That produces byte at position 7,

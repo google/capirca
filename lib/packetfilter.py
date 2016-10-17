@@ -83,7 +83,7 @@ class Term(aclgenerator.Term):
   _PROTO_TABLE = {
       'icmpv6': 'ipv6-icmp',
       }
-  _UNSUPPORTED_PROTOS = ['hop-by-hop']
+  _UNSUPPORTED_PROTOS = ['hopopt']
 
   def __init__(self, term, filter_name, stateful=True, af='inet', direction=''):
     """Setup a new term.

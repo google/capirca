@@ -125,6 +125,8 @@ class Term(windows.Term):
         proto = '112'
       elif proto == 'ah':
         proto = '51'
+      elif proto == 'htopt':
+        proto = '0'
       atoms.append(self._PROTO_ATOM.substitute(protocol=proto))
 
     atoms.append(self._ACTION_ATOM.substitute(

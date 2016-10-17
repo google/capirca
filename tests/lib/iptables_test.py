@@ -214,7 +214,7 @@ term inet6-icmp {
 
 IPV6_HEADERS = """
 term ipv6-header-1 {
-  protocol:: hop-by-hop
+  protocol:: hopopt
   action:: deny
 }
 

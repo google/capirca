@@ -369,6 +369,12 @@ term long-policer-term-1 {
   action:: deny
 }
 """
+HOPOPT_TERM = """
+term good-term-1 {
+  protocol:: hopopt
+  action:: accept
+}
+"""
 
 SUPPORTED_TOKENS = {
   'action',
@@ -1109,6 +1115,11 @@ class JuniperTest(unittest.TestCase):
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
+  def testHopOptProtocol(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + HOPOPT_TERM,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.failUnless('protocol hop-by-hop;' in output, output)
 
 if __name__ == '__main__':
   unittest.main()

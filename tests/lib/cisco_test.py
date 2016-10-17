@@ -244,7 +244,7 @@ term good-term-14 {
 """
 GOOD_TERM_15 = """
 term good-term-15 {
-  protocol:: hop-by-hop
+  protocol:: hopopt
   action:: accept
 }
 """
