@@ -444,7 +444,11 @@ class Term(aclgenerator.Term):
       options.append('-m u32 --u32 "0x3&0xff=0x2c"')
 
     # set conntrack state to NEW, unless policy requested "nostate"
-    if self.trackstate:
+    # for icmpv6 use trackstate only for type 128 and 139, as this is the
+    # only supported types in nf_conntrack_proto_icmpv6
+    if self.trackstate and (
+        protocol != 'icmpv6' or icmp_type in [128, 139]
+    ):
       already_stateful = False
       # we will add new stateful arguments only if none already exist, such
       # as from "option:: established"
