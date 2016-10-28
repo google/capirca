@@ -56,6 +56,16 @@ header {
   target:: juniper test-filter enable_dsmo
 }
 """
+GOOD_NOVERBOSE_V4_HEADER = """
+header {
+  target:: juniper test-filter inet noverbose
+}
+"""
+GOOD_NOVERBOSE_V6_HEADER = """
+header {
+  target:: juniper test-filter inet6 noverbose
+}
+"""
 GOOD_HEADER_NOT_INTERFACE_SPECIFIC = """
 header {
   target:: juniper test-filter bridge not-interface-specific
@@ -309,6 +319,12 @@ GOOD_TERM_29 = """
 term multiple-forwarding-class {
   forwarding-class:: floop fluup fleep
   action:: deny
+}
+"""
+GOOD_TERM_COMMENT = """
+term good-term-comment {
+  comment:: "This is a COMMENT"
+  action:: accept
 }
 """
 BAD_TERM_1 = """
@@ -795,6 +811,40 @@ class JuniperTest(unittest.TestCase):
     self.failIf('::1/128' in output, output)
 
     self.naming.GetNetAddr.assert_called_once_with('LOCALHOST')
+
+  def testNoVerboseV4(self):
+    addr_list = list()
+    for octet in range(0, 256):
+      net = nacaddr.IP('192.168.' + str(octet) + '.64/27')
+      addr_list.append(net)
+    self.naming.GetNetAddr.return_value = addr_list
+    self.naming.GetServiceByProto.return_value = ['25']
+
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(
+            GOOD_NOVERBOSE_V4_HEADER + GOOD_TERM_1 + GOOD_TERM_COMMENT,
+            self.naming), EXP_INFO)
+    self.failUnless('192.168.0.64/27;' in str(jcl))
+    self.failUnless('COMMENT' not in str(jcl))
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
+  def testNoVerboseV6(self):
+    addr_list = list()
+    for octet in range(0, 256):
+      net = nacaddr.IPv6('2001:db8:1010:' + str(octet) + '::64/64')
+      addr_list.append(net)
+    self.naming.GetNetAddr.return_value = addr_list
+    self.naming.GetServiceByProto.return_value = ['25']
+
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(
+            GOOD_NOVERBOSE_V6_HEADER + GOOD_TERM_1 + GOOD_TERM_COMMENT,
+            self.naming), EXP_INFO)
+    self.failUnless('2001:db8:1010:90::/61;' in str(jcl))
+    self.failUnless('COMMENT' not in str(jcl))
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
   def testDsmo(self):
     addr_list = list()

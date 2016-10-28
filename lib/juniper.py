@@ -157,11 +157,12 @@ class Term(aclgenerator.Term):
                            'protocol-except': 'ip-protocol-except',
                            'tcp-est': 'tcp-flags "(ack|rst)"'}}
 
-  def __init__(self, term, term_type, enable_dsmo):
+  def __init__(self, term, term_type, enable_dsmo, noverbose):
     super(Term, self).__init__(term)
     self.term = term
     self.term_type = term_type
     self.enable_dsmo = enable_dsmo
+    self.noverbose = noverbose
 
     if term_type not in self._TERM_TYPE:
       raise ValueError('Unknown Filter Type: %s' % term_type)
@@ -198,10 +199,11 @@ class Term(aclgenerator.Term):
     # comment
     # this deals just fine with multi line comments, but we could probably
     # output them a little cleaner; do things like make sure the
-    # len(output) < 80, etc.
-    if self.term.owner:
+    # len(output) < 80, etc. Note, if 'noverbose' is set for the filter, skip
+    # all comment processing.
+    if self.term.owner and not self.noverbose:
       self.term.comment.append('Owner: %s' % self.term.owner)
-    if self.term.comment:
+    if self.term.comment and not self.noverbose:
       config.Append('/*')
       for comment in self.term.comment:
         for line in comment.split('\n'):
@@ -642,6 +644,8 @@ class Term(aclgenerator.Term):
 
   def _Comment(self, addr, exclude=False, line_length=132):
     rval = []
+    if self.noverbose:
+      return rval
     # indentation, for multi-line comments, ensures that subsquent lines
     # are correctly alligned with the first line of the comment.
     indentation = 0
@@ -811,6 +815,7 @@ class Juniper(aclgenerator.ACLGenerator):
       # the list.
       interface_specific = 'not-interface-specific' not in filter_options[1:]
       enable_dsmo = 'enable_dsmo' in filter_options[1:]
+      noverbose = 'noverbose' in filter_options[1:]
 
       if not interface_specific:
         filter_options.remove('not-interface-specific')
@@ -844,7 +849,7 @@ class Juniper(aclgenerator.ACLGenerator):
                          'will not be rendered.', term.name, filter_name)
             continue
 
-        new_terms.append(self._TERM(term, filter_type, enable_dsmo))
+        new_terms.append(self._TERM(term, filter_type, enable_dsmo, noverbose))
 
       self.juniper_policies.append((header, filter_name, filter_type,
                                     interface_specific, new_terms))
