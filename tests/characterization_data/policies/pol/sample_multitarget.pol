@@ -58,6 +58,7 @@ header {
   target:: cisco edge-outbound mixed
   target:: speedway OUTPUT
   target:: ciscoasa asa_out
+  target:: cisconx edge-outbound mixed
 }
 
 term deny-to-bad-destinations {

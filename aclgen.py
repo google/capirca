@@ -38,6 +38,7 @@ from lib import arista
 from lib import aruba
 from lib import brocade
 from lib import cisco
+from lib import cisconx
 from lib import ciscoasa
 from lib import ciscoxr
 from lib import gce
@@ -170,6 +171,7 @@ def RenderFile(input_file, output_directory, definitions,
   pol = None
   jcl = False
   acl = False
+  nxacl = False
   asacl = False
   aacl = False
   bacl = False
@@ -214,6 +216,8 @@ def RenderFile(input_file, output_directory, definitions,
     jcl = copy.deepcopy(pol)
   if 'cisco' in platforms:
     acl = copy.deepcopy(pol)
+  if 'cisconx' in platforms:
+    nxacl = copy.deepcopy(pol)
   if 'ciscoasa' in platforms:
     asacl = copy.deepcopy(pol)
   if 'brocade' in platforms:
@@ -262,6 +266,10 @@ def RenderFile(input_file, output_directory, definitions,
                 input_file, write_files)
     if acl:
       acl_obj = cisco.Cisco(acl, exp_info)
+      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
+                input_file, write_files)
+    if nxacl:
+      acl_obj = cisconx.CiscoNX(nxacl, exp_info)
       RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
                 input_file, write_files)
     if asacl:
