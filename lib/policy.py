@@ -33,7 +33,16 @@ import logging
 
 DEFINITIONS = None
 DEFAULT_DEFINITIONS = './def'
-ACTIONS = set(('accept', 'deny', 'reject', 'next', 'reject-with-tcp-rst'))
+ACTIONS = set(('accept', 'count', 'deny', 'reject', 'next',
+               'reject-with-tcp-rst'))
+_FLEXIBLE_MATCH_RANGE_ATTRIBUTES = {'byte-offset',
+                                    'bit-offset',
+                                    'bit-length',
+                                    'match-start',
+                                    'range',
+                                    'range-except',
+                                    'flexible-range-name'}
+_FLEXIBLE_MATCH_START_OPTIONS = {'layer-3', 'layer-4', 'payload'}
 _LOGGING = set(('true', 'True', 'syslog', 'local', 'disable', 'log-both'))
 _OPTIMIZE = True
 _SHADE_CHECK = False
@@ -101,6 +110,10 @@ class NoTermsError(Error):
 
 class ShadingError(Error):
   """Error when a term is shaded by a prior term."""
+
+
+class FlexibleMatchError(Error):
+  """Error when a term contains an invalid flexible match value."""
 
 
 def TranslatePorts(ports, protocols, term_name):
@@ -284,6 +297,7 @@ class Term(object):
     dscp-match: VarType.DSCP_MATCH
     dscp-except: VarType.DSCP_EXCEPT
     comments: VarType.COMMENT
+    flexible-match-range: VarType.FLEXIBLE_MATCH_RANGE
     forwarding-class: VarType.FORWARDING_CLASS
     expiration: VarType.EXPIRATION
     verbatim: VarType.VERBATIM
@@ -389,6 +403,7 @@ class Term(object):
     self.dscp_match = []
     self.dscp_except = []
     self.next_ip = None
+    self.flexible_match_range = []
     # srx specific
     self.vpn = None
     # gce specific
@@ -629,6 +644,8 @@ class Term(object):
       ret_str.append('  action: %s' % self.action)
     if self.option:
       ret_str.append('  option: %s' % self.option)
+    if self.flexible_match_range:
+      ret_str.append('  flexible_match_range: %s' % self.flexible_match_range)
     if self.qos:
       ret_str.append('  qos: %s' % self.qos)
     if self.logging:
@@ -761,6 +778,10 @@ class Term(object):
 
     # next_ip
     if self.next_ip != other.next_ip:
+      return False
+
+    # flexible_match
+    if self.flexible_match_range != other.flexible_match_range:
       return False
 
     return True
@@ -949,6 +970,8 @@ class Term(object):
           self.source_tag.append(x.value)
         elif x.var_type is VarType.DTAG:
           self.destination_tag.append(x.value)
+        elif x.var_type is VarType.FLEXIBLE_MATCH_RANGE:
+          self.flexible_match_range.append(x.value)
         else:
           raise TermObjectTypeError(
               '%s isn\'t a type I know how to deal with (contains \'%s\')' % (
@@ -1298,6 +1321,7 @@ class VarType(object):
   DTAG = 45
   NEXT_IP = 46
   HOP_LIMIT = 47
+  FLEXIBLE_MATCH_RANGE = 48
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1472,12 +1496,14 @@ tokens = (
     'ESCAPEDSTRING',
     'ETHER_TYPE',
     'EXPIRATION',
+    'FLEXIBLE_MATCH_RANGE',
     'FORWARDING_CLASS',
     'FRAGMENT_OFFSET',
     'HOP_LIMIT',
     'APPLY_GROUPS',
     'APPLY_GROUPS_EXCEPT',
     'HEADER',
+    'HEX',
     'ICMP_TYPE',
     'INTEGER',
     'LOGGING',
@@ -1531,8 +1557,10 @@ reserved = {
     'dscp-set': 'DSCP_SET',
     'ether-type': 'ETHER_TYPE',
     'expiration': 'EXPIRATION',
+    'flexible-match-range': 'FLEXIBLE_MATCH_RANGE',
     'forwarding-class': 'FORWARDING_CLASS',
     'fragment-offset': 'FRAGMENT_OFFSET',
+    'hex': 'HEX',
     'hop-limit': 'HOP_LIMIT',
     'apply-groups': 'APPLY_GROUPS',
     'apply-groups-except': 'APPLY_GROUPS_EXCEPT',
@@ -1616,6 +1644,11 @@ def t_DSCP(t):
   return t
 
 
+def t_HEX(t):
+  r'0x[a-fA-F0-9]+'
+  return t
+
+
 def t_INTEGER(t):
   r'\d+'
   return t
@@ -1692,6 +1725,7 @@ def p_term_spec(p):
                 | term_spec ether_type_spec
                 | term_spec exclude_spec
                 | term_spec expiration_spec
+                | term_spec flexible_match_range_spec
                 | term_spec forwarding_class_spec
                 | term_spec fragment_offset_spec
                 | term_spec hop_limit_spec
@@ -1739,6 +1773,48 @@ def p_losspriority_spec(p):
 def p_precedence_spec(p):
   """ precedence_spec : PRECEDENCE ':' ':' one_or_more_ints """
   p[0] = VarType(VarType.PRECEDENCE, p[4])
+
+
+def p_flexible_match_range_spec(p):
+  """ flexible_match_range_spec : FLEXIBLE_MATCH_RANGE ':' ':' flex_match_key_values """
+  p[0] = []
+  for kv in p[4]:
+    p[0].append(VarType(VarType.FLEXIBLE_MATCH_RANGE, kv))
+
+
+def p_flex_match_key_values(p):
+  """ flex_match_key_values : flex_match_key_values STRING HEX
+                            | flex_match_key_values STRING INTEGER
+                            | flex_match_key_values STRING STRING
+                            | STRING HEX
+                            | STRING INTEGER
+                            | STRING STRING
+                            | """
+  if len(p) < 1:
+    return
+
+  if p[1] not in _FLEXIBLE_MATCH_RANGE_ATTRIBUTES:
+    raise FlexibleMatchError('%s is not a valid attribute' % p[1])
+  if p[1] == 'match-start':
+    if p[2] not in _FLEXIBLE_MATCH_START_OPTIONS:
+      raise FlexibleMatchError('%s value is not valid' % p[1])
+  # per Juniper, max bit length is 32
+  elif p[1] == 'bit-length':
+    if int(p[2]) not in range(33):
+      raise FlexibleMatchError('%s value is not valid' % p[1])
+  # per Juniper, max bit offset is 7
+  elif p[1] == 'bit-offset':
+    if int(p[2]) not in range(8):
+      raise FlexibleMatchError('%s value is not valid' % p[1])
+  # per Juniper, offset can be up to 256 bytes
+  elif p[1] == 'byte-offset':
+    if int(p[2]) not in range(256):
+      raise FlexibleMatchError('%s value is not valid' % p[1])
+
+  if type(p[0]) == type([]):
+    p[0].append(p[1:])
+  else:
+    p[0] = [p[1:]]
 
 
 def p_forwarding_class_spec(p):

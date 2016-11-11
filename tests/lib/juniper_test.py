@@ -391,6 +391,61 @@ term good-term-1 {
   action:: accept
 }
 """
+GOOD_FLEX_MATCH_TERM = """
+term flex-match-term-1 {
+  protocol:: tcp
+  flexible-match-range:: bit-length 8
+  flexible-match-range:: range 0x08
+  flexible-match-range:: match-start payload
+  flexible-match-range:: byte-offset 16
+  flexible-match-range:: bit-offset 7
+  action:: deny
+}
+"""
+BAD_FLEX_MATCH_TERM_1 = """
+term flex-match-term-1 {
+  protocol:: tcp
+  flexible-match-range:: bit-length 36
+  flexible-match-range:: range 0x08
+  flexible-match-range:: match-start payload
+  flexible-match-range:: byte-offset 16
+  flexible-match-range:: bit-offset 7
+  action:: deny
+}
+"""
+BAD_FLEX_MATCH_TERM_2 = """
+term flex-match-term-1 {
+  protocol:: tcp
+  flexible-match-range:: bit-length 8
+  flexible-match-range:: range 0x08
+  flexible-match-range:: match-start wrong
+  flexible-match-range:: byte-offset 16
+  flexible-match-range:: bit-offset 7
+  action:: deny
+}
+"""
+BAD_FLEX_MATCH_TERM_3 = """
+term flex-match-term-1 {
+  protocol:: tcp
+  flexible-match-range:: bit-length 8
+  flexible-match-range:: range 0x08
+  flexible-match-range:: match-start payload
+  flexible-match-range:: byte-offset 260
+  flexible-match-range:: bit-offset 7
+  action:: deny
+}
+"""
+BAD_FLEX_MATCH_TERM_4 = """
+term flex-match-term-1 {
+  protocol:: tcp
+  flexible-match-range:: bit-length 8
+  flexible-match-range:: range 0x08
+  flexible-match-range:: match-start payload
+  flexible-match-range:: byte-offset 16
+  flexible-match-range:: bit-offset 8
+  action:: deny
+}
+"""
 
 SUPPORTED_TOKENS = {
     'action',
@@ -406,6 +461,7 @@ SUPPORTED_TOKENS = {
     'dscp_set',
     'ether_type',
     'expiration',
+    'flexible_match_range',
     'forwarding_class',
     'fragment_offset',
     'hop_limit',
@@ -1170,6 +1226,83 @@ class JuniperTest(unittest.TestCase):
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('protocol hop-by-hop;' in output, output)
+
+  def testFlexibleMatch(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(
+                          GOOD_HEADER + GOOD_FLEX_MATCH_TERM,
+                          self.naming), EXP_INFO)
+    output = str(jcl)
+
+    flexible_match_expected = [
+      'flexible-match-range {',
+      'bit-length 8;',
+      'range 0x08;',
+      'match-start payload;',
+      'byte-offset 16;',
+      'bit-offset 7;'
+    ]
+
+    self.assertEquals(all([x in output for x in flexible_match_expected]), True)
+
+  def testFlexibleMatchIPv6(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(
+                          GOOD_HEADER_V6 + GOOD_FLEX_MATCH_TERM,
+                          self.naming), EXP_INFO)
+    output = str(jcl)
+
+    flexible_match_expected = [
+      'flexible-match-range {',
+      'bit-length 8;',
+      'range 0x08;',
+      'match-start payload;',
+      'byte-offset 16;',
+      'bit-offset 7;'
+    ]
+
+    self.assertEquals(all([x in output for x in flexible_match_expected]), True)
+
+  def testFailFlexibleMatch(self):
+
+    # bad bit-length
+    self.assertRaises(policy.FlexibleMatchError,
+                      policy.ParsePolicy,
+                      GOOD_HEADER + BAD_FLEX_MATCH_TERM_1,
+                      self.naming)
+    self.assertRaises(policy.FlexibleMatchError,
+                      policy.ParsePolicy,
+                      GOOD_HEADER_V6 + BAD_FLEX_MATCH_TERM_1,
+                      self.naming)
+
+    # bad match-start
+    self.assertRaises(policy.FlexibleMatchError,
+                      policy.ParsePolicy,
+                      GOOD_HEADER + BAD_FLEX_MATCH_TERM_2,
+                      self.naming)
+    self.assertRaises(policy.FlexibleMatchError,
+                      policy.ParsePolicy,
+                      GOOD_HEADER_V6 + BAD_FLEX_MATCH_TERM_2,
+                      self.naming)
+
+    # bad byte-offset
+    self.assertRaises(policy.FlexibleMatchError,
+                      policy.ParsePolicy,
+                      GOOD_HEADER + BAD_FLEX_MATCH_TERM_3,
+                      self.naming)
+    self.assertRaises(policy.FlexibleMatchError,
+                      policy.ParsePolicy,
+                      GOOD_HEADER_V6 + BAD_FLEX_MATCH_TERM_3,
+                      self.naming)
+
+    # bad bit-offset
+    self.assertRaises(policy.FlexibleMatchError,
+                      policy.ParsePolicy,
+                      GOOD_HEADER + BAD_FLEX_MATCH_TERM_4,
+                      self.naming)
+    self.assertRaises(policy.FlexibleMatchError,
+                      policy.ParsePolicy,
+                      GOOD_HEADER_V6 + BAD_FLEX_MATCH_TERM_4,
+                      self.naming)
+
 
 if __name__ == '__main__':
   unittest.main()
