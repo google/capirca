@@ -26,6 +26,7 @@ class CiscoXR(cisco.Cisco):
   _PLATFORM = 'ciscoxr'
   _DEFAULT_PROTOCOL = 'ip'
   SUFFIX = '.xacl'
+  _PROTO_INT = False
 
   def _AppendTargetByFilterType(self, filter_name, filter_type):
     """Takes in the filter name and type and appends headers.

@@ -362,15 +362,15 @@ class ObjectGroupTerm(aclgenerator.Term):
       daddr = 'net-group %s' % daddr
     # fix ports
     if sport:
-      sport = 'port-group %d-%d' % (sport[0], sport[1])
+      sport = ' port-group %d-%d' % (sport[0], sport[1])
     else:
       sport = ''
     if dport:
-      dport = 'port-group %d-%d' % (dport[0], dport[1])
+      dport = ' port-group %d-%d' % (dport[0], dport[1])
     else:
       dport = ''
 
-    return (' %s %s %s %s %s %s' % (
+    return (' %s %s %s%s %s%s' % (
         action, proto, saddr, sport, daddr, dport)).rstrip()
 
 
@@ -434,6 +434,8 @@ class Term(aclgenerator.Term):
     if not self.term.protocol:
       if self.af == 6:
         protocol = ['ipv6']
+      elif self.platform == 'ciscoxr':
+        protocol = ['ipv4']
       else:
         protocol = ['ip']
     elif self.term.protocol == ['hopopt']:
