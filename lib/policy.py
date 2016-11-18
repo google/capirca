@@ -588,21 +588,21 @@ class Term(object):
     ret_str = []
     ret_str.append(' name: %s' % self.name)
     if self.address:
-      ret_str.append('  address: %s' % self.address)
+      ret_str.append('  address: %s' % sorted(self.address))
     if self.address_exclude:
-      ret_str.append('  address_exclude: %s' % self.address_exclude)
+      ret_str.append('  address_exclude: %s' % sorted(self.address_exclude))
     if self.source_address:
-      ret_str.append('  source_address: %s' % self.source_address)
+      ret_str.append('  source_address: %s' % sorted(self.source_address))
     if self.source_address_exclude:
       ret_str.append('  source_address_exclude: %s' %
-                     self.source_address_exclude)
+                     sorted(self.source_address_exclude))
     if self.source_tag:
       ret_str.append('  source_tag: %s' % self.source_tag)
     if self.destination_address:
-      ret_str.append('  destination_address: %s' % self.destination_address)
+      ret_str.append('  destination_address: %s' % sorted(self.destination_address))
     if self.destination_address_exclude:
       ret_str.append('  destination_address_exclude: %s' %
-                     self.destination_address_exclude)
+                     sorted(self.destination_address_exclude))
     if self.destination_tag:
       ret_str.append('  destination_tag: %s' % self.destination_tag)
     if self.source_prefix:
@@ -620,11 +620,11 @@ class Term(object):
     if self.owner:
       ret_str.append('  owner: %s' % self.owner)
     if self.port:
-      ret_str.append('  port: %s' % self.port)
+      ret_str.append('  port: %s' % sorted(self.port))
     if self.source_port:
-      ret_str.append('  source_port: %s' % self.source_port)
+      ret_str.append('  source_port: %s' % sorted(self.source_port))
     if self.destination_port:
-      ret_str.append('  destination_port: %s' % self.destination_port)
+      ret_str.append('  destination_port: %s' % sorted(self.destination_port))
     if self.action:
       ret_str.append('  action: %s' % self.action)
     if self.option:
