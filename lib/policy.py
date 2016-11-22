@@ -614,7 +614,7 @@ class Term(object):
     if self.next_ip:
       ret_str.append('  next_ip: %s' % self.next_ip)
     if self.protocol:
-      ret_str.append('  protocol: %s' % self.protocol)
+      ret_str.append('  protocol: %s' % sorted(self.protocol))
     if self.protocol_except:
       ret_str.append('  protocol-except: %s' % self.protocol_except)
     if self.owner:
