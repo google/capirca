@@ -158,7 +158,6 @@ class AclGenArgumentsTests(AclGenCharacterizationTestBase):
 class AclGenCharacterizationTests(AclGenCharacterizationTestBase):
 
   def test_characterization(self):
-    # import pudb;pudb.set_trace()
     def_dir, pol_dir, expected_dir = map(
         self.dirpath, ('def', 'policies', 'filters_expected'))
     args = [
