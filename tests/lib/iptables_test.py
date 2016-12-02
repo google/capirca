@@ -204,6 +204,14 @@ term good-term-10 {
 }
 """
 
+BAD_QUOTE_TERM_1 = """
+term bad-quote-term-1 {
+  comment:: "Text describing without quotes"
+  protocol:: tcp
+  action:: accept
+}
+"""
+
 IPV6_TERM_1 = """
 term inet6-icmp {
   protocol:: icmpv6
@@ -799,6 +807,20 @@ class AclCheckTest(unittest.TestCase):
                 'Iptables comments must be under 255 characters.')
     self.failIf(re.search('--comments "[^"]*\n', result),
                 'Iptables comments may not contain newline characters.')
+
+  def testCommentQuoteStripping(self):
+
+    parsedPolicy = policy.ParsePolicy(GOOD_HEADER_1 + BAD_QUOTE_TERM_1,
+                                      self.naming)
+    parsedPolicy.filters[0][1][0].comment=['Text "describing" "with" quotes']
+
+
+    acl = iptables.Iptables(parsedPolicy, EXP_INFO)
+    result = str(acl)
+
+    self.assertTrue(re.search(
+        '--comment "Text describing with quotes"', result),
+                    'Iptables did not strip out quotes')
 
   def testLongTermName(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + BAD_LONG_TERM_NAME, self.naming)

@@ -160,9 +160,11 @@ class Term(aclgenerator.Term):
         if not line:
           continue  # iptables-restore does not like 0-length comments.
         # term comments
-        ret_str.append(self._COMMENT_FORMAT.substitute(filter=self.filter,
-                                                       term=self.term_name,
-                                                       comment=str(line)))
+        # Strip out quotes as iptables cant have nested quotes
+        ret_str.append(self._COMMENT_FORMAT.substitute(
+            filter=self.filter,
+            term=self.term_name,
+            comment=str(line).replace('\"','')))
 
     # Unsupported configuration; in the case of 'accept' or 'next', we
     # skip the rule.  In other cases, we blow up (raise an exception)
