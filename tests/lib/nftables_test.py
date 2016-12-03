@@ -18,9 +18,11 @@ import datetime
 import unittest
 
 
+from lib import aclgenerator
 from lib import nacaddr
 from lib import nftables
 from lib import policy
+
 import mock
 
 import logging
@@ -38,12 +40,6 @@ header {
 """
 
 GOOD_HEADER_2 = """
-header {
-  target:: nftables chain_name
-}
-"""
-
-GOOD_HEADER_3 = """
 header {
   target:: nftables chain_name input 0 inet6
 }
@@ -262,7 +258,8 @@ class NftablesTest(unittest.TestCase):
         'chain_name input 0 unsupported_af',
         'chain_name input not_an_int_priority',
         'chain_name invalid_hook_name 0',
-        'chain_name input',
+        'chain_name input'
+        'chain_name',
         '',
     ]
     for case in cases:
@@ -274,23 +271,34 @@ class NftablesTest(unittest.TestCase):
                         nftables.Nftables.__new__(nftables.Nftables),
                         pol, EXP_INFO)
 
-  @mock.patch.object(logging, 'info')
-  def testGoodHeader(self, mock_logging_info):
-    nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_1,
+  def testBadAddressFamily(self):
+    cases = [
+        'chain_name input 0 mixed',
+    ]
+    for case in cases:
+      logging.info('Testing bad address family case %s.', case)
+      header = BAD_HEADER % case
+      pol = policy.ParsePolicy(header + GOOD_TERM_1, self.mock_naming)
+      self.assertRaises(aclgenerator.UnsupportedAF,
+                        nftables.Nftables.__init__,
+                        nftables.Nftables.__new__(nftables.Nftables),
+                        pol, EXP_INFO)
+
+  def testGoodHeader(self):
+    nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                                          self.mock_naming), EXP_INFO)
-    mock_logging_info.assert_called_once_with('Chain %s is a non-base '
-                                              'chain, make sure it is linked.',
-                                              'chain_name')
     nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1 +
-                                                   GOOD_HEADER_3 + IPV6_TERM_2,
+                                                   GOOD_HEADER_2 + IPV6_TERM_2,
                                                    self.mock_naming),
                                 EXP_INFO))
-    self.assertIn('flush table ip filter', nft)
-    self.assertIn('table ip filter {\n\tchain chain_name {\n\t\ttype filter '
-                  'hook input priority 0;\n\t\taccept\n\t}\n}', nft)
-    self.assertIn('flush table ip6 filter', nft)
-    self.assertIn('table ip6 filter {\n\tchain chain_name {\n\t\ttype filter '
-                  'hook input priority 0;\n\t\tdrop\n\t}\n}', nft)
+    self.assertIn('flush table ip table_filter', nft)
+    self.assertIn(
+        'table ip table_filter {\n\tchain chain_name {\n\t\ttype filter '
+        'hook input priority 0;\n\t\taccept\n\t}\n}', nft)
+    self.assertIn('flush table ip6 table_filter', nft)
+    self.assertIn(
+        'table ip6 table_filter {\n\tchain chain_name {\n\t\ttype filter '
+        'hook input priority 0;\n\t\tdrop\n\t}\n}', nft)
 
   @mock.patch.object(logging, 'warn')
   def testExpired(self, mock_logging_warn):
