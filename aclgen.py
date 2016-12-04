@@ -449,7 +449,7 @@ def main(args):
     logging.basicConfig(level=logging.INFO)
   if FLAGS.debug:
     logging.basicConfig(level=logging.DEBUG)
-  logging.debug('binary: %s\noptimize: %d\base_directory: %s\n'
+  logging.debug('binary: %s\noptimize: %d\nbase_directory: %s\n'
                 'policy_file: %s\nrendered_acl_directory: %s',
                 str(sys.argv[0]),
                 int(FLAGS.optimize),
