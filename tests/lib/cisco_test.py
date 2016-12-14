@@ -527,10 +527,6 @@ class CiscoTest(unittest.TestCase):
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
-  def testActionsSupport(self):
-    self.assertEquals(sorted(cisco._ACTION_TABLE.keys()),
-                      sorted(list(policy.ACTIONS)))
-
   def testObjectGroup(self):
     ip_grp = ['object-group network ipv4 SOME_HOST']
     ip_grp.append(' 10.0.0.0/8')

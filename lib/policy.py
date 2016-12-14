@@ -33,7 +33,8 @@ import logging
 
 DEFINITIONS = None
 DEFAULT_DEFINITIONS = './def'
-ACTIONS = set(('accept', 'deny', 'reject', 'next', 'reject-with-tcp-rst'))
+ACTIONS = set(('accept', 'count', 'deny', 'reject', 'next',
+               'reject-with-tcp-rst'))
 _LOGGING = set(('true', 'True', 'syslog', 'local', 'disable', 'log-both'))
 _OPTIMIZE = True
 _SHADE_CHECK = False
