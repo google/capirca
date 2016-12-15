@@ -28,6 +28,11 @@ from lib import nacaddr
 import logging
 
 
+
+def junipersrx_list(name, data):
+  return '%s [ %s ];' % (name, ' '.join(data))
+
+
 class Error(Exception):
   """generic error class."""
 
@@ -62,10 +67,6 @@ class ConflictingTargetOptions(Error):
 
 class ConflictingApplicationSets(Error):
   pass
-
-
-def junipersrx_list(name, data):
-  return '%s [ %s ];' % (name, ' '.join(data))
 
 
 class IndentList(list):
