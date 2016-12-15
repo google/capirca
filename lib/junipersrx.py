@@ -28,19 +28,6 @@ from lib import nacaddr
 import logging
 
 
-def junipersrx_list(name, data):
-  return '%s [ %s ];' % (name, ' '.join(data))
-
-
-class IndentList(list):
-  def __init__(self, indent, *args, **kwargs):
-    self._indent = indent
-    super(IndentList, self).__init__(*args, **kwargs)
-
-  def iappend(self, size, data):
-    self.append('%s%s' % (self._indent * size, data))
-
-
 class Error(Exception):
   """generic error class."""
 
@@ -75,6 +62,19 @@ class ConflictingTargetOptions(Error):
 
 class ConflictingApplicationSets(Error):
   pass
+
+
+def junipersrx_list(name, data):
+  return '%s [ %s ];' % (name, ' '.join(data))
+
+
+class IndentList(list):
+  def __init__(self, indent, *args, **kwargs):
+    self._indent = indent
+    super(IndentList, self).__init__(*args, **kwargs)
+
+  def iappend(self, size, data):
+    self.append('%s%s' % (self._indent * size, data))
 
 
 class Term(aclgenerator.Term):
