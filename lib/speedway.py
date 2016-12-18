@@ -15,6 +15,11 @@
 
 """Speedway iptables generator.  This is a subclass of Iptables lib."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 __author__ = 'watson@google.com (Tony Watson)'
 
 from string import Template

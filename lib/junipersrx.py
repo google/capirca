@@ -16,6 +16,11 @@
 """SRX generator."""
 # pylint: disable=super-init-not-called
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 __author__ = 'robankeny@google.com (Robert Ankeny)'
 
 import collections
