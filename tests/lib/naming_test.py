@@ -14,6 +14,11 @@
 
 """Unittest for naming.py module."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 __author__ = 'watson@google.com (Tony Watson)'
 
 import io
@@ -159,13 +164,13 @@ class NamingUnitTest(unittest.TestCase):
 
   def testParseNetFile(self):
     filedefs = naming.Naming(None)
-    data = io.BytesIO('FOO = 127.0.0.1 # some network\n')
+    data = io.BytesIO('FOO = 127.0.0.1 # some network\n'.encode('utf8'))
     filedefs._ParseFile(data, 'networks')
     self.assertEqual(filedefs.GetNetAddr('FOO'), [nacaddr.IPv4('127.0.0.1')])
 
   def testParseServiceFile(self):
     filedefs = naming.Naming(None)
-    data = io.BytesIO('HTTP = 80/tcp\n')
+    data = io.BytesIO('HTTP = 80/tcp\n'.encode('utf8'))
     filedefs._ParseFile(data, 'services')
     self.assertEqual(filedefs.GetService('HTTP'), ['80/tcp'])
 

@@ -16,6 +16,11 @@
 """Parses the generic policy files and return a policy object for acl rendering.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 __author__ = ['pmoody@google.com',
               'watson@google.com']
 
@@ -1600,7 +1605,7 @@ def t_newline(t):
 
 
 def t_error(t):
-  print "Illegal character '%s' on line %s" % (t.value[0], t.lineno)
+  print("Illegal character '%s' on line %s") % (t.value[0], t.lineno)
   t.lexer.skip(1)
 
 
