@@ -32,6 +32,7 @@ import mock
 
 import logging
 
+
 BAD_HEADER = """
 header {
   target:: nftables %s
@@ -172,14 +173,56 @@ term good-term-12 {
 }
 """
 
+GOOD_TERM_13 = """
+term good-term-13 {
+  protocol:: icmp
+  action:: accept
+  logging:: true
+}
+"""
+
+GOOD_TERM_14 = """
+term good-term-14 {
+  protocol:: icmp
+  action:: accept
+  log_name:: "my log prefix"
+}
+"""
+
+GOOD_TERM_15 = """
+term good-term-15 {
+  protocol:: icmp
+  action:: accept
+  logging:: true
+  log_name:: "my log prefix"
+}
+"""
+GOOD_TERM_16 = """
+term good-term-16 {
+  protocol:: icmp
+  action:: accept
+  counter:: string_content_unused
+}
+"""
+
+GOOD_TERM_17 = """
+term good-term-17 {
+  action:: accept
+  comment:: "%(long_line)s:"
+}
+""" % {'long_line': 'A' * 128}
+
 SUPPORTED_TOKENS = {
     'action',
     'comment',
+    'counter',
     'destination_address',
     'destination_address_exclude',
     'destination_port',
     'expiration',
     'icmp_type',
+    'logging',
+    'log_name',
     'name',
     'option',
     'owner',
@@ -417,6 +460,36 @@ class NftablesTest(unittest.TestCase):
                                                    self.mock_naming), EXP_INFO))
     self.assertIn('comment "comment first line comment second line '
                   'Owner: owner@enterprise.com"', nft)
+
+  @mock.patch.object(logging, 'warn')
+  def testCommentTruncate(self, mock_logging_warn):
+    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_17,
+                                                   self.mock_naming), EXP_INFO))
+    mock_logging_warn.assert_called_once_with(
+        'Term %s in policy is too long (>%d characters) and will be'
+        ' truncated', 'good-term-17', nftables.Term.MAX_CHARACTERS)
+    # Ensure that the truncate did happen and stripped off the ':'
+    self.assertIn('comment "%(long_line)s' % {'long_line': 'A' *127}, nft)
+
+  def testLogTerm(self):
+    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_13,
+                                                   self.mock_naming), EXP_INFO))
+    self.assertIn(' icmp log accept', nft)
+
+  def testLogNameTerm(self):
+    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_14,
+                                                   self.mock_naming), EXP_INFO))
+    self.assertIn('log prefix "my log prefix: " ', nft)
+
+  def testLogAndLogNameTerm(self):
+    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_15,
+                                                   self.mock_naming), EXP_INFO))
+    self.assertIn('log prefix "my log prefix: " ', nft)
+
+  def testCounterTerm(self):
+    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_16,
+                                                   self.mock_naming), EXP_INFO))
+    self.assertIn(' icmp counter accept', nft)
 
   def testVerbatimTerm(self):
     nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_10,

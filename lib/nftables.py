@@ -62,6 +62,7 @@ class Term(aclgenerator.Term):
               'reject': 'reject',
               'next': 'continue',
               'reject-with-tcp-rst': 'reject with tcp reset'}
+  MAX_CHARACTERS = 128
 
   def __init__(self, term, af):
     """Setup a new nftables term.
@@ -178,17 +179,39 @@ class Term(aclgenerator.Term):
         output.append('icmp type %s' %
                       self._FormatMatch([icmp_type_names[icmp_type] for
                                          icmp_type in icmp_types]))
+    # Counter
+    # This does not use the value that was passed in the term.
+    if self.term.counter:
+      output.append('counter')
+
+    # Log
+    # Setup logic so that only one log statement is printed.
+    if self.term.logging and not self.term.log_name:
+      output.append('log')
+    elif (self.term.logging and self.term.log_name) or self.term.log_name:
+      # Only supports log prefix's of 128 characters truncate to 126 to support
+      # the additional suffix that is being added
+      output.append('log prefix "%s: "' % self.term.log_name[:126])
 
     # Action
     output.append(self._ACTIONS[self.term.action[0]])
 
-    # Owner
+    # Owner (implement as comment)
     if self.term.owner:
       self.term.comment.append('Owner: %s' % self.term.owner)
 
     # Comment
     if self.term.comment:
-      output.append('comment "%s"' % ' '.join(self.term.comment))
+      comment_data = ' '.join(self.term.comment)
+      # Have to truncate MAX_CHARACTERS characters due to NFTables limitation
+      if len(comment_data) > self.MAX_CHARACTERS:
+        # Have to use the first MAX_CHARACTERS characters
+        comment_data = comment_data[:self.MAX_CHARACTERS]
+        logging.warn(
+            'Term %s in policy is too long (>%d characters) '
+            'and will be truncated', self.term.name, self.MAX_CHARACTERS)
+
+      output.append('comment "%s"' % comment_data)
 
     return ' '.join(output)
 
@@ -245,7 +268,7 @@ class Nftables(aclgenerator.ACLGenerator):
     supported_tokens, supported_sub_tokens = super(
         Nftables, self)._BuildTokens()
 
-    supported_tokens |= {'owner'}
+    supported_tokens |= {'owner', 'counter', 'logging', 'log_name'}
     del supported_sub_tokens['option']
     return supported_tokens, supported_sub_tokens
 
