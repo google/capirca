@@ -307,6 +307,7 @@ class Term(object):
     expiration: VarType.EXPIRATION
     verbatim: VarType.VERBATIM
     logging: VarType.LOGGING
+    log_name: VarType.LOG_NAME
     next-ip: VarType.NEXT_IP
     qos: VarType.QOS
     policer: VarType.POLICER
@@ -380,6 +381,7 @@ class Term(object):
     self.destination_prefix = []
     self.forwarding_class = []
     self.logging = []
+    self.log_name = None
     self.loss_priority = None
     self.option = []
     self.owner = None
@@ -655,6 +657,8 @@ class Term(object):
       ret_str.append('  qos: %s' % self.qos)
     if self.logging:
       ret_str.append('  logging: %s' % self.logging)
+    if self.log_name:
+      ret_str.append('  log_name: %s' % self.log_name)
     if self.counter:
       ret_str.append('  counter: %s' % self.counter)
     if self.source_interface:
@@ -1014,6 +1018,8 @@ class Term(object):
           raise InvalidTermLoggingError('%s is not a valid logging option' %
                                         obj)
         self.logging.append(obj)
+      elif obj.var_type is VarType.LOG_NAME:
+        self.log_name = obj.value
       # police man, tryin'a take you jail
       elif obj.var_type is VarType.POLICER:
         self.policer = obj.value
@@ -1326,7 +1332,8 @@ class VarType(object):
   DTAG = 45
   NEXT_IP = 46
   HOP_LIMIT = 47
-  FLEXIBLE_MATCH_RANGE = 48
+  LOG_NAME = 48
+  FLEXIBLE_MATCH_RANGE = 49
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1335,6 +1342,11 @@ class VarType(object):
       comment = value.strip('"')
       # make all of the lines start w/o leading whitespace.
       self.value = '\n'.join([x.lstrip() for x in comment.splitlines()])
+    elif self.var_type == self.LOG_NAME:
+      # remove the double quotes
+      log_name = value.strip('"')
+      # make all of the lines start w/o leading whitespace.
+      self.value = '\n'.join([x.lstrip() for x in log_name.splitlines()])
     else:
       self.value = value
 
@@ -1512,6 +1524,7 @@ tokens = (
     'ICMP_TYPE',
     'INTEGER',
     'LOGGING',
+    'LOG_NAME',
     'LOSS_PRIORITY',
     'NEXT_IP',
     'OPTION',
@@ -1572,6 +1585,7 @@ reserved = {
     'header': 'HEADER',
     'icmp-type': 'ICMP_TYPE',
     'logging': 'LOGGING',
+    'log_name': 'LOG_NAME',
     'loss-priority': 'LOSS_PRIORITY',
     'next-ip': 'NEXT_IP',
     'option': 'OPTION',
@@ -1737,6 +1751,7 @@ def p_term_spec(p):
                 | term_spec icmp_type_spec
                 | term_spec interface_spec
                 | term_spec logging_spec
+                | term_spec log_name_spec
                 | term_spec losspriority_spec
                 | term_spec next_ip_spec
                 | term_spec option_spec
@@ -1998,6 +2013,11 @@ def p_policer_spec(p):
 def p_logging_spec(p):
   """ logging_spec : LOGGING ':' ':' STRING """
   p[0] = VarType(VarType.LOGGING, p[4])
+
+
+def p_log_name_spec(p):
+  """ log_name_spec : LOG_NAME ':' ':' DQUOTEDSTRING """
+  p[0] = VarType(VarType.LOG_NAME, p[4])
 
 
 def p_option_spec(p):
