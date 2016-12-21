@@ -14,6 +14,11 @@
 
 """Unittest for Nftables rendering module."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import datetime
 import unittest
 
@@ -325,7 +330,7 @@ class NftablesTest(unittest.TestCase):
                                              self.mock_naming), EXP_INFO))
     mock_logging_debug.assert_called_once_with('Term inet6-icmp will not be '
                                                'rendered, as it has '
-                                               '[\'icmpv6\'] match specified '
+                                               '[u\'icmpv6\'] match specified '
                                                'but the ACL is of inet address '
                                                'family.')
 

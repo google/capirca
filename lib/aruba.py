@@ -20,6 +20,11 @@ The word beta is very generous too: this only outputs a
 very, very limited subset of possible acls.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 __author__ = 'cburgoyne@google.com (Chris Burgoyne)'
 
 import logging

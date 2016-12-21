@@ -14,6 +14,11 @@
 
 """Unittest for iptables rendering module."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import datetime
 import re
 import unittest
@@ -1109,7 +1114,7 @@ class AclCheckTest(unittest.TestCase):
 
     mock_debug.assert_called_once_with(
         'Term inet6-icmp will not be rendered,'
-        ' as it has [\'icmpv6\'] match specified but '
+        ' as it has [u\'icmpv6\'] match specified but '
         'the ACL is of inet address family.')
 
   @mock.patch.object(iptables.logging, 'debug')
@@ -1122,7 +1127,7 @@ class AclCheckTest(unittest.TestCase):
 
     mock_debug.assert_called_once_with(
         'Term good-term-1 will not be rendered,'
-        ' as it has [\'icmp\'] match specified but '
+        ' as it has [u\'icmp\'] match specified but '
         'the ACL is of inet6 address family.')
 
   def testOwner(self):

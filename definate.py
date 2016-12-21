@@ -18,6 +18,10 @@ Definate is a framework to generate definitions for the automatic network policy
 generation framework. The definitions are generated based on a configuration
 file.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
 
 __author__ = 'msu@google.com (Martin Suess)'
 
