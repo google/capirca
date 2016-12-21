@@ -33,8 +33,7 @@ from lib import nacaddr
 import logging
 
 
-
-def junipersrx_list(name, data):
+def JunipersrxList(name, data):
   return '%s [ %s ];' % (name, ' '.join(data))
 
 
@@ -75,11 +74,12 @@ class ConflictingApplicationSets(Error):
 
 
 class IndentList(list):
+
   def __init__(self, indent, *args, **kwargs):
     self._indent = indent
     super(IndentList, self).__init__(*args, **kwargs)
 
-  def iappend(self, size, data):
+  def IndentAppend(self, size, data):
     self.append('%s%s' % (self._indent * size, data))
 
 
@@ -125,22 +125,22 @@ class Term(aclgenerator.Term):
       self.term.comment.append('Owner: %s' % self.term.owner)
     comments = aclgenerator.WrapWords(self.term.comment, comment_max_width)
     if comments and comments[0]:
-      ret_str.iappend(3, '/*')
+      ret_str.IndentAppend(3, '/*')
       for line in comments:
-        ret_str.iappend(3, line)
-      ret_str.iappend(3, '*/')
+        ret_str.IndentAppend(3, line)
+      ret_str.IndentAppend(3, '*/')
 
-    ret_str.iappend(3, 'policy ' + self.term.name + ' {')
-    ret_str.iappend(4, 'match {')
+    ret_str.IndentAppend(3, 'policy ' + self.term.name + ' {')
+    ret_str.IndentAppend(4, 'match {')
     # SOURCE-ADDRESS
     if self.term.source_address:
       saddr_check = set()
       for saddr in self.term.source_address:
         saddr_check.add(saddr.parent_token)
       saddr_check = sorted(saddr_check)
-      ret_str.iappend(5, junipersrx_list('source-address', saddr_check))
+      ret_str.IndentAppend(5, JunipersrxList('source-address', saddr_check))
     else:
-      ret_str.iappend(5, 'source-address any;')
+      ret_str.IndentAppend(5, 'source-address any;')
 
     # DESTINATION-ADDRESS
     if self.term.destination_address:
@@ -150,62 +150,64 @@ class Term(aclgenerator.Term):
       daddr_check = set(daddr_check)
       daddr_check = list(daddr_check)
       daddr_check.sort()
-      ret_str.iappend(5, junipersrx_list('destination-address', daddr_check))
+      ret_str.IndentAppend(5, JunipersrxList('destination-address',
+                                             daddr_check))
     else:
-      ret_str.iappend(5, 'destination-address any;')
+      ret_str.IndentAppend(5, 'destination-address any;')
 
     # APPLICATION
     if (not self.term.source_port and not self.term.destination_port and not
         self.term.icmp_type and not self.term.protocol):
-      ret_str.iappend(5, 'application any;')
+      ret_str.IndentAppend(5, 'application any;')
     else:
-      ret_str.iappend(5, 'application ' + self.term.name + '-app;')
+      ret_str.IndentAppend(5, 'application ' + self.term.name + '-app;')
 
     # DSCP MATCH
     if self.term.dscp_match:
-      ret_str.iappend(5, junipersrx_list('dscp', self.term.dscp_match))
+      ret_str.IndentAppend(5, JunipersrxList('dscp', self.term.dscp_match))
 
     # DSCP EXCEPT
     if self.term.dscp_except:
-      ret_str.iappend(5, junipersrx_list('dscp-except', self.term.dscp_except))
+      ret_str.IndentAppend(5, JunipersrxList('dscp-except',
+                                             self.term.dscp_except))
 
-    ret_str.iappend(4, '}')
+    ret_str.IndentAppend(4, '}')
 
     # ACTIONS
     for action in self.term.action:
-      ret_str.iappend(4, 'then {')
+      ret_str.IndentAppend(4, 'then {')
 
       # VPN target can be only specified when ACTION is accept
       if str(action) == 'accept' and self.term.vpn:
-        ret_str.iappend(5, self.ACTIONS.get(
+        ret_str.IndentAppend(5, self.ACTIONS.get(
             str(action)) + ' {')
-        ret_str.iappend(6, 'tunnel {')
-        ret_str.iappend(7, 'ipsec-vpn %s;' % self.term.vpn[0])
+        ret_str.IndentAppend(6, 'tunnel {')
+        ret_str.IndentAppend(7, 'ipsec-vpn %s;' % self.term.vpn[0])
         if self.term.vpn[1]:
-          ret_str.iappend(7, 'pair-policy %s;' % self.term.vpn[1])
+          ret_str.IndentAppend(7, 'pair-policy %s;' % self.term.vpn[1])
 
-        ret_str.iappend(6, '}')
-        ret_str.iappend(5, '}')
+        ret_str.IndentAppend(6, '}')
+        ret_str.IndentAppend(5, '}')
 
       else:
-        ret_str.iappend(5, self.ACTIONS.get(str(action)) + ';')
+        ret_str.IndentAppend(5, self.ACTIONS.get(str(action)) + ';')
 
       # DSCP SET
       if self.term.dscp_set:
-        ret_str.iappend(5, 'dscp ' + self.term.dscp_set + ';')
+        ret_str.IndentAppend(5, 'dscp ' + self.term.dscp_set + ';')
 
       # LOGGING
       if self.term.logging:
-        ret_str.iappend(5, 'log {')
-        ret_str.iappend(6, 'session-init;')
+        ret_str.IndentAppend(5, 'log {')
+        ret_str.IndentAppend(6, 'session-init;')
         for log_target in self.term.logging:
           if str(log_target) == 'log-both':
-            ret_str.iappend(6, 'session-close;')
-        ret_str.iappend(5, '}')
+            ret_str.IndentAppend(6, 'session-close;')
+        ret_str.IndentAppend(5, '}')
 
-      ret_str.iappend(4, '}')
+      ret_str.IndentAppend(4, '}')
 
-      ret_str.iappend(3, '}')
+      ret_str.IndentAppend(3, '}')
 
     return '\n'.join(ret_str)
 
@@ -639,8 +641,8 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       address_book_names_dict = {}
       address_book_groups_dict = {}
 
-      target.iappend(1, 'replace: address-book {')
-      target.iappend(2, 'global {')
+      target.IndentAppend(1, 'replace: address-book {')
+      target.IndentAppend(2, 'global {')
       for zone in self.addressbook:
 
         # building individual addresses dictionary
@@ -667,40 +669,40 @@ class JuniperSRX(aclgenerator.ACLGenerator):
 
       # add global address-book to target
       for name in address_book_keys:
-        target.iappend(4, 'address ' + name + ' ' +
-                       str(address_book_names_dict[name]) + ';')
+        target.IndentAppend(4, 'address ' + name + ' ' +
+                            str(address_book_names_dict[name]) + ';')
 
       for group, address_list in address_book_groups_dict.items():
-        target.iappend(4, 'address-set ' + group + ' {')
+        target.IndentAppend(4, 'address-set ' + group + ' {')
         for name in address_list:
-          target.iappend(5, 'address ' + name + ';')
-        target.iappend(4, '}')
+          target.IndentAppend(5, 'address ' + name + ';')
+        target.IndentAppend(4, '}')
 
-      target.iappend(2, '}')
-      target.iappend(1, '}')
+      target.IndentAppend(2, '}')
+      target.IndentAppend(1, '}')
 
     else:
-      target.iappend(1, 'zones {')
+      target.IndentAppend(1, 'zones {')
       for zone in self.addressbook:
-        target.iappend(2, 'security-zone ' + zone + ' {')
-        target.iappend(3, 'replace: address-book {')
+        target.IndentAppend(2, 'security-zone ' + zone + ' {')
+        target.IndentAppend(3, 'replace: address-book {')
 
         # building individual addresses
         groups = sorted(self.addressbook[zone])
         for group in groups:
           for address, name in self.addressbook[zone][group]:
-            target.iappend(4, 'address ' + name + ' ' + str(address) + ';')
+            target.IndentAppend(4, 'address ' + name + ' ' + str(address) + ';')
 
         # building address-sets
         for group in groups:
-          target.iappend(4, 'address-set ' + group + ' {')
+          target.IndentAppend(4, 'address-set ' + group + ' {')
           for address, name in self.addressbook[zone][group]:
-            target.iappend(5, 'address ' + name + ';')
+            target.IndentAppend(5, 'address ' + name + ';')
 
-          target.iappend(4, '}')
-        target.iappend(3, '}')
-        target.iappend(2, '}')
-      target.iappend(1, '}')
+          target.IndentAppend(4, '}')
+        target.IndentAppend(3, '}')
+        target.IndentAppend(2, '}')
+      target.IndentAppend(1, '}')
 
     return target
 
@@ -717,24 +719,25 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       if app['protocol'] or app['sport'] or app['dport'] or app['icmp-type']:
         # generate ICMP statements
         if app['icmp-type']:
-          target.iappend(1, 'application ' + app['name'] + '-app {')
+          target.IndentAppend(1, 'application ' + app['name'] + '-app {')
 
           if app['timeout']:
             timeout = app['timeout']
           else:
             timeout = 60
           for i, code in enumerate(app['icmp-type']):
-            target.iappend(
+            target.IndentAppend(
                 2,
                 'term t%d protocol icmp icmp-type %s inactivity-timeout %d;' %
                 (i + 1, str(code), int(timeout))
             )
-          target.iappend(1, '}')
+          target.IndentAppend(1, '}')
 
         # generate non-ICMP statements
         else:
           i = 1
-          apps_set_list.iappend(1, 'application-set ' + app['name'] + '-app {')
+          apps_set_list.IndentAppend(1, 'application-set ' +
+                                     app['name'] + '-app {')
 
           for proto in app['protocol'] or ['']:
             for sport in app['sport'] or ['']:
@@ -752,17 +755,18 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                 if app['timeout']:
                   chunks.append(' inactivity-timeout %d' % int(app['timeout']))
                 if chunks:
-                  apps_set_list.iappend(
+                  apps_set_list.IndentAppend(
                       2, 'application ' + app['name'] + '-app%d;' % i
                   )
-                  app_list.iappend(
+                  app_list.IndentAppend(
                       1, 'application ' + app['name'] + '-app%d {' % i
                   )
 
-                  app_list.iappend(2, 'term t%d' % i + ''.join(chunks) + ';')
-                  app_list.iappend(1, '}')
+                  app_list.IndentAppend(2, 'term t%d' % i +
+                                        ''.join(chunks) + ';')
+                  app_list.IndentAppend(1, '}')
                   i += 1
-          apps_set_list.iappend(1, '}')
+          apps_set_list.IndentAppend(1, '}')
 
         done_apps.append(app)
         if app_list:
@@ -781,39 +785,40 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     target.extend(self._GenerateAddressBook())
 
     # POLICIES
-    target.iappend(1, '/*')
+    target.IndentAppend(1, '/*')
     target.extend(aclgenerator.AddRepositoryTags(self.INDENT * 1))
-    target.iappend(1, '*/')
+    target.IndentAppend(1, '*/')
 
-    target.iappend(1, 'replace: policies {')
+    target.IndentAppend(1, 'replace: policies {')
 
     for (header, terms, filter_options) in self.srx_policies:
-      target.iappend(2, '/*')
+      target.IndentAppend(2, '/*')
       target.extend([self.INDENT * 2 + line for line in
                      aclgenerator.WrapWords(header.comment,
                                             self._MAX_HEADER_COMMENT_LENGTH)])
-      target.iappend(2, '*/')
+      target.IndentAppend(2, '*/')
 
       # ZONE DIRECTION
       if filter_options[1] == 'all' and filter_options[3] == 'all':
-        target.iappend(2, 'global {')
+        target.IndentAppend(2, 'global {')
       else:
-        target.iappend(2, 'from-zone ' + filter_options[1] +
-                       ' to-zone ' + filter_options[3] + ' {')
+        target.IndentAppend(2, 'from-zone ' + filter_options[1] +
+                            ' to-zone ' + filter_options[3] + ' {')
 
       # GROUPS
       if header.apply_groups:
-        target.iappend(3, junipersrx_list('apply-groups', header.apply_groups))
+        target.IndentAppend(3, JunipersrxList('apply-groups',
+                                              header.apply_groups))
       # GROUPS EXCEPT
       if header.apply_groups_except:
-        target.iappend(
+        target.IndentAppend(
             3,
-            junipersrx_list('apply-groups-except', header.apply_groups_except)
+            JunipersrxList('apply-groups-except', header.apply_groups_except)
         )
       for term in terms:
         target.append(str(term))
-      target.iappend(2, '}')
-    target.iappend(1, '}')
+      target.IndentAppend(2, '}')
+    target.IndentAppend(1, '}')
     target.append('}')
 
     # APPLICATIONS
