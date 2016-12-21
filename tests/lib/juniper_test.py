@@ -1234,34 +1234,33 @@ class JuniperTest(unittest.TestCase):
 
   def testFlexibleMatch(self):
     jcl = juniper.Juniper(policy.ParsePolicy(
-                          GOOD_HEADER + GOOD_FLEX_MATCH_TERM,
-                          self.naming), EXP_INFO)
+        GOOD_HEADER + GOOD_FLEX_MATCH_TERM, self.naming), EXP_INFO)
+
     output = str(jcl)
 
     flexible_match_expected = [
-      'flexible-match-range {',
-      'bit-length 8;',
-      'range 0x08;',
-      'match-start payload;',
-      'byte-offset 16;',
-      'bit-offset 7;'
+        'flexible-match-range {',
+        'bit-length 8;',
+        'range 0x08;',
+        'match-start payload;',
+        'byte-offset 16;',
+        'bit-offset 7;'
     ]
 
     self.assertEquals(all([x in output for x in flexible_match_expected]), True)
 
   def testFlexibleMatchIPv6(self):
     jcl = juniper.Juniper(policy.ParsePolicy(
-                          GOOD_HEADER_V6 + GOOD_FLEX_MATCH_TERM,
-                          self.naming), EXP_INFO)
+        GOOD_HEADER_V6 + GOOD_FLEX_MATCH_TERM, self.naming), EXP_INFO)
     output = str(jcl)
 
     flexible_match_expected = [
-      'flexible-match-range {',
-      'bit-length 8;',
-      'range 0x08;',
-      'match-start payload;',
-      'byte-offset 16;',
-      'bit-offset 7;'
+        'flexible-match-range {',
+        'bit-length 8;',
+        'range 0x08;',
+        'match-start payload;',
+        'byte-offset 16;',
+        'bit-offset 7;'
     ]
 
     self.assertEquals(all([x in output for x in flexible_match_expected]), True)
