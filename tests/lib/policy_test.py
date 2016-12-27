@@ -14,6 +14,11 @@
 
 """Unit tests for policy.py library."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 __author__ = 'watson@google.com (Tony Watson)'
 
 import unittest
@@ -54,6 +59,12 @@ HEADER_5 = """
 header {
   comment:: "test header 5"
   target:: gce global/networks/default
+}
+"""
+HEADER_6 = """
+header {
+  comment:: "this is a test nftable acl"
+  target::  nftables chain_name input 0 inet
 }
 """
 HEADER_V6 = """
@@ -331,6 +342,13 @@ term good-term-36 {
   action:: accept
 }
 """
+GOOD_TERM_37 = """
+term good-term-37 {
+  protocol:: icmp
+  action:: accept
+  log_name:: "my special prefix"
+}
+"""
 GOOD_TERM_V6_1 = """
 term good-term-v6-1 {
   hop-limit:: 5
@@ -599,6 +617,13 @@ class PolicyTest(unittest.TestCase):
     _, terms = ret.filters[0]
     self.assertEqual(str(terms[0].comment[0]), 'first comment')
     self.assertEqual(str(terms[0].comment[1]), 'second comment')
+
+  def testLogNameTerm(self):
+    pol = HEADER_6 + GOOD_TERM_37
+    ret = policy.ParsePolicy(pol, self.naming)
+    self.assertEqual(len(ret.filters), 1)
+    _, terms = ret.filters[0]
+    self.assertEqual(str(terms[0].log_name), 'my special prefix')
 
   def testTermEquality(self):
     self.naming.GetNetAddr.side_effect = [

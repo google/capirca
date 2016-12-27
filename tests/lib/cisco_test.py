@@ -14,6 +14,11 @@
 
 """Unittest for cisco acl rendering module."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import datetime
 import re
 import unittest
@@ -263,6 +268,13 @@ term good-term-17 {
   action:: accept
 }
 """
+GOOD_TERM_18 = """
+term good-term-18 {
+  source-address:: SOME_HOST
+  destination-address:: SOME_HOST
+  action:: accept
+}
+"""
 
 LONG_COMMENT_TERM = """
 term long-comment-term {
@@ -403,10 +415,11 @@ class CiscoTest(unittest.TestCase):
                     str(acl))
 
   def testTermAndFilterName(self):
-    acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
-                                         self.naming), EXP_INFO)
+    acl = cisco.Cisco(policy.ParsePolicy(
+        GOOD_HEADER + GOOD_TERM_1 + GOOD_TERM_6, self.naming), EXP_INFO)
     self.failUnless('ip access-list extended test-filter' in str(acl), str(acl))
     self.failUnless(' remark good-term-1' in str(acl), str(acl))
+    self.failUnless(' permit ip any any' in str(acl), str(acl))
 
   def testRemark(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
@@ -484,6 +497,8 @@ class CiscoTest(unittest.TestCase):
     acl = cisco.Cisco(pol, EXP_INFO)
     expected = 'ip access-list standard FOO'
     self.failUnless(expected in str(acl), '[%s]' % str(acl))
+    expected = ' permit 10.0.0.0 0.255.255.255'
+    self.failUnless(expected in str(acl), '[%s]' % str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
@@ -517,10 +532,6 @@ class CiscoTest(unittest.TestCase):
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
-  def testActionsSupport(self):
-    self.assertEquals(sorted(cisco._ACTION_TABLE.keys()),
-                      sorted(list(policy.ACTIONS)))
-
   def testObjectGroup(self):
     ip_grp = ['object-group network ipv4 SOME_HOST']
     ip_grp.append(' 10.0.0.0/8')
@@ -536,7 +547,8 @@ class CiscoTest(unittest.TestCase):
         nacaddr.IP('10.0.0.0/8', token='SOME_HOST')]
     self.naming.GetServiceByProto.return_value = ['80']
 
-    pol = policy.ParsePolicy(GOOD_OBJGRP_HEADER + GOOD_TERM_2, self.naming)
+    pol = policy.ParsePolicy(
+        GOOD_OBJGRP_HEADER + GOOD_TERM_2 + GOOD_TERM_18, self.naming)
     acl = cisco.Cisco(pol, EXP_INFO)
 
     self.failUnless('\n'.join(ip_grp) in str(acl), '%s %s' % (
@@ -548,14 +560,18 @@ class CiscoTest(unittest.TestCase):
 
     # Object-group terms should use the object groups created.
     self.failUnless(
-        'any port-group 80-80 net-group SOME_HOST port-group 1024-65535'
-        in str(acl))
+        ' permit 6 any port-group 80-80 net-group SOME_HOST port-group'
+        ' 1024-65535' in str(acl), str(acl))
+    self.failUnless(
+        ' permit ip net-group SOME_HOST net-group SOME_HOST' in str(acl),
+        str(acl))
 
     # There should be no addrgroups that look like IP addresses.
     for addrgroup in re.findall(r'net-group ([a-f0-9.:/]+)', str(acl)):
       self.assertRaises(ValueError, nacaddr.IP(addrgroup))
 
-    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+    self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
+                                             mock.call('SOME_HOST')])
     self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
 
   def testInet6(self):
@@ -650,7 +666,7 @@ class CiscoTest(unittest.TestCase):
 
     mock_debug.assert_called_once_with(
         'Term good-term-11 will not be rendered,'
-        ' as it has [\'icmpv6\'] match specified but '
+        ' as it has [u\'icmpv6\'] match specified but '
         'the ACL is of inet address family.')
 
   @mock.patch.object(cisco.logging, 'debug')
@@ -662,7 +678,7 @@ class CiscoTest(unittest.TestCase):
 
     mock_debug.assert_called_once_with(
         'Term good-term-1 will not be rendered,'
-        ' as it has [\'icmp\'] match specified but '
+        ' as it has [u\'icmp\'] match specified but '
         'the ACL is of inet6 address family.')
 
   def testUnsupportedKeywordsError(self):

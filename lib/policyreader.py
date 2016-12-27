@@ -24,6 +24,11 @@ TODO: This library is currently incomplete, and does not allow access to
       every argument of a policy term.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 __author__ = 'watson@google.com (Tony Watson)'
 
 from lib import naming

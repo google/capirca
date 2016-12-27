@@ -14,6 +14,11 @@
 #
 """UnitTest class for nsxv.py"""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 
 import unittest
 from xml.etree import ElementTree as ET
@@ -44,14 +49,12 @@ class TermTest(unittest.TestCase):
     """ Test for Term._init_ """
     inet_term = nsxv.Term(nsxv_mocktest.INET_TERM, 'inet')
     self.assertEqual(inet_term.af, 4)
-    self.assertEqual(inet_term.text_af, 'inet')
     self.assertEqual(inet_term.filter_type, 'inet')
 
   def test_init_forinet6(self):
     """ Test for Term._init_ """
     inet6_term = nsxv.Term(nsxv_mocktest.INET6_TERM, 'inet6', 6)
     self.assertEqual(inet6_term.af, 6)
-    self.assertEqual(inet6_term.text_af, 'inet6')
     self.assertEqual(inet6_term.filter_type, 'inet6')
 
   def test_ServiceToStr(self):

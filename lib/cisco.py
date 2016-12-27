@@ -15,6 +15,11 @@
 
 """Cisco generator."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 __author__ = ['pmoody@google.com (Peter Moody)',
               'watson@google.com (Tony Watson)']
 
@@ -279,14 +284,13 @@ class ObjectGroupTerm(aclgenerator.Term):
   where first-term-source-address, ANY and 179-179 are defined elsewhere
   in the acl.
   """
-  # Protocols should be emitted as integers rather than strings.
-  _PROTO_INT = True
 
-  def __init__(self, term, filter_name, platform='cisco'):
+  def __init__(self, term, filter_name, platform='cisco', proto_int=True):
     super(ObjectGroupTerm, self).__init__(term)
     self.term = term
     self.filter_name = filter_name
     self.platform = platform
+    self.proto_int = proto_int
 
   def __str__(self):
     # Verify platform specific terms. Skip whole term if platform does not
@@ -319,10 +323,12 @@ class ObjectGroupTerm(aclgenerator.Term):
     # protocol
     if not self.term.protocol:
       protocol = ['ip']
-    else:
+    elif self.proto_int:
       # pylint: disable=g-long-lambda
       protocol = map(self.PROTO_MAP.get, self.term.protocol, self.term.protocol)
       # pylint: enable=g-long-lambda
+    else:
+      protocol = self.term.protocol
 
     # addresses
     source_address = self.term.source_address
@@ -362,15 +368,15 @@ class ObjectGroupTerm(aclgenerator.Term):
       daddr = 'net-group %s' % daddr
     # fix ports
     if sport:
-      sport = 'port-group %d-%d' % (sport[0], sport[1])
+      sport = ' port-group %d-%d' % (sport[0], sport[1])
     else:
       sport = ''
     if dport:
-      dport = 'port-group %d-%d' % (dport[0], dport[1])
+      dport = ' port-group %d-%d' % (dport[0], dport[1])
     else:
       dport = ''
 
-    return (' %s %s %s %s %s %s' % (
+    return (' %s %s %s%s %s%s' % (
         action, proto, saddr, sport, daddr, dport)).rstrip()
 
 
@@ -434,6 +440,8 @@ class Term(aclgenerator.Term):
     if not self.term.protocol:
       if self.af == 6:
         protocol = ['ipv6']
+      elif self.platform == 'ciscoxr':
+        protocol = ['ipv4']
       else:
         protocol = ['ip']
     elif self.term.protocol == ['hopopt']:
@@ -756,7 +764,8 @@ class Cisco(aclgenerator.ACLGenerator):
                      term_remark=self._TERM_REMARK, platform=self._PLATFORM))
           elif next_filter == 'object-group':
             obj_target.AddTerm(term)
-            obj_group_term = ObjectGroupTerm(term, filter_name)
+            obj_group_term = ObjectGroupTerm(
+                term, filter_name, proto_int=self._PROTO_INT)
             new_terms.append(obj_group_term)
           elif next_filter == 'inet6':
             new_terms.append(Term(term, 6, proto_int=self._PROTO_INT))

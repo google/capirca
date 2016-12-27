@@ -19,6 +19,11 @@ uses the same syntax as regular Juniper stateless ACLs, with minor
 differences. This subclass effects those differences.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 from lib import juniper
 
 __author__ = 'vklimovs@google.com (Vjaceslavs Klimovs)'

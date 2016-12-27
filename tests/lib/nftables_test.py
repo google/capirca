@@ -14,16 +14,24 @@
 
 """Unittest for Nftables rendering module."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import datetime
 import unittest
 
 
+from lib import aclgenerator
 from lib import nacaddr
 from lib import nftables
 from lib import policy
+
 import mock
 
 import logging
+
 
 BAD_HEADER = """
 header {
@@ -38,12 +46,6 @@ header {
 """
 
 GOOD_HEADER_2 = """
-header {
-  target:: nftables chain_name
-}
-"""
-
-GOOD_HEADER_3 = """
 header {
   target:: nftables chain_name input 0 inet6
 }
@@ -171,14 +173,56 @@ term good-term-12 {
 }
 """
 
+GOOD_TERM_13 = """
+term good-term-13 {
+  protocol:: icmp
+  action:: accept
+  logging:: true
+}
+"""
+
+GOOD_TERM_14 = """
+term good-term-14 {
+  protocol:: icmp
+  action:: accept
+  log_name:: "my log prefix"
+}
+"""
+
+GOOD_TERM_15 = """
+term good-term-15 {
+  protocol:: icmp
+  action:: accept
+  logging:: true
+  log_name:: "my log prefix"
+}
+"""
+GOOD_TERM_16 = """
+term good-term-16 {
+  protocol:: icmp
+  action:: accept
+  counter:: string_content_unused
+}
+"""
+
+GOOD_TERM_17 = """
+term good-term-17 {
+  action:: accept
+  comment:: "%(long_line)s:"
+}
+""" % {'long_line': 'A' * 128}
+
 SUPPORTED_TOKENS = {
     'action',
     'comment',
+    'counter',
     'destination_address',
     'destination_address_exclude',
     'destination_port',
     'expiration',
     'icmp_type',
+    'logging',
+    'log_name',
     'name',
     'option',
     'owner',
@@ -262,7 +306,8 @@ class NftablesTest(unittest.TestCase):
         'chain_name input 0 unsupported_af',
         'chain_name input not_an_int_priority',
         'chain_name invalid_hook_name 0',
-        'chain_name input',
+        'chain_name input'
+        'chain_name',
         '',
     ]
     for case in cases:
@@ -274,23 +319,34 @@ class NftablesTest(unittest.TestCase):
                         nftables.Nftables.__new__(nftables.Nftables),
                         pol, EXP_INFO)
 
-  @mock.patch.object(logging, 'info')
-  def testGoodHeader(self, mock_logging_info):
-    nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_1,
+  def testBadAddressFamily(self):
+    cases = [
+        'chain_name input 0 mixed',
+    ]
+    for case in cases:
+      logging.info('Testing bad address family case %s.', case)
+      header = BAD_HEADER % case
+      pol = policy.ParsePolicy(header + GOOD_TERM_1, self.mock_naming)
+      self.assertRaises(aclgenerator.UnsupportedAF,
+                        nftables.Nftables.__init__,
+                        nftables.Nftables.__new__(nftables.Nftables),
+                        pol, EXP_INFO)
+
+  def testGoodHeader(self):
+    nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                                          self.mock_naming), EXP_INFO)
-    mock_logging_info.assert_called_once_with('Chain %s is a non-base '
-                                              'chain, make sure it is linked.',
-                                              'chain_name')
     nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1 +
-                                                   GOOD_HEADER_3 + IPV6_TERM_2,
+                                                   GOOD_HEADER_2 + IPV6_TERM_2,
                                                    self.mock_naming),
                                 EXP_INFO))
-    self.assertIn('flush table ip filter', nft)
-    self.assertIn('table ip filter {\n\tchain chain_name {\n\t\ttype filter '
-                  'hook input priority 0;\n\t\taccept\n\t}\n}', nft)
-    self.assertIn('flush table ip6 filter', nft)
-    self.assertIn('table ip6 filter {\n\tchain chain_name {\n\t\ttype filter '
-                  'hook input priority 0;\n\t\tdrop\n\t}\n}', nft)
+    self.assertIn('flush table ip table_filter', nft)
+    self.assertIn(
+        'table ip table_filter {\n\tchain chain_name {\n\t\ttype filter '
+        'hook input priority 0;\n\t\taccept\n\t}\n}', nft)
+    self.assertIn('flush table ip6 table_filter', nft)
+    self.assertIn(
+        'table ip6 table_filter {\n\tchain chain_name {\n\t\ttype filter '
+        'hook input priority 0;\n\t\tdrop\n\t}\n}', nft)
 
   @mock.patch.object(logging, 'warn')
   def testExpired(self, mock_logging_warn):
@@ -317,7 +373,7 @@ class NftablesTest(unittest.TestCase):
                                              self.mock_naming), EXP_INFO))
     mock_logging_debug.assert_called_once_with('Term inet6-icmp will not be '
                                                'rendered, as it has '
-                                               '[\'icmpv6\'] match specified '
+                                               '[u\'icmpv6\'] match specified '
                                                'but the ACL is of inet address '
                                                'family.')
 
@@ -404,6 +460,36 @@ class NftablesTest(unittest.TestCase):
                                                    self.mock_naming), EXP_INFO))
     self.assertIn('comment "comment first line comment second line '
                   'Owner: owner@enterprise.com"', nft)
+
+  @mock.patch.object(logging, 'warn')
+  def testCommentTruncate(self, mock_logging_warn):
+    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_17,
+                                                   self.mock_naming), EXP_INFO))
+    mock_logging_warn.assert_called_once_with(
+        'Term %s in policy is too long (>%d characters) and will be'
+        ' truncated', 'good-term-17', nftables.Term.MAX_CHARACTERS)
+    # Ensure that the truncate did happen and stripped off the ':'
+    self.assertIn('comment "%(long_line)s' % {'long_line': 'A' *127}, nft)
+
+  def testLogTerm(self):
+    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_13,
+                                                   self.mock_naming), EXP_INFO))
+    self.assertIn(' icmp log accept', nft)
+
+  def testLogNameTerm(self):
+    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_14,
+                                                   self.mock_naming), EXP_INFO))
+    self.assertIn('log prefix "my log prefix: " ', nft)
+
+  def testLogAndLogNameTerm(self):
+    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_15,
+                                                   self.mock_naming), EXP_INFO))
+    self.assertIn('log prefix "my log prefix: " ', nft)
+
+  def testCounterTerm(self):
+    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_16,
+                                                   self.mock_naming), EXP_INFO))
+    self.assertIn(' icmp counter accept', nft)
 
   def testVerbatimTerm(self):
     nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_10,

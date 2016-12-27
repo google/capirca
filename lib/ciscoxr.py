@@ -15,6 +15,11 @@
 
 """Cisco IOS-XR filter renderer."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 __author__ = 'robankeny@google.com (Robert Ankeny)'
 
 from lib import cisco
@@ -26,6 +31,7 @@ class CiscoXR(cisco.Cisco):
   _PLATFORM = 'ciscoxr'
   _DEFAULT_PROTOCOL = 'ip'
   SUFFIX = '.xacl'
+  _PROTO_INT = False
 
   def _AppendTargetByFilterType(self, filter_name, filter_type):
     """Takes in the filter name and type and appends headers.

@@ -22,6 +22,11 @@ generator inherits directly from aclgenerator.
 
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 __author__ = 'vklimovs@google.com (Vjaceslavs Klimovs)'
 
 import collections
@@ -40,6 +45,10 @@ class InvalidTargetOption(Error):
   """Raised when target specification is invalid."""
 
 
+class InvalidAddressFamily(Error):
+  """Raised when address family specification is invalid."""
+
+
 class Term(aclgenerator.Term):
   """Representation of an individual nftables term.
 
@@ -53,21 +62,32 @@ class Term(aclgenerator.Term):
               'reject': 'reject',
               'next': 'continue',
               'reject-with-tcp-rst': 'reject with tcp reset'}
+  MAX_CHARACTERS = 128
 
   def __init__(self, term, af):
     """Setup a new nftables term.
 
     Args:
       term: A policy.Term object
-      af: The address family for the term, "inet" or "inet6"
+      af: The capirca address family for the term, "inet", "inet6", or "mixed"
+
+    Raises:
+      InvalidAddressFamily: if supplied target options are invalid.
+
+    Note: AF of mixed requires kernel 3.15 or higher
     """
     super(Term, self).__init__(term)
     self.term = term
     self.af = af
     if af == 'inet6':
       self.all_ips = nacaddr.IPv6('::/0')
-    else:
+    elif af == 'inet':
       self.all_ips = nacaddr.IPv4('0.0.0.0/0')
+    elif af == 'mixed':
+      # TODO(castagno): Need to add support for a mixed address family
+      raise InvalidAddressFamily('Address family mixed is not supported yet')
+    else:
+      raise InvalidAddressFamily('Not a valid address family')
 
   # TODO(vklimovs): some not trivial processing is happening inside this
   # __str__, replace with explicit method
@@ -82,6 +102,7 @@ class Term(aclgenerator.Term):
       return ''
 
     # Don't render icmpv6 protocol terms under inet, or icmp under inet6
+    # Does not currently support mixed family.
     if ((self.af == 'inet6' and 'icmp' in self.term.protocol) or
         (self.af == 'inet' and 'icmpv6' in self.term.protocol)):
       logging.debug(self.NO_AF_LOG_PROTO.substitute(term=self.term.name,
@@ -107,6 +128,7 @@ class Term(aclgenerator.Term):
                                                     direction='source',
                                                     af=self.af))
         return ''
+      # TODO(castagno): Add support for ipv6
       output.append('ip saddr %s' % self._FormatMatch(src_addrs))
 
     # Destination address
@@ -118,6 +140,7 @@ class Term(aclgenerator.Term):
                                                     direction='destination',
                                                     af=self.af))
         return ''
+      # TODO(castagno): Add support for ipv6
       output.append('ip daddr %s' % self._FormatMatch(dst_addrs))
 
     # Protocol
@@ -156,17 +179,39 @@ class Term(aclgenerator.Term):
         output.append('icmp type %s' %
                       self._FormatMatch([icmp_type_names[icmp_type] for
                                          icmp_type in icmp_types]))
+    # Counter
+    # This does not use the value that was passed in the term.
+    if self.term.counter:
+      output.append('counter')
+
+    # Log
+    # Setup logic so that only one log statement is printed.
+    if self.term.logging and not self.term.log_name:
+      output.append('log')
+    elif (self.term.logging and self.term.log_name) or self.term.log_name:
+      # Only supports log prefix's of 128 characters truncate to 126 to support
+      # the additional suffix that is being added
+      output.append('log prefix "%s: "' % self.term.log_name[:126])
 
     # Action
     output.append(self._ACTIONS[self.term.action[0]])
 
-    # Owner
+    # Owner (implement as comment)
     if self.term.owner:
       self.term.comment.append('Owner: %s' % self.term.owner)
 
     # Comment
     if self.term.comment:
-      output.append('comment "%s"' % ' '.join(self.term.comment))
+      comment_data = ' '.join(self.term.comment)
+      # Have to truncate MAX_CHARACTERS characters due to NFTables limitation
+      if len(comment_data) > self.MAX_CHARACTERS:
+        # Have to use the first MAX_CHARACTERS characters
+        comment_data = comment_data[:self.MAX_CHARACTERS]
+        logging.warn(
+            'Term %s in policy is too long (>%d characters) '
+            'and will be truncated', self.term.name, self.MAX_CHARACTERS)
+
+      output.append('comment "%s"' % comment_data)
 
     return ' '.join(output)
 
@@ -208,7 +253,9 @@ class Nftables(aclgenerator.ACLGenerator):
   SUFFIX = '.nft'
   _PLATFORM = 'nftables'
   _TERM = Term
-  _VALID_ADDRESS_FAMILIES = {'inet': 'ip', 'inet6': 'ip6'}
+  # https://wiki.nftables.org/wiki-nftables/index.php/Quick_reference-nftables_in_10_minutes#Tables
+  _VALID_ADDRESS_FAMILIES = {'inet': 'ip', 'inet6': 'ip6', 'mixed': 'inet'}
+  # https://wiki.nftables.org/wiki-nftables/index.php/Netfilter_hooks
   _VALID_HOOK_NAMES = set(['prerouting', 'input', 'forward',
                            'output', 'postrouting'])
 
@@ -221,7 +268,7 @@ class Nftables(aclgenerator.ACLGenerator):
     supported_tokens, supported_sub_tokens = super(
         Nftables, self)._BuildTokens()
 
-    supported_tokens |= {'owner'}
+    supported_tokens |= {'owner', 'counter', 'logging', 'log_name'}
     del supported_sub_tokens['option']
     return supported_tokens, supported_sub_tokens
 
@@ -251,38 +298,44 @@ class Nftables(aclgenerator.ACLGenerator):
       if len(filter_options) > 4:
         raise InvalidTargetOption('Too many target options.')
 
-      # Address family, optional
+      if len(filter_options) == 1:
+        raise InvalidTargetOption(
+            'Must have at least hook name')
+
+      # Chain name, mandatory
+      chain_name = filter_options[0]
+
+      # Hook name, mandatory
+      hook_name = filter_options[1].lower()
+
+      if hook_name not in self._VALID_HOOK_NAMES:
+        raise InvalidTargetOption(
+            'Specified hook name (%s) is not a valid hook name.' % hook_name)
+
+      # chain priority, mandatory
+      chain_priority = None
+      if len(filter_options) >= 3:
+        try:
+          chain_priority = str(int(filter_options[2]))
+        except ValueError:
+          raise InvalidTargetOption(
+              'Specified chain priority is not an integer (%s).'
+              % filter_options[2])
+
+      # TODO(castagno): fix this. If you dont have hook name it never prints
+      # anyways, so its not really optional
+      if not hook_name or not chain_priority:
+        logging.info('Chain %s is a non-base chain, make sure it is linked.',
+                     chain_name)
+        raise InvalidTargetOption('A table name is required')
+
+      # Address family, optional, defaults to capirca inet
       af = 'inet'
       if len(filter_options) == 4:
         af = filter_options[3]
         if af not in self._VALID_ADDRESS_FAMILIES:
           raise InvalidTargetOption(
               'Specified address family (%s) is not supported.' % af)
-
-      # Hook name and chain priority, optional but both or none
-      chain_priority = None
-      hook_name = None
-      if len(filter_options) >= 3:
-        try:
-          chain_priority = str(int(filter_options[2]))
-        except ValueError:
-          raise InvalidTargetOption(
-              'Specified priority is not an integer (%s).' % filter_options[2])
-        hook_name = filter_options[1]
-        if hook_name not in self._VALID_HOOK_NAMES:
-          raise InvalidTargetOption(
-              'Specified hook name (%s) is not a valid hook name.' % hook_name)
-
-      if len(filter_options) == 2:
-        raise InvalidTargetOption(
-            'Either hook name or chain priority is not specified.')
-
-      # Chain name, mandatory
-      chain_name = filter_options[0]
-
-      if not hook_name or not chain_priority:
-        logging.info('Chain %s is a non-base chain, make sure it is linked.',
-                     chain_name)
 
       # Terms
       valid_terms = []
@@ -317,9 +370,9 @@ class Nftables(aclgenerator.ACLGenerator):
 
     # Iterate over tables
     for af in sorted(self.tables):
-      output.append('flush table %s filter' %
+      output.append('flush table %s table_filter' %
                     self._VALID_ADDRESS_FAMILIES[af])
-      output.append('table %s filter {' %
+      output.append('table %s table_filter {' %
                     self._VALID_ADDRESS_FAMILIES[af])
 
       # Iterate over chains

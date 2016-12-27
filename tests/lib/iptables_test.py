@@ -14,6 +14,11 @@
 
 """Unittest for iptables rendering module."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import datetime
 import re
 import unittest
@@ -200,6 +205,14 @@ term good-term-9 {
 GOOD_TERM_10 = """
 term good-term-10 {
   owner:: foo@google.com
+  action:: accept
+}
+"""
+
+BAD_QUOTE_TERM_1 = """
+term bad-quote-term-1 {
+  comment:: "Text describing without quotes"
+  protocol:: tcp
   action:: accept
 }
 """
@@ -800,6 +813,20 @@ class AclCheckTest(unittest.TestCase):
     self.failIf(re.search('--comments "[^"]*\n', result),
                 'Iptables comments may not contain newline characters.')
 
+  def testCommentQuoteStripping(self):
+
+    parsedPolicy = policy.ParsePolicy(GOOD_HEADER_1 + BAD_QUOTE_TERM_1,
+                                      self.naming)
+    parsedPolicy.filters[0][1][0].comment=['Text "describing" "with" quotes']
+
+
+    acl = iptables.Iptables(parsedPolicy, EXP_INFO)
+    result = str(acl)
+
+    self.assertTrue(re.search(
+        '--comment "Text describing with quotes"', result),
+                    'Iptables did not strip out quotes')
+
   def testLongTermName(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + BAD_LONG_TERM_NAME, self.naming)
     self.assertRaises(aclgenerator.TermNameTooLongError,
@@ -1087,7 +1114,7 @@ class AclCheckTest(unittest.TestCase):
 
     mock_debug.assert_called_once_with(
         'Term inet6-icmp will not be rendered,'
-        ' as it has [\'icmpv6\'] match specified but '
+        ' as it has [u\'icmpv6\'] match specified but '
         'the ACL is of inet address family.')
 
   @mock.patch.object(iptables.logging, 'debug')
@@ -1100,7 +1127,7 @@ class AclCheckTest(unittest.TestCase):
 
     mock_debug.assert_called_once_with(
         'Term good-term-1 will not be rendered,'
-        ' as it has [\'icmp\'] match specified but '
+        ' as it has [u\'icmp\'] match specified but '
         'the ACL is of inet6 address family.')
 
   def testOwner(self):

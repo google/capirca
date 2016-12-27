@@ -18,6 +18,11 @@
    actual and expected results are sorted/sets to prevent issues relating to the
    order in which items are returned."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import unittest
 import argparse
 from lib import naming

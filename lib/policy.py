@@ -16,6 +16,11 @@
 """Parses the generic policy files and return a policy object for acl rendering.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 __author__ = ['pmoody@google.com',
               'watson@google.com']
 
@@ -302,6 +307,7 @@ class Term(object):
     expiration: VarType.EXPIRATION
     verbatim: VarType.VERBATIM
     logging: VarType.LOGGING
+    log_name: VarType.LOG_NAME
     next-ip: VarType.NEXT_IP
     qos: VarType.QOS
     policer: VarType.POLICER
@@ -375,6 +381,7 @@ class Term(object):
     self.destination_prefix = []
     self.forwarding_class = []
     self.logging = []
+    self.log_name = None
     self.loss_priority = None
     self.option = []
     self.owner = None
@@ -603,21 +610,21 @@ class Term(object):
     ret_str = []
     ret_str.append(' name: %s' % self.name)
     if self.address:
-      ret_str.append('  address: %s' % self.address)
+      ret_str.append('  address: %s' % sorted(self.address))
     if self.address_exclude:
-      ret_str.append('  address_exclude: %s' % self.address_exclude)
+      ret_str.append('  address_exclude: %s' % sorted(self.address_exclude))
     if self.source_address:
-      ret_str.append('  source_address: %s' % self.source_address)
+      ret_str.append('  source_address: %s' % sorted(self.source_address))
     if self.source_address_exclude:
       ret_str.append('  source_address_exclude: %s' %
-                     self.source_address_exclude)
+                     sorted(self.source_address_exclude))
     if self.source_tag:
       ret_str.append('  source_tag: %s' % self.source_tag)
     if self.destination_address:
-      ret_str.append('  destination_address: %s' % self.destination_address)
+      ret_str.append('  destination_address: %s' % sorted(self.destination_address))
     if self.destination_address_exclude:
       ret_str.append('  destination_address_exclude: %s' %
-                     self.destination_address_exclude)
+                     sorted(self.destination_address_exclude))
     if self.destination_tag:
       ret_str.append('  destination_tag: %s' % self.destination_tag)
     if self.source_prefix:
@@ -629,17 +636,17 @@ class Term(object):
     if self.next_ip:
       ret_str.append('  next_ip: %s' % self.next_ip)
     if self.protocol:
-      ret_str.append('  protocol: %s' % self.protocol)
+      ret_str.append('  protocol: %s' % sorted(self.protocol))
     if self.protocol_except:
       ret_str.append('  protocol-except: %s' % self.protocol_except)
     if self.owner:
       ret_str.append('  owner: %s' % self.owner)
     if self.port:
-      ret_str.append('  port: %s' % self.port)
+      ret_str.append('  port: %s' % sorted(self.port))
     if self.source_port:
-      ret_str.append('  source_port: %s' % self.source_port)
+      ret_str.append('  source_port: %s' % sorted(self.source_port))
     if self.destination_port:
-      ret_str.append('  destination_port: %s' % self.destination_port)
+      ret_str.append('  destination_port: %s' % sorted(self.destination_port))
     if self.action:
       ret_str.append('  action: %s' % self.action)
     if self.option:
@@ -650,6 +657,8 @@ class Term(object):
       ret_str.append('  qos: %s' % self.qos)
     if self.logging:
       ret_str.append('  logging: %s' % self.logging)
+    if self.log_name:
+      ret_str.append('  log_name: %s' % self.log_name)
     if self.counter:
       ret_str.append('  counter: %s' % self.counter)
     if self.source_interface:
@@ -1009,6 +1018,8 @@ class Term(object):
           raise InvalidTermLoggingError('%s is not a valid logging option' %
                                         obj)
         self.logging.append(obj)
+      elif obj.var_type is VarType.LOG_NAME:
+        self.log_name = obj.value
       # police man, tryin'a take you jail
       elif obj.var_type is VarType.POLICER:
         self.policer = obj.value
@@ -1321,7 +1332,8 @@ class VarType(object):
   DTAG = 45
   NEXT_IP = 46
   HOP_LIMIT = 47
-  FLEXIBLE_MATCH_RANGE = 48
+  LOG_NAME = 48
+  FLEXIBLE_MATCH_RANGE = 49
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1330,6 +1342,11 @@ class VarType(object):
       comment = value.strip('"')
       # make all of the lines start w/o leading whitespace.
       self.value = '\n'.join([x.lstrip() for x in comment.splitlines()])
+    elif self.var_type == self.LOG_NAME:
+      # remove the double quotes
+      log_name = value.strip('"')
+      # make all of the lines start w/o leading whitespace.
+      self.value = '\n'.join([x.lstrip() for x in log_name.splitlines()])
     else:
       self.value = value
 
@@ -1507,6 +1524,7 @@ tokens = (
     'ICMP_TYPE',
     'INTEGER',
     'LOGGING',
+    'LOG_NAME',
     'LOSS_PRIORITY',
     'NEXT_IP',
     'OPTION',
@@ -1567,6 +1585,7 @@ reserved = {
     'header': 'HEADER',
     'icmp-type': 'ICMP_TYPE',
     'logging': 'LOGGING',
+    'log_name': 'LOG_NAME',
     'loss-priority': 'LOSS_PRIORITY',
     'next-ip': 'NEXT_IP',
     'option': 'OPTION',
@@ -1627,7 +1646,7 @@ def t_newline(t):
 
 
 def t_error(t):
-  print "Illegal character '%s' on line %s" % (t.value[0], t.lineno)
+  print("Illegal character '%s' on line %s") % (t.value[0], t.lineno)
   t.lexer.skip(1)
 
 
@@ -1732,6 +1751,7 @@ def p_term_spec(p):
                 | term_spec icmp_type_spec
                 | term_spec interface_spec
                 | term_spec logging_spec
+                | term_spec log_name_spec
                 | term_spec losspriority_spec
                 | term_spec next_ip_spec
                 | term_spec option_spec
@@ -1993,6 +2013,11 @@ def p_policer_spec(p):
 def p_logging_spec(p):
   """ logging_spec : LOGGING ':' ':' STRING """
   p[0] = VarType(VarType.LOGGING, p[4])
+
+
+def p_log_name_spec(p):
+  """ log_name_spec : LOG_NAME ':' ':' DQUOTEDSTRING """
+  p[0] = VarType(VarType.LOG_NAME, p[4])
 
 
 def p_option_spec(p):

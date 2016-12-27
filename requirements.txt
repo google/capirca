@@ -7,3 +7,4 @@ ipaddr
 python-gflags
 ply
 mock
+six # requirement from gflags

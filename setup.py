@@ -13,6 +13,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import os
 from setuptools import setup, find_packages
 
@@ -38,7 +43,7 @@ data_files = (["aclcheck_cmdline.py", "aclgen.py", "definate.py",
 
 setup(
     name='capirca',
-    version='1.110',
+    version='1.111',
     description='Capirca',
     license='Apache License, Version 2.0',
     url='https://github.com/google/capirca/',
