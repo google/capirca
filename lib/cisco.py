@@ -284,13 +284,14 @@ class ObjectGroupTerm(aclgenerator.Term):
   where first-term-source-address, ANY and 179-179 are defined elsewhere
   in the acl.
   """
+  # Protocols should be emitted as integers rather than strings.
+  _PROTO_INT = True
 
-  def __init__(self, term, filter_name, platform='cisco', proto_int=True):
+  def __init__(self, term, filter_name, platform='cisco'):
     super(ObjectGroupTerm, self).__init__(term)
     self.term = term
     self.filter_name = filter_name
     self.platform = platform
-    self.proto_int = proto_int
 
   def __str__(self):
     # Verify platform specific terms. Skip whole term if platform does not
@@ -323,12 +324,10 @@ class ObjectGroupTerm(aclgenerator.Term):
     # protocol
     if not self.term.protocol:
       protocol = ['ip']
-    elif self.proto_int:
+    else:
       # pylint: disable=g-long-lambda
       protocol = map(self.PROTO_MAP.get, self.term.protocol, self.term.protocol)
       # pylint: enable=g-long-lambda
-    else:
-      protocol = self.term.protocol
 
     # addresses
     source_address = self.term.source_address
@@ -764,8 +763,7 @@ class Cisco(aclgenerator.ACLGenerator):
                      term_remark=self._TERM_REMARK, platform=self._PLATFORM))
           elif next_filter == 'object-group':
             obj_target.AddTerm(term)
-            obj_group_term = ObjectGroupTerm(
-                term, filter_name, proto_int=self._PROTO_INT)
+            obj_group_term = ObjectGroupTerm(term, filter_name)
             new_terms.append(obj_group_term)
           elif next_filter == 'inet6':
             new_terms.append(Term(term, 6, proto_int=self._PROTO_INT))

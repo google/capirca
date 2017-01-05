@@ -26,12 +26,6 @@ from lib import naming
 from lib import policy
 import mock
 
-GOOD_OBJGRP_HEADER = """
-header {
-  comment:: "obj group header test"
-  target:: ciscoxr objgroupheader object-group
-}
-"""
 
 GOOD_HEADER_1 = """
 header {
@@ -221,18 +215,6 @@ class CiscoXRTest(unittest.TestCase):
     st, sst = pol1._BuildTokens()
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
-
-  def testObjectGroup(self):
-    self.naming.GetNetAddr.return_value = [
-        nacaddr.IP('10.0.0.0/8', token='SOME_HOST2')]
-    self.naming.GetServiceByProto.return_value = ['80']
-
-    pol = policy.ParsePolicy(GOOD_OBJGRP_HEADER + GOOD_TERM_2, self.naming)
-    acl = ciscoxr.CiscoXR(pol, EXP_INFO)
-
-    # Object-group terms should use the object groups created.
-    self.failUnless(
-        ' permit tcp any port-group 80-80 net-group SOME_HOST' in str(acl), str(acl))
 
 
 if __name__ == '__main__':
