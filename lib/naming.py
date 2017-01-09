@@ -294,9 +294,7 @@ class Naming(object):
     return sorted(expandset)
 
   def GetPortParents(self, query, proto):
-    """
-    Given a port and protocol, return a list of all the service tokens that
-    contain that port/protocol pair
+    """Returns a list of all service tokens containing the port/protocol pair.
 
     Args:
         query: port number ('22') as str

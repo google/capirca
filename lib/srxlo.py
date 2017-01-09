@@ -13,7 +13,6 @@
 #
 
 """Juniper SRX generator for loopback ACLs.
-
 This is a subclass of Juniper generator. Juniper SRX loopback filter
 uses the same syntax as regular Juniper stateless ACLs, with minor
 differences. This subclass effects those differences.
