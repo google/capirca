@@ -89,8 +89,8 @@ class PrintFilter(FileFilter):
     Returns:
       Container object that has been passed in.
     """
-    print '# File "%s"' % container.absolute_path
-    print '\n'.join(container.lines)
+    print('# File "%s"' % container.absolute_path)
+    print('\n'.join(container.lines))
     return container
 
 
