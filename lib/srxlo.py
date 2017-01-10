@@ -13,6 +13,7 @@
 #
 
 """Juniper SRX generator for loopback ACLs.
+
 This is a subclass of Juniper generator. Juniper SRX loopback filter
 uses the same syntax as regular Juniper stateless ACLs, with minor
 differences. This subclass effects those differences.
@@ -48,3 +49,15 @@ class SRXlo(juniper.Juniper):
   _PLATFORM = 'srxlo'
   SUFFIX = '.jsl'
   _TERM = Term
+
+  def _BuildTokens(self):
+    """Build supported tokens for platform.
+
+    Returns:
+      tuple containing both supported tokens and sub tokens
+    """
+    supported_tokens, supported_sub_tokens = super(SRXlo, self)._BuildTokens()
+    # flexible match is MX/Trio only
+    supported_tokens.remove('flexible_match_range')
+
+    return supported_tokens, supported_sub_tokens

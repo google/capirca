@@ -276,6 +276,7 @@ class Term(aclgenerator.Term):
                           self.term.destination_port or
                           self.term.destination_prefix or
                           self.term.ether_type or
+                          self.term.flexible_match_range or
                           self.term.forwarding_class or
                           self.term.hop_limit or
                           self.term.next_ip or
@@ -489,6 +490,13 @@ class Term(aclgenerator.Term):
         # Only generate a hop-limit if inet6, inet4 has not hop-limit.
         if self.term_type == 'inet6':
           config.Append('hop-limit %s;' % (self.term.hop_limit))
+
+      # flexible-match
+      if self.term.flexible_match_range:
+        config.Append('flexible-match-range {')
+        for fm_opt in self.term.flexible_match_range:
+          config.Append('%s %s;' % (fm_opt[0], fm_opt[1]))
+        config.Append('}')
 
       config.Append('}')  # end from { ... }
 
@@ -776,6 +784,7 @@ class Juniper(aclgenerator.ACLGenerator):
                          'dscp_match',
                          'dscp_set',
                          'ether_type',
+                         'flexible_match_range',
                          'forwarding_class',
                          'fragment_offset',
                          'hop_limit',
