@@ -87,6 +87,14 @@ flags.DEFINE_boolean(
     'recursive',
     True,
     'Descend recursively from the base directory rendering acls')
+flags.DEFINE_boolean(
+    'debug',
+    False,
+    'Debug messages')
+flags.DEFINE_boolean(
+    'verbose',
+    False,
+    'Verbose messages')
 flags.DEFINE_list(
     'ignore_directories',
     'DEPRECATED, def',
@@ -442,7 +450,11 @@ def WriteFiles(write_files):
 
 def main(args):
   FLAGS(args)
-  logging.debug('binary: %s\noptimize: %d\base_directory: %s\n'
+  if FLAGS.verbose:
+    logging.basicConfig(level=logging.INFO)
+  if FLAGS.debug:
+    logging.basicConfig(level=logging.DEBUG)
+  logging.debug('binary: %s\noptimize: %d\nbase_directory: %s\n'
                 'policy_file: %s\nrendered_acl_directory: %s',
                 str(sys.argv[0]),
                 int(FLAGS.optimize),
