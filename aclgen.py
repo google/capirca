@@ -336,7 +336,8 @@ def RenderFile(input_file, output_directory, definitions,
         input_file, sys.exc_info()[0], sys.exc_info()[1]))
 
 
-def RenderACL(acl_text, acl_suffix, output_directory, input_file, write_files):
+def RenderACL(acl_text, acl_suffix, output_directory, input_file, write_files,
+              binary=False):
   """Write the ACL string out to file if appropriate.
 
   Args:
@@ -349,30 +350,39 @@ def RenderACL(acl_text, acl_suffix, output_directory, input_file, write_files):
   output_file = os.path.join(output_directory, '%s%s') % (
       os.path.splitext(os.path.basename(input_file))[0], acl_suffix)
 
-  if FilesUpdated(output_file, acl_text):
+  if FilesUpdated(output_file, acl_text, binary):
     logging.info('file changed: %s', output_file)
     write_files.append((output_file, acl_text))
   else:
     logging.debug('file not changed: %s', output_file)
 
 
-def FilesUpdated(file_name, file_string):
-  """Diff the rendered acl with what's already on disk."""
+def FilesUpdated(file_name, new_text, binary):
+  """Diff the rendered acl with what's already on disk.
+
+     Args:
+       file_name: Name of file on disk to check against.
+       file_string: Text of newly generated ACL.
+       binary: True if file is a binary format.
+  """
   try:
-    conf = open(file_name).read()
+    if binary:
+      conf = open(file_name, 'rb').read()
+    else:
+      conf = open(file_name).read()
   except IOError:
     return True
+  if not binary:
+    p4_id = '$I d:'.replace(' ', '')
+    p4_date = '$Da te:'.replace(' ', '')
+    p4_revision = '$Rev ision:'.replace(' ', '')
 
-  p4_id = '$I d:'.replace(' ', '')
-  p4_date = '$Da te:'.replace(' ', '')
-  p4_revision = '$Rev ision:'.replace(' ', '')
+    p4_tags = lambda x: p4_id in x or p4_date in x or p4_revision in x
 
-  p4_tags = lambda x: p4_id in x or p4_date in x or p4_revision in x
+    conf = SkipLines(conf.split('\n'), skip_line_func=p4_tags)
+    new_text = SkipLines(new_text.split('\n'), skip_line_func=p4_tags)
 
-  checked_in_text = SkipLines(conf.split('\n'), skip_line_func=p4_tags)
-  new_text = SkipLines(file_string.split('\n'), skip_line_func=p4_tags)
-
-  diff = difflib.unified_diff(checked_in_text, new_text)
+  diff = difflib.unified_diff(conf, new_text)
 
   # why oh why is it so hard to simply tell if two strings/lists are different?
   if not difflib.IS_CHARACTER_JUNK(''.join(diff)):
