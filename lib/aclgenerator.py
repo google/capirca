@@ -225,7 +225,6 @@ class ACLGenerator(object):
                          'owner',
                          'qos',
                          'routing_instance',
-                         'pan-application'
                          'policer'}
 
   # Abbreviation table used to automatically abbreviate terms that exceed
