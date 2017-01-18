@@ -49,12 +49,12 @@ from lib import naming
 from lib import nftables
 from lib import nsxv
 from lib import packetfilter
+from lib import paloaltofw
 from lib import pcap
 from lib import policy
 from lib import speedway
 from lib import srxlo
 from lib import windows_advfirewall
-from lib import paloaltofw
 
 import gflags as flags
 import logging
