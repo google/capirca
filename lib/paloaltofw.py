@@ -9,8 +9,6 @@ import logging
 import aclgenerator
 import nacaddr
 
-import re
-
 
 class Error(Exception):
     """generic error class."""
