@@ -1,0 +1,48 @@
+################
+### RULEBASE ###
+################
+
+# NOTE: makes sure zone names correspond to those specified in your firewall setup
+
+header {
+  target:: paloalto from-zone internal to-zone external
+}
+
+term allow-ping-firewall{
+  source-address:: INTERNAL
+  destination-address:: GOOGLE_DNS
+  protocol:: icmp
+  action:: accept
+}
+
+term allow-https-firewall{
+  source-address:: INTERNAL
+  destination-address:: GOOGLE_DNS
+  destination-port:: HTTPS
+  protocol:: tcp
+  action:: accept
+}
+
+term allow-ssh-firewall{
+  source-address:: INTERNAL
+  destination-address:: GOOGLE_DNS
+  destination-port:: SSH
+  protocol:: tcp
+  action:: accept
+}
+
+
+header {
+  target:: paloalto from-zone external to-zone internal
+}
+
+term allow-icmp{
+  protocol:: icmp
+  action:: accept
+}
+
+term allow-ssh{
+  destination-port:: SSH
+  protocol:: tcp
+  action:: accept
+}

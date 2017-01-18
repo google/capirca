@@ -54,6 +54,7 @@ from lib import policy
 from lib import speedway
 from lib import srxlo
 from lib import windows_advfirewall
+from lib import paloaltofw
 
 import gflags as flags
 import logging
@@ -187,6 +188,7 @@ def RenderFile(input_file, output_directory, definitions,
   nft = False
   win_afw = False
   xacl = False
+  paloalto = False
 
   try:
     conf = open(input_file).read()
@@ -247,6 +249,8 @@ def RenderFile(input_file, output_directory, definitions,
     nft = copy.deepcopy(pol)
   if 'gce' in platforms:
     gcefw = copy.deepcopy(pol)
+  if 'paloalto' in platforms:
+    paloalto = copy.deepcopy(pol)
 
   if not output_directory.endswith('/'):
     output_directory += '/'
@@ -326,6 +330,10 @@ def RenderFile(input_file, output_directory, definitions,
                 input_file, write_files)
     if gcefw:
       acl_obj = gce.GCE(gcefw, exp_info)
+      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
+                input_file, write_files)
+    if paloalto:
+      acl_obj = paloaltofw.PaloAltoFW(paloalto, exp_info)
       RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
                 input_file, write_files)
   # TODO(robankeny) add additional errors.
