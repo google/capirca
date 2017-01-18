@@ -249,8 +249,10 @@ class ProtocolExcept(Field):
 class Qos(Field):
   """A rate-limit-icmp field."""
 
+
 class PANApplication(Field):
   """A rate-limit-icmp field."""
+
 
 class RoutingInstance(Field):
   """A routing-instance field."""
