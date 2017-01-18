@@ -1617,7 +1617,7 @@ reserved = {
     'protocol': 'PROTOCOL',
     'protocol-except': 'PROTOCOL_EXCEPT',
     'qos': 'QOS',
-    'pan-application':'PAN_APPLICATION',
+    'pan-application': 'PAN_APPLICATION',
     'routing-instance': 'ROUTING_INSTANCE',
     'source-address': 'SADDR',
     'source-exclude': 'SADDREXCLUDE',
@@ -1630,7 +1630,7 @@ reserved = {
     'timeout': 'TIMEOUT',
     'traffic-type': 'TRAFFIC_TYPE',
     'verbatim': 'VERBATIM',
-#    'vpn': 'VPN',
+    'vpn': 'VPN',
 }
 
 # disable linting warnings for lexx/yacc code
@@ -2099,11 +2099,13 @@ def p_qos_spec(p):
   """ qos_spec : QOS ':' ':' STRING """
   p[0] = VarType(VarType.QOS, p[4])
 
+
 def p_pan_application_spec(p):
   """ pan_application_spec : PAN_APPLICATION ':' ':' one_or_more_strings """
   p[0] = []
   for apps in p[4]:
     p[0].append(VarType(VarType.PAN_APPLICATION, apps))
+
 
 def p_interface_spec(p):
   """ interface_spec : SINTERFACE ':' ':' STRING
