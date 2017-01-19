@@ -349,6 +349,32 @@ term good-term-37 {
   log_name:: "my special prefix"
 }
 """
+GOOD_TERM_38 = """
+term good-term-38 {
+  source-prefix-except:: foo_prefix_list
+  action:: accept
+}
+"""
+GOOD_TERM_39 = """
+term good-term-39 {
+  destination-prefix-except:: bar_prefix_list baz_prefix_list
+  action:: accept
+}
+"""
+GOOD_TERM_40 = """
+term good-term-38 {
+  source-prefix:: foo_prefix_list
+  source-prefix-except:: foo_prefix_list_except
+  action:: accept
+}
+"""
+GOOD_TERM_41 = """
+term good-term-39 {
+  destination-prefix:: bar_prefix_list
+  destination-prefix-except:: bar_prefix_list_except
+  action:: accept
+}
+"""
 GOOD_TERM_V6_1 = """
 term good-term-v6-1 {
   hop-limit:: 5
@@ -989,6 +1015,43 @@ class PolicyTest(unittest.TestCase):
     _, terms = ret.filters[0]
     self.assertEqual(terms[0].destination_prefix,
                      ['bar_prefix_list', 'baz_prefix_list'])
+
+  def testPrefixListExcept(self):
+    spol = HEADER + GOOD_TERM_38
+    dpol = HEADER + GOOD_TERM_39
+
+    # check on the source prefix except list
+    ret = policy.ParsePolicy(spol, self.naming)
+    self.assertEqual(len(ret.filters), 1)
+    _, terms = ret.filters[0]
+    self.assertEqual(terms[0].source_prefix_except, ['foo_prefix_list'])
+
+    # check on the destination prefix except list
+    ret = policy.ParsePolicy(dpol, self.naming)
+    self.assertEqual(len(ret.filters), 1)
+    _, terms = ret.filters[0]
+    self.assertEqual(terms[0].destination_prefix_except,
+                     ['bar_prefix_list', 'baz_prefix_list'])
+
+  def testPrefixListMixed(self):
+    spol = HEADER + GOOD_TERM_40
+    dpol = HEADER + GOOD_TERM_41
+
+    # check on the source prefix list with mixed values
+    ret = policy.ParsePolicy(spol, self.naming)
+    self.assertEqual(len(ret.filters), 1)
+    _, terms = ret.filters[0]
+    self.assertEqual(terms[0].source_prefix, ['foo_prefix_list'])
+    self.assertEqual(terms[0].source_prefix_except,
+                     ['foo_prefix_list_except'])
+
+    # check on the destination prefix with mixed values
+    ret = policy.ParsePolicy(dpol, self.naming)
+    self.assertEqual(len(ret.filters), 1)
+    _, terms = ret.filters[0]
+    self.assertEqual(terms[0].destination_prefix, ['bar_prefix_list'])
+    self.assertEqual(terms[0].destination_prefix_except,
+                     ['bar_prefix_list_except'])
 
   def testEtherTypes(self):
     pol = HEADER + GOOD_TERM_16

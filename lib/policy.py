@@ -411,6 +411,8 @@ class Term(object):
     self.dscp_except = []
     self.next_ip = None
     self.flexible_match_range = []
+    self.source_prefix_except = []
+    self.destination_prefix_except = []
     # srx specific
     self.vpn = None
     # gce specific
@@ -524,9 +526,17 @@ class Term(object):
     if self.source_prefix:
       if sorted(self.source_prefix) != sorted(other.source_prefix):
         return False
+    if self.source_prefix_except:
+      if sorted(self.source_prefix_except) != sorted(
+          other.source_prefix_except):
+        return False
     if self.destination_prefix:
       if sorted(self.destination_prefix) != sorted(
           other.destination_prefix):
+        return False
+    if self.destination_prefix_except:
+      if sorted(self.destination_prefix_except) != sorted(
+          other.destination_prefix_except):
         return False
 
     # check source and destination tags
@@ -629,8 +639,13 @@ class Term(object):
       ret_str.append('  destination_tag: %s' % self.destination_tag)
     if self.source_prefix:
       ret_str.append('  source_prefix: %s' % self.source_prefix)
+    if self.source_prefix_except:
+      ret_str.append('  source_prefix_except: %s' % self.source_prefix_except)
     if self.destination_prefix:
       ret_str.append('  destination_prefix: %s' % self.destination_prefix)
+    if self.destination_prefix_except:
+      ret_str.append('  destination_prefix_except: %s' %
+                     self.destination_prefix_except)
     if self.forwarding_class:
       ret_str.append('  forwarding_class: %s' % self.forwarding_class)
     if self.next_ip:
@@ -704,8 +719,12 @@ class Term(object):
 
     # prefix lists
     if not (sorted(self.source_prefix) == sorted(other.source_prefix) and
+            sorted(self.source_prefix_except) ==
+            sorted(other.source_prefix_except) and
             sorted(self.destination_prefix) ==
-            sorted(other.destination_prefix)):
+            sorted(other.destination_prefix) and
+            sorted(self.destination_prefix_except) ==
+            sorted(other.destination_prefix_except)):
       return False
 
     # ports
@@ -955,8 +974,12 @@ class Term(object):
           self.principals.append(x.value)
         elif x.var_type is VarType.SPFX:
           self.source_prefix.append(x.value)
+        elif x.var_type is VarType.ESPFX:
+          self.source_prefix_except.append(x.value)
         elif x.var_type is VarType.DPFX:
           self.destination_prefix.append(x.value)
+        elif x.var_type is VarType.EDPFX:
+          self.destination_prefix_except.append(x.value)
         elif x.var_type is VarType.ETHER_TYPE:
           self.ether_type.append(x.value)
         elif x.var_type is VarType.TRAFFIC_TYPE:
@@ -1090,10 +1113,12 @@ class Term(object):
         self.destination_address_exclude or
         self.destination_port or
         self.destination_prefix or
+        self.destination_prefix_except or
         self.source_address or
         self.source_address_exclude or
         self.source_port or
-        self.source_prefix):
+        self.source_prefix or
+        self.source_prefix_except):
       raise TermProtocolEtherTypeError(
           'ether-type not supported when used with upper-layer protocol '
           'restrictions. Term: %s' % self.name)
@@ -1334,6 +1359,8 @@ class VarType(object):
   HOP_LIMIT = 47
   LOG_NAME = 48
   FLEXIBLE_MATCH_RANGE = 49
+  ESPFX = 50
+  EDPFX = 51
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1502,6 +1529,7 @@ tokens = (
     'DADDREXCLUDE',
     'DINTERFACE',
     'DPFX',
+    'EDPFX',
     'DPORT',
     'DQUOTEDSTRING',
     'DSCP',
@@ -1544,6 +1572,7 @@ tokens = (
     'SADDREXCLUDE',
     'SINTERFACE',
     'SPFX',
+    'ESPFX',
     'SPORT',
     'STAG',
     'STRING',
@@ -1568,6 +1597,7 @@ reserved = {
     'destination-exclude': 'DADDREXCLUDE',
     'destination-interface': 'DINTERFACE',
     'destination-prefix': 'DPFX',
+    'destination-prefix-except': 'EDPFX',
     'destination-port': 'DPORT',
     'destination-tag': 'DTAG',
     'dscp-except': 'DSCP_EXCEPT',
@@ -1605,6 +1635,7 @@ reserved = {
     'source-exclude': 'SADDREXCLUDE',
     'source-interface': 'SINTERFACE',
     'source-prefix': 'SPFX',
+    'source-prefix-except': 'ESPFX',
     'source-port': 'SPORT',
     'source-tag': 'STAG',
     'target': 'TARGET',
@@ -1936,11 +1967,17 @@ def p_exclude_spec(p):
 
 def p_prefix_list_spec(p):
   """ prefix_list_spec : DPFX ':' ':' one_or_more_strings
-                       | SPFX ':' ':' one_or_more_strings """
+                       | EDPFX ':' ':' one_or_more_strings
+                       | SPFX ':' ':' one_or_more_strings
+                       | ESPFX ':' ':' one_or_more_strings """
   p[0] = []
   for pfx in p[4]:
-    if p[1].find('source-prefix') >= 0:
+    if p[1].find('source-prefix-except') >= 0:
+      p[0].append(VarType(VarType.ESPFX, pfx))
+    elif p[1].find('source-prefix') >= 0:
       p[0].append(VarType(VarType.SPFX, pfx))
+    elif p[1].find('destination-prefix-except') >= 0:
+      p[0].append(VarType(VarType.EDPFX, pfx))
     elif p[1].find('destination-prefix') >= 0:
       p[0].append(VarType(VarType.DPFX, pfx))
 
