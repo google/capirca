@@ -122,6 +122,13 @@ class Service():
                 % str(ports))
 
         final_service_name = 'service-' + service_name + '-' + protocol
+
+        for k, v in Service.service_map.items():
+            if v['name'] == final_service_name:
+                raise PaloAltoFWDuplicateServiceError(
+                    'You have a duplicate service. A service named %s already exists.'
+                    % str(final_service_name))
+
         if len(final_service_name.decode('utf-8')) > 63:
             raise PaloAltoFWTooLongName(
                 'Service name must be 63 characters max: %s'
