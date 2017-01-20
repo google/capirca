@@ -142,7 +142,6 @@ class Rule():
         self.modify_options(terms)
 
     def modify_options(self, PAFWterm):
-        # for PAFWterm in terms:
         term = PAFWterm.term
         self.options["source"] = []
         self.options["destination"] = []
@@ -204,21 +203,15 @@ class Rule():
 
         rule_name = "-".join(self.options["from_zone"]) + "_2_" + \
             "-".join(self.options["to_zone"]) + "-" + term.name
-    if len(rule_name.decode("utf-8")) > 31:
-        raise PaloAltoFWTooLongName('Rule name must be 31 characters max: %s'
-                                    % str(rule_name))
+
+        if len(rule_name.decode("utf-8")) > 31:
+            raise PaloAltoFWTooLongName('Rule name must be 31 characters max: %s'
+                                        % str(rule_name))
         self.rules[rule_name] = self.options
 
 
 class PaloAltoFW(aclgenerator.ACLGenerator):
-    """PaloAltoFW rendering class.
-
-       This class takes a policy object and renders the output into a syntax
-       which is understood by Palo Alto firewalls.
-
-       Args:
-         pol: policy.Policy object
-    """
+    """PaloAltoFW rendering class."""
 
     _PLATFORM = 'paloalto'
     SUFFIX = '.xml'
