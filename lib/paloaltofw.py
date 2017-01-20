@@ -5,8 +5,8 @@ import collections
 import datetime
 import logging
 
-from capirca.lib import aclgenerator
-from capirca.lib import nacaddr
+from lib import aclgenerator
+from lib import nacaddr
 
 
 class Error(Exception):
