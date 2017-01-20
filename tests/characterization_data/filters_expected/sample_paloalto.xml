@@ -1,0 +1,206 @@
+<?xml version="1.0"?>
+<config version="7.0.0" urldb="paloaltonetworks">
+  <devices>
+    <entry name="localhost.localdomain">
+      <vsys>
+        <entry name="vsys1">
+          <application/>
+          <application-group/>
+
+          <!-- Services -->
+          <service>
+            <entry name="service-allow-dns-gdns-tcp">
+              <protocol>
+                <tcp>
+                  <port>53</port>
+                </tcp>
+              </protocol>
+            </entry>
+            <entry name="service-allow-s-firewall-tcp">
+              <protocol>
+                <tcp>
+                  <port>80, 443</port>
+                </tcp>
+              </protocol>
+            </entry>
+          </service>
+
+          <!-- Rules -->
+          <rulebase>
+            <security>
+              <rules>
+                <entry name="internal_2_external-allow-s-firewall">
+                  <to>
+                    <member>external</member>
+                  </to>
+                  <from>
+                    <member>internal</member>
+                  </from>
+                  <source>
+                    <member>INTERNAL</member>
+                  </source>
+                  <destination>
+                    <member>any</member>
+                  </destination>
+                  <service>
+                    <member>service-allow-s-firewall-tcp</member>
+                  </service>
+                  <action>allow</action>
+                  <application>
+                    <member>any</member>
+                  </application>
+                </entry>
+                <entry name="internal_2_external-allow-ping-gdns">
+                  <to>
+                    <member>external</member>
+                  </to>
+                  <from>
+                    <member>internal</member>
+                  </from>
+                  <source>
+                    <member>INTERNAL</member>
+                  </source>
+                  <destination>
+                    <member>GOOGLE_DNS</member>
+                  </destination>
+                  <service>
+                    <member>any</member>
+                  </service>
+                  <action>allow</action>
+                  <application>
+                    <member>ping</member>
+                  </application>
+                </entry>
+                <entry name="external_2_internal-allow-web">
+                  <to>
+                    <member>internal</member>
+                  </to>
+                  <from>
+                    <member>external</member>
+                  </from>
+                  <source>
+                    <member>any</member>
+                  </source>
+                  <destination>
+                    <member>WEB_SERVERS</member>
+                  </destination>
+                  <service>
+                    <member>service-allow-s-firewall-tcp</member>
+                  </service>
+                  <action>allow</action>
+                  <application>
+                    <member>ssl</member>
+                    <member>http</member>
+                  </application>
+                </entry>
+                <entry name="external_2_internal-allow-icmp">
+                  <to>
+                    <member>internal</member>
+                  </to>
+                  <from>
+                    <member>external</member>
+                  </from>
+                  <source>
+                    <member>any</member>
+                  </source>
+                  <destination>
+                    <member>any</member>
+                  </destination>
+                  <service>
+                    <member>any</member>
+                  </service>
+                  <action>allow</action>
+                  <application>
+                    <member>ping</member>
+                  </application>
+                </entry>
+                <entry name="internal_2_external-allow-dns-gdns">
+                  <to>
+                    <member>external</member>
+                  </to>
+                  <from>
+                    <member>internal</member>
+                  </from>
+                  <source>
+                    <member>INTERNAL</member>
+                  </source>
+                  <destination>
+                    <member>GOOGLE_DNS</member>
+                  </destination>
+                  <service>
+                    <member>service-allow-dns-gdns-tcp</member>
+                  </service>
+                  <action>allow</action>
+                  <application>
+                    <member>any</member>
+                  </application>
+                </entry>
+              </rules>
+            </security>
+          </rulebase>          <!-- Address groups-->
+          <address-group>
+            <entry name="GOOGLE_DNS">
+              <static>
+                <member>GOOGLE_DNS_0</member>
+                <member>GOOGLE_DNS_1</member>
+                <member>GOOGLE_DNS_2</member>
+                <member>GOOGLE_DNS_3</member>
+              </static>
+              </entry>
+            <entry name="INTERNAL">
+              <static>
+                <member>INTERNAL_0</member>
+                <member>INTERNAL_1</member>
+                <member>INTERNAL_2</member>
+              </static>
+              </entry>
+            <entry name="WEB_SERVERS">
+              <static>
+                <member>WEB_SERVERS_0</member>
+                <member>WEB_SERVERS_1</member>
+              </static>
+              </entry>
+          </address-group>          <!-- Addresses -->
+          <address>
+            <entry name="GOOGLE_DNS_0">
+              <description>GOOGLE_DNS_0</description>
+              <ip-netmask>8.8.4.4/32</ip-netmask>
+            </entry>
+            <entry name="GOOGLE_DNS_1">
+              <description>GOOGLE_DNS_1</description>
+              <ip-netmask>8.8.8.8/32</ip-netmask>
+            </entry>
+            <entry name="GOOGLE_DNS_2">
+              <description>GOOGLE_DNS_2</description>
+              <ip-netmask>2001:4860:4860::8844/128</ip-netmask>
+            </entry>
+            <entry name="GOOGLE_DNS_3">
+              <description>GOOGLE_DNS_3</description>
+              <ip-netmask>2001:4860:4860::8888/128</ip-netmask>
+            </entry>
+            <entry name="INTERNAL_0">
+              <description>INTERNAL_0</description>
+              <ip-netmask>10.0.0.0/8</ip-netmask>
+            </entry>
+            <entry name="INTERNAL_1">
+              <description>INTERNAL_1</description>
+              <ip-netmask>172.16.0.0/12</ip-netmask>
+            </entry>
+            <entry name="INTERNAL_2">
+              <description>INTERNAL_2</description>
+              <ip-netmask>192.168.0.0/16</ip-netmask>
+            </entry>
+            <entry name="WEB_SERVERS_0">
+              <description>WEB_SERVERS_0</description>
+              <ip-netmask>200.1.1.1/32</ip-netmask>
+            </entry>
+            <entry name="WEB_SERVERS_1">
+              <description>WEB_SERVERS_1</description>
+              <ip-netmask>200.1.1.2/32</ip-netmask>
+            </entry>
+          </address>
+        </entry>
+      </vsys>
+    </entry>
+  </devices>
+</config>

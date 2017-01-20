@@ -6,8 +6,8 @@ import collections
 import datetime
 import logging
 
-import aclgenerator
-import nacaddr
+from lib import aclgenerator
+from lib import nacaddr
 
 
 class Error(Exception):
@@ -118,14 +118,14 @@ class Service():
     def __init__(self, ports, service_name, protocol):  # ports is a tuple of ports
         if (ports, protocol) in self.service_map:
             raise PaloAltoFWDuplicateServiceError(
-            'You have a duplicate service. A service already exists on port(s): %s'
-                                                  % str(ports))
+                'You have a duplicate service. A service already exists on port(s): %s'
+                % str(ports))
 
         final_service_name = 'service-' + service_name + '-' + protocol
         if len(final_service_name.decode('utf-8')) > 63:
             raise PaloAltoFWTooLongName(
-            'Service name must be 63 characters max: %s'
-                                        % str(final_service_name))
+                'Service name must be 63 characters max: %s'
+                % str(final_service_name))
         self.service_map[(ports, protocol)] = {'name': final_service_name}
 
 
@@ -204,10 +204,9 @@ class Rule():
 
         rule_name = "-".join(self.options["from_zone"]) + "_2_" + \
             "-".join(self.options["to_zone"]) + "-" + term.name
-# TODO: uncomment when ready to use
-#    if len(rule_name.decode("utf-8")) > 31:
-#        raise PaloAltoFWTooLongName('Rule name must be 31 characters max: %s'
-#                                        % str(rule_name))
+    if len(rule_name.decode("utf-8")) > 31:
+        raise PaloAltoFWTooLongName('Rule name must be 31 characters max: %s'
+                                    % str(rule_name))
         self.rules[rule_name] = self.options
 
 
@@ -247,7 +246,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
 
         supported_sub_tokens.update(
             {'action': {'accept', 'deny', 'reject', 'count', 'log'},
-             })
+            })
         del supported_sub_tokens['option']
         return supported_tokens, supported_sub_tokens
 
@@ -296,8 +295,8 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
 
             if filter_type not in self._SUPPORTED_AF:
                 raise UnsupportedHeader(
-                    'Palo Alto Firewall Generator currently does not support %s as a header option' %
-                    (filter_type))
+                    'Palo Alto Firewall Generator currently does not support'
+                    ' %s as a header option' % (filter_type))
 
             term_dup_check = set()
             new_terms = []
@@ -580,4 +579,6 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
         end.append(self.INDENT * 1 + "</devices>")
         end.append("</config>")
 
-        return '\n'.join(initial) + '\n\n' + '\n'.join(service) + "\n\n" + '\n'.join(rules) + '\n'.join(address_group_entries) + '\n'.join(address_entries) + '\n' + '\n'.join(end)
+        return '\n'.join(initial) + '\n\n' + '\n'.join(service) + "\n\n" + \
+               '\n'.join(rules) + '\n'.join(address_group_entries) + \
+               '\n'.join(address_entries) + '\n' + '\n'.join(end)
