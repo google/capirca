@@ -40,29 +40,29 @@ ip access-list extended edge-inbound
 
 
  remark permit-mail-services
- permit 6 any 200.1.1.4 0.0.0.1 eq 25
- permit 6 any 200.1.1.4 0.0.0.1 eq 465
- permit 6 any 200.1.1.4 0.0.0.1 eq 587
- permit 6 any 200.1.1.4 0.0.0.1 eq 995
+ permit tcp any 200.1.1.4 0.0.0.1 eq 25
+ permit tcp any 200.1.1.4 0.0.0.1 eq 465
+ permit tcp any 200.1.1.4 0.0.0.1 eq 587
+ permit tcp any 200.1.1.4 0.0.0.1 eq 995
 
 
  remark permit-web-services
- permit 6 any host 200.1.1.1 eq 80
- permit 6 any host 200.1.1.1 eq 443
- permit 6 any host 200.1.1.2 eq 80
- permit 6 any host 200.1.1.2 eq 443
+ permit tcp any host 200.1.1.1 eq 80
+ permit tcp any host 200.1.1.1 eq 443
+ permit tcp any host 200.1.1.2 eq 80
+ permit tcp any host 200.1.1.2 eq 443
 
 
  remark permit-tcp-established
- permit 6 any host 200.1.1.1 established
- permit 6 any 200.1.1.2 0.0.0.1 established
- permit 6 any 200.1.1.4 0.0.0.1 established
+ permit tcp any host 200.1.1.1 established
+ permit tcp any 200.1.1.2 0.0.0.1 established
+ permit tcp any 200.1.1.4 0.0.0.1 established
 
 
  remark permit-udp-established
- permit 17 any range 1024 65535 host 200.1.1.1
- permit 17 any range 1024 65535 200.1.1.2 0.0.0.1
- permit 17 any range 1024 65535 200.1.1.4 0.0.0.1
+ permit udp any range 1024 65535 host 200.1.1.1
+ permit udp any range 1024 65535 200.1.1.2 0.0.0.1
+ permit udp any range 1024 65535 200.1.1.4 0.0.0.1
 
 
  remark default-deny
