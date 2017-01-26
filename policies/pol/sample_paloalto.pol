@@ -23,7 +23,7 @@ term dns-gdns{
   action:: accept
 }
 
-term allow-web{
+term allow-web-outbound{
   source-address:: INTERNAL
   destination-port:: WEB_SERVICES
   protocol:: tcp
@@ -39,7 +39,7 @@ term allow-icmp{
   action:: accept
 }
 
-term allow-web{
+term allow-web-inbound{
   destination-address:: WEB_SERVERS
   destination-port:: WEB_SERVICES
   pan-application:: ssl http

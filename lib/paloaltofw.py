@@ -148,6 +148,8 @@ class Rule(object):
     self.options = {}
     self.options["from_zone"] = [from_zone]
     self.options["to_zone"] = [to_zone]
+    if not from_zone or not to_zone:
+        raise PaloAltoFWOptionError("Source or destination zone is empty.")
 
     self.ModifyOptions(terms)
 
@@ -212,8 +214,11 @@ class Rule(object):
       if term.protocol[0] == "icmp":
         self.options["application"].append("ping")
 
-    rule_name = ("-".join(self.options["from_zone"]) + "_2_" +
-                 "-".join(self.options["to_zone"]) + "-" + term.name)
+    rule_name = term.name
+    if rule_name in self.rules:
+        raise PaloAltoFWDuplicateTermError(
+            'You have a duplicate term. A term named %s already exists.'
+            % str(rule_name))
 
     if len(rule_name.decode("utf-8")) > 31:
       raise PaloAltoFWTooLongName("Rule name must be 31 characters max: %s" %

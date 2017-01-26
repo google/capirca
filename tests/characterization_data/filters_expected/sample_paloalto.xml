@@ -16,7 +16,7 @@
                 </tcp>
               </protocol>
             </entry>
-            <entry name="service-allow-web-tcp">
+            <entry name="service-allow-web-outbound-tcp">
               <protocol>
                 <tcp>
                   <port>80, 443</port>
@@ -29,7 +29,7 @@
           <rulebase>
             <security>
               <rules>
-                <entry name="external_2_internal-allow-icmp">
+                <entry name="allow-icmp">
                   <to>
                     <member>internal</member>
                   </to>
@@ -50,71 +50,7 @@
                     <member>ping</member>
                   </application>
                 </entry>
-                <entry name="external_2_internal-allow-web">
-                  <to>
-                    <member>internal</member>
-                  </to>
-                  <from>
-                    <member>external</member>
-                  </from>
-                  <source>
-                    <member>any</member>
-                  </source>
-                  <destination>
-                    <member>WEB_SERVERS</member>
-                  </destination>
-                  <service>
-                    <member>service-allow-web-tcp</member>
-                  </service>
-                  <action>allow</action>
-                  <application>
-                    <member>ssl</member>
-                    <member>http</member>
-                  </application>
-                </entry>
-                <entry name="internal_2_external-ping-gdns">
-                  <to>
-                    <member>external</member>
-                  </to>
-                  <from>
-                    <member>internal</member>
-                  </from>
-                  <source>
-                    <member>INTERNAL</member>
-                  </source>
-                  <destination>
-                    <member>GOOGLE_DNS</member>
-                  </destination>
-                  <service>
-                    <member>any</member>
-                  </service>
-                  <action>allow</action>
-                  <application>
-                    <member>ping</member>
-                  </application>
-                </entry>
-                <entry name="internal_2_external-allow-web">
-                  <to>
-                    <member>external</member>
-                  </to>
-                  <from>
-                    <member>internal</member>
-                  </from>
-                  <source>
-                    <member>INTERNAL</member>
-                  </source>
-                  <destination>
-                    <member>any</member>
-                  </destination>
-                  <service>
-                    <member>service-allow-web-tcp</member>
-                  </service>
-                  <action>allow</action>
-                  <application>
-                    <member>any</member>
-                  </application>
-                </entry>
-                <entry name="internal_2_external-dns-gdns">
+                <entry name="dns-gdns">
                   <to>
                     <member>external</member>
                   </to>
@@ -129,6 +65,70 @@
                   </destination>
                   <service>
                     <member>service-dns-gdns-tcp</member>
+                  </service>
+                  <action>allow</action>
+                  <application>
+                    <member>any</member>
+                  </application>
+                </entry>
+                <entry name="allow-web-inbound">
+                  <to>
+                    <member>internal</member>
+                  </to>
+                  <from>
+                    <member>external</member>
+                  </from>
+                  <source>
+                    <member>any</member>
+                  </source>
+                  <destination>
+                    <member>WEB_SERVERS</member>
+                  </destination>
+                  <service>
+                    <member>service-allow-web-outbound-tcp</member>
+                  </service>
+                  <action>allow</action>
+                  <application>
+                    <member>ssl</member>
+                    <member>http</member>
+                  </application>
+                </entry>
+                <entry name="ping-gdns">
+                  <to>
+                    <member>external</member>
+                  </to>
+                  <from>
+                    <member>internal</member>
+                  </from>
+                  <source>
+                    <member>INTERNAL</member>
+                  </source>
+                  <destination>
+                    <member>GOOGLE_DNS</member>
+                  </destination>
+                  <service>
+                    <member>any</member>
+                  </service>
+                  <action>allow</action>
+                  <application>
+                    <member>ping</member>
+                  </application>
+                </entry>
+                <entry name="allow-web-outbound">
+                  <to>
+                    <member>external</member>
+                  </to>
+                  <from>
+                    <member>internal</member>
+                  </from>
+                  <source>
+                    <member>INTERNAL</member>
+                  </source>
+                  <destination>
+                    <member>any</member>
+                  </destination>
+                  <service>
+                    <member>service-allow-web-outbound-tcp</member>
                   </service>
                   <action>allow</action>
                   <application>
