@@ -220,9 +220,6 @@ class Rule(object):
             'You have a duplicate term. A term named %s already exists.'
             % str(rule_name))
 
-    if len(rule_name.decode("utf-8")) > 31:
-      raise PaloAltoFWTooLongName("Rule name must be 31 characters max: %s" %
-                                  str(rule_name))
     self.rules[rule_name] = self.options
 
 
@@ -233,6 +230,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
   SUFFIX = ".xml"
   _SUPPORTED_AF = set(("inet", "inet6", "mixed"))
   _AF_MAP = {"inet": (4,), "inet6": (6,), "mixed": (4, 6)}
+  _TERM_MAX_LENGTH = 31
 
   INDENT = "  "
 
