@@ -542,8 +542,10 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       rules.append(self.INDENT * 9 + "</destination>")
 
       rules.append(self.INDENT * 9 + "<service>")
-      if not options["service"]:
+      if not options["service"] and not options["application"]:
         rules.append(self.INDENT * 10 + "<member>any</member>")
+      elif not options["service"] and options["application"]:
+        rules.append(self.INDENT * 10 + "<member>application-default</member>")
       else:
         for s in options["service"]:
           rules.append(self.INDENT * 10 + "<member>" + s + "</member>")

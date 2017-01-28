@@ -39,6 +39,11 @@ term allow-icmp{
   action:: accept
 }
 
+term allow-only-pan-app{
+  pan-application:: http
+  action:: accept
+}
+
 term allow-web-inbound{
   destination-address:: WEB_SERVERS
   destination-port:: WEB_SERVICES
