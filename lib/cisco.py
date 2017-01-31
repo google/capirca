@@ -273,7 +273,7 @@ class Term(aclgenerator.Term):
   """A single ACL Term."""
   ALLOWED_PROTO_STRINGS = ['eigrp', 'gre', 'icmp', 'igmp', 'igrp', 'ip',
                            'ipinip', 'nos', 'ospf', 'pim', 'tcp', 'udp',
-                           'sctp', 'ahp', 'esp']
+                           'sctp', 'ahp']
 
   def __init__(self, term, af=4, proto_int=True, enable_dsmo=False,
                term_remark=True, platform='cisco'):
