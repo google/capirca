@@ -53,4 +53,4 @@ class CiscoXR(cisco.Cisco):
     return target
 
   def _SetObjectGroupProtos(self, object_group_term):
-    object_group_term.ALLOWED_PROTO_STRINGS.extend(['pcp'])
+    object_group_term.ALLOWED_PROTO_STRINGS.extend(['pcp', 'esp'])
