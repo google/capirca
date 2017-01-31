@@ -452,7 +452,14 @@ class JuniperSRX(aclgenerator.ACLGenerator):
 
         # SRX policies are controlled by addresses that are used within, so
         # policy can be at the same time inet and inet6.
-
+        if address_book_type == 'global':
+          for zone in self.addressbook:
+            for unused_name, ips in self.addressbook[zone].iteritems():
+              ips = [i[0] for i in ips]
+              if term.source_address == ips:
+                term.source_address = ips
+              if term.destination_address == ips:
+                term.destination_address = ips
         for addr in term.source_address:
           if addr.version in self._AF_MAP[filter_type]:
             self._BuildAddressBook(self.from_zone, addr)

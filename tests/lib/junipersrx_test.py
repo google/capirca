@@ -103,6 +103,13 @@ header {
 }
 """
 
+GOOD_HEADER_12 = """
+header {
+  comment:: "This is a test acl with a comment"
+  target:: srx from-zone untrust to-zone trust address-book-zone inet
+}
+"""
+
 BAD_HEADER = """
 header {
   target:: srx something
@@ -233,6 +240,24 @@ term good-term-15 {
   destination-port:: SMTP
   protocol:: tcp
   policer:: batman
+  action:: accept
+}
+"""
+
+GOOD_TERM_16 = """
+term good-term-16 {
+  destination-address:: BAZ
+  destination-port:: SMTP
+  protocol:: tcp
+  action:: accept
+}
+"""
+
+GOOD_TERM_17 = """
+term term_to_split {
+  source-address:: FOOBAR SOME_HOST
+  destination-port:: SMTP
+  protocol:: tcp
   action:: accept
 }
 """
@@ -989,6 +1014,38 @@ class JuniperSRXTest(unittest.TestCase):
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
+  def testOptimizedGlobalAddressBook(self):
+    baz_ips = [nacaddr.IP('192.168.1.1/32', token='BAZ'),
+               nacaddr.IP('192.168.1.2/32', token='BAZ')]
+    mo_ips = [nacaddr.IP('192.168.1.2/32', token='MO')]
+    prodcolos_ips = [nacaddr.IP('192.168.1.1/32', token='PRODCOLO')]
+
+    self.naming.GetNetAddr.side_effect = [baz_ips, mo_ips, prodcolos_ips]
+    self.naming.GetServiceByProto.return_value = ['25']
+
+    pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_16 +
+                             GOOD_HEADER_2 + GOOD_TERM_17, self.naming)
+    srx = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    self.failUnless('BAZ_0' in srx, srx)
+    self.failUnless('BAZ_1' in srx, srx)
+    self.failUnless('MO' not in srx, srx)
+    self.failUnless('PRODCOLO' not in srx, srx)
+
+  def testUnoptimizeAcrossZones(self):
+    baz_ips = [nacaddr.IP('192.168.1.1/32', token='BAZ'),
+               nacaddr.IP('192.168.1.2/32', token='BAZ')]
+    foo_ips = [nacaddr.IP('192.168.1.2/32', token='FOO'),
+               nacaddr.IP('192.168.1.1/32', token='FOO')]
+
+    self.naming.GetNetAddr.side_effect = [baz_ips, foo_ips]
+    self.naming.GetServiceByProto.return_value = ['25']
+    pol = policy.ParsePolicy(GOOD_HEADER_7 + GOOD_TERM_15 +
+                             GOOD_HEADER_12 + GOOD_TERM_16, self.naming)
+    srx = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    self.failUnless('BAZ_1' in srx, srx)
+    self.failUnless('FOO_1' in srx, srx)
+    self.failUnless('destination-address [ BAZ ];' in srx, srx)
+    self.failUnless('destination-address [ FOO ];' in srx, srx)
 
 if __name__ == '__main__':
   unittest.main()
