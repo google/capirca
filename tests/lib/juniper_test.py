@@ -342,6 +342,24 @@ term good-term-31 {
   action:: accept
 }
 """
+GOOD_TERM_32 = """
+term good_term_32 {
+  forwarding-class-except:: floop
+  action:: deny
+}
+"""
+GOOD_TERM_33 = """
+term multiple-forwarding-class-except {
+  forwarding-class-except:: floop fluup fleep
+  action:: deny
+}
+"""
+GOOD_TERM_34 = """
+term good_term_34 {
+  traffic-class-count:: floop
+  action:: deny
+}
+"""
 GOOD_TERM_COMMENT = """
 term good-term-comment {
   comment:: "This is a COMMENT"
@@ -485,6 +503,7 @@ SUPPORTED_TOKENS = {
     'expiration',
     'flexible_match_range',
     'forwarding_class',
+    'forwarding_class_except',
     'fragment_offset',
     'hop_limit',
     'icmp_type',
@@ -509,6 +528,7 @@ SUPPORTED_TOKENS = {
     'source_port',
     'source_prefix',
     'source_prefix_except',
+    'traffic_class_count',
     'traffic_type',
     'translated',
     'verbatim',
@@ -1174,12 +1194,34 @@ class JuniperTest(unittest.TestCase):
     output = str(jcl)
     self.failUnless('forwarding-class floop;' in output, output)
 
+  def testForwardingClassExcept(self):
+    policy_text = GOOD_HEADER + GOOD_TERM_32
+    jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
+                          EXP_INFO)
+    output = str(jcl)
+    self.failUnless('forwarding-class-except floop;' in output, output)
+
+  def testTrafficClassCount(self):
+    policy_text = GOOD_HEADER + GOOD_TERM_34
+    jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
+                          EXP_INFO)
+    output = str(jcl)
+    self.failUnless('traffic-class-count floop;' in output, output)
+
   def testMultipleForwardingClass(self):
     policy_text = GOOD_HEADER + GOOD_TERM_29
     jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
     output = str(jcl)
     self.failUnless('forwarding-class [ floop fluup fleep ];' in output,
+                    output)
+
+  def testMultipleForwardingClassExcept(self):
+    policy_text = GOOD_HEADER + GOOD_TERM_33
+    jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
+                          EXP_INFO)
+    output = str(jcl)
+    self.failUnless('forwarding-class-except [ floop fluup fleep ];' in output,
                     output)
 
   def testLongPolicer(self):

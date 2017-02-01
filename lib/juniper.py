@@ -279,6 +279,7 @@ class Term(aclgenerator.Term):
                           self.term.ether_type or
                           self.term.flexible_match_range or
                           self.term.forwarding_class or
+                          self.term.forwarding_class_except or
                           self.term.hop_limit or
                           self.term.next_ip or
                           self.term.port or
@@ -391,6 +392,11 @@ class Term(aclgenerator.Term):
       if self.term.forwarding_class:
         config.Append('forwarding-class %s' % self._Group(
             self.term.forwarding_class))
+
+      # forwarding-class-except
+      if self.term.forwarding_class_except:
+        config.Append('forwarding-class-except %s' % self._Group(
+            self.term.forwarding_class_except))
 
       # source prefix <except> list
       if self.term.source_prefix or self.term.source_prefix_except:
@@ -525,7 +531,7 @@ class Term(aclgenerator.Term):
       for action in [self.term.logging, self.term.routing_instance,
                      self.term.counter, self.term.policer, self.term.qos,
                      self.term.loss_priority, self.term.dscp_set,
-                     self.term.next_ip]:
+                     self.term.next_ip, self.term.traffic_class_count]:
         if action:
           try:
             unique_actions.update(action)
@@ -576,6 +582,9 @@ class Term(aclgenerator.Term):
 
       if self.term.counter:
         config.Append('count %s;' % self.term.counter)
+
+      if self.term.traffic_class_count:
+        config.Append('traffic-class-count %s;' % self.term.traffic_class_count)
 
       oid_length = 128
       if self.term.policer:
@@ -793,6 +802,7 @@ class Juniper(aclgenerator.ACLGenerator):
                          'ether_type',
                          'flexible_match_range',
                          'forwarding_class',
+                         'forwarding_class_except',
                          'fragment_offset',
                          'hop_limit',
                          'logging',
@@ -808,7 +818,8 @@ class Juniper(aclgenerator.ACLGenerator):
                          'routing_instance',
                          'source_prefix',
                          'source_prefix_except',
-                         'traffic_type'}
+                         'traffic_type',
+                         'traffic_class_count'}
     supported_sub_tokens.update({
         'option': {
             'established',
