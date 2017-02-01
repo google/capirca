@@ -149,7 +149,7 @@ class Rule(object):
     self.options["from_zone"] = [from_zone]
     self.options["to_zone"] = [to_zone]
     if not from_zone or not to_zone:
-        raise PaloAltoFWOptionError("Source or destination zone is empty.")
+      raise PaloAltoFWOptionError("Source or destination zone is empty.")
 
     self.ModifyOptions(terms)
 
@@ -217,7 +217,7 @@ class Rule(object):
     rule_name = term.name
     if rule_name in self.rules:
         raise PaloAltoFWDuplicateTermError(
-            'You have a duplicate term. A term named %s already exists.'
+          "You have a duplicate term. A term named %s already exists."
             % str(rule_name))
 
     self.rules[rule_name] = self.options
