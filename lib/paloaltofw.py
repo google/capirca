@@ -139,7 +139,7 @@ class Service(object):
 
 
 class Rule(object):
-  """Add doc string."""
+  """Extend the Term() class for PaloAlto Firewall Rules."""
 
   rules = {}
 
@@ -154,7 +154,7 @@ class Rule(object):
     self.ModifyOptions(terms)
 
   def ModifyOptions(self, terms):
-    """Add docstring."""
+    """Massage firewall rules into Palo Alto rules format."""
     term = terms.term
     self.options["source"] = []
     self.options["destination"] = []
