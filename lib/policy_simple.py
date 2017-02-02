@@ -194,6 +194,10 @@ class ForwardingClass(Field):
   """A forwarding-class field."""
 
 
+class ForwardingClassExcept(Field):
+  """A forwarding-class-except field."""
+
+
 class IcmpType(Field):
   """A icmp-type field."""
 
@@ -298,6 +302,10 @@ class TrafficType(Field):
   """A traffic-type field."""
 
 
+class TrafficClassCount(Field):
+  """A traffic-class-count field."""
+
+
 class Verbatim(Field):
   """A verbatim field."""
 
@@ -327,6 +335,7 @@ field_map = {
     'expiration': Expiration,
     'fragment-offset': FragmentOffset,
     'forwarding-class': ForwardingClass,
+    'forwarding-class-except': ForwardingClassExcept,
     'icmp-type': IcmpType,
     'logging': Logging,
     'loss-priority': LossPriority,
@@ -353,6 +362,7 @@ field_map = {
     'source-tag': SourceTag,
     'target': Target,
     'timeout': Timeout,
+    'traffic-class-count': TrafficClassCount,
     'traffic-type': TrafficType,
     'verbatim': Verbatim,
     'vpn': Vpn,
