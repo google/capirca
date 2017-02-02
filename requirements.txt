@@ -4,7 +4,7 @@
 
 PyYAML==3.11
 ipaddr
-python-gflags
+python-gflags>=3.0
 ply
 mock
 six # requirement from gflags
