@@ -243,8 +243,23 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     supported_tokens, supported_sub_tokens = super(PaloAltoFW,
                                                    self)._BuildTokens()
 
-    supported_tokens |= {
-        "expiration", "logging", "pan_application", "owner", "timeout"
+    supported_tokens = {
+            'action',
+            'comment',
+            'destination_address',
+            'destination_port',
+            'expiration',
+            'icmp_type',
+            'logging',
+            'name',
+            'owner',
+            'platform',
+            'protocol',
+            'source_address',
+            'source_port',
+            'timeout',
+            'pan_application',
+            'translated'
     }
 
     supported_sub_tokens.update({
@@ -457,8 +472,8 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       # sort address books and address sets
       address_book_groups_dict = collections.OrderedDict(
           sorted(address_book_groups_dict.items()))
-      address_book_keys = sorted(
-          address_book_names_dict.keys(), key=self._SortAddressBookNumCheck)
+    address_book_keys = sorted(
+        address_book_names_dict.keys(), key=self._SortAddressBookNumCheck)
 
     for name in address_book_keys:
       address_entries.append(self.INDENT * 6 + '<entry name="' + name + '">')
