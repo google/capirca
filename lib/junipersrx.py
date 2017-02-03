@@ -455,7 +455,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         if address_book_type == 'global':
           for zone in self.addressbook:
             for unused_name, ips in self.addressbook[zone].iteritems():
-              ips = [i[0] for i in ips]
+              ips = [i for i in ips]
               if term.source_address == ips:
                 term.source_address = ips
               if term.destination_address == ips:
@@ -587,20 +587,16 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     """
     if zone not in self.addressbook:
       self.addressbook[zone] = collections.defaultdict(list)
-
     name = address.parent_token
     for ip in self.addressbook[zone][name]:
-      if ip[0].Contains(address):
+      if ip.Contains(address):
         return
-      if address.Contains(ip[0]):
+      if address.Contains(ip):
         for index, ip_addr in enumerate(self.addressbook[zone][name]):
           if ip_addr == ip:
-            self.addressbook[zone][name][index] = (
-                address, self.addressbook[zone][name][index][1])
+            self.addressbook[zone][name][index] = address
         return
-    counter = len(self.addressbook[zone][name])
-    address_name = '%s_%s' % (name, str(counter))
-    self.addressbook[zone][name].append((address, address_name))
+    self.addressbook[zone][name].append(address)
 
   def _SortAddressBookNumCheck(self, item):
     """Used to give a natural order to the list of acl entries.
@@ -645,44 +641,31 @@ class JuniperSRX(aclgenerator.ACLGenerator):
 
     # create address books if address-book-type set to global
     if self.addr_book_type_global:
-      address_book_names_dict = {}
-      address_book_groups_dict = {}
+      global_address_book = collections.defaultdict(list)
 
       target.IndentAppend(1, 'replace: address-book {')
       target.IndentAppend(2, 'global {')
       for zone in self.addressbook:
+        for group in self.addressbook[zone]:
+          for address in self.addressbook[zone][group]:
+            global_address_book[group].append(address)
+      names = sorted(global_address_book.keys())
+      for name in names:
+        counter = 0
+        ips = nacaddr.SortAddrList(global_address_book[name])
+        ips = nacaddr.CollapseAddrListRecursive(ips)
+        global_address_book[name] = ips
+        for ip in ips:
+          target.IndentAppend(4, 'address ' + name + '_' + str(counter) + ' ' +
+                              str(ip) + ';')
+          counter += 1
 
-        # building individual addresses dictionary
-        groups = sorted(self.addressbook[zone])
-        for group in groups:
-          for address, name in self.addressbook[zone][group]:
-            if name in address_book_names_dict:
-              if address_book_names_dict[name].Contains(address):
-                continue
-            address_book_names_dict[name] = address
-
-        # building individual address-set dictionary
-        for group in groups:
-          group_names = []
-          for address, name in self.addressbook[zone][group]:
-            group_names.append(name)
-          address_book_groups_dict[group] = group_names
-
-      # sort address books and address sets
-      address_book_groups_dict = collections.OrderedDict(
-          sorted(address_book_groups_dict.items()))
-      address_book_keys = sorted(
-          address_book_names_dict.keys(), key=self._SortAddressBookNumCheck)
-
-      # add global address-book to target
-      for name in address_book_keys:
-        target.IndentAppend(4, 'address ' + name + ' ' +
-                            str(address_book_names_dict[name]) + ';')
-
-      for group, address_list in address_book_groups_dict.items():
+      for group in sorted(global_address_book.keys()):
         target.IndentAppend(4, 'address-set ' + group + ' {')
-        for name in address_list:
-          target.IndentAppend(5, 'address ' + name + ';')
+        counter = 0
+        for unused_addr in global_address_book[group]:
+          target.IndentAppend(5, 'address ' + group + '_' + str(counter) + ';')
+          counter += 1
         target.IndentAppend(4, '}')
 
       target.IndentAppend(2, '}')
@@ -697,14 +680,22 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         # building individual addresses
         groups = sorted(self.addressbook[zone])
         for group in groups:
-          for address, name in self.addressbook[zone][group]:
-            target.IndentAppend(4, 'address ' + name + ' ' + str(address) + ';')
+          ips = nacaddr.SortAddrList(self.addressbook[zone][group])
+          ips = nacaddr.CollapseAddrListRecursive(ips)
+          self.addressbook[zone][group] = ips
+          count = 0
+          for address in self.addressbook[zone][group]:
+            target.IndentAppend(4, 'address ' + group + '_' + str(count) +
+                                ' ' + str(address) + ';')
+            count += 1
 
         # building address-sets
         for group in groups:
           target.IndentAppend(4, 'address-set ' + group + ' {')
-          for address, name in self.addressbook[zone][group]:
-            target.IndentAppend(5, 'address ' + name + ';')
+          count = 0
+          for address in self.addressbook[zone][group]:
+            target.IndentAppend(5, 'address ' + group + '_' + str(count) + ';')
+            count += 1
 
           target.IndentAppend(4, '}')
         target.IndentAppend(3, '}')

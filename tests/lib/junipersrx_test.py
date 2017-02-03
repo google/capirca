@@ -255,7 +255,7 @@ term good-term-16 {
 
 GOOD_TERM_17 = """
 term term_to_split {
-  source-address:: FOOBAR SOME_HOST
+  destination-address:: FOOBAR SOME_HOST
   destination-port:: SMTP
   protocol:: tcp
   action:: accept
@@ -1015,37 +1015,72 @@ class JuniperSRXTest(unittest.TestCase):
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
   def testOptimizedGlobalAddressBook(self):
-    baz_ips = [nacaddr.IP('192.168.1.1/32', token='BAZ'),
-               nacaddr.IP('192.168.1.2/32', token='BAZ')]
-    mo_ips = [nacaddr.IP('192.168.1.2/32', token='MO')]
-    prodcolos_ips = [nacaddr.IP('192.168.1.1/32', token='PRODCOLO')]
+    foobar_ips = [nacaddr.IP('172.16.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.17.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.18.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.19.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.22.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.23.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.24.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.25.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.26.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.27.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.28.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.29.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.30.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.31.0.0/16', token='FOOBAR')]
+    some_host_ips = [nacaddr.IP('172.20.0.0/16', token='SOME_HOST'),
+                     nacaddr.IP('172.21.0.0/16', token='SOME_HOST'),
+                     nacaddr.IP('10.0.0.0/8', token='SOME_HOST')]
 
-    self.naming.GetNetAddr.side_effect = [baz_ips, mo_ips, prodcolos_ips]
+    self.naming.GetNetAddr.side_effect = [foobar_ips, some_host_ips,
+                                          some_host_ips]
     self.naming.GetServiceByProto.return_value = ['25']
 
-    pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_16 +
-                             GOOD_HEADER_2 + GOOD_TERM_17, self.naming)
+    pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_17 + GOOD_HEADER_2 +
+                             GOOD_TERM_15, self.naming)
     srx = str(junipersrx.JuniperSRX(pol, EXP_INFO))
-    self.failUnless('BAZ_0' in srx, srx)
-    self.failUnless('BAZ_1' in srx, srx)
-    self.failUnless('MO' not in srx, srx)
-    self.failUnless('PRODCOLO' not in srx, srx)
+    self.failUnless('address FOOBAR_0 172.16.0.0/12' in srx, srx)
+    self.failUnless('address SOME_HOST_0 10.0.0.0/8;' in srx, srx)
+    self.failUnless('address SOME_HOST_1 172.20.0.0/15;' in srx, srx)
+    self.failUnless('/16' not in srx, srx)
 
   def testUnoptimizeAcrossZones(self):
-    baz_ips = [nacaddr.IP('192.168.1.1/32', token='BAZ'),
-               nacaddr.IP('192.168.1.2/32', token='BAZ')]
-    foo_ips = [nacaddr.IP('192.168.1.2/32', token='FOO'),
-               nacaddr.IP('192.168.1.1/32', token='FOO')]
+    foobar_ips = [nacaddr.IP('172.16.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.17.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.18.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.19.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.22.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.23.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.24.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.25.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.26.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.27.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.28.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.29.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.30.0.0/16', token='FOOBAR'),
+                  nacaddr.IP('172.31.0.0/16', token='FOOBAR')]
+    some_host_ips = [nacaddr.IP('172.20.0.0/16', token='SOME_HOST'),
+                     nacaddr.IP('172.21.0.0/16', token='SOME_HOST'),
+                     nacaddr.IP('10.0.0.0/8', token='SOME_HOST')]
 
-    self.naming.GetNetAddr.side_effect = [baz_ips, foo_ips]
+    self.naming.GetNetAddr.side_effect = [foobar_ips, some_host_ips,
+                                          some_host_ips, foobar_ips]
+
     self.naming.GetServiceByProto.return_value = ['25']
-    pol = policy.ParsePolicy(GOOD_HEADER_7 + GOOD_TERM_15 +
-                             GOOD_HEADER_12 + GOOD_TERM_16, self.naming)
+    pol = policy.ParsePolicy(GOOD_HEADER_7 + GOOD_TERM_17 +
+                             GOOD_HEADER_12 + GOOD_TERM_15 + GOOD_TERM_12,
+                             self.naming)
     srx = str(junipersrx.JuniperSRX(pol, EXP_INFO))
-    self.failUnless('BAZ_1' in srx, srx)
-    self.failUnless('FOO_1' in srx, srx)
-    self.failUnless('destination-address [ BAZ ];' in srx, srx)
-    self.failUnless('destination-address [ FOO ];' in srx, srx)
+    self.failUnless(('        security-zone trust {\n'
+                     '            replace: address-book {\n'
+                     '                address FOOBAR_0 172.16.0.0/14;')
+                    in srx, srx)
+    self.failUnless(('        security-zone untrust {\n'
+                     '            replace: address-book {\n'
+                     '                address FOOBAR_0 172.16.0.0/12;\n'
+                     '                address SOME_HOST_0 10.0.0.0/8;')
+                    in srx, srx)
 
 if __name__ == '__main__':
   unittest.main()
