@@ -150,8 +150,13 @@ class Term(aclgenerator.Term):
 
     # Term option is not supported
     if self.term.option:
-      raise NsxvAclTermError(
-          'Option are not implemented in standard ACLs')
+      for opt in [str(single_option) for single_option in self.term.option]:
+        if((opt.find('tcp-established') == 0)
+           or (opt.find('established') == 0)):
+          return ''
+        else:
+          raise NsxvAclTermError(
+              'Option are not implemented in standard ACLs')
 
     # check for keywords Nsxv does not support
     term_keywords = self.term.__dict__
