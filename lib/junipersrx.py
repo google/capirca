@@ -454,7 +454,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         # policy can be at the same time inet and inet6.
         if address_book_type == 'global':
           for zone in self.addressbook:
-            for unused_name, ips in self.addressbook[zone].iteritems():
+            for unused_name, ips in sorted(self.addressbook[zone].iteritems()):
               ips = [i for i in ips]
               if term.source_address == ips:
                 term.source_address = ips
