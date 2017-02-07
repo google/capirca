@@ -19,9 +19,9 @@ from lib import cisconx
 from lib import naming
 from lib import policy
 from lib import nacaddr
+import re
 import mock
 import ipaddr
-import re
 
 
 GOOD_HEADER_1 = """

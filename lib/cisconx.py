@@ -122,3 +122,4 @@ class CiscoNX(cisco.Cisco):
       target = target_header + target
       target += ['', 'exit', '']
     return '\n'.join(target)
+
