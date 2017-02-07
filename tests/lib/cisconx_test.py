@@ -18,8 +18,10 @@ import unittest
 from lib import cisconx
 from lib import naming
 from lib import policy
+from lib import nacaddr
 import mock
 import ipaddr
+import re
 
 
 GOOD_HEADER_1 = """
@@ -40,6 +42,13 @@ GOOD_HEADER_3 = """
 header {
   comment:: "this is a ipv4 network acl"
   target:: cisconx ipv4-net-test-filter
+}
+"""
+
+GOOD_OBJGRP_HEADER = """
+header {
+  comment:: "obj group header test"
+  target:: cisconx objgroupheader object-group
 }
 """
 
@@ -73,6 +82,24 @@ term good-term-3 {
 GOOD_TERM_4 = """
 term network-test-4 {
   source-address:: SOME_HOST
+  action:: accept
+}
+"""
+
+GOOD_TERM_5 = """
+term good-term-5 {
+  source-address:: SOME_HOST
+  destination-address:: SOME_HOST
+  action:: accept
+}
+"""
+
+GOOD_TERM_6 = """
+term good-term-6 {
+  protocol:: tcp
+  destination-address:: SOME_HOST
+  source-port:: HTTP
+  option:: established
   action:: accept
 }
 """
@@ -199,6 +226,50 @@ class CiscoNXTest(unittest.TestCase):
     acl = cisconx.CiscoNX(pol, EXP_INFO)
     expected = 'permit ip 10.0.0.0/8 any'
     self.failUnless(expected in str(acl), '[%s]' % str(acl))
+
+  def testObjectGroups(self):
+    ip_grp = ['object-group network ipv4 SOME_HOST']
+    ip_grp.append(' 10.0.0.0/8')
+    ip_grp.append('exit')
+    port_grp1 = ['object-group port 80-80']
+    port_grp1.append(' eq 80')
+    port_grp1.append('exit')
+    port_grp2 = ['object-group port 1024-65535']
+    port_grp2.append(' range 1024 65535')
+    port_grp2.append('exit')
+
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IP('10.0.0.0/8', token="SOME_HOST")]
+    self.naming.GetServiceByProto.return_value = ['80']
+
+    pol = policy.ParsePolicy(
+        GOOD_OBJGRP_HEADER + GOOD_TERM_5 + GOOD_TERM_6, self.naming)
+    acl = cisconx.CiscoNX(pol, EXP_INFO)
+
+    self.failUnless('\n'.join(ip_grp) in str(acl), '%s %s' % (
+        '\n'.join(ip_grp), str(acl)))
+    self.failUnless('\n'.join(port_grp1) in str(acl), '%s %s' % (
+        '\n'.join(port_grp1), str(acl)))
+    self.failUnless('\n'.join(port_grp2) in str(acl), '%s %s' % (
+        '\n'.join(port_grp2), str(acl)))
+
+    # Object-group terms should use the object groups created.
+    self.failUnless(
+        ' permit tcp any port-group 80-80 net-group SOME_HOST port-group'
+        ' 1024-65535' in str(acl), str(acl))
+    self.failUnless(
+        ' permit ip net-group SOME_HOST net-group SOME_HOST' in str(acl),
+        str(acl))
+
+    # There should be no addrgroups that look like IP addresses.
+    for addrgroup in re.findall(r'net-group ([a-f0-9.:/]+)', str(acl)):
+      self.assertRaises(ValueError, ipaddr.IPNetwork(addrgroup))
+      self.assertRaises(ValueError, ipaddr.IPAddress(addrgroup))
+
+    self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
+                                             mock.call('SOME_HOST')])
+    self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
+
 
   def testBuildTokens(self):
     pol1 = cisconx.CiscoNX(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
