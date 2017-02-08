@@ -63,6 +63,12 @@ class Term(aclgenerator.Term):
       'deny': 'deny',
   }
 
+  _PROTOCOL_MAP = {
+      'icmp': 1,
+      'gre': 47,
+      'esp': 50,
+  }
+
   def __init__(self, term, filter_type):
     super(Term, self).__init__(term)
     self.term = term
@@ -212,8 +218,8 @@ class Term(aclgenerator.Term):
     ret_ports = []
 
     for protocol in protocols:
-      if protocol == 'icmp':
-        return '1'
+      if protocol in self._PROTOCOL_MAP:
+        return [str(self._PROTOCOL_MAP[protocol])]
 
       for start_port, end_port in ports:
         if start_port == end_port:

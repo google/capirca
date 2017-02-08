@@ -187,6 +187,23 @@ term good-term-negate {
 }
 """
 
+GOOD_TERM_PROTOCOL_MAP = """
+term allow-icmp {
+  protocol:: icmp
+  action:: accept
+}
+
+term allow-gre {
+  protocol:: gre
+  action:: accept
+}
+
+term allow-esp {
+  protocol:: esp
+  action:: accept
+}
+"""
+
 SUPPORTED_TOKENS = {
     'action',
     'comment',
@@ -702,6 +719,20 @@ class ArubaTest(unittest.TestCase):
       no any any any permit"""
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
                                          GOOD_TERM_NEGATE_2,
+                                         self.naming), EXP_INFO)
+    self.assertEqual(textwrap.dedent(expected_result), str(aru))
+
+  def testProtocolMap(self):
+    expected_result = """\
+    ! $Id:$
+    ! $Date:$
+    ! $Revision:$
+    ip access-list session test-filter
+      any any 1 permit
+      any any 47 permit
+      any any 50 permit"""
+    aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
+                                         GOOD_TERM_PROTOCOL_MAP,
                                          self.naming), EXP_INFO)
     self.assertEqual(textwrap.dedent(expected_result), str(aru))
 
