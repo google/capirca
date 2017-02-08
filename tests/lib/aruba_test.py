@@ -81,6 +81,16 @@ term good-term-long-comment {
 }
 """
 
+GOOD_TERM_VERBATIM = """
+term much-verbatim {
+  verbatim:: aruba "aruba uses some odd ACL format"
+  verbatim:: aruba "which is kinda like, weird"
+  verbatim:: aruba ""
+  verbatim:: cisco "But Cisco's format is Ok, tho."
+  verbatim:: juniper "And Juniper's is the best!"
+}
+"""
+
 GOOD_TERM_ALLOW_ANY_ANY = """
 term good-term-allow-any-any {
   action:: accept
@@ -188,6 +198,7 @@ SUPPORTED_TOKENS = {
     'protocol',
     'source_address',
     'translated',
+    'verbatim',
 }
 
 SUPPORTED_SUB_TOKENS = {
@@ -278,6 +289,21 @@ class ArubaTest(unittest.TestCase):
       any any any permit"""
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
                                          GOOD_TERM_LONG_COMMENT,
+                                         self.naming), EXP_INFO)
+    self.assertEqual(textwrap.dedent(expected_result), str(aru))
+
+  def testVerbatim(self):
+    expected_result = """\
+    ! $Id:$
+    ! $Date:$
+    ! $Revision:$
+    ip access-list session test-filter
+      aruba uses some odd ACL format
+      which is kinda like, weird
+      any any any permit"""
+    aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
+                                         GOOD_TERM_VERBATIM +
+                                         GOOD_TERM_ALLOW_ANY_ANY,
                                          self.naming), EXP_INFO)
     self.assertEqual(textwrap.dedent(expected_result), str(aru))
 
