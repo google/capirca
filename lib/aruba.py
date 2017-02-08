@@ -28,6 +28,8 @@ import logging
 
 from lib import aclgenerator
 
+_PLATFORM = 'aruba'
+
 
 class Term(aclgenerator.Term):
   """A single Aruba ACL term, mostly used for the __str__() method.
@@ -71,6 +73,13 @@ class Term(aclgenerator.Term):
     netdestinations = []
     ret_str = []
     term_af = self.AF_MAP.get(self.filter_type)
+
+    if self.term.verbatim:
+      for next_verbatim in self.term.verbatim:
+        if next_verbatim.value[0] == _PLATFORM and next_verbatim.value[1]:
+          ret_str.append('%s%s' % (self._IDENT, next_verbatim.value[1]))
+
+      return '\n'.join(t for t in ret_str if t)
 
     comments = self.term.comment[:]
 
@@ -230,7 +239,6 @@ class Aruba(aclgenerator.ACLGenerator):
     pol: policy.Policy object.
   """
 
-  _PLATFORM = 'aruba'
   SUFFIX = '.aruba'
 
   _ACL_LINE_HEADER = 'ip access-list session'
@@ -250,7 +258,6 @@ class Aruba(aclgenerator.ACLGenerator):
         'source_address_exclude',
         'platform',
         'platform_exclude',
-        'verbatim',
     }
 
     supported_sub_tokens.update({
@@ -276,8 +283,8 @@ class Aruba(aclgenerator.ACLGenerator):
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     for header, terms in pol.filters:
-      filter_name = header.FilterName(self._PLATFORM)
-      filter_options = header.FilterOptions(self._PLATFORM)
+      filter_name = header.FilterName(_PLATFORM)
+      filter_options = header.FilterOptions(_PLATFORM)
 
       filter_type = 'inet'
       if 'inet6' in filter_options:
