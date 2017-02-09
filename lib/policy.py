@@ -1040,7 +1040,6 @@ class Term(object):
       # qos?
       elif obj.var_type is VarType.QOS:
         self.qos = obj.value
-
       elif obj.var_type is VarType.PACKET_LEN:
         self.packet_length = obj.value
       elif obj.var_type is VarType.FRAGMENT_OFFSET:
@@ -1349,7 +1348,7 @@ class VarType(object):
   HOP_LIMIT = 47
   LOG_NAME = 48
   FLEXIBLE_MATCH_RANGE = 49
-  PAN_APPLICATION = 50
+  PAN_APPLICATION = 54
 
   def __init__(self, var_type, value):
     self.var_type = var_type
