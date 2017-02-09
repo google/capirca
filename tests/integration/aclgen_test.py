@@ -78,7 +78,8 @@ class TestAclGenDemo(unittest.TestCase):
         'sample_nsxv.nsx',
         'sample_packetfilter.pf',
         'sample_speedway.ipt',
-        'sample_srx.srx'
+        'sample_srx.srx',
+        'sample_paloalto.xml'
     ]
     def makeoutput(f):
       return 'writing file: {0}'.format(os.path.join(self.output_dir, f))
@@ -87,7 +88,7 @@ class TestAclGenDemo(unittest.TestCase):
     for expected_output in map(makeoutput, expected_files):
       self.assertTrue(expected_output in actual_output)
 
-    self.assertTrue('writing 15 files to disk...' in actual_output)
+    self.assertTrue('writing 16 files to disk...' in actual_output)
 
   def test_generate_single_policy(self):
     args = [
