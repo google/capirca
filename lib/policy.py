@@ -297,6 +297,7 @@ class Term(object):
     options: list of VarType.OPTION's.
     protocol: list of VarType.PROTOCOL's.
     counter: VarType.COUNTER
+    traffic-class-count: VarType.TRAFFIC_CLASS_COUNT
     action: list of VarType.ACTION's
     dscp-set: VarType.DSCP_SET
     dscp-match: VarType.DSCP_MATCH
@@ -304,6 +305,7 @@ class Term(object):
     comments: VarType.COMMENT
     flexible-match-range: VarType.FLEXIBLE_MATCH_RANGE
     forwarding-class: VarType.FORWARDING_CLASS
+    forwarding-class-except: VarType.FORWARDING_CLASS_EXCEPT
     expiration: VarType.EXPIRATION
     verbatim: VarType.VERBATIM
     logging: VarType.LOGGING
@@ -381,6 +383,7 @@ class Term(object):
     self.destination_port = []
     self.destination_prefix = []
     self.forwarding_class = []
+    self.forwarding_class_except = []
     self.logging = []
     self.log_name = None
     self.loss_priority = None
@@ -406,6 +409,7 @@ class Term(object):
     self.hop_limit = None
     self.icmp_type = []
     self.ether_type = []
+    self.traffic_class_count = None
     self.traffic_type = []
     self.translated = False
     self.dscp_set = None
@@ -569,6 +573,13 @@ class Term(object):
       for fc in other.forwarding_class:
         if fc not in self.forwarding_class:
           return False
+    # check forwarding-class-except
+    if self.forwarding_class_except:
+      if not other.forwarding_class_except:
+        return False
+      for fc in other.forwarding_class_except:
+        if fc not in self.forwarding_class_except:
+          return False
     if self.next_ip:
       if not other.next_ip:
         return False
@@ -633,7 +644,8 @@ class Term(object):
     if self.source_tag:
       ret_str.append('  source_tag: %s' % self.source_tag)
     if self.destination_address:
-      ret_str.append('  destination_address: %s' % sorted(self.destination_address))
+      ret_str.append('  destination_address: %s'
+                     % sorted(self.destination_address))
     if self.destination_address_exclude:
       ret_str.append('  destination_address_exclude: %s' %
                      sorted(self.destination_address_exclude))
@@ -650,6 +662,9 @@ class Term(object):
                      self.destination_prefix_except)
     if self.forwarding_class:
       ret_str.append('  forwarding_class: %s' % self.forwarding_class)
+    if self.forwarding_class_except:
+      ret_str.append('  forwarding_class_except: %s'
+                     % self.forwarding_class_except)
     if self.next_ip:
       ret_str.append('  next_ip: %s' % self.next_ip)
     if self.protocol:
@@ -680,6 +695,8 @@ class Term(object):
       ret_str.append('  log_name: %s' % self.log_name)
     if self.counter:
       ret_str.append('  counter: %s' % self.counter)
+    if self.traffic_class_count:
+      ret_str.append('  traffic_class_count: %s' % self.traffic_class_count)
     if self.source_interface:
       ret_str.append('  source_interface: %s' % self.source_interface)
     if self.destination_interface:
@@ -812,6 +829,11 @@ class Term(object):
 
     # forwarding-class
     if sorted(self.forwarding_class) != sorted(other.forwarding_class):
+      return False
+
+    # forwarding-class-except
+    if sorted(self.forwarding_class_except) != sorted(
+        other.forwarding_class_except):
       return False
 
     # next_ip
@@ -998,6 +1020,8 @@ class Term(object):
           self.precedence.append(x.value)
         elif x.var_type is VarType.FORWARDING_CLASS:
           self.forwarding_class.append(x.value)
+        elif x.var_type is VarType.FORWARDING_CLASS_EXCEPT:
+          self.forwarding_class_except.append(x.value)
         elif x.var_type is VarType.PAN_APPLICATION:
           self.pan_application.append(x.value)
         elif x.var_type is VarType.NEXT_IP:
@@ -1036,6 +1060,8 @@ class Term(object):
         self.precedence = obj.value
       elif obj.var_type is VarType.FORWARDING_CLASS:
         self.forwarding_class.append(obj.value)
+      elif obj.var_type is VarType.FORWARDING_CLASS_EXCEPT:
+        self.forwarding_class_except.append(obj.value)
       elif obj.var_type is VarType.PAN_APPLICATION:
         self.pan_application.append(obj.value)
       elif obj.var_type is VarType.NEXT_IP:
@@ -1048,6 +1074,8 @@ class Term(object):
         self.action.append(obj.value)
       elif obj.var_type is VarType.COUNTER:
         self.counter = obj
+      elif obj.var_type is VarType.TRAFFIC_CLASS_COUNT:
+        self.traffic_class_count = obj
       elif obj.var_type is VarType.ICMP_TYPE:
         self.icmp_type.extend(obj.value)
       elif obj.var_type is VarType.LOGGING:
@@ -1375,8 +1403,9 @@ class VarType(object):
   FLEXIBLE_MATCH_RANGE = 49
   ESPFX = 50
   EDPFX = 51
+  FORWARDING_CLASS_EXCEPT = 52
+  TRAFFIC_CLASS_COUNT = 53
   PAN_APPLICATION = 54
-
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1559,6 +1588,7 @@ tokens = (
     'EXPIRATION',
     'FLEXIBLE_MATCH_RANGE',
     'FORWARDING_CLASS',
+    'FORWARDING_CLASS_EXCEPT',
     'FRAGMENT_OFFSET',
     'HOP_LIMIT',
     'APPLY_GROUPS',
@@ -1596,6 +1626,7 @@ tokens = (
     'TARGET',
     'TERM',
     'TIMEOUT',
+    'TRAFFIC_CLASS_COUNT',
     'TRAFFIC_TYPE',
     'VERBATIM',
     'VPN',
@@ -1624,6 +1655,7 @@ reserved = {
     'expiration': 'EXPIRATION',
     'flexible-match-range': 'FLEXIBLE_MATCH_RANGE',
     'forwarding-class': 'FORWARDING_CLASS',
+    'forwarding-class-except': 'FORWARDING_CLASS_EXCEPT',
     'fragment-offset': 'FRAGMENT_OFFSET',
     'hex': 'HEX',
     'hop-limit': 'HOP_LIMIT',
@@ -1659,6 +1691,7 @@ reserved = {
     'target': 'TARGET',
     'term': 'TERM',
     'timeout': 'TIMEOUT',
+    'traffic-class-count': 'TRAFFIC_CLASS_COUNT',
     'traffic-type': 'TRAFFIC_TYPE',
     'verbatim': 'VERBATIM',
     'vpn': 'VPN',
@@ -1787,6 +1820,7 @@ def p_term_spec(p):
                 | term_spec addr_spec
                 | term_spec comment_spec
                 | term_spec counter_spec
+                | term_spec traffic_class_count_spec
                 | term_spec dscp_set_spec
                 | term_spec dscp_match_spec
                 | term_spec dscp_except_spec
@@ -1795,6 +1829,7 @@ def p_term_spec(p):
                 | term_spec expiration_spec
                 | term_spec flexible_match_range_spec
                 | term_spec forwarding_class_spec
+                | term_spec forwarding_class_except_spec
                 | term_spec fragment_offset_spec
                 | term_spec hop_limit_spec
                 | term_spec icmp_type_spec
@@ -1892,6 +1927,13 @@ def p_forwarding_class_spec(p):
   p[0] = []
   for fclass in p[4]:
     p[0].append(VarType(VarType.FORWARDING_CLASS, fclass))
+
+
+def p_forwarding_class_except_spec(p):
+  """ forwarding_class_except_spec : FORWARDING_CLASS_EXCEPT ':' ':' one_or_more_strings """
+  p[0] = []
+  for fclass in p[4]:
+    p[0].append(VarType(VarType.FORWARDING_CLASS_EXCEPT, fclass))
 
 
 def p_next_ip_spec(p):
@@ -2098,6 +2140,11 @@ def p_action_spec(p):
 def p_counter_spec(p):
   """ counter_spec : COUNTER ':' ':' STRING """
   p[0] = VarType(VarType.COUNTER, p[4])
+
+
+def p_traffic_class_count_spec(p):
+  """ traffic_class_count_spec : TRAFFIC_CLASS_COUNT ':' ':' STRING """
+  p[0] = VarType(VarType.TRAFFIC_CLASS_COUNT, p[4])
 
 
 def p_expiration_spec(p):
