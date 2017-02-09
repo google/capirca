@@ -29,6 +29,8 @@ import logging
 from lib import aclgenerator
 
 _PLATFORM = 'aruba'
+_COMMENT_MARKER = '#'
+_TERMINATOR_MARKER = '!'
 
 
 class Term(aclgenerator.Term):
@@ -54,7 +56,6 @@ class Term(aclgenerator.Term):
   _DESTINATION_IS_USER_OPT_STR = 'destination-is-user'
   _NEGATE_OPT_STR = 'negate'
   _IDENT = '  '
-  _NOOP_MARKER = '!'
 
   _COMMENT_LINE_LENGTH = 70
 
@@ -95,7 +96,7 @@ class Term(aclgenerator.Term):
     if comments:
       for line in aclgenerator.WrapWords(comments,
                                          self._COMMENT_LINE_LENGTH):
-        ret_str.append('%s%s %s' % (self._IDENT, self._NOOP_MARKER, line))
+        ret_str.append('%s%s %s' % (self._IDENT, _COMMENT_MARKER, line))
 
     src_addr_token = ''
     dst_addr_token = ''
@@ -178,9 +179,6 @@ class Term(aclgenerator.Term):
     # Aruba does not use IP version identifier for IPv4.
     addr_family = '6' if af == 6 else ''
 
-    ret_str.append('%s %s %s' % (self._NEGATOR,
-                                 self._NET_DEST_STR + addr_family,
-                                 addr_netdestid))
     ret_str.append('%s %s' % (self._NET_DEST_STR + addr_family,
                               addr_netdestid))
 
@@ -188,7 +186,7 @@ class Term(aclgenerator.Term):
       ret_str.append('%s%s' % (self._IDENT,
                                self._GenerateNetworkOrHostTokens(address)))
 
-    ret_str.append('%s\n' % self._NOOP_MARKER)
+    ret_str.append('%s\n' % _TERMINATOR_MARKER)
 
     return '\n'.join(t for t in ret_str if t)
 
@@ -203,6 +201,9 @@ class Term(aclgenerator.Term):
     """
     if address.numhosts == 1:
       return '%s %s' % (self._HOST_STRING, address.ip)
+
+    if address.version == 6:
+      return '%s %s/%s' % (self._NETWORK_STRING, address.ip, address.prefixlen)
 
     return '%s %s %s' % (self._NETWORK_STRING, address.ip, address.netmask)
 
@@ -225,10 +226,10 @@ class Term(aclgenerator.Term):
         if start_port == end_port:
           ret_string = '%s %s' % (protocol.lower(), start_port)
         else:
-          ret_string = '%s %s "%s %s"' % (protocol.lower(),
-                                          self._PROTO_LIST_STR,
-                                          start_port,
-                                          end_port)
+          ret_string = '%s %s %s %s' % (protocol.lower(),
+                                        self._PROTO_LIST_STR,
+                                        start_port,
+                                        end_port)
 
         ret_ports.append(ret_string)
 
@@ -315,7 +316,7 @@ class Aruba(aclgenerator.ACLGenerator):
   def __str__(self):
     target = []
 
-    target.extend(aclgenerator.AddRepositoryTags('! '))
+    target.extend(aclgenerator.AddRepositoryTags('%s ' % _COMMENT_MARKER))
 
     for filter_name, terms, _ in self.aruba_policies:
       netdestinations = []
@@ -328,6 +329,7 @@ class Aruba(aclgenerator.ACLGenerator):
       target.extend(netdestinations)
       target.append('%s %s' % (self._ACL_LINE_HEADER, filter_name))
       target.extend(term_strings)
+      target.extend(_TERMINATOR_MARKER)
 
     if target:
       target.append('')

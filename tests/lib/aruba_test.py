@@ -268,11 +268,12 @@ class ArubaTest(unittest.TestCase):
 
   def testSimpleTerm(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     ip access-list session test-filter
-      any any any permit"""
+      any any any permit
+    !"""
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
                                          GOOD_TERM_SIMPLE,
                                          self.naming), EXP_INFO)
@@ -280,13 +281,14 @@ class ArubaTest(unittest.TestCase):
 
   def testShortComment(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     ip access-list session test-filter
-      ! It will be huge.
-      ! Owner: djtrump
-      any any any deny"""
+      # It will be huge.
+      # Owner: djtrump
+      any any any deny
+    !"""
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
                                          GOOD_TERM_SHORT_COMMENT,
                                          self.naming), EXP_INFO)
@@ -294,16 +296,17 @@ class ArubaTest(unittest.TestCase):
 
   def testLongWrappedComment(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     ip access-list session test-filter
-      ! Two households, both alike in dignity,
-      ! In fair Verona, where we lay our scene,
-      ! From ancient grudge break to new mutiny, Where civil blood makes civil
-      ! hands unclean.
-      ! Owner: wshakespeare
-      any any any permit"""
+      # Two households, both alike in dignity,
+      # In fair Verona, where we lay our scene,
+      # From ancient grudge break to new mutiny, Where civil blood makes civil
+      # hands unclean.
+      # Owner: wshakespeare
+      any any any permit
+    !"""
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
                                          GOOD_TERM_LONG_COMMENT,
                                          self.naming), EXP_INFO)
@@ -311,13 +314,14 @@ class ArubaTest(unittest.TestCase):
 
   def testVerbatim(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     ip access-list session test-filter
       aruba uses some odd ACL format
       which is kinda like, weird
-      any any any permit"""
+      any any any permit
+    !"""
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
                                          GOOD_TERM_VERBATIM +
                                          GOOD_TERM_ALLOW_ANY_ANY,
@@ -326,16 +330,17 @@ class ArubaTest(unittest.TestCase):
 
   def testMultipleCallsSingleOwnerLine(self):
     expected_result = textwrap.dedent("""\
-        ! $Id:$
-        ! $Date:$
-        ! $Revision:$
+        # $Id:$
+        # $Date:$
+        # $Revision:$
         ip access-list session test-filter
-          ! Two households, both alike in dignity,
-          ! In fair Verona, where we lay our scene,
-          ! From ancient grudge break to new mutiny, Where civil blood makes civil
-          ! hands unclean.
-          ! Owner: wshakespeare
-          any any any permit""")
+          # Two households, both alike in dignity,
+          # In fair Verona, where we lay our scene,
+          # From ancient grudge break to new mutiny, Where civil blood makes civil
+          # hands unclean.
+          # Owner: wshakespeare
+          any any any permit
+        !""")
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
                                          GOOD_TERM_LONG_COMMENT,
                                          self.naming), EXP_INFO)
@@ -344,11 +349,12 @@ class ArubaTest(unittest.TestCase):
 
   def testTermAllowAnyAnyIPv4(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     ip access-list session test-filter
-      any any any permit"""
+      any any any permit
+    !"""
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
                                          GOOD_TERM_ALLOW_ANY_ANY,
                                          self.naming), EXP_INFO)
@@ -356,11 +362,12 @@ class ArubaTest(unittest.TestCase):
 
   def testTermAllowAnyAnyIPv6(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     ip access-list session test-filter
-      ipv6 any any any permit"""
+      ipv6 any any any permit
+    !"""
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V6 +
                                          GOOD_TERM_ALLOW_ANY_ANY,
                                          self.naming), EXP_INFO)
@@ -368,11 +375,12 @@ class ArubaTest(unittest.TestCase):
 
   def testTermDenyAnyAnyIPv4(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     ip access-list session test-filter
-      any any any deny"""
+      any any any deny
+    !"""
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
                                          GOOD_TERM_DENY_ANY_ANY,
                                          self.naming), EXP_INFO)
@@ -380,11 +388,12 @@ class ArubaTest(unittest.TestCase):
 
   def testTermDenyAnyAnyIPv6(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     ip access-list session test-filter
-      ipv6 any any any deny"""
+      ipv6 any any any deny
+    !"""
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V6 +
                                          GOOD_TERM_DENY_ANY_ANY,
                                          self.naming), EXP_INFO)
@@ -392,16 +401,16 @@ class ArubaTest(unittest.TestCase):
 
   def testMultipleCallsSingleNetdestinationsBlock(self):
     expected_result = textwrap.dedent("""\
-        ! $Id:$
-        ! $Date:$
-        ! $Revision:$
-        no netdestination gt-one-netd_src
+        # $Id:$
+        # $Date:$
+        # $Revision:$
         netdestination gt-one-netd_src
           host 10.1.1.1
         !
 
         ip access-list session test-filter
-          alias gt-one-netd_src any 1 permit""")
+          alias gt-one-netd_src any 1 permit
+        !""")
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
                                          GOOD_TERM_SINGLE_NETDESTINATION,
@@ -411,16 +420,16 @@ class ArubaTest(unittest.TestCase):
 
   def testSingleNetdestinationIPv4(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
-    no netdestination gt-one-netd_src
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     netdestination gt-one-netd_src
       host 10.1.1.1
     !
 
     ip access-list session test-filter
-      alias gt-one-netd_src any 1 permit"""
+      alias gt-one-netd_src any 1 permit
+    !"""
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
                                          GOOD_TERM_SINGLE_NETDESTINATION,
@@ -429,16 +438,16 @@ class ArubaTest(unittest.TestCase):
 
   def testSingleNetdestinationIPv6(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
-    no netdestination6 gt-one-netd_src
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     netdestination6 gt-one-netd_src
       host 2001::
     !
 
     ip access-list session test-filter
-      ipv6 alias gt-one-netd_src any 1 permit"""
+      ipv6 alias gt-one-netd_src any 1 permit
+    !"""
     self.naming.GetNetAddr.return_value = [nacaddr.IP('2001::/128')]
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V6 +
                                          GOOD_TERM_SINGLE_NETDESTINATION,
@@ -447,21 +456,20 @@ class ArubaTest(unittest.TestCase):
 
   def testTwoNetdestinationsIPv4(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
-    no netdestination gt-two-netd_src
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     netdestination gt-two-netd_src
       host 10.1.1.1
     !
 
-    no netdestination gt-two-netd_dst
     netdestination gt-two-netd_dst
       host 10.1.1.1
     !
 
     ip access-list session test-filter
-      alias gt-two-netd_src alias gt-two-netd_dst 1 permit"""
+      alias gt-two-netd_src alias gt-two-netd_dst 1 permit
+    !"""
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
                                          GOOD_TERM_TWO_NETDESTINATIONS,
@@ -470,21 +478,20 @@ class ArubaTest(unittest.TestCase):
 
   def testTwoNetdestinationsIPv6(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
-    no netdestination6 gt-two-netd_src
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     netdestination6 gt-two-netd_src
       host 2001::
     !
 
-    no netdestination6 gt-two-netd_dst
     netdestination6 gt-two-netd_dst
       host 2001::
     !
 
     ip access-list session test-filter
-      ipv6 alias gt-two-netd_src alias gt-two-netd_dst 1 permit"""
+      ipv6 alias gt-two-netd_src alias gt-two-netd_dst 1 permit
+    !"""
     self.naming.GetNetAddr.return_value = [nacaddr.IP('2001::/128')]
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V6 +
                                          GOOD_TERM_TWO_NETDESTINATIONS,
@@ -493,21 +500,20 @@ class ArubaTest(unittest.TestCase):
 
   def testTwoNetworkNetdestinationsIPv4(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
-    no netdestination gt-mix-netd_src
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     netdestination gt-mix-netd_src
       network 10.0.0.0 255.0.0.0
     !
 
-    no netdestination gt-mix-netd_dst
     netdestination gt-mix-netd_dst
       network 10.0.0.0 255.0.0.0
     !
 
     ip access-list session test-filter
-      alias gt-mix-netd_src alias gt-mix-netd_dst 1 permit"""
+      alias gt-mix-netd_src alias gt-mix-netd_dst 1 permit
+    !"""
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
                                          GOOD_TERM_TWO_NETWORK_NETDESTINATIONS,
@@ -516,21 +522,20 @@ class ArubaTest(unittest.TestCase):
 
   def testTwoNetworkNetdestinationsIPv6(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
-    no netdestination6 gt-mix-netd_src
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     netdestination6 gt-mix-netd_src
-      network 2001:: ffff:ffff:ffff:ffff::
+      network 2001::/64
     !
 
-    no netdestination6 gt-mix-netd_dst
     netdestination6 gt-mix-netd_dst
-      network 2001:: ffff:ffff:ffff:ffff::
+      network 2001::/64
     !
 
     ip access-list session test-filter
-      ipv6 alias gt-mix-netd_src alias gt-mix-netd_dst 1 permit"""
+      ipv6 alias gt-mix-netd_src alias gt-mix-netd_dst 1 permit
+    !"""
     self.naming.GetNetAddr.return_value = [nacaddr.IP('2001::/64')]
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V6 +
                                          GOOD_TERM_TWO_NETWORK_NETDESTINATIONS,
@@ -539,17 +544,17 @@ class ArubaTest(unittest.TestCase):
 
   def testCombinedNetdestinationsIPv4(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
-    no netdestination good-term-combined-netdestinations_src
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     netdestination good-term-combined-netdestinations_src
       host 10.0.0.1
       network 100.0.0.0 255.0.0.0
     !
 
     ip access-list session test-filter
-      alias good-term-combined-netdestinations_src any tcp 80 deny"""
+      alias good-term-combined-netdestinations_src any tcp 80 deny
+    !"""
     self.naming.GetNetAddr.return_value = [nacaddr.IP('100.0.0.0/8'),
                                            nacaddr.IP('10.0.0.1/32')]
     self.naming.GetServiceByProto.return_value = ['80']
@@ -560,17 +565,17 @@ class ArubaTest(unittest.TestCase):
 
   def testCombinedNetdestinationsIPv6(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
-    no netdestination6 good-term-combined-netdestinations_src
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     netdestination6 good-term-combined-netdestinations_src
       host 2001::
-      network 2002:: ffff:ffff:ffff:ffff::
+      network 2002::/64
     !
 
     ip access-list session test-filter
-      ipv6 alias good-term-combined-netdestinations_src any tcp 80 deny"""
+      ipv6 alias good-term-combined-netdestinations_src any tcp 80 deny
+    !"""
     self.naming.GetNetAddr.return_value = [nacaddr.IP('2002::/64'),
                                            nacaddr.IP('2001::/128')]
     self.naming.GetServiceByProto.return_value = ['80']
@@ -581,16 +586,14 @@ class ArubaTest(unittest.TestCase):
 
   def testMultipleTermsIPv4(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
-    no netdestination good-terms-combined-1_src
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     netdestination good-terms-combined-1_src
       host 10.0.0.1
       network 100.0.0.0 255.0.0.0
     !
 
-    no netdestination good-terms-combined-1_dst
     netdestination good-terms-combined-1_dst
       host 10.0.0.1
       network 100.0.0.0 255.0.0.0
@@ -598,7 +601,8 @@ class ArubaTest(unittest.TestCase):
 
     ip access-list session test-filter
       alias good-terms-combined-1_src alias good-terms-combined-1_dst udp 69 permit
-      any any any deny"""
+      any any any deny
+    !"""
     self.naming.GetNetAddr.return_value = [nacaddr.IP('100.0.0.0/8'),
                                            nacaddr.IP('10.0.0.1/32')]
     self.naming.GetServiceByProto.return_value = ['69']
@@ -609,24 +613,23 @@ class ArubaTest(unittest.TestCase):
 
   def testMultipleTermsIPv6(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
-    no netdestination6 good-terms-combined-1_src
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     netdestination6 good-terms-combined-1_src
       host 2001::
-      network 2002:: ffff:ffff:ffff:ffff::
+      network 2002::/64
     !
 
-    no netdestination6 good-terms-combined-1_dst
     netdestination6 good-terms-combined-1_dst
       host 2001::
-      network 2002:: ffff:ffff:ffff:ffff::
+      network 2002::/64
     !
 
     ip access-list session test-filter
       ipv6 alias good-terms-combined-1_src alias good-terms-combined-1_dst udp 69 permit
-      ipv6 any any any deny"""
+      ipv6 any any any deny
+    !"""
     self.naming.GetNetAddr.return_value = [nacaddr.IP('2002::/64'),
                                            nacaddr.IP('2001::/128')]
     self.naming.GetServiceByProto.return_value = ['69']
@@ -637,16 +640,16 @@ class ArubaTest(unittest.TestCase):
 
   def testSourceIsUser(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
-    no netdestination good-term-source-is-user_dst
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     netdestination good-term-source-is-user_dst
       network 100.0.0.0 255.0.0.0
     !
 
     ip access-list session test-filter
-      user alias good-term-source-is-user_dst tcp 53 permit"""
+      user alias good-term-source-is-user_dst tcp 53 permit
+    !"""
     self.naming.GetNetAddr.return_value = [nacaddr.IP('100.0.0.0/8')]
     self.naming.GetServiceByProto.return_value = ['53']
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
@@ -656,16 +659,16 @@ class ArubaTest(unittest.TestCase):
 
   def testDestinationIsUser(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
-    no netdestination good-term-destination-is-user_src
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     netdestination good-term-destination-is-user_src
       network 100.0.0.0 255.0.0.0
     !
 
     ip access-list session test-filter
-      alias good-term-destination-is-user_src user tcp 53 permit"""
+      alias good-term-destination-is-user_src user tcp 53 permit
+    !"""
     self.naming.GetNetAddr.return_value = [nacaddr.IP('100.0.0.0/8')]
     self.naming.GetServiceByProto.return_value = ['53']
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
@@ -675,16 +678,16 @@ class ArubaTest(unittest.TestCase):
 
   def testProtocolIsRange(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
-    no netdestination good-term-destination-is-user_src
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     netdestination good-term-destination-is-user_src
       network 100.0.0.0 255.0.0.0
     !
 
     ip access-list session test-filter
-      alias good-term-destination-is-user_src user tcp list "53 55" permit"""
+      alias good-term-destination-is-user_src user tcp list 53 55 permit
+    !"""
     self.naming.GetNetAddr.return_value = [nacaddr.IP('100.0.0.0/8')]
     self.naming.GetServiceByProto.return_value = ['53-55', '54']
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
@@ -694,16 +697,16 @@ class ArubaTest(unittest.TestCase):
 
   def testNegateWithNetwork(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
-    no netdestination good-term-negate_src
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     netdestination good-term-negate_src
       network 100.0.0.0 255.0.0.0
     !
 
     ip access-list session test-filter
-      no alias good-term-negate_src any any deny"""
+      no alias good-term-negate_src any any deny
+    !"""
     self.naming.GetNetAddr.return_value = [nacaddr.IP('100.0.0.0/8')]
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
                                          GOOD_TERM_NEGATE_1,
@@ -712,11 +715,12 @@ class ArubaTest(unittest.TestCase):
 
   def testNegateAny(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     ip access-list session test-filter
-      no any any any permit"""
+      no any any any permit
+    !"""
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
                                          GOOD_TERM_NEGATE_2,
                                          self.naming), EXP_INFO)
@@ -724,13 +728,14 @@ class ArubaTest(unittest.TestCase):
 
   def testProtocolMap(self):
     expected_result = """\
-    ! $Id:$
-    ! $Date:$
-    ! $Revision:$
+    # $Id:$
+    # $Date:$
+    # $Revision:$
     ip access-list session test-filter
       any any 1 permit
       any any 47 permit
-      any any 50 permit"""
+      any any 50 permit
+    !"""
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
                                          GOOD_TERM_PROTOCOL_MAP,
                                          self.naming), EXP_INFO)
