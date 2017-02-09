@@ -246,7 +246,7 @@ class Aruba(aclgenerator.ACLGenerator):
     pol: policy.Policy object.
   """
 
-  SUFFIX = '.aruba'
+  SUFFIX = '.aacl'
 
   _ACL_LINE_HEADER = 'ip access-list session'
 
