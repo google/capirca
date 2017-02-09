@@ -334,4 +334,4 @@ class Aruba(aclgenerator.ACLGenerator):
     if target:
       target.append('')
 
-    return '\n'.join(t for t in target if t)
+    return '\n'.join(target)
