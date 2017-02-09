@@ -275,6 +275,7 @@ class Term(aclgenerator.Term):
                           self.term.destination_address or
                           self.term.destination_port or
                           self.term.destination_prefix or
+                          self.term.destination_prefix_except or
                           self.term.ether_type or
                           self.term.flexible_match_range or
                           self.term.forwarding_class or
@@ -287,6 +288,7 @@ class Term(aclgenerator.Term):
                           self.term.source_address or
                           self.term.source_port or
                           self.term.source_prefix or
+                          self.term.source_prefix_except or
                           self.term.traffic_type)
 
     if has_match_criteria:
@@ -390,18 +392,22 @@ class Term(aclgenerator.Term):
         config.Append('forwarding-class %s' % self._Group(
             self.term.forwarding_class))
 
-      # source prefix list
-      if self.term.source_prefix:
+      # source prefix <except> list
+      if self.term.source_prefix or self.term.source_prefix_except:
         config.Append('source-prefix-list {')
         for pfx in self.term.source_prefix:
           config.Append(pfx + ';')
+        for epfx in self.term.source_prefix_except:
+          config.Append(epfx + ' except;')
         config.Append('}')
 
-      # destination prefix list
-      if self.term.destination_prefix:
+      # destination prefix <except> list
+      if self.term.destination_prefix or self.term.destination_prefix_except:
         config.Append('destination-prefix-list {')
         for pfx in self.term.destination_prefix:
           config.Append(pfx + ';')
+        for epfx in self.term.destination_prefix_except:
+          config.Append(epfx + ' except;')
         config.Append('}')
 
       # protocol
@@ -780,6 +786,7 @@ class Juniper(aclgenerator.ACLGenerator):
     supported_tokens |= {'address',
                          'counter',
                          'destination_prefix',
+                         'destination_prefix_except',
                          'dscp_except',
                          'dscp_match',
                          'dscp_set',
@@ -800,6 +807,7 @@ class Juniper(aclgenerator.ACLGenerator):
                          'qos',
                          'routing_instance',
                          'source_prefix',
+                         'source_prefix_except',
                          'traffic_type'}
     supported_sub_tokens.update({
         'option': {

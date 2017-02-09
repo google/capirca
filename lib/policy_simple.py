@@ -162,6 +162,10 @@ class DestinationPrefix(Field):
   """A destination-prefix field."""
 
 
+class DestinationPrefixExcept(Field):
+  """A destination-prefix-except field."""
+
+
 class DestinationTag(Field):
   """A destination tag field."""
 
@@ -278,6 +282,10 @@ class SourcePrefix(Field):
   """A source-prefix field."""
 
 
+class SourcePrefixExcept(Field):
+  """A source-prefix-except field."""
+
+
 class SourceTag(Field):
   """A source tag field."""
 
@@ -315,6 +323,7 @@ field_map = {
     'destination-interface': DestinationInterface,
     'destination-port': DestinationPort,
     'destination-prefix': DestinationPrefix,
+    'destination-prefix-except': DestinationPrefixExcept,
     'destination-tag': DestinationTag,
     'dscp-match': DscpMatch,
     'dscp-set': DscpSet,
@@ -345,6 +354,7 @@ field_map = {
     'source-interface': SourceInterface,
     'source-port': SourcePort,
     'source-prefix': SourcePrefix,
+    'source-prefix-except': SourcePrefixExcept,
     'source-tag': SourceTag,
     'target': Target,
     'timeout': Timeout,

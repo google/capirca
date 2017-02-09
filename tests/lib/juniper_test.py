@@ -326,6 +326,22 @@ term multiple-forwarding-class {
   action:: deny
 }
 """
+GOOD_TERM_30 = """
+term good-term-30 {
+  source-prefix-except:: foo_prefix_list
+  destination-prefix-except:: bar_prefix_list
+  action:: accept
+}
+"""
+GOOD_TERM_31 = """
+term good-term-31 {
+  source-prefix:: foo_prefix
+  source-prefix-except:: foo_except
+  destination-prefix:: bar_prefix
+  destination-prefix-except:: bar_except
+  action:: accept
+}
+"""
 GOOD_TERM_COMMENT = """
 term good-term-comment {
   comment:: "This is a COMMENT"
@@ -461,6 +477,7 @@ SUPPORTED_TOKENS = {
     'destination_address_exclude',
     'destination_port',
     'destination_prefix',
+    'destination_prefix_except',
     'dscp_except',
     'dscp_match',
     'dscp_set',
@@ -491,6 +508,7 @@ SUPPORTED_TOKENS = {
     'source_address_exclude',
     'source_port',
     'source_prefix',
+    'source_prefix_except',
     'traffic_type',
     'translated',
     'verbatim',
@@ -719,6 +737,27 @@ class JuniperTest(unittest.TestCase):
     spfx_re = re.compile('source-prefix-list {\W+foo_prefix_list;\W+}')
     dpfx_re = re.compile(
         'destination-prefix-list {\W+bar_prefix_list;\W+baz_prefix_list;\W+}')
+    output = str(jcl)
+    self.failUnless(spfx_re.search(output), output)
+    self.failUnless(dpfx_re.search(output), output)
+
+  def testPrefixListExcept(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_30,
+                                             self.naming), EXP_INFO)
+    spfx_re = re.compile('source-prefix-list {\W+foo_prefix_list except;\W+}')
+    dpfx_re = re.compile(
+        'destination-prefix-list {\W+bar_prefix_list except;\W+}')
+    output = str(jcl)
+    self.failUnless(spfx_re.search(output), output)
+    self.failUnless(dpfx_re.search(output), output)
+
+  def testPrefixListMixed(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_31,
+                                             self.naming), EXP_INFO)
+    spfx_re = re.compile('source-prefix-list {\W+foo_prefix;\W+'
+                         'foo_except except;\W+}')
+    dpfx_re = re.compile('destination-prefix-list {\W+bar_prefix;\W+'
+                         'bar_except except;\W+}')
     output = str(jcl)
     self.failUnless(spfx_re.search(output), output)
     self.failUnless(dpfx_re.search(output), output)
