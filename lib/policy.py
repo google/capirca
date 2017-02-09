@@ -310,6 +310,7 @@ class Term(object):
     log_name: VarType.LOG_NAME
     next-ip: VarType.NEXT_IP
     qos: VarType.QOS
+    pan-application: VarType.PAN_APPLICATION
     policer: VarType.POLICER
     vpn: VarType.VPN
   """
@@ -392,6 +393,7 @@ class Term(object):
     self.protocol = []
     self.protocol_except = []
     self.qos = None
+    self.pan_application = []
     self.routing_instance = None
     self.source_address = []
     self.source_address_exclude = []
@@ -670,6 +672,8 @@ class Term(object):
       ret_str.append('  flexible_match_range: %s' % self.flexible_match_range)
     if self.qos:
       ret_str.append('  qos: %s' % self.qos)
+    if self.pan_application:
+      ret_str.append('  pan_application: %s' % self.pan_application)
     if self.logging:
       ret_str.append('  logging: %s' % self.logging)
     if self.log_name:
@@ -746,6 +750,10 @@ class Term(object):
     if self.qos != other.qos:
       return False
 
+    # pan-application
+    if sorted(self.pan_application) != sorted(other.pan_application):
+      return False
+
     # verbatim
     if self.verbatim != other.verbatim:
       return False
@@ -769,6 +777,8 @@ class Term(object):
     if sorted(self.logging) != sorted(other.logging):
       return False
     if self.qos != other.qos:
+      return False
+    if sorted(self.pan_application) != sorted(other.pan_application):
       return False
     if self.packet_length != other.packet_length:
       return False
@@ -988,6 +998,8 @@ class Term(object):
           self.precedence.append(x.value)
         elif x.var_type is VarType.FORWARDING_CLASS:
           self.forwarding_class.append(x.value)
+        elif x.var_type is VarType.PAN_APPLICATION:
+          self.pan_application.append(x.value)
         elif x.var_type is VarType.NEXT_IP:
           self.next_ip = DEFINITIONS.GetNetAddr(x.value)
         elif x.var_type is VarType.PLATFORM:
@@ -1024,6 +1036,8 @@ class Term(object):
         self.precedence = obj.value
       elif obj.var_type is VarType.FORWARDING_CLASS:
         self.forwarding_class.append(obj.value)
+      elif obj.var_type is VarType.PAN_APPLICATION:
+        self.pan_application.append(obj.value)
       elif obj.var_type is VarType.NEXT_IP:
         self.next_ip = DEFINITIONS.GetNetAddr(obj.value)
       elif obj.var_type is VarType.VERBATIM:
@@ -1361,6 +1375,8 @@ class VarType(object):
   FLEXIBLE_MATCH_RANGE = 49
   ESPFX = 50
   EDPFX = 51
+  PAN_APPLICATION = 54
+
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1567,6 +1583,7 @@ tokens = (
     'PROTOCOL',
     'PROTOCOL_EXCEPT',
     'QOS',
+    'PAN_APPLICATION',
     'ROUTING_INSTANCE',
     'SADDR',
     'SADDREXCLUDE',
@@ -1630,6 +1647,7 @@ reserved = {
     'protocol': 'PROTOCOL',
     'protocol-except': 'PROTOCOL_EXCEPT',
     'qos': 'QOS',
+    'pan-application': 'PAN_APPLICATION',
     'routing-instance': 'ROUTING_INSTANCE',
     'source-address': 'SADDR',
     'source-exclude': 'SADDREXCLUDE',
@@ -1796,6 +1814,7 @@ def p_term_spec(p):
                 | term_spec prefix_list_spec
                 | term_spec protocol_spec
                 | term_spec qos_spec
+                | term_spec pan_application_spec
                 | term_spec routinginstance_spec
                 | term_spec tag_list_spec
                 | term_spec timeout_spec
@@ -2116,6 +2135,13 @@ def p_vpn_spec(p):
 def p_qos_spec(p):
   """ qos_spec : QOS ':' ':' STRING """
   p[0] = VarType(VarType.QOS, p[4])
+
+
+def p_pan_application_spec(p):
+  """ pan_application_spec : PAN_APPLICATION ':' ':' one_or_more_strings """
+  p[0] = []
+  for apps in p[4]:
+    p[0].append(VarType(VarType.PAN_APPLICATION, apps))
 
 
 def p_interface_spec(p):

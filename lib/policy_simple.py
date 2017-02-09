@@ -254,6 +254,10 @@ class Qos(Field):
   """A rate-limit-icmp field."""
 
 
+class PANApplication(Field):
+  """A rate-limit-icmp field."""
+
+
 class RoutingInstance(Field):
   """A routing-instance field."""
 
@@ -343,6 +347,7 @@ field_map = {
     'protocol': Protocol,
     'protocol-except': ProtocolExcept,
     'qos': Qos,
+    'pan-application': PANApplication,
     'routing-instance': RoutingInstance,
     'source-address': SourceAddress,
     'source-exclude': SourceExclude,
