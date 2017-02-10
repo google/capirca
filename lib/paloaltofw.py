@@ -593,6 +593,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     end.append(self.INDENT * 2 + "</entry>")
     end.append(self.INDENT * 1 + "</devices>")
     end.append("</config>")
+    end.append("")
 
     return ("\n".join(initial) + "\n\n" + "\n".join(service) + "\n\n" +
             "\n".join(rules) + "\n".join(address_group_entries) +
