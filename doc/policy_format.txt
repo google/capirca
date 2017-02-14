@@ -99,7 +99,7 @@ inet6: specifies that the resulting filter should only render IPv6 addresses.
 mixed: specifies that the resulting filter should render both IPv4 and IPv6 addresses.
 sectionId: specifies the Id for the section [optional]
 securitygroup: specifies that the appliedTo should be security group [optional]
-securitygroup-Id: specifies the Id of the security group [optional]
+securitygroupId: specifies the Id of the security group [mandatory if securitygroup is given]
 (Required keywords option and verbatim are not supported in NSX)
 
 

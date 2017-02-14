@@ -109,7 +109,7 @@ class NsxvDuplicateTermError(Error):
 class Term(aclgenerator.Term):
   """Creates a  single ACL Term for Nsxv."""
 
-  def __init__(self, term, filter_type, applied_to=None, af=4, ):
+  def __init__(self, term, filter_type, applied_to=None, af=4):
     self.term = term
     # Our caller should have already verified the address family.
     assert af in (4, 6)
@@ -532,7 +532,7 @@ class Nsxv(aclgenerator.ACLGenerator):
   def _ParseFilterOptions(self, filter_options):
     """Parses the target in header for filter type, section_id and applied_to.
        target:: nsxv mixed 12345 securitygroup securitygroupId
-       filterOption : [mixed, sectionid, securitygroup, securitygroupId]
+       filter_options : [mixed, sectionid, securitygroup, securitygroupId]
 
        section id is optional
        SecurityGroup securitygroupId is also optional
