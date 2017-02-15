@@ -698,7 +698,7 @@ class ArubaTest(unittest.TestCase):
                                          self.naming), EXP_INFO)
     self.assertEqual(textwrap.dedent(expected_result), str(aru))
 
-  def testProtocolIsRange(self):
+  def testProtocolIsContiguousRange(self):
     expected_result = """\
     # $Id:$
     # $Date:$
@@ -708,11 +708,33 @@ class ArubaTest(unittest.TestCase):
     !
 
     ip access-list session test-filter
-      alias good-term-destination-is-user_src user tcp list 53 55 permit
+      alias good-term-destination-is-user_src user tcp 53 55 permit
     !
     """
     self.naming.GetNetAddr.return_value = [nacaddr.IP('100.0.0.0/8')]
     self.naming.GetServiceByProto.return_value = ['53-55', '54']
+    aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
+                                         GOOD_TERM_DESTINATION_IS_USER,
+                                         self.naming), EXP_INFO)
+    self.assertEqual(textwrap.dedent(expected_result), str(aru))
+
+  def testProtocolIsDiscontiguousRange(self):
+    expected_result = """\
+    # $Id:$
+    # $Date:$
+    # $Revision:$
+    netdestination good-term-destination-is-user_src
+      network 100.0.0.0 255.0.0.0
+    !
+
+    ip access-list session test-filter
+      alias good-term-destination-is-user_src user tcp 1 permit
+      alias good-term-destination-is-user_src user tcp 10 20 permit
+      alias good-term-destination-is-user_src user tcp 53 55 permit
+    !
+    """
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('100.0.0.0/8')]
+    self.naming.GetServiceByProto.return_value = ['53-55', '54', '10-20', '1']
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
                                          GOOD_TERM_DESTINATION_IS_USER,
                                          self.naming), EXP_INFO)
