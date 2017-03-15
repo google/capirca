@@ -33,6 +33,10 @@ _COMMENT_MARKER = '#'
 _TERMINATOR_MARKER = '!'
 
 
+class Error(Exception):
+  """Base error class."""
+
+
 class Term(aclgenerator.Term):
   """A single Aruba ACL term, mostly used for the __str__() method.
 
