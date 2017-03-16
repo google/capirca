@@ -272,7 +272,7 @@ class ObjectGroup(object):
 class Term(aclgenerator.Term):
   """A single ACL Term."""
   ALLOWED_PROTO_STRINGS = ['eigrp', 'gre', 'icmp', 'igmp', 'igrp', 'ip',
-                           'ipinip', 'nos', 'ospf', 'pim', 'tcp', 'udp',
+                           'ipinip', 'nos', 'pim', 'tcp', 'udp',
                            'sctp', 'ahp']
 
   def __init__(self, term, af=4, proto_int=True, enable_dsmo=False,

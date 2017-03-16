@@ -33,6 +33,10 @@ _COMMENT_MARKER = '#'
 _TERMINATOR_MARKER = '!'
 
 
+class Error(Exception):
+  """Base error class."""
+
+
 class Term(aclgenerator.Term):
   """A single Aruba ACL term, mostly used for the __str__() method.
 
@@ -48,7 +52,6 @@ class Term(aclgenerator.Term):
   _NEGATOR = 'no'
   _SRC_NETDEST_SUF = '_src'
   _DST_NETDEST_SUF = '_dst'
-  _PROTO_LIST_STR = 'list'
   _NETWORK_STRING = 'network'
   _HOST_STRING = 'host'
   _USER_STR = 'user'
@@ -223,15 +226,9 @@ class Term(aclgenerator.Term):
         return [str(self._PROTOCOL_MAP[protocol])]
 
       for start_port, end_port in ports:
-        if start_port == end_port:
-          ret_string = '%s %s' % (protocol.lower(), start_port)
-        else:
-          ret_string = '%s %s %s %s' % (protocol.lower(),
-                                        self._PROTO_LIST_STR,
-                                        start_port,
-                                        end_port)
-
-        ret_ports.append(ret_string)
+        ret_ports.append('%s %s' %
+                         (protocol.lower(), ' '.join(
+                             str(x) for x in set([start_port, end_port]))))
 
     return ret_ports
 

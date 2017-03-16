@@ -1,4 +1,16 @@
-#!/usr/bin/python
+# Copyright 2017 Google Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """Palo Alto Firewall generator."""
 
 import collections
@@ -216,9 +228,9 @@ class Rule(object):
 
     rule_name = term.name
     if rule_name in self.rules:
-        raise PaloAltoFWDuplicateTermError(
+      raise PaloAltoFWDuplicateTermError(
           "You have a duplicate term. A term named %s already exists."
-            % str(rule_name))
+          % str(rule_name))
 
     self.rules[rule_name] = self.options
 
@@ -244,22 +256,22 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
                                                    self)._BuildTokens()
 
     supported_tokens = {
-            'action',
-            'comment',
-            'destination_address',
-            'destination_port',
-            'expiration',
-            'icmp_type',
-            'logging',
-            'name',
-            'owner',
-            'platform',
-            'protocol',
-            'source_address',
-            'source_port',
-            'timeout',
-            'pan_application',
-            'translated'
+        "action",
+        "comment",
+        "destination_address",
+        "destination_port",
+        "expiration",
+        "icmp_type",
+        "logging",
+        "name",
+        "owner",
+        "platform",
+        "protocol",
+        "source_address",
+        "source_port",
+        "timeout",
+        "pan_application",
+        "translated"
     }
 
     supported_sub_tokens.update({
@@ -335,8 +347,10 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
                          "in less than two weeks.", term.name, self.from_zone,
                          self.to_zone)
           if term.expiration <= current_date:
-            logging.warn("WARNING: Term %s in policy %s>%s is expired.",
+            logging.warn("WARNING: Term %s in policy %s>%s is expired and "
+                         "will not be rendered.",
                          term.name, self.from_zone, self.to_zone)
+            continue
 
         for i in term.source_address_exclude:
           term.source_address = nacaddr.RemoveAddressFromList(
@@ -593,7 +607,6 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     end.append(self.INDENT * 2 + "</entry>")
     end.append(self.INDENT * 1 + "</devices>")
     end.append("</config>")
-    end.append("")
 
     return ("\n".join(initial) + "\n\n" + "\n".join(service) + "\n\n" +
             "\n".join(rules) + "\n".join(address_group_entries) +

@@ -428,6 +428,31 @@ class TermTest(unittest.TestCase):
     self.naming.GetServiceByProto.assert_has_calls(
         [mock.call('NTP', 'udp')] * 2)
 
+  def testTranslatePolicyWithEstablished(self):
+    """Test for Nsxv.test_TranslatePolicy."""
+    # exp_info default is 2
+    self.naming.GetNetAddr('NTP_SERVERS').AndReturn([nacaddr.IP('10.0.0.1'),
+                                                     nacaddr.IP('10.0.0.2')])
+    self.naming.GetNetAddr('INTERNAL').AndReturn([nacaddr.IP('10.0.0.0/8'),
+                                                  nacaddr.IP('172.16.0.0/12'),
+                                                  nacaddr.IP('192.168.0.0/16')])
+    self.naming.GetServiceByProto.return_value = ['123']
+
+    exp_info = 2
+    pol = policy.ParsePolicy(INET_FILTER_WITH_ESTABLISHED, self.naming, False)
+    translate_pol = nsxv.Nsxv(pol, exp_info)
+    nsxv_policies = translate_pol.nsxv_policies
+    for (_, filter_name, filter_list, terms) in nsxv_policies:
+      self.assertEqual(filter_name, 'inet')
+      self.assertEqual(filter_list, ['inet'])
+      self.assertEqual(len(terms), 1)
+
+      self.assertNotIn('<sourcePort>123</sourcePort><destinationPort>123',
+                       str(terms[0]))
+
+    self.naming.GetServiceByProto.assert_has_calls(
+        [mock.call('NTP', 'udp')] * 2)
+
   def testNsxvStr(self):
     """Test for Nsxv._str_."""
     self.naming.GetNetAddr('GOOGLE_DNS').AndReturn([

@@ -19,15 +19,12 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import copy
-import datetime
 import unittest
 
-
 from lib import aclgenerator
-from lib import paloaltofw
 from lib import nacaddr
 from lib import naming
+from lib import paloaltofw
 from lib import policy
 import mock
 
@@ -141,22 +138,22 @@ term timeout-term {
 """
 
 SUPPORTED_TOKENS = {
-            'action',
-            'comment',
-            'destination_address',
-            'destination_port',
-            'expiration',
-            'icmp_type',
-            'logging',
-            'name',
-            'owner',
-            'platform',
-            'protocol',
-            'source_address',
-            'source_port',
-            'timeout',
-            'pan_application',
-            'translated'
+    'action',
+    'comment',
+    'destination_address',
+    'destination_port',
+    'expiration',
+    'icmp_type',
+    'logging',
+    'name',
+    'owner',
+    'platform',
+    'protocol',
+    'source_address',
+    'source_port',
+    'timeout',
+    'pan_application',
+    'translated'
 }
 
 SUPPORTED_SUB_TOKENS = {
@@ -226,8 +223,9 @@ class PaloAltoFWTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = _IPSET
     self.naming.GetServiceByProto.return_value = ['25']
 
-    paloalto = paloaltofw.PaloAltoFW(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
-                                                   self.naming), EXP_INFO)
+    paloalto = paloaltofw.PaloAltoFW(
+        policy.ParsePolicy(GOOD_HEADER_1 +GOOD_TERM_1,
+                           self.naming), EXP_INFO)
     output = str(paloalto)
     self.failUnless('<entry name="good-term-1">' in output, output)
 
@@ -235,8 +233,9 @@ class PaloAltoFWTest(unittest.TestCase):
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
   def testDefaultDeny(self):
-    paloalto = paloaltofw.PaloAltoFW(policy.ParsePolicy(GOOD_HEADER_1 + DEFAULT_TERM_1,
-                                                   self.naming), EXP_INFO)
+    paloalto = paloaltofw.PaloAltoFW(
+        policy.ParsePolicy(GOOD_HEADER_1 + DEFAULT_TERM_1,
+                           self.naming), EXP_INFO)
     output = str(paloalto)
     self.failUnless('<action>deny</action>' in output, output)
 
@@ -255,7 +254,6 @@ class PaloAltoFWTest(unittest.TestCase):
     output = str(paloaltofw.PaloAltoFW(pol, EXP_INFO))
     self.failUnless('<member>ping</member>' in output, output)
 
-
   def testBuildTokens(self):
     self.naming.GetServiceByProto.side_effect = [['25'], ['26']]
     pol1 = paloaltofw.PaloAltoFW(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
@@ -263,8 +261,6 @@ class PaloAltoFWTest(unittest.TestCase):
     st, sst = pol1._BuildTokens()
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
-
-
 
 if __name__ == '__main__':
   unittest.main()
