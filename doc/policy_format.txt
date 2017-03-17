@@ -92,11 +92,14 @@ nostate: specifies to produce 'stateless' filter output (e.g. no connection trac
 NSX
 
 The nsx header designation has the following format:
-target:: nsxv {inet|inet6|mixed} [section-id]
+target:: nsxv {inet|inet6|mixed} section-id securitygroup securitygroupId
 
 inet: specifies that the resulting filter should only render IPv4 addresses.
 inet6: specifies that the resulting filter should only render IPv6 addresses.
 mixed: specifies that the resulting filter should render both IPv4 and IPv6 addresses.
+sectionId: specifies the Id for the section [optional]
+securitygroup: specifies that the appliedTo should be security group [optional]
+securitygroupId: specifies the Id of the security group [mandatory if securitygroup is given]
 (Required keywords option and verbatim are not supported in NSX)
 
 
