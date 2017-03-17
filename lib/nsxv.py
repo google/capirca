@@ -329,16 +329,15 @@ class Term(aclgenerator.Term):
     for s in services:
       service = '%s%s' % (service, s)
 
-    #applied To
-    appliedToList = ''
+    # applied_to
+    appliedto_list = ''
     if self.applied_to:
-      appliedToList = '<appliedToList>'
+      appliedto_list = '<appliedToList>'
       appliedTo = '%s%s%s' % (_XML_TABLE.get('appliedToStart'),
                               self.applied_to,
                               _XML_TABLE.get('appliedToEnd'))
-      appliedToList = '%s%s' %(appliedToList, appliedTo)
-      appliedToList = '%s%s' %(appliedToList, '</appliedToList>')
-
+      appliedto_list = '%s%s' %(appliedto_list, appliedTo)
+      appliedto_list = '%s%s' %(appliedto_list, '</appliedToList>')
 
     # action
     action = '%s%s%s' % (_XML_TABLE.get('actionStart'),
@@ -347,7 +346,8 @@ class Term(aclgenerator.Term):
 
     ret_lines = []
     ret_lines.append('<rule logged="%s"> %s %s %s %s %s %s %s </rule>' %
-                     (log, name, action, sources, destinations, service, appliedToList, notes))
+                     (log, name, action, sources, destinations, service,
+                      appliedto_list, notes))
 
     # remove any trailing spaces and replace multiple spaces with singles
     stripped_ret_lines = [re.sub(r'\s+', ' ', x).rstrip() for x in ret_lines]
@@ -531,20 +531,24 @@ class Nsxv(aclgenerator.ACLGenerator):
 
   def _ParseFilterOptions(self, filter_options):
     """Parses the target in header for filter type, section_id and applied_to.
-       target:: nsxv mixed 12345 securitygroup securitygroupId
-       filter_options : [mixed, sectionid, securitygroup, securitygroupId]
 
-       section id is optional
-       SecurityGroup securitygroupId is also optional
+    Args:
+      filter_options: list of remaining target options
 
-       The element followed by 'securitygroup' is the securitygroupId.
+    Returns:
+      A dictionary that contains fields necessary to create the firewall
+      rule.
+
+    Raises:
+      UnsupportedNsxvAccessListError: Raised when we're give a non named access
+      list.
     """
     filter_options_dict = {}
 
     # check for filter type
     if not filter_options:
       raise UnsupportedNsxvAccessListError(
-        'Filter type is not provided for %s'  % (self._PLATFORM))
+          'Filter type is not provided for %s'  % (self._PLATFORM))
 
     if len(filter_options) > 4:
       raise UnsupportedNsxvAccessListError('Too many target options.')
@@ -559,7 +563,7 @@ class Nsxv(aclgenerator.ACLGenerator):
     if filter_type not in good_filters:
       raise UnsupportedNsxvAccessListError(
           'Access list type %s not supported by %s (good types: %s)' % (
-             filter_type, self._PLATFORM, str(good_filters)))
+              filter_type, self._PLATFORM, str(good_filters)))
 
     section_id = 0
     applied_to = None
@@ -570,12 +574,13 @@ class Nsxv(aclgenerator.ACLGenerator):
         if index == 1 and filter_options[1] != 'securitygroup':
           section_id = filter_options[1]
           continue
-        if (filter_options[index] == 'securitygroup'):
-          if (index + 1 <= filter_opt_len - 1):
+        if filter_options[index] == 'securitygroup':
+          if index + 1 <= filter_opt_len - 1:
             applied_to = filter_options[index + 1]
             break
           else:
-            raise UnsupportedNsxvAccessListError('Security Group Id is not provided for %s' % (self._PLATFORM))
+            raise UnsupportedNsxvAccessListError(
+                'Security Group Id is not provided for %s' % (self._PLATFORM))
 
     filter_options_dict['filter_type'] = filter_type
     filter_options_dict['section_id'] = section_id

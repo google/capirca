@@ -146,7 +146,7 @@ POLICY = """\
 
 POLICY_WITH_SECURITY_GROUP = """\
   header {
-    comment:: "Sample NSXV filter with Security Group"
+    comment:: "Sample filter with Security Group"
     target:: nsxv inet 1010 securitygroup securitygroup-Id
   }
 
@@ -395,7 +395,7 @@ class TermTest(unittest.TestCase):
     pol = policy.ParsePolicy(INET_FILTER, self.naming, False)
     translate_pol = nsxv.Nsxv(pol, EXP_INFO)
     nsxv_policies = translate_pol.nsxv_policies
-    for (header, filter_name, filter_list, section_id, terms) in nsxv_policies:
+    for (_, filter_name, filter_list, _, terms) in nsxv_policies:
       self.assertEqual(filter_name, 'inet')
       self.assertEqual(filter_list, ['inet'])
       self.assertEqual(len(terms), 1)
@@ -416,7 +416,7 @@ class TermTest(unittest.TestCase):
     pol = policy.ParsePolicy(INET_FILTER_WITH_ESTABLISHED, self.naming, False)
     translate_pol = nsxv.Nsxv(pol, EXP_INFO)
     nsxv_policies = translate_pol.nsxv_policies
-    for (header, filter_name, filter_list, section_id, terms) in nsxv_policies:
+    for (_, filter_name, filter_list, _, terms) in nsxv_policies:
       self.assertEqual(filter_name, 'inet')
       self.assertEqual(filter_list, ['inet'])
       self.assertEqual(len(terms), 1)
@@ -541,7 +541,7 @@ class TermTest(unittest.TestCase):
 
     root = ET.fromstring(sections[1])
     # check section name
-    section_name = {'id': '1010', 'name': 'Sample NSXV filter with Security Group'}
+    section_name = {'id': '1010', 'name': 'Sample filter with Security Group'}
     self.assertEqual(root.attrib, section_name)
     # check name and action
     self.assertEqual(root.find('./rule/name').text, 'accept-icmp')
@@ -581,21 +581,23 @@ class TermTest(unittest.TestCase):
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
   def testParseFilterOptionsCase1(self):
-    pol = nsxv.Nsxv(policy.ParsePolicy(HEADER_WITH_SECTIONID + TERM, self.naming, False), EXP_INFO)
-    for (header, filter_name, filter_list, section_id, terms) in pol.nsxv_policies:
+    pol = nsxv.Nsxv(policy.ParsePolicy(HEADER_WITH_SECTIONID + TERM,
+                                       self.naming, False), EXP_INFO)
+    for (header, _, _, _, _) in pol.nsxv_policies:
       filter_options = header.FilterOptions(_PLATFORM)
       filter_options_dict = pol._ParseFilterOptions(filter_options)
-      self.assertEquals(filter_options_dict['filter_type'],'inet')
-      self.assertEquals(filter_options_dict['section_id'],'1009')
+      self.assertEquals(filter_options_dict['filter_type'], 'inet')
+      self.assertEquals(filter_options_dict['section_id'], '1009')
       self.assertEquals(filter_options_dict['applied_to'], None)
 
   def testParseFilterOptionsCase2(self):
-    pol = nsxv.Nsxv(policy.ParsePolicy(HEADER_WITH_SECURITYGROUP + INET6_TERM, self.naming, False), EXP_INFO)
-    for (header, filter_name, filter_list, section_id, terms) in pol.nsxv_policies:
+    pol = nsxv.Nsxv(policy.ParsePolicy(HEADER_WITH_SECURITYGROUP + INET6_TERM,
+                                       self.naming, False), EXP_INFO)
+    for (header, _, _, _, _) in pol.nsxv_policies:
       filter_options = header.FilterOptions(_PLATFORM)
       filter_options_dict = pol._ParseFilterOptions(filter_options)
-      self.assertEquals(filter_options_dict['filter_type'],'inet6')
-      self.assertEquals(filter_options_dict['section_id'],0)
+      self.assertEquals(filter_options_dict['filter_type'], 'inet6')
+      self.assertEquals(filter_options_dict['section_id'], 0)
       self.assertEquals(filter_options_dict['applied_to'], 'securitygroup-Id1')
 
   def testBadHeaderCase1(self):
@@ -611,7 +613,7 @@ class TermTest(unittest.TestCase):
   def testBadHeaderCase3(self):
     pol = policy.ParsePolicy(BAD_HEADER_2 + INET6_TERM, self.naming, False)
     self.assertRaises(nsxv.UnsupportedNsxvAccessListError,
-                      nsxv.Nsxv, pol, EXP_INFO )
+                      nsxv.Nsxv, pol, EXP_INFO)
 
 if __name__ == '__main__':
   unittest.main()
