@@ -144,13 +144,57 @@ POLICY = """\
   }
   """
 
-POLICY_NO_ACTION = """\
+POLICY_WITH_SECURITY_GROUP = """\
   header {
-    comment:: "Sample NSXV filter"
-    target:: nsxv inet
+    comment:: "Sample NSXV filter with Security Group"
+    target:: nsxv inet 1010 securitygroup securitygroup-Id
   }
+
   term accept-icmp {
     protocol:: icmp
+    action:: accept
+  }
+  """
+
+HEADER_WITH_SECTIONID = """\
+  header {
+    comment:: "Sample NSXV filter1"
+    target:: nsxv inet 1009
+  }
+  """
+
+HEADER_WITH_SECURITYGROUP = """\
+  header {
+    comment:: "Sample NSXV filter2"
+    target:: nsxv inet6 securitygroup securitygroup-Id1
+  }
+  """
+
+BAD_HEADER = """\
+  header {
+    comment:: "Sample NSXV filter3"
+    target:: nsxv inet 1011 securitygroup
+  }
+  """
+
+BAD_HEADER_1 = """\
+  header {
+    comment:: "Sample NSXV filter4"
+    target:: nsxv 1012
+  }
+  """
+
+BAD_HEADER_2 = """\
+  header {
+    comment:: "Sample NSXV filter5"
+    target:: nsxv inet securitygroup
+  }
+  """
+
+TERM = """\
+  term accept-icmp {
+    protocol:: icmp
+    action:: accept
   }
   """
 
@@ -224,6 +268,10 @@ SUPPORTED_SUB_TOKENS = {
     },
 }
 
+# Print a info message when a term is set to expire in that many weeks.
+# This is normally passed from command line.
+EXP_INFO = 2
+_PLATFORM = 'nsxv'
 
 class TermTest(unittest.TestCase):
 
@@ -238,7 +286,7 @@ class TermTest(unittest.TestCase):
 
   def testInitForinet6(self):
     """Test for Term._init_."""
-    inet6_term = nsxv.Term(INET6_TERM, 'inet6', 6)
+    inet6_term = nsxv.Term(INET6_TERM, 'inet6', None, 6)
     self.assertEqual(inet6_term.af, 6)
     self.assertEqual(inet6_term.filter_type, 'inet6')
 
@@ -316,7 +364,7 @@ class TermTest(unittest.TestCase):
     af = 6
     filter_type = 'inet6'
     for _, terms in pol.filters:
-      nsxv_term = nsxv.Term(terms[0], filter_type, af)
+      nsxv_term = nsxv.Term(terms[0], filter_type, None, af)
       rule_str = nsxv.Term.__str__(nsxv_term)
 
     # parse xml rule and check if the values are correct
@@ -337,6 +385,26 @@ class TermTest(unittest.TestCase):
 
   def testTranslatePolicy(self):
     """Test for Nsxv.test_TranslatePolicy."""
+    self.naming.GetNetAddr('NTP_SERVERS').AndReturn([nacaddr.IP('10.0.0.1'),
+                                                     nacaddr.IP('10.0.0.2')])
+    self.naming.GetNetAddr('INTERNAL').AndReturn([nacaddr.IP('10.0.0.0/8'),
+                                                  nacaddr.IP('172.16.0.0/12'),
+                                                  nacaddr.IP('192.168.0.0/16')])
+    self.naming.GetServiceByProto.return_value = ['123']
+
+    pol = policy.ParsePolicy(INET_FILTER, self.naming, False)
+    translate_pol = nsxv.Nsxv(pol, EXP_INFO)
+    nsxv_policies = translate_pol.nsxv_policies
+    for (header, filter_name, filter_list, section_id, terms) in nsxv_policies:
+      self.assertEqual(filter_name, 'inet')
+      self.assertEqual(filter_list, ['inet'])
+      self.assertEqual(len(terms), 1)
+
+    self.naming.GetServiceByProto.assert_has_calls(
+        [mock.call('NTP', 'udp')] * 2)
+
+  def testTranslatePolicyWithEstablished(self):
+    """Test for Nsxv.test_TranslatePolicy."""
     # exp_info default is 2
     self.naming.GetNetAddr('NTP_SERVERS').AndReturn([nacaddr.IP('10.0.0.1'),
                                                      nacaddr.IP('10.0.0.2')])
@@ -346,13 +414,16 @@ class TermTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['123']
 
     exp_info = 2
-    pol = policy.ParsePolicy(INET_FILTER, self.naming, False)
+    pol = policy.ParsePolicy(INET_FILTER_WITH_ESTABLISHED, self.naming, False)
     translate_pol = nsxv.Nsxv(pol, exp_info)
     nsxv_policies = translate_pol.nsxv_policies
-    for (_, filter_name, filter_list, terms) in nsxv_policies:
+    for (header, filter_name, filter_list, section_id, terms) in nsxv_policies:
       self.assertEqual(filter_name, 'inet')
       self.assertEqual(filter_list, ['inet'])
       self.assertEqual(len(terms), 1)
+
+      self.assertNotIn('<sourcePort>123</sourcePort><destinationPort>123',
+                       str(terms[0]))
 
     self.naming.GetServiceByProto.assert_has_calls(
         [mock.call('NTP', 'udp')] * 2)
@@ -384,7 +455,6 @@ class TermTest(unittest.TestCase):
 
   def testNsxvStr(self):
     """Test for Nsxv._str_."""
-    # exp_info default is 2
     self.naming.GetNetAddr('GOOGLE_DNS').AndReturn([
         nacaddr.IP('8.8.4.4'),
         nacaddr.IP('8.8.8.8'),
@@ -392,9 +462,8 @@ class TermTest(unittest.TestCase):
         nacaddr.IP('2001:4860:4860::8888')])
     self.naming.GetServiceByProto.return_value = ['53']
 
-    exp_info = 2
     pol = policy.ParsePolicy(MIXED_FILTER, self.naming, False)
-    target = nsxv.Nsxv(pol, exp_info)
+    target = nsxv.Nsxv(pol, EXP_INFO)
 
     # parse the output and seperate sections and comment
     section_tokens = str(target).split('<section')
@@ -450,6 +519,44 @@ class TermTest(unittest.TestCase):
 
     self.naming.GetServiceByProto.assert_called_once_with('DNS', 'udp')
 
+  def testNsxvStrWithSecurityGroup(self):
+    """Test for Nsxv._str_."""
+    pol = policy.ParsePolicy(POLICY_WITH_SECURITY_GROUP, self.naming, False)
+    target = nsxv.Nsxv(pol, EXP_INFO)
+
+    # parse the output and seperate sections and comment
+    section_tokens = str(target).split('<section')
+    sections = []
+
+    for sec in section_tokens:
+      section = sec.replace('id=', '<section id=')
+      sections.append(section)
+    # parse the xml
+    # Checking comment tag
+    comment = sections[0]
+    if 'Id' not in comment:
+      self.fail('Id missing in xml comment in test_nsxv_str()')
+    if 'Date' not in comment:
+      self.fail('Date missing in xml comment in test_nsxv_str()')
+    if 'Revision' not in comment:
+      self.fail('Revision missing in xml comment in test_nsxv_str()')
+
+    root = ET.fromstring(sections[1])
+    # check section name
+    section_name = {'id': '1010', 'name': 'Sample NSXV filter with Security Group'}
+    self.assertEqual(root.attrib, section_name)
+    # check name and action
+    self.assertEqual(root.find('./rule/name').text, 'accept-icmp')
+    self.assertEqual(root.find('./rule/action').text, 'allow')
+
+    # check protocol
+    protocol = int(root.find('./rule/services/service/protocol').text)
+    self.assertEqual(protocol, 1)
+
+    # check appliedTo
+    applied_to = root.find('./rule/appliedToList/appliedTo/value').text
+    self.assertEqual(applied_to, 'securitygroup-Id')
+
   def testBuildTokens(self):
     self.naming.GetNetAddr('NTP_SERVERS').AndReturn([nacaddr.IP('10.0.0.1'),
                                                      nacaddr.IP('10.0.0.2')])
@@ -475,6 +582,38 @@ class TermTest(unittest.TestCase):
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
+  def testParseFilterOptionsCase1(self):
+    pol = nsxv.Nsxv(policy.ParsePolicy(HEADER_WITH_SECTIONID + TERM, self.naming, False), EXP_INFO)
+    for (header, filter_name, filter_list, section_id, terms) in pol.nsxv_policies:
+      filter_options = header.FilterOptions(_PLATFORM)
+      filter_options_dict = pol._ParseFilterOptions(filter_options)
+      self.assertEquals(filter_options_dict['filter_type'],'inet')
+      self.assertEquals(filter_options_dict['section_id'],'1009')
+      self.assertEquals(filter_options_dict['applied_to'], None)
+
+  def testParseFilterOptionsCase2(self):
+    pol = nsxv.Nsxv(policy.ParsePolicy(HEADER_WITH_SECURITYGROUP + INET6_TERM, self.naming, False), EXP_INFO)
+    for (header, filter_name, filter_list, section_id, terms) in pol.nsxv_policies:
+      filter_options = header.FilterOptions(_PLATFORM)
+      filter_options_dict = pol._ParseFilterOptions(filter_options)
+      self.assertEquals(filter_options_dict['filter_type'],'inet6')
+      self.assertEquals(filter_options_dict['section_id'],0)
+      self.assertEquals(filter_options_dict['applied_to'], 'securitygroup-Id1')
+
+  def testBadHeaderCase1(self):
+    pol = policy.ParsePolicy(BAD_HEADER + INET6_TERM, self.naming, False)
+    self.assertRaises(nsxv.UnsupportedNsxvAccessListError,
+                      nsxv.Nsxv, pol, EXP_INFO)
+
+  def testBadHeaderCase2(self):
+    pol = policy.ParsePolicy(BAD_HEADER_1 + TERM, self.naming, False)
+    self.assertRaises(nsxv.UnsupportedNsxvAccessListError,
+                      nsxv.Nsxv, pol, EXP_INFO)
+
+  def testBadHeaderCase3(self):
+    pol = policy.ParsePolicy(BAD_HEADER_2 + INET6_TERM, self.naming, False)
+    self.assertRaises(nsxv.UnsupportedNsxvAccessListError,
+                      nsxv.Nsxv, pol, EXP_INFO )
 
 if __name__ == '__main__':
   unittest.main()
