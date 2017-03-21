@@ -330,14 +330,14 @@ class Term(aclgenerator.Term):
       service = '%s%s' % (service, s)
 
     # applied_to
-    appliedto_list = ''
+    applied_to_list = ''
     if self.applied_to:
-      appliedto_list = '<appliedToList>'
-      appliedTo = '%s%s%s' % (_XML_TABLE.get('appliedToStart'),
+      applied_to_list = '<appliedToList>'
+      applied_to_element = '%s%s%s' % (_XML_TABLE.get('appliedToStart'),
                               self.applied_to,
                               _XML_TABLE.get('appliedToEnd'))
-      appliedto_list = '%s%s' %(appliedto_list, appliedTo)
-      appliedto_list = '%s%s' %(appliedto_list, '</appliedToList>')
+      applied_to_list = '%s%s' %(applied_to_list, applied_to_element)
+      applied_to_list = '%s%s' %(applied_to_list, '</appliedToList>')
 
     # action
     action = '%s%s%s' % (_XML_TABLE.get('actionStart'),
@@ -347,7 +347,7 @@ class Term(aclgenerator.Term):
     ret_lines = []
     ret_lines.append('<rule logged="%s"> %s %s %s %s %s %s %s </rule>' %
                      (log, name, action, sources, destinations, service,
-                      appliedto_list, notes))
+                      applied_to_list, notes))
 
     # remove any trailing spaces and replace multiple spaces with singles
     stripped_ret_lines = [re.sub(r'\s+', ' ', x).rstrip() for x in ret_lines]
@@ -439,6 +439,7 @@ class Nsxv(aclgenerator.ACLGenerator):
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',
                                       'logging',
                                      ])
+  _FILTER_OPTIONS_DICT = {}
 
   def _BuildTokens(self):
     """Build supported tokens for platform.
@@ -467,11 +468,10 @@ class Nsxv(aclgenerator.ACLGenerator):
       filter_name = header.FilterName(self._PLATFORM)
 
       # get filter type, section id and applied To
-      filter_dict = self._ParseFilterOptions(filter_options)
+      self._ParseFilterOptions(filter_options)
 
-      filter_type = filter_dict['filter_type']
-      section_id = filter_dict['section_id']
-      applied_to = filter_dict['applied_to']
+      filter_type = self._FILTER_OPTIONS_DICT['filter_type']
+      applied_to = self._FILTER_OPTIONS_DICT['applied_to']
 
       term_names = set()
       new_terms = []
@@ -526,7 +526,7 @@ class Nsxv(aclgenerator.ACLGenerator):
               continue
             new_terms.append(Term(inet6_term, filter_type, applied_to, 6))
 
-      self.nsxv_policies.append((header, filter_name, [filter_type], section_id,
+      self.nsxv_policies.append((header, filter_name, [filter_type],
                                  new_terms))
 
   def _ParseFilterOptions(self, filter_options):
@@ -543,8 +543,6 @@ class Nsxv(aclgenerator.ACLGenerator):
       UnsupportedNsxvAccessListError: Raised when we're give a non named access
       list.
     """
-    filter_options_dict = {}
-
     # check for filter type
     if not filter_options:
       raise UnsupportedNsxvAccessListError(
@@ -582,10 +580,9 @@ class Nsxv(aclgenerator.ACLGenerator):
             raise UnsupportedNsxvAccessListError(
                 'Security Group Id is not provided for %s' % (self._PLATFORM))
 
-    filter_options_dict['filter_type'] = filter_type
-    filter_options_dict['section_id'] = section_id
-    filter_options_dict['applied_to'] = applied_to
-    return filter_options_dict
+    self._FILTER_OPTIONS_DICT['filter_type'] = filter_type
+    self._FILTER_OPTIONS_DICT['section_id'] = section_id
+    self._FILTER_OPTIONS_DICT['applied_to'] = applied_to
 
   def __str__(self):
     """Render the output of the Nsxv policy."""
@@ -598,7 +595,7 @@ class Nsxv(aclgenerator.ACLGenerator):
     target.extend(aclgenerator.AddRepositoryTags(' '))
     target.append('-->')
 
-    for (header, _, _, section_id, terms) in self.nsxv_policies:
+    for (header, _, _, terms) in self.nsxv_policies:
       # add a header comment if one exists
       section_name = ''
       for comment in header.comment:
@@ -606,6 +603,7 @@ class Nsxv(aclgenerator.ACLGenerator):
           section_name = '%s %s' % (section_name, line)
 
       # check section id value
+      section_id = self._FILTER_OPTIONS_DICT['section_id']
       if not section_id or section_id == 0:
         logging.warn('WARNING: Section-id is 0. A new Section is created for%s.'
                      ' If there is any existing section, it will remain '
