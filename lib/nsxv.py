@@ -334,8 +334,8 @@ class Term(aclgenerator.Term):
     if self.applied_to:
       applied_to_list = '<appliedToList>'
       applied_to_element = '%s%s%s' % (_XML_TABLE.get('appliedToStart'),
-                              self.applied_to,
-                              _XML_TABLE.get('appliedToEnd'))
+                                       self.applied_to,
+                                       _XML_TABLE.get('appliedToEnd'))
       applied_to_list = '%s%s' %(applied_to_list, applied_to_element)
       applied_to_list = '%s%s' %(applied_to_list, '</appliedToList>')
 
