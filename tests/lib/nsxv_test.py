@@ -191,6 +191,20 @@ BAD_HEADER_2 = """\
   }
   """
 
+BAD_HEADER_3 = """\
+  header {
+    comment:: "Sample NSXV filter6"
+    target:: nsxv
+  }
+  """
+
+BAD_HEADER_4 = """\
+  header {
+    comment:: "Sample NSXV filter7"
+    target:: nsxv inet 1234 securitygroup securitygroup securitygroupId1
+  }
+  """
+
 TERM = """\
   term accept-icmp {
     protocol:: icmp
@@ -272,6 +286,7 @@ SUPPORTED_SUB_TOKENS = {
 # This is normally passed from command line.
 EXP_INFO = 2
 _PLATFORM = 'nsxv'
+
 
 class TermTest(unittest.TestCase):
 
@@ -399,30 +414,6 @@ class TermTest(unittest.TestCase):
       self.assertEqual(filter_name, 'inet')
       self.assertEqual(filter_list, ['inet'])
       self.assertEqual(len(terms), 1)
-
-    self.naming.GetServiceByProto.assert_has_calls(
-        [mock.call('NTP', 'udp')] * 2)
-
-  def testTranslatePolicyWithEstablished(self):
-    """Test for Nsxv.test_TranslatePolicy."""
-    # exp_info default is 2
-    self.naming.GetNetAddr('NTP_SERVERS').AndReturn([nacaddr.IP('10.0.0.1'),
-                                                     nacaddr.IP('10.0.0.2')])
-    self.naming.GetNetAddr('INTERNAL').AndReturn([nacaddr.IP('10.0.0.0/8'),
-                                                  nacaddr.IP('172.16.0.0/12'),
-                                                  nacaddr.IP('192.168.0.0/16')])
-    self.naming.GetServiceByProto.return_value = ['123']
-
-    pol = policy.ParsePolicy(INET_FILTER_WITH_ESTABLISHED, self.naming, False)
-    translate_pol = nsxv.Nsxv(pol, EXP_INFO)
-    nsxv_policies = translate_pol.nsxv_policies
-    for (_, filter_name, filter_list, terms) in nsxv_policies:
-      self.assertEqual(filter_name, 'inet')
-      self.assertEqual(filter_list, ['inet'])
-      self.assertEqual(len(terms), 1)
-
-      self.assertNotIn('<sourcePort>123</sourcePort><destinationPort>123',
-                       str(terms[0]))
 
     self.naming.GetServiceByProto.assert_has_calls(
         [mock.call('NTP', 'udp')] * 2)
@@ -598,22 +589,34 @@ class TermTest(unittest.TestCase):
       pol._ParseFilterOptions(filter_options)
       self.assertEquals(nsxv.Nsxv._FILTER_OPTIONS_DICT['filter_type'], 'inet6')
       self.assertEquals(nsxv.Nsxv._FILTER_OPTIONS_DICT['section_id'], 0)
-      self.assertEquals(nsxv.Nsxv._FILTER_OPTIONS_DICT['applied_to'], 'securitygroup-Id1')
+      self.assertEquals(nsxv.Nsxv._FILTER_OPTIONS_DICT['applied_to'],
+                        'securitygroup-Id1')
 
-  def testBadHeaderCase1(self):
+  def testBadHeaderCase(self):
     pol = policy.ParsePolicy(BAD_HEADER + INET6_TERM, self.naming, False)
     self.assertRaises(nsxv.UnsupportedNsxvAccessListError,
                       nsxv.Nsxv, pol, EXP_INFO)
 
-  def testBadHeaderCase2(self):
+  def testBadHeaderCase1(self):
     pol = policy.ParsePolicy(BAD_HEADER_1 + TERM, self.naming, False)
     self.assertRaises(nsxv.UnsupportedNsxvAccessListError,
                       nsxv.Nsxv, pol, EXP_INFO)
 
-  def testBadHeaderCase3(self):
+  def testBadHeaderCase2(self):
     pol = policy.ParsePolicy(BAD_HEADER_2 + INET6_TERM, self.naming, False)
     self.assertRaises(nsxv.UnsupportedNsxvAccessListError,
                       nsxv.Nsxv, pol, EXP_INFO)
+
+  def testBadHeaderCase3(self):
+    pol = policy.ParsePolicy(BAD_HEADER_3 + INET6_TERM, self.naming, False)
+    self.assertRaises(nsxv.UnsupportedNsxvAccessListError,
+                      nsxv.Nsxv, pol, EXP_INFO)
+
+  def testBadHeaderCase4(self):
+    pol = policy.ParsePolicy(BAD_HEADER_4 + INET6_TERM, self.naming, False)
+    self.assertRaises(nsxv.UnsupportedNsxvAccessListError,
+                      nsxv.Nsxv, pol, EXP_INFO)
+
 
 if __name__ == '__main__':
   unittest.main()
