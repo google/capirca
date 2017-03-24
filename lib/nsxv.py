@@ -45,6 +45,8 @@ _XML_TABLE = {
     'protocolEnd': '</protocol>',
     'serviceStart': '<service>',
     'serviceEnd': '</service>',
+    'appliedToStart': '<appliedTo><type>SecurityGroup</type><value>',
+    'appliedToEnd': '</value></appliedTo>',
     'srcPortStart': '<sourcePort>',
     'srcPortEnd': '</sourcePort>',
     'destPortStart': '<destinationPort>',
@@ -107,12 +109,13 @@ class NsxvDuplicateTermError(Error):
 class Term(aclgenerator.Term):
   """Creates a  single ACL Term for Nsxv."""
 
-  def __init__(self, term, filter_type, af=4):
+  def __init__(self, term, filter_type, applied_to=None, af=4):
     self.term = term
     # Our caller should have already verified the address family.
     assert af in (4, 6)
     self.af = af
     self.filter_type = filter_type
+    self.applied_to = applied_to
 
   def __str__(self):
     """Convert term to a rule string.
@@ -326,14 +329,25 @@ class Term(aclgenerator.Term):
     for s in services:
       service = '%s%s' % (service, s)
 
+    # applied_to
+    applied_to_list = ''
+    if self.applied_to:
+      applied_to_list = '<appliedToList>'
+      applied_to_element = '%s%s%s' % (_XML_TABLE.get('appliedToStart'),
+                                       self.applied_to,
+                                       _XML_TABLE.get('appliedToEnd'))
+      applied_to_list = '%s%s' %(applied_to_list, applied_to_element)
+      applied_to_list = '%s%s' %(applied_to_list, '</appliedToList>')
+
     # action
     action = '%s%s%s' % (_XML_TABLE.get('actionStart'),
                          _ACTION_TABLE.get(str(self.term.action[0])),
                          _XML_TABLE.get('actionEnd'))
 
     ret_lines = []
-    ret_lines.append('<rule logged="%s"> %s %s %s %s %s %s </rule>' %
-                     (log, name, action, sources, destinations, service, notes))
+    ret_lines.append('<rule logged="%s"> %s %s %s %s %s %s %s </rule>' %
+                     (log, name, action, sources, destinations, service,
+                      applied_to_list, notes))
 
     # remove any trailing spaces and replace multiple spaces with singles
     stripped_ret_lines = [re.sub(r'\s+', ' ', x).rstrip() for x in ret_lines]
@@ -352,8 +366,6 @@ class Term(aclgenerator.Term):
     Returns:
       Service definition.
 
-    Raises:
-      UnsupportedNsxvAccessListError: When unknown icmp-types specified
     """
     service = ''
     # for icmp and icmpv6
@@ -427,6 +439,7 @@ class Nsxv(aclgenerator.ACLGenerator):
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',
                                       'logging',
                                      ])
+  _FILTER_OPTIONS_DICT = {}
 
   def _BuildTokens(self):
     """Build supported tokens for platform.
@@ -447,9 +460,6 @@ class Nsxv(aclgenerator.ACLGenerator):
     current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
-    # a mixed filter outputs both ipv4 and ipv6 acls in the same output file
-    good_filters = ['inet', 'inet6', 'mixed']
-
     for header, terms in pol.filters:
       if self._PLATFORM not in header.platforms:
         continue
@@ -457,19 +467,11 @@ class Nsxv(aclgenerator.ACLGenerator):
       filter_options = header.FilterOptions(self._PLATFORM)
       filter_name = header.FilterName(self._PLATFORM)
 
-      # check for filter type
-      filter_type = ''
-      if filter_options is not None and filter_options > 0:
-        filter_type = filter_options[0]
-      else:
-        raise UnsupportedNsxvAccessListError(
-            'Filter type is not provided for %s'  % (self._PLATFORM))
+      # get filter type, section id and applied To
+      self._ParseFilterOptions(filter_options)
 
-      # check if filter type is renderable
-      if filter_type not in good_filters:
-        raise UnsupportedNsxvAccessListError(
-            'access list type %s not supported by %s (good types: %s)' % (
-                filter_type, self._PLATFORM, str(good_filters)))
+      filter_type = self._FILTER_OPTIONS_DICT['filter_type']
+      applied_to = self._FILTER_OPTIONS_DICT['applied_to']
 
       term_names = set()
       new_terms = []
@@ -503,29 +505,84 @@ class Nsxv(aclgenerator.ACLGenerator):
           term = self.FixHighPorts(term, af=af)
           if not term:
             continue
-          new_terms.append(Term(term, filter_type, 4))
+          new_terms.append(Term(term, filter_type, applied_to, 4))
 
         if filter_type == 'inet6':
           af = 'inet6'
           term = self.FixHighPorts(term, af=af)
           if not term:
             continue
-          new_terms.append(Term(term, filter_type, 6))
+          new_terms.append(Term(term, filter_type, applied_to, 6))
 
         if filter_type == 'mixed':
           if 'icmpv6' not in term.protocol:
             inet_term = self.FixHighPorts(term, 'inet')
             if not inet_term:
               continue
-            new_terms.append(Term(inet_term, filter_type, 4))
+            new_terms.append(Term(inet_term, filter_type, applied_to, 4))
           else:
             inet6_term = self.FixHighPorts(term, 'inet6')
             if not inet6_term:
               continue
-            new_terms.append(Term(inet6_term, filter_type, 6))
+            new_terms.append(Term(inet6_term, filter_type, applied_to, 6))
 
       self.nsxv_policies.append((header, filter_name, [filter_type],
                                  new_terms))
+
+  def _ParseFilterOptions(self, filter_options):
+    """Parses the target in header for filter type, section_id and applied_to.
+
+    Args:
+      filter_options: list of remaining target options
+
+    Returns:
+      A dictionary that contains fields necessary to create the firewall
+      rule.
+
+    Raises:
+      UnsupportedNsxvAccessListError: Raised when we're give a non named access
+      list.
+    """
+    # check for filter type
+    if not filter_options:
+      raise UnsupportedNsxvAccessListError(
+          'Filter type is not provided for %s'  % (self._PLATFORM))
+
+    if len(filter_options) > 4:
+      raise UnsupportedNsxvAccessListError('Too many target options.')
+
+    # mandatory
+    filter_type = filter_options[0]
+
+    # a mixed filter outputs both ipv4 and ipv6 acls in the same output file
+    good_filters = ['inet', 'inet6', 'mixed']
+
+    # check if filter type is renderable
+    if filter_type not in good_filters:
+      raise UnsupportedNsxvAccessListError(
+          'Access list type %s not supported by %s (good types: %s)' % (
+              filter_type, self._PLATFORM, str(good_filters)))
+
+    section_id = 0
+    applied_to = None
+    filter_opt_len = len(filter_options)
+
+    if filter_opt_len > 1:
+      for index in range(1, filter_opt_len):
+        if index == 1 and filter_options[1] != 'securitygroup':
+          section_id = filter_options[1]
+          continue
+        if filter_options[index] == 'securitygroup':
+          if index + 1 <= filter_opt_len - 1:
+            applied_to = filter_options[index + 1]
+            break
+          else:
+            raise UnsupportedNsxvAccessListError(
+                'Security Group Id is not provided for %s' % (self._PLATFORM))
+
+    self._FILTER_OPTIONS_DICT['filter_type'] = filter_type
+    self._FILTER_OPTIONS_DICT['section_id'] = section_id
+    self._FILTER_OPTIONS_DICT['applied_to'] = applied_to
 
   def __str__(self):
     """Render the output of the Nsxv policy."""
@@ -545,13 +602,8 @@ class Nsxv(aclgenerator.ACLGenerator):
         for line in comment.split('\n'):
           section_name = '%s %s' % (section_name, line)
 
-      # getting section id
-      filter_options = header.FilterOptions(self._PLATFORM)
-      section_id = 0
-      if filter_options is not None and len(filter_options) > 1:
-        section_id = filter_options[1]
-
       # check section id value
+      section_id = self._FILTER_OPTIONS_DICT['section_id']
       if not section_id or section_id == 0:
         logging.warn('WARNING: Section-id is 0. A new Section is created for%s.'
                      ' If there is any existing section, it will remain '
