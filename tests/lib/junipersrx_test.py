@@ -262,6 +262,22 @@ term term_to_split {
 }
 """
 
+GOOD_TERM_18 = """
+term good_term_18 {
+  source-exclude:: SMALL
+  protocol:: tcp
+  action:: accept
+}
+"""
+GOOD_TERM_19 = """
+term good_term_19 {
+  source-address:: LARGE
+  source-exclude:: SMALL
+  protocol:: tcp
+  action:: accept
+}
+"""
+
 BAD_TERM_1 = """
 term bad-term-1 {
   destination-address:: SOME_HOST
@@ -425,6 +441,8 @@ _IPSET = [nacaddr.IP('10.0.0.0/8'),
           nacaddr.IP('2001:4860:8000::/33')]
 _IPSET2 = [nacaddr.IP('10.23.0.0/22'), nacaddr.IP('10.23.0.6/23')]
 _IPSET3 = [nacaddr.IP('10.23.0.0/23')]
+_IPSET4 = [nacaddr.IP('10.0.0.0/20')]
+_IPSET5 = [nacaddr.IP('10.0.0.0/24')]
 
 
 class JuniperSRXTest(unittest.TestCase):
@@ -457,7 +475,6 @@ class JuniperSRXTest(unittest.TestCase):
             */"""
     self.naming.GetNetAddr.return_value = _IPSET
     self.naming.GetServiceByProto.return_value = ['25']
-
     srx = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
                                                    self.naming), EXP_INFO)
     output = str(srx)
@@ -1081,6 +1098,41 @@ class JuniperSRXTest(unittest.TestCase):
                      '                address FOOBAR_0 172.16.0.0/12;\n'
                      '                address SOME_HOST_0 10.0.0.0/8;')
                     in srx, srx)
+
+
+  def testNakedExclude(self):
+    SMALL = [nacaddr.IP('10.0.0.0/24', 'SMALL', 'SMALL')]
+    self.naming.GetNetAddr.side_effect = [SMALL]
+
+    pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_18, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    self.failUnless(
+        'address GOOD_TERM_18_SRC_EXCLUDE_2 10.0.1.0/24;' in output, output)
+    self.failUnless(
+        'address GOOD_TERM_18_SRC_EXCLUDE_3 10.0.2.0/23;' in output, output)
+    self.failUnless(
+        'address GOOD_TERM_18_SRC_EXCLUDE_4 10.0.4.0/22;' in output, output)
+    self.failUnless(
+        'address GOOD_TERM_18_SRC_EXCLUDE_5 10.0.8.0/21;' in output, output)
+    self.assertFalse('10.0.0.0' in output)
+
+  def testSourceExclude(self):
+    LARGE = [nacaddr.IP('10.0.0.0/20', 'LARGE', 'LARGE')]
+    SMALL = [nacaddr.IP('10.0.0.0/24', 'SMALL', 'SMALL')]
+    self.naming.GetNetAddr.side_effect = [LARGE, SMALL]
+
+    pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_19, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    self.failUnless(
+        'address GOOD_TERM_19_SRC_EXCLUDE_0 10.0.1.0/24;' in output, output)
+    self.failUnless(
+        'address GOOD_TERM_19_SRC_EXCLUDE_1 10.0.2.0/23;' in output, output)
+    self.failUnless(
+        'address GOOD_TERM_19_SRC_EXCLUDE_2 10.0.4.0/22;' in output, output)
+    self.failUnless(
+        'address GOOD_TERM_19_SRC_EXCLUDE_3 10.0.8.0/21;' in output, output)
+    self.assertFalse('10.0.0.0/24' in output)
+
 
 if __name__ == '__main__':
   unittest.main()
