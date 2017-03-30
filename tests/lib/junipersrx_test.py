@@ -312,6 +312,9 @@ term test-icmp {
 IPV6_ICMP_TERM = """
 term test-ipv6_icmp {
   protocol:: icmpv6
+  icmp-type:: destination-unreachable packet-too-big
+  icmp-type:: time-exceeded time-exceeded
+  icmp-type:: echo-request echo-reply
   action:: accept
 }
 """
@@ -1099,7 +1102,6 @@ class JuniperSRXTest(unittest.TestCase):
                      '                address SOME_HOST_0 10.0.0.0/8;')
                     in srx, srx)
 
-
   def testNakedExclude(self):
     SMALL = [nacaddr.IP('10.0.0.0/24', 'SMALL', 'SMALL')]
     self.naming.GetNetAddr.side_effect = [SMALL]
@@ -1133,6 +1135,14 @@ class JuniperSRXTest(unittest.TestCase):
         'address GOOD_TERM_19_SRC_EXCLUDE_3 10.0.8.0/21;' in output, output)
     self.assertFalse('10.0.0.0/24' in output)
 
+  def testMixedVersionIcmp(self):
+    pol = policy.ParsePolicy(GOOD_HEADER + ICMP_TYPE_TERM_1 + IPV6_ICMP_TERM,
+                             self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    self.failUnless('term t6 protocol icmp6 icmp-type 129 '
+                    'inactivity-timeout 60;' in output)
+    self.failUnless('term t1 protocol icmp icmp-type 0 '
+                    'inactivity-timeout 60;' in output)
 
 if __name__ == '__main__':
   unittest.main()

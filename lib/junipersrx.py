@@ -750,11 +750,12 @@ class JuniperSRX(aclgenerator.ACLGenerator):
           else:
             timeout = 60
           for i, code in enumerate(app['icmp-type']):
-            target.IndentAppend(
-                2,
-                'term t%d protocol icmp icmp-type %s inactivity-timeout %d;' %
-                (i + 1, str(code), int(timeout))
-            )
+            for proto in app['protocol']:
+              target.IndentAppend(
+                  2,
+                  'term t%d protocol %s icmp-type %s inactivity-timeout %d;' %
+                  (i + 1, proto, str(code), int(timeout))
+              )
           target.IndentAppend(1, '}')
 
         # generate non-ICMP statements
