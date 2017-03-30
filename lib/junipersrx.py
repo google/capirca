@@ -443,12 +443,38 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                          term.name, self.from_zone, self.to_zone)
             continue
 
-        for i in term.source_address_exclude:
-          term.source_address = nacaddr.RemoveAddressFromList(
-              term.source_address, i)
-        for i in term.destination_address_exclude:
-          term.destination_address = nacaddr.RemoveAddressFromList(
-              term.destination_address, i)
+        # SRX address books leverage network token names for IPs.
+        # When excluding addresses, we lose those distinct names so we need
+        # to create a new unique name based off the term name before excluding.
+        if term.source_address_exclude:
+          # If we have a naked source_exclude, we need something to exclude from
+          if not term.source_address:
+            term.source_address = [nacaddr.IP('0.0.0.0/0',
+                                              term.name.upper(),
+                                              term.name.upper())]
+          # Use the term name as the token & parent_token
+          new_src_parent_token = term.name.upper() + '_SRC_EXCLUDE'
+          new_src_token = new_src_parent_token
+          for i in term.source_address_exclude:
+            term.source_address = nacaddr.RemoveAddressFromList(
+                term.source_address, i)
+            for i in term.source_address:
+              i.token = new_src_token
+              i.parent_token = new_src_parent_token
+
+        if term.destination_address_exclude:
+          if not term.destination_address:
+            term.destination_address = [nacaddr.IP('0.0.0.0/0',
+                                                   term.name.upper(),
+                                                   term.name.upper())]
+          new_dst_parent_token = term.name.upper() + '_DST_EXCLUDE'
+          new_dst_token = new_dst_parent_token
+          for i in term.destination_address_exclude:
+            term.destination_address = nacaddr.RemoveAddressFromList(
+                term.destination_address, i)
+            for i in term.destination_address:
+              i.token = new_dst_token
+              i.parent_token = new_dst_parent_token
 
         # SRX policies are controlled by addresses that are used within, so
         # policy can be at the same time inet and inet6.
