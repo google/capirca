@@ -57,7 +57,7 @@ class NamingUnitTest(unittest.TestCase):
     networkdata.append('BAR_V6 = ::1/128')
     networkdata.append('BAZ = FOO_V6')
     networkdata.append('      BAR_V6')
-    networkdata.append('BING = NET1')
+    networkdata.append('BING = NET1 # foo')
     networkdata.append('       FOO_V6')
 
     self.defs.ParseServiceList(servicedata)

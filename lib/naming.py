@@ -131,7 +131,7 @@ class Naming(object):
     self.networks = {}
     self.unseen_services = {}
     self.unseen_networks = {}
-    self.port_re = re.compile('(^\d+-\d+|^\d+)\/\w+$|^[\w\d-]+$',
+    self.port_re = re.compile(r'(^\d+-\d+|^\d+)\/\w+$|^[\w\d-]+$',
                               re.IGNORECASE|re.DOTALL)
     if naming_file and naming_type:
       filename = os.path.sep.join([naming_dir, naming_file])
@@ -195,7 +195,8 @@ class Naming(object):
     for bp in base_parents:
       done = False
       for token in self.networks:
-        if bp in self.networks[token].items:
+        if bp in [item.split('#')[0].strip() for item in
+                  self.networks[token].items]:
           # ignore IPs, only look at token values
           if bp[:1].isalpha():
             if bp not in recursive_parents:
@@ -242,7 +243,8 @@ class Naming(object):
     recursive_parents = []
     # collect list of tokens containing query
     for token in query_group:
-      if query in query_group[token].items:
+      if query in [item.split('#')[0].strip() for item in
+                   query_group[token].items]:
         base_parents.append(token)
     if not base_parents:
       return []
