@@ -174,5 +174,13 @@ class NamingUnitTest(unittest.TestCase):
     filedefs._ParseFile(data, 'services')
     self.assertEqual(filedefs.GetService('HTTP'), ['80/tcp'])
 
+  def testServiceIncorrectSyntax(self):
+    badservicedata = []
+    badservicedata.append('SVC1 = 80//tcp 80/udp')
+    badservicedata.append('SVC2 = 81/tcp')
+    testdefs = naming.Naming(None)
+    self.assertRaises(naming.NamingSyntaxError,
+                      testdefs.ParseServiceList, badservicedata)
+
 if __name__ == '__main__':
   unittest.main()

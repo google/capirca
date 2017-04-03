@@ -51,6 +51,7 @@ from __future__ import unicode_literals
 
 import glob
 import os
+import re
 
 from lib import nacaddr
 from lib import port as portlib
@@ -94,6 +95,10 @@ class UnexpectedDefinitionType(Error):
   """An unexpected/unknown definition type was used."""
 
 
+class NamingSyntaxError(Error):
+  """A general syntax error for the definition."""
+
+
 class _ItemUnit(object):
   """This class is a container for an index key and a list of associated values.
 
@@ -126,6 +131,8 @@ class Naming(object):
     self.networks = {}
     self.unseen_services = {}
     self.unseen_networks = {}
+    self.port_re = re.compile('(^\d+-\d+|^\d+)\/\w+$|^[\w\d-]+$',
+                              re.IGNORECASE|re.DOTALL)
     if naming_file and naming_type:
       filename = os.path.sep.join([naming_dir, naming_file])
       file_handle = open(filename, 'r')
@@ -531,6 +538,10 @@ class Naming(object):
     if len(line_parts) > 1:
       self.current_symbol = line_parts[0].strip()  # varname left of '='
       if definition_type == 'services':
+        for port in line_parts[1].strip().split():
+          if not self.port_re.match(port):
+            raise NamingSyntaxError('%s: %s' % (
+                'The following line has a syntax error', line))
         if self.current_symbol in self.services:
           raise NamespaceCollisionError('%s %s' % (
               '\nMultiple definitions found for service: ',
