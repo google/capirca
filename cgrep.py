@@ -1,41 +1,43 @@
-# Copyright 2011 Google Inc.
+# Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#    http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software
+# unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-#
-# Simple util to grep through network and service definitions.
-# Examples:
-#   To find out which tokens contain "10.4.3.1" use
-#   $ cgrep.py -i 10.4.3.1
-#
-#   To find out if token 'FOO' includes ip "1.2.3.4" use
-#   $ cgrep.py -t FOO -i 1.2.3.4
-#
-#   To find the difference and union of tokens 'FOO' and 'BAR' use
-#   $ cgrep.py -c FOO BAR
-#
-#   To find the difference of network tokens to which 2 IPs belong use
-#   $ cgrep.py -g 1.1.1.1 2.2.2.2
-#
-#   To find which IPs are in the 'FOO' network token use
-#   $ cgrep.py -o FOO
-#
-#   To find which port & protocol pairs are in a service token 'FOO' use
-#   $ cgrep.py -s FOO
-#
-#   To find which service tokens contain port '22' and protocol 'tcp' use
-#   $ cgrep.py -p 22 tcp
-#
+
+"""Simple util to grep through network and service definitions.
+
+Examples:
+  To find out which tokens contain "10.4.3.1" use
+  $ cgrep.py -i 10.4.3.1
+
+  To find out if token 'FOO' includes ip "1.2.3.4" use
+  $ cgrep.py -t FOO -i 1.2.3.4
+
+  To find the difference and union of tokens 'FOO' and 'BAR' use
+  $ cgrep.py -c FOO BAR
+
+  To find the difference of network tokens to which 2 IPs belong use
+  $ cgrep.py -g 1.1.1.1 2.2.2.2
+
+  To find which IPs are in the 'FOO' network token use
+  $ cgrep.py -o FOO
+
+  To find which port & protocol pairs are in a service token 'FOO' use
+  $ cgrep.py -s FOO
+
+  To find which service tokens contain port '22' and protocol 'tcp' use
+  $ cgrep.py -p 22 tcp
+"""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -46,12 +48,14 @@ import pprint
 from lib import nacaddr
 from lib import naming
 
+import logging
+
 
 def is_valid_ip(arg):
-  """ Validates a value to be an IP or not.
+  """Validates a value to be an IP or not.
 
   Args:
-    arg as str: potential IP address
+    arg: potential IP address as a string.
 
   Returns:
     arg as IP object (if arg is an IP)
@@ -67,10 +71,12 @@ def is_valid_ip(arg):
 
 
 def cli_options():
-  """ Builds the argparse options for cgrep.
+  """Builds the argparse options for cgrep.
 
-    Returns:
-      parser as argparse.ArgumentParser: the arguments, ready to be parsed.
+  TODO(robankeny): Move this to flags.
+
+  Returns:
+    parser: the arguments, ready to be parsed.
   """
 
   parser = argparse.ArgumentParser(
@@ -124,10 +130,10 @@ def cli_options():
 
 
 def main(parser):
-  """ Determines the code path based on the arguments passed.
+  """Determines the code path based on the arguments passed.
 
   Args:
-    parser as argparse.ArgumentParser: the argument parser, but not parsed yet.
+    parser: the argument parser, but not parsed yet.
   """
   options = parser.parse_args()
   db = naming.Naming(options.defs)
@@ -136,56 +142,59 @@ def main(parser):
   # if -i and any other option:
   if options.ip and any([options.gmp, options.cmp, options.obj, options.svc,
                          options.port]):
-    print('You can only use -i with -t or by itself')
+    logging.info('You can only use -i with -t or by itself')
 
   # if -i and -t
   elif options.token and options.ip:
     try:
       get_nets([options.token], db)
-    except naming.UndefinedAddressError as e:
-      print("Network group '%s' is not defined!" % (e.message.split()[0]))
+    except naming.UndefinedAddressError:
+      logging.info("Network group '%s' is not defined!", options.token)
     else:
       results = compare_ip_token(options, db)
-      print(results)
+      logging.info(results)
 
   # if -t, but not -i; invalid!
   elif options.token and not options.ip:
-    print('You must specify an IP Address with -i [addr]')
+    logging.info('You must specify an IP Address with -i [addr]')
 
   # if -i
   elif options.ip:
     for ip in options.ip:
       groups = get_ip_parents(ip, db)
-      print('Results for IP: %s' % ip)
+      logging.info('Results for IP: %s', ip)
       # iterate and print the tokens we found.
       for name, networks in groups:
         # print the group name [0], and the networks it was in [1]
-        print('%s  %s' % (name, networks))
+        logging.info('%s  %s', name, networks)
 
   elif options.gmp:
     common, diff1, diff2 = group_diff(options, db)
     print_diff(options.gmp[0], common, diff1, diff2)
-    print('')
+    logging.info('')
     print_diff(options.gmp[1], common, diff2, diff1)
 
   # if -c
   elif options.cmp:
     meta, results = compare_tokens(options, db)
-    print('Union of %s and %s:\n %s\n' % meta)
-    print('Diff of %s and %s:' % meta[:-1])
+    first_name = meta[0]
+    second_name = meta[1]
+    union = meta[2]
+    logging.info('Union of %s and %s:\n %s\n', first_name, second_name, union)
+    logging.info('Diff of %s and %s:', first_name, second_name)
     for i in results:
-      print(' ' + i)
-    print('')
+      logging.info(' ' + i)
+    logging.info('')
     first_obj, sec_obj = options.cmp
     if check_encapsulated('network', first_obj, sec_obj, db):
-      print('%s fully encapsulates %s' % (sec_obj, first_obj))
+      logging.info('%s fully encapsulates %s', sec_obj, first_obj)
     else:
-      print('%s does _not_ fully encapsulate %s' % (sec_obj, first_obj))
+      logging.info('%s does _not_ fully encapsulate %s', sec_obj, first_obj)
     # check the other way around.
     if check_encapsulated('network', sec_obj, first_obj, db):
-      print('%s fully encapsulates %s' % (first_obj, sec_obj))
+      logging.info('%s fully encapsulates %s', first_obj, sec_obj)
     else:
-      print('%s does _not_ fully encapsulate %s' % (first_obj, sec_obj))
+      logging.info('%s does _not_ fully encapsulate %s', first_obj, sec_obj)
 
   # if -o
   elif options.obj:
@@ -193,9 +202,9 @@ def main(parser):
       try:
         token, ips = get_nets([obj], db)[0]
       except naming.UndefinedAddressError:
-        print('%s is an invalid object' % obj)
+        logging.info('%s is an invalid object', obj)
       else:
-        print(token + ':')
+        logging.info(token + ':')
         # convert list of ip objects to strings and sort them
         ips.sort(key=lambda x: int(x.ip))
         p([str(x) for x in ips])
@@ -205,39 +214,42 @@ def main(parser):
     try:
       results = get_ports(options.svc, db)
     except naming.UndefinedServiceError:
-      print('%s contains an invalid service object' % str(options.svc))
+      logging.info('%s contains an invalid service object', str(options.svc))
     else:
       for result in get_ports(options.svc, db):
         svc, port = result
-        print(svc + ':')
+        logging.info(svc + ':')
         p(port)
 
   # if -p
   elif options.port:
     port, protocol, result = get_services(options, db)
-    print('%s/%s:' % (port, protocol))
+    logging.info('%s/%s:', port, protocol)
     p(result)
 
   # if nothing is passed
   elif not any((options.cmp, options.ip, options.token, options.obj,
                 options.svc, options.port)):
     parser.print_help()
-  print('')
+  logging.info('')
 
 
 def check_encapsulated(obj_type, first_obj, second_obj, db):
-  """ Checks if a network/service object is entirely contained within another.
+  """Checks if a network/service object is entirely contained within another.
 
   Args:
-    obj_type as str: "network" or "service"
-    first_obj as str: The name of the first network/service object
-    second_obj as str: The name of the secondnetwork/service object
-    db as naming.Naming(): The network and service definitions
+    obj_type: "network" or "service"
+    first_obj: The name of the first network/service object
+    second_obj: The name of the secondnetwork/service object
+    db: The network and service definitions
 
   Returns:
     Error or bool:
       ValueError if an invalid object type is passed
       True if the first_obj is entirely within second_obj, otherwise False
+
+  Raises:
+    ValueError: When value is not a network or service.
   """
   if obj_type == 'network':
     # the indexing is to get the list of networks out of the tuple[1] and
@@ -267,38 +279,38 @@ def check_encapsulated(obj_type, first_obj, second_obj, db):
 
 
 def print_diff(ip, common, diff1, diff2):
-  """ Print out the common, added, and removed network objects between 2 IPs
+  """Print out the common, added, and removed network objects between 2 IPs.
 
   Args:
-    ip as str: the IP being compared against
-    common as list: the network objects shared between the two IPs
+    ip: the IP being compared against
+    common: the network objects shared between the two IPs
                     ('ip' and the other passed into options.cmp)
-    diff1 as list: the network objects present in 'ip' but not in the other IP
+    diff1: the network objects present in 'ip' but not in the other IP
                    passed into options.cmp
-    diff2 as list: the network objects not present in 'ip' but are present in
+    diff2: the network objects not present in 'ip' but are present in
                    the other IP passed into options.cmp
   """
-  print('IP: %s' % ip)
+  logging.info('IP: %s', ip)
   if common:
     common = ['  {0}'.format(elem) for elem in common]
-    print('\n'.join(common))
+    logging.info('\n'.join(common))
   if diff1:
     diff = ['+ {0}'.format(elem) for elem in diff1]
-    print('\n'.join(diff))
+    logging.info('\n'.join(diff))
   if diff2:
     diff = ['- {0}'.format(elem) for elem in diff2]
-    print('\n'.join(diff))
+    logging.info('\n'.join(diff))
 
 
 def group_diff(options, db):
-  """ Diffs two different group objects.
+  """Diffs two different group objects.
 
   Args:
-    options as ArgumentParser.parse_args(): the options sent to the script
-    db as naming.Naming(): network and service definitions
+    options: the options sent to the script
+    db : network and service definitions
 
   Returns:
-    tuple of three lists: the common lines, the differences from 1 to 2,
+    tuple: the common lines, the differences from 1 to 2,
                           and the differences from 2 to 1
   """
   nested_rvals = []
@@ -314,14 +326,14 @@ def group_diff(options, db):
 
 
 def get_ip_parents(ip, db):
-  """ Gets a list of all network objects that include an IP.
+  """Gets a list of all network objects that include an IP.
 
   Args:
-    ip as str: the IP we're looking for the parents of
-    db as naming.Naming(): network and service definitions
+    ip: the IP we're looking for the parents of
+    db: network and service definitions
 
   Returns:
-    results as list: a list of all groups that include the IP, in the format:
+    results: a list of all groups that include the IP, in the format:
                      [("Group", ["networks", "matched"]), (etc)]
   """
   results = []
@@ -331,7 +343,7 @@ def get_ip_parents(ip, db):
     prefix_and_nets = get_nets_and_highest_prefix(ip, v, db)
     if nested:
       for n in nested:
-        results.append(('%s -> %s' % (n, v), prefix_and_nets))
+        results.append(('%s -> %s', (n, v), prefix_and_nets))
     else:
       results.append((v, prefix_and_nets))
   # sort the results by prefix length descending
@@ -343,18 +355,17 @@ def get_ip_parents(ip, db):
 
 
 def get_nets_and_highest_prefix(ip, net_group, db):
-  """ Find the highest prefix length out of all the networks in net_group,
-    but only if they contain the passed IP.
+  """Find the highest prefix length in all networks given it contains the IP.
 
   Args:
-    ip as str: the IP address contained in net_group
-    net_group as str: the name of the network object we'll be looking through
-    db as naming.Naming(): network and service definitions
+    ip: the IP address contained in net_group
+    net_group: the name of the network object we'll be looking through
+    db: network and service definitions
 
   Returns:
     highest_prefix_length, networks as tuple
-      highest_prefix_length as int: the longest prefix length found,
-      networks as list: network objects
+      highest_prefix_length : the longest prefix length found,
+      networks : network objects
   """
   highest_prefix_length = 0
   networks = []
@@ -370,14 +381,14 @@ def get_nets_and_highest_prefix(ip, net_group, db):
 
 
 def get_nets(objects, db):
-  """ Gets a list of all networks that are inside of a network object.
+  """Gets a list of all networks that are inside of a network object.
 
   Args:
-    objects as list: network objects
-    db as naming.Naming(): network and service definitions
+    objects: network objects
+    db: network and service definitions
 
   Returns:
-    results as list: all networks inside a network object
+    results : all networks inside a network object
   """
   results = []
   for obj in objects:
@@ -387,14 +398,14 @@ def get_nets(objects, db):
 
 
 def compare_tokens(options, db):
-  """ Compares to network objects against eachother.
+  """Compares to network objects against each other.
 
   Args:
-    options as ArgumentParser.parse_args(): the options sent to the script
-    db as naming.Naming(): network and service definitions
+    options: the options sent to the script
+    db: network and service definitions
 
   Returns:
-    meta, results as tuple:
+    meta, results :
       ((first object, second object, union of those two),
        diff of those two network objects)
   """
@@ -416,35 +427,35 @@ def compare_tokens(options, db):
 
 
 def compare_ip_token(options, db):
-  """ looks to see if a network IP is contained in a network object
+  """Looks to see if a network IP is contained in a network object.
 
   Args:
-    options as ArgumentParser.parse_args(): the options sent to the script
-    db as naming.Naming(): network and service definitions
+    options: the options sent to the script
+    db: network and service definitions
 
   Returns:
-    results as str: end-user string stating the results
+    results : end-user string stating the results
   """
   token = options.token
   results = []
   for ip in options.ip:
     rval = db.GetIpParents(ip)
     if token in rval:
-      results = '%s is in %s' % (ip, token)
+      results = '%s is in %s', (ip, token)
     else:
-      results = '%s is _not_ in %s' % (ip, token)
+      results = '%s is _not_ in %s', (ip, token)
   return results
 
 
 def get_ports(svc_group, db):
-  """ Gets the ports and protocols defined in a service group
+  """Gets the ports and protocols defined in a service group.
 
   Args:
-    svc_group as list: a list of strings for each service group
-    db as naming.Naming(): network and service definitions
+    svc_group: a list of strings for each service group
+    db: network and service definitions
 
   Returns:
-    results as list: a list of tuples for each service defined, in the format:
+    results: a list of tuples for each service defined, in the format:
                      (service name, "<port>/<protocol>")
   """
   results = []
@@ -455,11 +466,11 @@ def get_ports(svc_group, db):
 
 
 def get_services(options, db):
-  """ Finds any services with that include a specific port/protocol pair
+  """Finds any services with that include a specific port/protocol pair.
 
   Args:
-    options as ArgumentParser.parse_args(): the options sent to the script
-    db as naming.Naming(): network and service definitions
+    options: the options sent to the script
+    db: network and service definitions
 
   Returns:
     port, protocol, results as tuple in the format:
