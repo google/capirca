@@ -269,7 +269,7 @@ def RenderFile(input_file, output_directory, definitions,
       RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
                 input_file, write_files)
     if asacl:
-      acl_obj = ciscoasa.CiscoASA(acl, exp_info)
+      acl_obj = ciscoasa.CiscoASA(asacl, exp_info)
       RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
                 input_file, write_files)
     if aacl:
