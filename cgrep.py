@@ -343,7 +343,7 @@ def get_ip_parents(ip, db):
     prefix_and_nets = get_nets_and_highest_prefix(ip, v, db)
     if nested:
       for n in nested:
-        results.append(('%s -> %s', (n, v), prefix_and_nets))
+        results.append(('%s -> %s' % (n, v), prefix_and_nets))
     else:
       results.append((v, prefix_and_nets))
   # sort the results by prefix length descending
@@ -441,9 +441,9 @@ def compare_ip_token(options, db):
   for ip in options.ip:
     rval = db.GetIpParents(ip)
     if token in rval:
-      results = '%s is in %s', (ip, token)
+      results = '%s is in %s' % (ip, token)
     else:
-      results = '%s is _not_ in %s', (ip, token)
+      results = '%s is _not_ in %s' % (ip, token)
   return results
 
 
