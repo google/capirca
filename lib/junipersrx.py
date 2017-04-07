@@ -753,8 +753,8 @@ class JuniperSRX(aclgenerator.ACLGenerator):
             for proto in app['protocol']:
               target.IndentAppend(
                   2,
-                  'term t%d protocol %s icmp-type %s inactivity-timeout %d;' %
-                  (i + 1, proto, str(code), int(timeout))
+                  'term t%d protocol %s %s-type %s inactivity-timeout %d;' %
+                  (i + 1, proto, proto, str(code), int(timeout))
               )
           target.IndentAppend(1, '}')
 

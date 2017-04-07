@@ -670,6 +670,7 @@ class JuniperSRXTest(unittest.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER + IPV6_ICMP_TERM, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('protocol icmp6' in output, output)
+    self.failUnless('icmp6-type' in output, output)
 
   def testReplaceStatement(self):
     self.naming.GetNetAddr.return_value = _IPSET
@@ -1139,7 +1140,7 @@ class JuniperSRXTest(unittest.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER + ICMP_TYPE_TERM_1 + IPV6_ICMP_TERM,
                              self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
-    self.failUnless('term t6 protocol icmp6 icmp-type 129 '
+    self.failUnless('term t6 protocol icmp6 icmp6-type 129 '
                     'inactivity-timeout 60;' in output)
     self.failUnless('term t1 protocol icmp icmp-type 0 '
                     'inactivity-timeout 60;' in output)
