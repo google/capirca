@@ -375,6 +375,14 @@ term good-term-39 {
   action:: accept
 }
 """
+GOOD_TERM_42 = """
+term good-term-42 {
+  protocol:: icmp
+  icmp-type:: echo-reply echo-request unreachable
+  icmp-code:: 3 4
+  action:: accept
+}
+"""
 GOOD_TERM_V6_1 = """
 term good-term-v6-1 {
   hop-limit:: 5
@@ -1226,6 +1234,11 @@ class PolicyTest(unittest.TestCase):
 
 # pylint: enable=maybe-no-member
 
+  def testICMPCodes(self):
+    pol = HEADER + GOOD_TERM_42
+
+    result = policy.ParsePolicy(pol, self.naming)
+    self.assertTrue("icmp_code: [u'3', u'4']" in str(result))
 
 if __name__ == '__main__':
   unittest.main()

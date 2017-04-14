@@ -408,6 +408,7 @@ class Term(object):
     self.fragment_offset = None
     self.hop_limit = None
     self.icmp_type = []
+    self.icmp_code = []
     self.ether_type = []
     self.traffic_class_count = None
     self.traffic_type = []
@@ -618,6 +619,10 @@ class Term(object):
       if sorted(self.icmp_type) is not sorted(other.icmp_type):
         return False
 
+    if self.icmp_code:
+      if sorted(self.icmp_code) is not sorted(other.icmp_code):
+        return False
+
     # check platform
     if self.platform:
       if sorted(self.platform) is not sorted(other.platform):
@@ -665,6 +670,10 @@ class Term(object):
     if self.forwarding_class_except:
       ret_str.append('  forwarding_class_except: %s'
                      % self.forwarding_class_except)
+    if self.icmp_type:
+      ret_str.append('  icmp_type: %s' % self.icmp_type)
+    if self.icmp_code:
+      ret_str.append('  icmp_code: %s' % self.icmp_code)
     if self.next_ip:
       ret_str.append('  next_ip: %s' % self.next_ip)
     if self.protocol:
@@ -804,6 +813,8 @@ class Term(object):
     if self.hop_limit != other.hop_limit:
       return False
     if sorted(self.icmp_type) != sorted(other.icmp_type):
+      return False
+    if sorted(self.icmp_code) != sorted(other.icmp_code):
       return False
     if sorted(self.ether_type) != sorted(other.ether_type):
       return False
@@ -1078,6 +1089,8 @@ class Term(object):
         self.traffic_class_count = obj
       elif obj.var_type is VarType.ICMP_TYPE:
         self.icmp_type.extend(obj.value)
+      elif obj.var_type is VarType.ICMP_CODE:
+        self.icmp_code.extend(obj.value)
       elif obj.var_type is VarType.LOGGING:
         if str(obj) not in _LOGGING:
           raise InvalidTermLoggingError('%s is not a valid logging option' %
@@ -1166,6 +1179,9 @@ class Term(object):
           'restrictions. Term: %s' % self.name)
     # validate icmp-types if specified, but addr_family will have to be checked
     # in the generators as policy module doesn't know about that at this point.
+    if self.icmp_code:
+      # TODO(robankeny) put in validation for icmp codes.
+      pass
     if self.icmp_type:
       for icmptype in self.icmp_type:
         if (icmptype not in self.ICMP_TYPE[4] and icmptype not in
@@ -1406,6 +1422,7 @@ class VarType(object):
   FORWARDING_CLASS_EXCEPT = 52
   TRAFFIC_CLASS_COUNT = 53
   PAN_APPLICATION = 54
+  ICMP_CODE = 55
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1596,6 +1613,7 @@ tokens = (
     'HEADER',
     'HEX',
     'ICMP_TYPE',
+    'ICMP_CODE',
     'INTEGER',
     'LOGGING',
     'LOG_NAME',
@@ -1663,6 +1681,7 @@ reserved = {
     'apply-groups-except': 'APPLY_GROUPS_EXCEPT',
     'header': 'HEADER',
     'icmp-type': 'ICMP_TYPE',
+    'icmp-code': 'ICMP_CODE',
     'logging': 'LOGGING',
     'log_name': 'LOG_NAME',
     'loss-priority': 'LOSS_PRIORITY',
@@ -1833,6 +1852,7 @@ def p_term_spec(p):
                 | term_spec fragment_offset_spec
                 | term_spec hop_limit_spec
                 | term_spec icmp_type_spec
+                | term_spec icmp_code_spec
                 | term_spec interface_spec
                 | term_spec logging_spec
                 | term_spec log_name_spec
@@ -1945,6 +1965,9 @@ def p_icmp_type_spec(p):
   """ icmp_type_spec : ICMP_TYPE ':' ':' one_or_more_strings """
   p[0] = VarType(VarType.ICMP_TYPE, p[4])
 
+def p_icmp_code_spec(p):
+  """ icmp_code_spec : ICMP_CODE ':' ':' one_or_more_ints """
+  p[0] = VarType(VarType.ICMP_CODE, p[4])
 
 def p_packet_length_spec(p):
   """ packet_length_spec : PACKET_LEN ':' ':' INTEGER
@@ -2242,7 +2265,7 @@ def p_one_or_more_strings(p):
     else:
       p[0] = [p[1]]
 
-
+# TODO(robankeny) This looks to return strs and not ints, confirm and fix.
 def p_one_or_more_ints(p):
   """ one_or_more_ints : one_or_more_ints INTEGER
                       | INTEGER
