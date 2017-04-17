@@ -1106,7 +1106,7 @@ class PolicyTest(unittest.TestCase):
     pol = policy.ParsePolicy(pol_text, self.naming)
     self.assertEquals(len(pol.filters), 1)
     _, terms = pol.filters[0]
-    self.assertEquals(terms[0].precedence, ['1'])
+    self.assertEquals(terms[0].precedence, [1])
 
   def testLossPriority(self):
     self.naming.GetServiceByProto.return_value = ['22']
@@ -1238,7 +1238,7 @@ class PolicyTest(unittest.TestCase):
     pol = HEADER + GOOD_TERM_42
 
     result = policy.ParsePolicy(pol, self.naming)
-    self.assertTrue("icmp_code: [u'3', u'4']" in str(result))
+    self.assertTrue('icmp_code: [3, 4]' in str(result))
 
 if __name__ == '__main__':
   unittest.main()

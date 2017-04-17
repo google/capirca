@@ -2265,17 +2265,16 @@ def p_one_or_more_strings(p):
     else:
       p[0] = [p[1]]
 
-# TODO(robankeny) This looks to return strs and not ints, confirm and fix.
 def p_one_or_more_ints(p):
   """ one_or_more_ints : one_or_more_ints INTEGER
                       | INTEGER
                       | """
   if len(p) > 1:
     if type(p[1]) == type([]):
-      p[1].append(p[2])
+      p[1].append(int(p[2]))
       p[0] = p[1]
     else:
-      p[0] = [p[1]]
+      p[0] = [int(p[1])]
 
 
 def p_strings_or_ints(p):
