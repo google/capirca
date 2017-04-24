@@ -339,9 +339,9 @@ def RenderFile(input_file, output_directory, definitions,
   # TODO(robankeny) add additional errors.
   except (juniper.Error, junipersrx.Error, cisco.Error, ipset.Error,
           iptables.Error, speedway.Error, pcap.Error,
-          aclgenerator.Error, aruba.Error, nftables.Error, gce.Error):
-    raise ACLGeneratorError('Error generating target ACL for %s:\n%s%s' % (
-        input_file, sys.exc_info()[0], sys.exc_info()[1]))
+          aclgenerator.Error, aruba.Error, nftables.Error, gce.Error) as e:
+    raise ACLGeneratorError(
+        'Error generating target ACL for %s:\n%s' % (input_file, e))
 
 
 def RenderACL(acl_text, acl_suffix, output_directory, input_file, write_files,
