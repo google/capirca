@@ -120,6 +120,9 @@ class ShadingError(Error):
 class FlexibleMatchError(Error):
   """Error when a term contains an invalid flexible match value."""
 
+class ICMPCodeError(Error):
+  """Error when ICMP Codes are used with multiple or invalid types."""
+
 
 def TranslatePorts(ports, protocols, term_name):
   """Return all ports of all protocols requested.
@@ -365,6 +368,18 @@ class Term(object):
                    'multicast-router-solicitation': 152,
                    'multicast-router-termination': 153,
                   },
+              }
+  ICMP_CODE = {'unreachable': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+                               10, 11, 12, 13, 14, 15],
+               'redirect': [0, 1, 2, 3],
+               'router-advertisement': [0, 16],
+               'time-exceeded': [0, 1],
+               'parameter-problem': [0, 1, 2],
+               'destination-unreachable': [0, 1, 2, 3, 4, 5, 6, 7],
+               'parameter-problem': [0, 1, 2, 3],
+               'router-renumbering': [0, 1, 255],
+               'icmp-node-information-query': [0, 1, 2],
+               'icmp-node-information-response': [0, 1, 2],
               }
   _IPV4_BYTE_SIZE = 1
   _IPV6_BYTE_SIZE = 4
@@ -1180,8 +1195,17 @@ class Term(object):
     # validate icmp-types if specified, but addr_family will have to be checked
     # in the generators as policy module doesn't know about that at this point.
     if self.icmp_code:
-      # TODO(robankeny) put in validation for icmp codes.
-      pass
+      if len(self.icmp_type) != 1:
+        raise ICMPCodeError('ICMP Code used with invalid number of types.'
+                            'Use only one ICMP type.\n Term: %s' % self.name)
+      type_name = self.icmp_type[0]
+      bad_codes = []
+      for code in self.icmp_code:
+        if code not in self.ICMP_CODE[type_name]:
+          bad_codes.append(code)
+      if bad_codes:
+        raise ICMPCodeError('ICMP Codes %s are invalid for ICMP Type %s.'
+                            '\nTerm: %s' % (bad_codes, type_name, self.name))
     if self.icmp_type:
       for icmptype in self.icmp_type:
         if (icmptype not in self.ICMP_TYPE[4] and icmptype not in

@@ -378,7 +378,7 @@ term good-term-39 {
 GOOD_TERM_42 = """
 term good-term-42 {
   protocol:: icmp
-  icmp-type:: echo-reply echo-request unreachable
+  icmp-type:: unreachable
   icmp-code:: 3 4
   action:: accept
 }
@@ -497,6 +497,22 @@ BAD_TERM_12 = """
 term bad-term-12 {
   protocol:: icmp
   icmp-type:: echo-foo packet-too-beaucoups
+  action:: accept
+}
+"""
+BAD_TERM_13 = """
+term bad-term-13 {
+  protocol:: icmp
+  icmp-type:: unreachable
+  icmp-code:: 99
+  action:: accept
+}
+"""
+BAD_TERM_14 = """
+term bad-term-14 {
+  protocol:: icmp
+  icmp-type:: unreachable redirect
+  icmp-code:: 3
   action:: accept
 }
 """
@@ -1239,6 +1255,14 @@ class PolicyTest(unittest.TestCase):
 
     result = policy.ParsePolicy(pol, self.naming)
     self.assertTrue('icmp_code: [3, 4]' in str(result))
+
+  def testBadICMPCodes(self):
+    pol = HEADER + BAD_TERM_13
+    pol2 = HEADER + BAD_TERM_14
+    self.assertRaises(policy.ICMPCodeError, policy.ParsePolicy, pol,
+                      self.naming)
+    self.assertRaises(policy.ICMPCodeError, policy.ParsePolicy, pol2,
+                      self.naming)
 
 if __name__ == '__main__':
   unittest.main()
