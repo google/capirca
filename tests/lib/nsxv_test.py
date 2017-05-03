@@ -100,6 +100,25 @@ INET_FILTER_WITH_ESTABLISHED = """\
     action:: accept
   }
   """
+MIXED_HEADER = """\
+  header {
+    comment:: "Sample mixed NSXV filter"
+    target:: nsxv mixed
+  }
+
+"""
+
+INET_HEADER = """\
+  header {
+    comment:: "Sample mixed NSXV filter"
+    target:: nsxv inet
+  }
+
+"""
+
+MIXED_FILTER_INET_ONLY = MIXED_HEADER + INET_TERM
+
+INET_FILTER_NO_SOURCE = INET_HEADER + INET_TERM
 
 INET6_FILTER = """\
   header {
@@ -417,6 +436,62 @@ class TermTest(unittest.TestCase):
 
     self.naming.GetServiceByProto.assert_has_calls(
         [mock.call('NTP', 'udp')] * 2)
+
+  def testTranslatePolicyMixedFilterInetOnly(self):
+    """Test for Nsxv.test_TranslatePolicy. Testing Mixed filter with inet."""
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    self.naming.GetServiceByProto.return_value = ['25']
+
+    pol = policy.ParsePolicy(MIXED_FILTER_INET_ONLY, self.naming, False)
+    translate_pol = nsxv.Nsxv(pol, EXP_INFO)
+    nsxv_policies = translate_pol.nsxv_policies
+    for (_, filter_name, filter_list, terms) in nsxv_policies:
+      self.assertEqual(filter_name, 'mixed')
+      self.assertEqual(filter_list, ['mixed'])
+      self.assertEqual(len(terms), 1)
+      self.assertIn('10.0.0.0/8', str(terms[0]))
+
+    self.naming.GetServiceByProto.assert_has_calls(
+        [mock.call('MAIL_SERVICES', 'tcp')] * 1)
+
+  def testTranslatePolicyMixedFilterInet6Only(self):
+    """Test for Nsxv.test_TranslatePolicy. Testing Mixed filter with inet6."""
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('2001:4860:4860::8844')]
+
+    self.naming.GetServiceByProto.return_value = ['25']
+
+    pol = policy.ParsePolicy(MIXED_FILTER_INET_ONLY, self.naming, False)
+    translate_pol = nsxv.Nsxv(pol, EXP_INFO)
+    nsxv_policies = translate_pol.nsxv_policies
+    for (_, filter_name, filter_list, terms) in nsxv_policies:
+      self.assertEqual(filter_name, 'mixed')
+      self.assertEqual(filter_list, ['mixed'])
+      self.assertEqual(len(terms), 1)
+      self.assertIn('2001:4860:4860::8844', str(terms[0]))
+
+    self.naming.GetServiceByProto.assert_has_calls(
+        [mock.call('MAIL_SERVICES', 'tcp')] * 1)
+
+  def testTranslatePolicyMixedFilterInetMixed(self):
+    """Test for Nsxv.test_TranslatePolicy. Testing Mixed filter with mixed."""
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IP('2001:4860:4860::8844'),
+        nacaddr.IP('10.0.0.0/8')
+    ]
+    self.naming.GetServiceByProto.return_value = ['25']
+
+    pol = policy.ParsePolicy(MIXED_FILTER_INET_ONLY, self.naming, False)
+    translate_pol = nsxv.Nsxv(pol, EXP_INFO)
+    nsxv_policies = translate_pol.nsxv_policies
+    for (_, filter_name, filter_list, terms) in nsxv_policies:
+      self.assertEqual(filter_name, 'mixed')
+      self.assertEqual(filter_list, ['mixed'])
+      self.assertEqual(len(terms), 1)
+      self.assertIn('2001:4860:4860::8844', str(terms[0]))
+      self.assertIn('10.0.0.0/8', str(terms[0]))
+
+    self.naming.GetServiceByProto.assert_has_calls(
+        [mock.call('MAIL_SERVICES', 'tcp')] * 1)
 
   def testTranslatePolicyWithEstablished(self):
     """Test for Nsxv.test_TranslatePolicy."""

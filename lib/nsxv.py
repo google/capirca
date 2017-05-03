@@ -222,7 +222,6 @@ class Term(aclgenerator.Term):
           logging.warn(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
                                                       direction='source',
                                                       af=self.filter_type))
-          return ''
         if not source_addr:
           source_addr.extend(source_address)
         else:
@@ -242,7 +241,6 @@ class Term(aclgenerator.Term):
           logging.warn(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
                                                       direction='destination',
                                                       af=self.filter_type))
-          return ''
         destination_addr.extend(destination_address)
 
     # ports
