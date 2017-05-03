@@ -40,7 +40,7 @@ data_files = (["aclcheck_cmdline.py", "aclgen.py", "definate.py",
 
 setup(
     name='capirca',
-    version='1.114',
+    version="1.115",
     description='Capirca',
     license='Apache License, Version 2.0',
     url='https://github.com/google/capirca/',
@@ -48,6 +48,4 @@ setup(
     zip_safe=False,
     include_package_data=True,
     data_files=data_files,
-    install_requires=[
-      'python-gflags', 'ply', 'ipaddr', 'mock']
-)
+    install_requires=['python-gflags', 'ply', 'ipaddr', 'mock'])
