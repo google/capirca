@@ -278,6 +278,15 @@ term good_term_19 {
 }
 """
 
+GOOD_TERM_20 = """
+term good_term_20 {
+  destination-address:: FOO
+  destination-port:: HTTP
+  protocol:: tcp
+  action:: accept
+}
+"""
+
 BAD_TERM_1 = """
 term bad-term-1 {
   destination-address:: SOME_HOST
@@ -862,7 +871,7 @@ class JuniperSRXTest(unittest.TestCase):
 
   def testApplicationsOrderingSuccess(self):
     self.naming.GetNetAddr.return_value = _IPSET
-    self.naming.GetServiceByProto.return_value = ['25']
+    self.naming.GetServiceByProto.side_effect = [['80', '80'], ['25', '25']]
 
     pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_2 + GOOD_TERM_1,
                              self.naming)
@@ -880,7 +889,7 @@ class JuniperSRXTest(unittest.TestCase):
 
   def testApplicationsOrderingAlreadyOrdered(self):
     self.naming.GetNetAddr.return_value = _IPSET
-    self.naming.GetServiceByProto.return_value = ['25']
+    self.naming.GetServiceByProto.side_effect = [['25', '25'], ['80', '80']]
 
     pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_1 + GOOD_TERM_2,
                              self.naming)
@@ -1144,6 +1153,22 @@ class JuniperSRXTest(unittest.TestCase):
                     'inactivity-timeout 60;' in output)
     self.failUnless('term t1 protocol icmp icmp-type 0 '
                     'inactivity-timeout 60;' in output)
+
+  def testOptimizedApplicationset(self):
+    some_host = [nacaddr.IP('10.0.0.1/32', token='SOMEHOST')]
+    foo = [nacaddr.IP('10.0.0.2/32', token='FOO')]
+    foobar = [nacaddr.IP('10.0.0.3/32', token='FOOBAR')]
+    self.naming.GetNetAddr.side_effect = [some_host, foo, foobar,
+                                          foobar, some_host]
+
+    self.naming.GetServiceByProto.side_effect = [['25', '25'], ['80', '80'],
+                                                 ['25', '25'], ['25', '25']]
+
+    pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_2 + GOOD_TERM_20 +
+                             GOOD_TERM_12 + GOOD_HEADER_2 + GOOD_TERM_14,
+                             self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    self.failIf('dup-of-term-1-app' in output)
 
 if __name__ == '__main__':
   unittest.main()

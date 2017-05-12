@@ -160,7 +160,11 @@ class Term(aclgenerator.Term):
         self.term.icmp_type and not self.term.protocol):
       ret_str.IndentAppend(5, 'application any;')
     else:
-      ret_str.IndentAppend(5, 'application ' + self.term.name + '-app;')
+      if hasattr(self.term, 'replacement_application_name'):
+        ret_str.IndentAppend(5, 'application ' +
+                             self.term.replacement_application_name + '-app;')
+      else:
+        ret_str.IndentAppend(5, 'application ' + self.term.name + '-app;')
 
     # DSCP MATCH
     if self.term.dscp_match:
@@ -517,18 +521,24 @@ class JuniperSRX(aclgenerator.ACLGenerator):
           protocol = term.protocol
         new_application_set = {'sport': self._BuildPort(term.source_port),
                                'dport': self._BuildPort(term.destination_port),
-                               'name': term.name,
                                'protocol': protocol,
                                'icmp-type': normalized_icmptype,
                                'timeout': term.timeout}
 
         for application_set in self.applications:
+          if all(item in application_set.items() for item in
+                 new_application_set.items()):
+            new_application_set = ''
+            term.replacement_application_name = application_set['name']
+            break
           if (term.name == application_set['name'] and
               new_application_set != application_set):
             raise ConflictingApplicationSets(
                 'Application set %s has a conflicting entry' % term.name)
 
-        self.applications.append(new_application_set)
+        if new_application_set:
+          new_application_set['name'] = term.name
+          self.applications.append(new_application_set)
 
       self.srx_policies.append((header, new_terms, filter_options))
 
