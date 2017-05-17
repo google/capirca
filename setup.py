@@ -25,8 +25,7 @@ def find_data_files(source):
     result.append((directory, files))
 
   return result
-data_files = (["aclcheck_cmdline.py", "aclgen.py", "definate.py",
-               "cgrep.py"] +
+data_files = (["aclcheck_cmdline.py", "aclgen.py", "definate.py"] +
               find_data_files("def") +
               find_data_files("definate") +
               find_data_files("doc") +
