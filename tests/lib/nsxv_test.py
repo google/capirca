@@ -50,7 +50,7 @@ INET6_TERM = """\
 INET_FILTER = """\
   header {
     comment:: "Sample inet NSXV filter"
-    target:: nsxv inet
+    target:: nsxv INET_FILTER_NAME inet
   }
 
   term allow-ntp-request {
@@ -67,7 +67,7 @@ INET_FILTER = """\
 INET_FILTER_2 = """\
   header {
     comment:: "Sample inet NSXV filter"
-    target:: nsxv inet
+    target:: nsxv INET_FILTER2_NAME inet
   }
 
   term allow-ntp-request {
@@ -85,7 +85,7 @@ INET_FILTER_2 = """\
 INET_FILTER_WITH_ESTABLISHED = """\
   header {
     comment:: "Sample inet NSXV filter"
-    target:: nsxv inet
+    target:: nsxv INET_FILTER_WITH_ESTABLISHED_NAME inet
   }
 
   term allow-ntp-request {
@@ -103,7 +103,7 @@ INET_FILTER_WITH_ESTABLISHED = """\
 MIXED_HEADER = """\
   header {
     comment:: "Sample mixed NSXV filter"
-    target:: nsxv mixed
+    target:: nsxv MIXED_HEADER_NAME mixed
   }
 
 """
@@ -111,7 +111,7 @@ MIXED_HEADER = """\
 INET_HEADER = """\
   header {
     comment:: "Sample mixed NSXV filter"
-    target:: nsxv inet
+    target:: nsxv INET_HEADER_NAME inet
   }
 
 """
@@ -123,7 +123,7 @@ INET_FILTER_NO_SOURCE = INET_HEADER + INET_TERM
 INET6_FILTER = """\
   header {
     comment:: "Sample inet6 NSXV filter"
-    target:: nsxv inet6
+    target:: nsxv INET6_FILTER_NAME inet6
   }
 
   term test-icmpv6 {
@@ -137,7 +137,7 @@ INET6_FILTER = """\
 MIXED_FILTER = """\
   header {
     comment:: "Sample mixed NSXV filter"
-    target:: nsxv mixed
+    target:: nsxv MIXED_FILTER_NAME mixed
   }
 
   term accept-to-honestdns {
@@ -152,7 +152,7 @@ MIXED_FILTER = """\
 POLICY = """\
   header {
     comment:: "Sample NSXV filter"
-    target:: nsxv inet
+    target:: nsxv POLICY_NAME inet
   }
 
   term reject-imap-requests {
@@ -166,7 +166,8 @@ POLICY = """\
 POLICY_WITH_SECURITY_GROUP = """\
   header {
     comment:: "Sample filter with Security Group"
-    target:: nsxv inet 1010 securitygroup securitygroup-Id
+    target:: nsxv POLICY_WITH_SECURITY_GROUP_NAME inet 1010 securitygroup \
+    securitygroup-Id
   }
 
   term accept-icmp {
@@ -178,49 +179,51 @@ POLICY_WITH_SECURITY_GROUP = """\
 HEADER_WITH_SECTIONID = """\
   header {
     comment:: "Sample NSXV filter1"
-    target:: nsxv inet 1009
+    target:: nsxv HEADER_WITH_SECTIONID_NAME inet 1009
   }
   """
 
 HEADER_WITH_SECURITYGROUP = """\
   header {
     comment:: "Sample NSXV filter2"
-    target:: nsxv inet6 securitygroup securitygroup-Id1
+    target:: nsxv HEADER_WITH_SECURITYGROUP_NAME inet6 securitygroup \
+    securitygroup-Id1
   }
   """
 
 BAD_HEADER = """\
   header {
     comment:: "Sample NSXV filter3"
-    target:: nsxv inet 1011 securitygroup
+    target:: nsxv BAD_HEADER_NAME inet 1011 securitygroup
   }
   """
 
 BAD_HEADER_1 = """\
   header {
     comment:: "Sample NSXV filter4"
-    target:: nsxv 1012
+    target:: nsxv BAD_HEADER_1_NAME 1012
   }
   """
 
 BAD_HEADER_2 = """\
   header {
     comment:: "Sample NSXV filter5"
-    target:: nsxv inet securitygroup
+    target:: nsxv BAD_HEADER_2_NAME inet securitygroup
   }
   """
 
 BAD_HEADER_3 = """\
   header {
     comment:: "Sample NSXV filter6"
-    target:: nsxv
+    target:: nsxv BAD_HEADER_3_NAME
   }
   """
 
 BAD_HEADER_4 = """\
   header {
     comment:: "Sample NSXV filter7"
-    target:: nsxv inet 1234 securitygroup securitygroup securitygroupId1
+    target:: nsxv BAD_HEADER_3_NAME inet 1234 securitygroup securitygroup \
+    securitygroupId1
   }
   """
 
@@ -548,7 +551,7 @@ class TermTest(unittest.TestCase):
 
     root = ET.fromstring(sections[1])
     # check section name
-    section_name = {'name': 'Sample mixed NSXV filter'}
+    section_name = {'name': 'MIXED_FILTER_NAME'}
     self.assertEqual(root.attrib, section_name)
     # check name and action
     self.assertEqual(root.find('./rule/name').text, 'accept-to-honestdns')
@@ -607,7 +610,7 @@ class TermTest(unittest.TestCase):
 
     root = ET.fromstring(sections[1])
     # check section name
-    section_name = {'id': '1010', 'name': 'Sample filter with Security Group'}
+    section_name = {'id': '1010', 'name': 'POLICY_WITH_SECURITY_GROUP_NAME'}
     self.assertEqual(root.attrib, section_name)
     # check name and action
     self.assertEqual(root.find('./rule/name').text, 'accept-icmp')

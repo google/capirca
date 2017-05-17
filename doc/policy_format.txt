@@ -18,7 +18,7 @@ For example, the following simple header defines a filter that can generate outp
 header {
   comment:: "Example header for juniper and iptables filter."
   target:: juniper edge-filter
-  target:: speedway INPUT 
+  target:: speedway INPUT
   target:: iptables INPUT
   target:: cisco edge-filter
 }
@@ -92,8 +92,8 @@ nostate: specifies to produce 'stateless' filter output (e.g. no connection trac
 NSX
 
 The nsx header designation has the following format:
-target:: nsxv {inet|inet6|mixed} section-id securitygroup securitygroupId
-
+target:: nsxv {section_name} {inet|inet6|mixed} section-id securitygroup securitygroupId
+section_name: specifies the name of the section all terms in this header apply to.
 inet: specifies that the resulting filter should only render IPv4 addresses.
 inet6: specifies that the resulting filter should only render IPv6 addresses.
 mixed: specifies that the resulting filter should render both IPv4 and IPv6 addresses.

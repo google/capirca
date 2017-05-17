@@ -463,7 +463,8 @@ class Nsxv(aclgenerator.ACLGenerator):
         continue
 
       filter_options = header.FilterOptions(self._PLATFORM)
-      filter_name = header.FilterName(self._PLATFORM)
+      if len(filter_options) >= 2:
+        filter_name = filter_options[1]
 
       # get filter type, section id and applied To
       self._ParseFilterOptions(filter_options)
@@ -542,15 +543,15 @@ class Nsxv(aclgenerator.ACLGenerator):
       list.
     """
     # check for filter type
-    if not filter_options:
+    if not 2 <= len(filter_options) <= 5:
       raise UnsupportedNsxvAccessListError(
-          'Filter type is not provided for %s'  % (self._PLATFORM))
-
-    if len(filter_options) > 4:
-      raise UnsupportedNsxvAccessListError('Too many target options.')
-
+          'Invalid Number of options specified: %d. Required options '
+          'are: filter type and section name. Platform: %s' % (
+              len(filter_options), self._PLATFORM))
+    # mandatory section_name
+    section_name = filter_options[0]
     # mandatory
-    filter_type = filter_options[0]
+    filter_type = filter_options[1]
 
     # a mixed filter outputs both ipv4 and ipv6 acls in the same output file
     good_filters = ['inet', 'inet6', 'mixed']
@@ -565,10 +566,10 @@ class Nsxv(aclgenerator.ACLGenerator):
     applied_to = None
     filter_opt_len = len(filter_options)
 
-    if filter_opt_len > 1:
-      for index in range(1, filter_opt_len):
-        if index == 1 and filter_options[1] != 'securitygroup':
-          section_id = filter_options[1]
+    if filter_opt_len > 2:
+      for index in range(2, filter_opt_len):
+        if index == 2 and filter_options[2] != 'securitygroup':
+          section_id = filter_options[2]
           continue
         if filter_options[index] == 'securitygroup':
           if index + 1 <= filter_opt_len - 1:
@@ -578,6 +579,7 @@ class Nsxv(aclgenerator.ACLGenerator):
             raise UnsupportedNsxvAccessListError(
                 'Security Group Id is not provided for %s' % (self._PLATFORM))
 
+    self._FILTER_OPTIONS_DICT['section_name'] = section_name
     self._FILTER_OPTIONS_DICT['filter_type'] = filter_type
     self._FILTER_OPTIONS_DICT['section_id'] = section_id
     self._FILTER_OPTIONS_DICT['applied_to'] = applied_to
@@ -593,13 +595,8 @@ class Nsxv(aclgenerator.ACLGenerator):
     target.extend(aclgenerator.AddRepositoryTags(' '))
     target.append('-->')
 
-    for (header, _, _, terms) in self.nsxv_policies:
-      # add a header comment if one exists
-      section_name = ''
-      for comment in header.comment:
-        for line in comment.split('\n'):
-          section_name = '%s %s' % (section_name, line)
-
+    for (_, _, _, terms) in self.nsxv_policies:
+      section_name = self._FILTER_OPTIONS_DICT['section_name']
       # check section id value
       section_id = self._FILTER_OPTIONS_DICT['section_id']
       if not section_id or section_id == 0:
