@@ -26,7 +26,6 @@ from __future__ import unicode_literals
 __author__ = 'pmoody@google.com'
 
 import copy
-import difflib
 import dircache
 import multiprocessing
 import os
@@ -390,14 +389,7 @@ def FilesUpdated(file_name, new_text, binary):
     conf = SkipLines(conf.split('\n'), skip_line_func=p4_tags)
     new_text = SkipLines(new_text.split('\n'), skip_line_func=p4_tags)
 
-  diff = difflib.unified_diff(conf, new_text)
-
-  # why oh why is it so hard to simply tell if two strings/lists are different?
-  if not difflib.IS_CHARACTER_JUNK(''.join(diff)):
-    logging.debug('\n'.join(diff))
-    return True
-
-  return False
+  return conf != new_text
 
 
 def DescendRecursively(input_dirname, output_dirname, definitions, depth=1):
