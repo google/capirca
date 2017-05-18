@@ -161,7 +161,7 @@ class TermTest(unittest.TestCase):
     #parse the xml and check the values
     root = ET.fromstring(str(target))
     # check section name
-    section_name = {'id': '1009', 'name': 'Sample mixed NSXV filter'}
+    section_name = {'id': '1009', 'name': 'MIXED_FILTER_NAME'}
     self.assertEqual(root.attrib, section_name)
     # check name and action
     self.assertEqual(root.find('./rule/name').text, 'accept-to-honestdns')

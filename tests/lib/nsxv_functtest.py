@@ -62,7 +62,7 @@ class NsxvFunctionalTest(unittest.TestCase):
     # parse the xml
     root = ET.fromstring(output)
      # check section name
-    section_name = {'id': '1007', 'name': 'Sample NSXV filter'}
+    section_name = {'id': '1007', 'name': 'POLICY_NAME'}
     self.assertEqual(root.attrib, section_name)
     # check name and action
     self.assertEqual(root.find('./rule/name').text, 'reject-imap-requests')
@@ -94,7 +94,7 @@ class NsxvFunctionalTest(unittest.TestCase):
     # parse the xml
     root = ET.fromstring(output)
      # check section name
-    section_name = {'name': 'NSXV filter without section id'}
+    section_name = {'name': 'POLICY_NO_SECTION_ID_NAME'}
     self.assertEqual(root.attrib, section_name)
     # check name and action
     self.assertEqual(root.find('./rule/name').text, 'accept-icmp')

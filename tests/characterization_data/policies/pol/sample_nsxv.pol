@@ -1,6 +1,6 @@
 header {
   comment:: "Sample NSXV filter"
-  target:: nsxv inet 1009
+  target:: nsxv sample_nsxv_filter inet 1009
 }
 
 term accept-icmp {

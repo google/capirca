@@ -40,7 +40,7 @@ INET6_TERM="""\
 INET_FILTER= """\
   header {
     comment:: "Sample inet NSXV filter"
-    target:: nsxv inet
+    target:: nsxv INET_FILTER_NAME inet
   }
 
   term allow-ntp-request {
@@ -57,7 +57,7 @@ INET_FILTER= """\
 INET6_FILTER= """\
   header {
     comment:: "Sample inet6 NSXV filter"
-    target:: nsxv inet6
+    target:: nsxv INET6_FILTER_NAME inet6
   }
 
   term test-icmpv6 {
@@ -71,7 +71,7 @@ INET6_FILTER= """\
 MIXED_FILTER= """\
   header {
     comment:: "Sample mixed NSXV filter"
-    target:: nsxv mixed 1009
+    target:: nsxv MIXED_FILTER_NAME mixed 1009
   }
 
   term accept-to-honestdns {
@@ -86,7 +86,7 @@ MIXED_FILTER= """\
 POLICY= """\
   header {
     comment:: "Sample NSXV filter"
-    target:: nsxv inet 1007
+    target:: nsxv POLICY_NAME inet 1007
   }
 
   term reject-imap-requests {
@@ -100,7 +100,7 @@ POLICY= """\
 POLICY_NO_SECTION_ID= """\
   header {
     comment:: "NSXV filter without section id"
-    target:: nsxv inet
+    target:: nsxv POLICY_NO_SECTION_ID_NAME inet
   }
   term accept-icmp {
     protocol:: icmp
@@ -111,7 +111,7 @@ POLICY_NO_SECTION_ID= """\
 POLICY_NO_FILTERTYPE= """\
   header {
     comment:: "Sample NSXV filter"
-    target:: nsxv
+    target:: nsxv POLICY_NO_FILTERTYPE_NAME
   }
   term accept-icmp {
     protocol:: icmp
@@ -122,7 +122,7 @@ POLICY_NO_FILTERTYPE= """\
 POLICY_INCORRECT_FILTERTYPE= """\
   header {
     comment:: "Sample NSXV filter"
-    target:: nsxv inet1
+    target:: nsxv POLICY_INCORRECT_FILTERTYPE_NAME inet1
   }
   term accept-icmp {
     protocol:: icmp
@@ -133,7 +133,7 @@ POLICY_INCORRECT_FILTERTYPE= """\
 POLICY_OPTION_KYWD= """\
   header {
     comment:: "Sample NSXV filter"
-    target:: nsxv inet 1009
+    target:: nsxv POLICY_OPTION_KYWD_NAME inet 1009
   }
   term accept-bgp-replies {
     comment:: "Allow inbound replies to BGP requests."

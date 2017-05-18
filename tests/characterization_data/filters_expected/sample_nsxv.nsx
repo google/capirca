@@ -3,7 +3,7 @@
  $Date:$
  $Revision:$
 -->
-<section id="1009" name="Sample NSXV filter">
+<section id="1009" name="sample_nsxv_filter">
 
 <rule logged="false"> <name>accept-icmp</name> <action>allow</action> <services><service><protocol>1</protocol></service></services> </rule>
 

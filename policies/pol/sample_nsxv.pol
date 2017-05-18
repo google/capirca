@@ -1,6 +1,6 @@
 header {
   comment:: "Sample NSXV filter"
-  target:: nsxv mixed 1234 securitygroup securitygroupId
+  target:: nsxv sample_nsxv_filter mixed 1234 securitygroup securitygroupId
 }
 
 term accept-icmp {
