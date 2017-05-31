@@ -63,7 +63,7 @@ import logging
 FLAGS = flags.FLAGS
 flags.DEFINE_string(
     'base_directory',
-    # MOE;insert './policies',
+    './policies',
     'The base directory to look for acls; '
     'typically where you\'d find ./corp and ./prod')
 flags.DEFINE_string(
