@@ -43,8 +43,14 @@ setup(
     description='Capirca',
     license='Apache License, Version 2.0',
     url='https://github.com/google/capirca/',
+    maintainer='Rob Ankeny',
+    maintainer_email='robankeny at google dot com',
     packages=find_packages(),
     zip_safe=False,
+    classifiers=[
+                 'Topic :: Security',
+                 'Topic :: System :: Networking :: Firewalls',
+                ],
     include_package_data=True,
     data_files=data_files,
     install_requires=['python-gflags', 'ply', 'ipaddr', 'mock'])
