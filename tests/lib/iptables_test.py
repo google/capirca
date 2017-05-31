@@ -209,6 +209,15 @@ term good-term-10 {
 }
 """
 
+GOOD_TERM_11 = """
+term good_term_11 {
+  protocol:: icmp
+  icmp-type:: unreachable
+  icmp-code:: 3 4
+  action:: accept
+}
+"""
+
 BAD_QUOTE_TERM_1 = """
 term bad-quote-term-1 {
   comment:: "Text describing without quotes"
@@ -433,6 +442,7 @@ SUPPORTED_TOKENS = {
     'destination_prefix',
     'expiration',
     'fragment_offset',
+    'icmp_code',
     'icmp_type',
     'logging',
     'name',
@@ -871,6 +881,13 @@ class AclCheckTest(unittest.TestCase):
                     'icmp-type 10 (router-solicit) is missing')
     self.failUnless('--icmp-type 15' in result,
                     'icmp-type 15 (info-request) is missing')
+
+  def testIcmpCode(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_11, self.naming)
+    acl = iptables.Iptables(pol, EXP_INFO)
+    result = str(acl)
+    self.failUnless('--icmp-type 3/3' in result, result)
+    self.failUnless('--icmp-type 3/4' in result, result)
 
   def testConntrackUDP(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + UDP_STATE_TERM, self.naming)

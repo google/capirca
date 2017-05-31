@@ -360,6 +360,14 @@ term good_term_34 {
   action:: deny
 }
 """
+GOOD_TERM_35 = """
+term good_term_35 {
+  protocol:: icmp
+  icmp-type:: unreachable
+  icmp-code:: 3 4
+  action:: accept
+}
+"""
 GOOD_TERM_COMMENT = """
 term good-term-comment {
   comment:: "This is a COMMENT"
@@ -506,6 +514,7 @@ SUPPORTED_TOKENS = {
     'forwarding_class_except',
     'fragment_offset',
     'hop_limit',
+    'icmp_code',
     'icmp_type',
     'logging',
     'loss_priority',
@@ -687,6 +696,12 @@ class JuniperTest(unittest.TestCase):
     self.failUnless(' 13 ' in output, output)
     self.failUnless(' 16 ' in output, output)
     self.failUnless('];' in output, output)
+
+  def testIcmpCode(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_35,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.failUnless('icmp-code [ 3 4 ];' in output, output)
 
   def testInet6(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('2001::/33')]

@@ -275,7 +275,14 @@ term good-term-18 {
   action:: accept
 }
 """
-
+GOOD_TERM_19 = """
+term good_term_19 {
+  protocol:: icmp
+  icmp-type:: unreachable
+  icmp-code:: 3 4
+  action:: accept
+}
+"""
 LONG_COMMENT_TERM = """
 term long-comment-term {
   comment:: "%s "
@@ -293,6 +300,7 @@ SUPPORTED_TOKENS = {
     'dscp_match',
     'expiration',
     'icmp_type',
+    'icmp_code',
     'logging',
     'name',
     'option',
@@ -643,6 +651,13 @@ class CiscoTest(unittest.TestCase):
     # time-exceeded = 11
     self.failUnless(re.search('permit icmp any any 11',
                               str(acl)), str(acl))
+
+  def testIcmpCode(self):
+    acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_19,
+                                         self.naming), EXP_INFO)
+    output = str(acl)
+    self.failUnless(' permit icmp any any 3 3' in output, output)
+    self.failUnless(' permit icmp any any 3 4' in output, output)
 
   def testIpv6IcmpTypes(self):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_INET6_HEADER + GOOD_TERM_11,

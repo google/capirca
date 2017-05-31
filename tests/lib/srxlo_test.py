@@ -67,6 +67,7 @@ SUPPORTED_TOKENS = {
     'forwarding_class_except',
     'fragment_offset',
     'hop_limit',
+    'icmp_code',
     'icmp_type',
     'logging',
     'loss_priority',

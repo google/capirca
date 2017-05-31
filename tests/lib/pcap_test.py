@@ -115,7 +115,14 @@ term good-term-log {
   action:: accept
 }
 """
-
+GOOD_ICMP_CODE = """
+term good_term {
+  protocol:: icmp
+  icmp-type:: unreachable
+  icmp-code:: 3 4
+  action:: accept
+}
+"""
 EXPIRED_TERM = """
 term expired_test {
   expiration:: 2000-1-1
@@ -187,6 +194,7 @@ SUPPORTED_TOKENS = {
     'destination_address_exclude',
     'destination_port',
     'expiration',
+    'icmp_code',
     'icmp_type',
     'logging',
     'name',
@@ -297,6 +305,13 @@ class PcapFilter(unittest.TestCase):
     self.failUnless(
         'proto \\icmp' in result,
         'did not find actual term for good-term-icmp')
+
+  def testIcmpCode(self):
+    acl = pcap.PcapFilter(policy.ParsePolicy(
+        GOOD_HEADER + GOOD_ICMP_CODE, self.naming), EXP_INFO)
+    result = str(acl)
+    self.failUnless('and icmp[icmpcode] == 3' in result, result)
+    self.failUnless('and icmp[icmpcode] == 4' in result, result)
 
   def testIcmpTypes(self):
     acl = pcap.PcapFilter(policy.ParsePolicy(

@@ -418,7 +418,9 @@ class Term(aclgenerator.Term):
     if self.term.icmp_type:
       icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type,
                                            self.term.protocol, self.af)
-
+    icmp_codes = ['']
+    if self.term.icmp_code:
+      icmp_codes = self.term.icmp_code
     fixed_src_addresses = [self._GetIpString(x) for x in source_address]
     fixed_dst_addresses = [self._GetIpString(x) for x in destination_address]
     fixed_src_ports = [self._FormatPort(x) for x in source_port]
@@ -433,15 +435,17 @@ class Term(aclgenerator.Term):
             for proto in protocol:
               opts = fixed_opts[proto]
               for icmp_type in icmp_types:
-                ret_str.extend(self._TermletToStr(
-                    _ACTION_TABLE.get(str(self.term.action[0])),
-                    proto,
-                    saddr,
-                    sport,
-                    daddr,
-                    dport,
-                    icmp_type,
-                    opts))
+                for icmp_code in icmp_codes:
+                  ret_str.extend(self._TermletToStr(
+                      _ACTION_TABLE.get(str(self.term.action[0])),
+                      proto,
+                      saddr,
+                      sport,
+                      daddr,
+                      dport,
+                      icmp_type,
+                      icmp_code,
+                      opts))
 
     return '\n'.join(ret_str)
 
@@ -500,7 +504,7 @@ class Term(aclgenerator.Term):
 
 
   def _TermletToStr(self, action, proto, saddr, sport, daddr, dport,
-                    icmp_type, option):
+                    icmp_type, icmp_code, option):
     """Take the various compenents and turn them into a cisco acl line.
 
     Args:
@@ -511,6 +515,7 @@ class Term(aclgenerator.Term):
       daddr: str, the destination address
       dport: str, the destination port
       icmp_type: icmp-type numeric specification (if any)
+      icmp_code: icmp-code numeric specification (if any)
       option: list or none, optional, eg. 'logging' tokens.
 
     Returns:
@@ -521,8 +526,9 @@ class Term(aclgenerator.Term):
     """
     # str(icmp_type) is needed to ensure 0 maps to '0' instead of FALSE
     icmp_type = str(icmp_type)
+    icmp_code = str(icmp_code)
     all_elements = [action, str(proto), saddr, sport, daddr, dport, icmp_type,
-                    ' '.join(option)]
+                    icmp_code, ' '.join(option)]
     non_empty_elements = [x for x in all_elements if x]
     return [' ' + ' '.join(non_empty_elements)]
 
@@ -677,6 +683,7 @@ class Cisco(aclgenerator.ACLGenerator):
 
     supported_tokens |= {'address',
                          'dscp_match',
+                         'icmp_code',
                          'logging',
                          'owner'}
 

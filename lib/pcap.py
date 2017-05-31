@@ -183,7 +183,8 @@ class Term(aclgenerator.Term):
           self.term.icmp_type, self.term.protocol, af)
 
       if 'icmp' in self.term.protocol:
-        conditions.append(self._GenerateIcmpType(icmp_types))
+        conditions.append(self._GenerateIcmpType(icmp_types,
+                                                 self.term.icmp_code))
 
     # tcp options
     if 'tcp' in self.term.protocol:
@@ -301,11 +302,17 @@ class Term(aclgenerator.Term):
                                                  '|'.join(tcp_flags_set))
     return ''
 
-  def _GenerateIcmpType(self, icmp_types):
+  def _GenerateIcmpType(self, icmp_types, icmp_code):
+    rtr_str = ''
     if icmp_types:
-      return Term.JoinConditionals(
-          ['icmp[icmptype] == %d' % (x) for x in icmp_types], 'or')
-    return ''
+      code_strings = ['']
+      if icmp_code:
+        code_strings = [' and icmp[icmpcode] == %d' % code for
+                        code in icmp_code]
+      rtr_str = Term.JoinConditionals(
+          ['icmp[icmptype] == %d%s' % (x, y) for y in code_strings for
+           x in icmp_types], 'or')
+    return rtr_str
 
 
 class PcapFilter(aclgenerator.ACLGenerator):
@@ -343,7 +350,7 @@ class PcapFilter(aclgenerator.ACLGenerator):
     supported_tokens, supported_sub_tokens = super(
         PcapFilter, self)._BuildTokens()
 
-    supported_tokens |= {'logging'}
+    supported_tokens |= {'logging', 'icmp_code'}
     supported_tokens -= {'verbatim'}
 
     supported_sub_tokens.update(

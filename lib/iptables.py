@@ -271,36 +271,41 @@ class Term(aclgenerator.Term):
     if self.term.fragment_offset:
       self.options.append('-m u32 --u32 4&0x1FFF=%s' %
                           self.term.fragment_offset.replace('-', ':'))
+    icmp_code = ['']
+    if self.term.icmp_code:
+      icmp_code = self.term.icmp_code
 
     for saddr in exclude_saddr:
       ret_str.extend(self._FormatPart(
-          '', saddr, '', '', '', '', '', '', '', '', '', '',
+          '', saddr, '', '', '', '', '', '', '', '', '', '', '',
           self._ACTION_TABLE.get('next')))
     for daddr in exclude_daddr:
       ret_str.extend(self._FormatPart(
-          '', '', '', daddr, '', '', '', '', '', '', '', '',
+          '', '', '', daddr, '', '', '', '', '', '', '', '', '',
           self._ACTION_TABLE.get('next')))
 
     for saddr in term_saddr:
       for daddr in term_daddr:
         for icmp in icmp_types:
-          for proto in protocol:
-            for tcp_matcher in tcp_track_options or (([], []),):
-              ret_str.extend(self._FormatPart(
-                  str(proto),
-                  saddr,
-                  source_port,
-                  daddr,
-                  destination_port,
-                  self.options,
-                  tcp_flags,
-                  icmp,
-                  tcp_matcher,
-                  source_interface,
-                  destination_interface,
-                  log_hits,
-                  self._ACTION_TABLE.get(str(self.term.action[0]))
-                  ))
+          for code in icmp_code:
+            for proto in protocol:
+              for tcp_matcher in tcp_track_options or (([], []),):
+                ret_str.extend(self._FormatPart(
+                    str(proto),
+                    saddr,
+                    source_port,
+                    daddr,
+                    destination_port,
+                    self.options,
+                    tcp_flags,
+                    icmp,
+                    code,
+                    tcp_matcher,
+                    source_interface,
+                    destination_interface,
+                    log_hits,
+                    self._ACTION_TABLE.get(str(self.term.action[0]))
+                    ))
 
     if self._POSTJUMP_FORMAT:
       ret_str.append(self._POSTJUMP_FORMAT.substitute(filter=self.filter,
@@ -390,7 +395,7 @@ class Term(aclgenerator.Term):
     return (term_saddr, exclude_saddr, term_daddr, exclude_daddr)
 
   def _FormatPart(self, protocol, saddr, sport, daddr, dport, options,
-                  tcp_flags, icmp_type, track_flags, sint, dint, log_hits,
+                  tcp_flags, icmp_type, code, track_flags, sint, dint, log_hits,
                   action):
     """Compose one iteration of the term parts into a string.
 
@@ -403,6 +408,7 @@ class Term(aclgenerator.Term):
       options: Optional arguments to append to our rule
       tcp_flags: Which tcp_flag arguments, if any, should be appended
       icmp_type: What icmp protocol to allow, if any
+      code: ICMP code allowed, if any
       track_flags: A tuple of ([check-flags], [set-flags]) arguments to tcp-flag
       sint: Optional source interface
       dint: Optional destination interface
@@ -483,6 +489,8 @@ class Term(aclgenerator.Term):
       icmp = '-m icmp6 --icmpv6-type %s' % icmp_type
     else:
       icmp = '--icmp-type %s' % icmp_type
+    if code:
+      icmp += r'/%d' % code
 
     # format tcp and udp ports
     sports = dports = ['']
@@ -639,6 +647,7 @@ class Iptables(aclgenerator.ACLGenerator):
                          'destination_interface',
                          'destination_prefix',
                          'fragment_offset',
+                         'icmp_code',
                          'logging',
                          'owner',
                          'packet_length',

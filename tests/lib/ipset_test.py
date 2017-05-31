@@ -77,6 +77,7 @@ SUPPORTED_TOKENS = {
     'destination_prefix',
     'expiration',
     'fragment_offset',
+    'icmp_code',
     'icmp_type',
     'logging',
     'name',

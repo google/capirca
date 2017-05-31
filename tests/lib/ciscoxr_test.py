@@ -91,6 +91,7 @@ SUPPORTED_TOKENS = {
     'destination_port',
     'dscp_match',
     'expiration',
+    'icmp_code',
     'icmp_type',
     'logging',
     'name',

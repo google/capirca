@@ -461,7 +461,8 @@ class Term(aclgenerator.Term):
                                              self.term.protocol, self.term_type)
       if icmp_types != ['']:
         config.Append('icmp-type %s' % self._Group(icmp_types))
-
+      if self.term.icmp_code:
+        config.Append('icmp-code %s' % self._Group(self.term.icmp_code))
       if self.term.ether_type:
         config.Append('ether-type %s' %
                       self._Group(self.term.ether_type))
@@ -805,6 +806,7 @@ class Juniper(aclgenerator.ACLGenerator):
                          'forwarding_class_except',
                          'fragment_offset',
                          'hop_limit',
+                         'icmp_code',
                          'logging',
                          'loss_priority',
                          'next_ip',
