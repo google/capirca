@@ -36,7 +36,7 @@ data_files = (["aclcheck_cmdline.py", "aclgen.py", "definate.py"] +
 
 setup(
     name='capirca',
-    version="1.117",
+    version="1.118",
     description='Capirca',
     license='Apache License, Version 2.0',
     url='https://github.com/google/capirca/',
