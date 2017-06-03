@@ -28,11 +28,8 @@ def find_data_files(source):
 data_files = (["aclcheck_cmdline.py", "aclgen.py", "definate.py"] +
               find_data_files("def") +
               find_data_files("definate") +
-              find_data_files("doc") +
-              find_data_files("filter") +
               find_data_files("lib") +
               find_data_files("policies") +
-              find_data_files("test") +
               find_data_files("tests") +
               find_data_files("third_party") +
               find_data_files("tools"))
