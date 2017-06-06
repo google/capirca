@@ -34,7 +34,7 @@ class UnsupportedEosAccessListError(Error):
 
 
 class Arista(cisco.Cisco):
-  """A brocade policy object.
+  """An Arista policy object.
 
   EOS devices differ slightly from Cisco, omitting the extended argument to
   ACLs for example. There are other items such as 'tracked' we may want to add
