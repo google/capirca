@@ -25,6 +25,7 @@ import re
 
 from lib import aclgenerator
 from lib import nacaddr
+from lxml import etree
 import logging
 
 _ACTION_TABLE = {
@@ -343,14 +344,14 @@ class Term(aclgenerator.Term):
                          _XML_TABLE.get('actionEnd'))
 
     ret_lines = []
-    ret_lines.append('<rule logged="%s"> %s %s %s %s %s %s %s </rule>' %
+    ret_lines.append('<rule logged="%s">%s%s%s%s%s%s%s</rule>' %
                      (log, name, action, sources, destinations, service,
                       applied_to_list, notes))
 
     # remove any trailing spaces and replace multiple spaces with singles
     stripped_ret_lines = [re.sub(r'\s+', ' ', x).rstrip() for x in ret_lines]
     ret_str.extend(stripped_ret_lines)
-    return '\n'.join(ret_str)
+    return ''.join(ret_str)
 
   def _ServiceToString(self, proto, sports, dports, icmp_types):
     """Converts service to string.
@@ -614,10 +615,13 @@ class Nsxv(aclgenerator.ACLGenerator):
         term_str = str(term)
         if term_str:
           target.append(term_str)
-      target.append('\n')
 
       # ensure that the header is always first
       target = target_header + target
       target.append('%s' % (_XML_TABLE.get('sectionEnd')))
       target.append('\n')
-    return '\n'.join(target)
+
+      target_as_xml = etree.XML(''.join(target))
+      element_tree = etree.ElementTree(target_as_xml)
+    return etree.tostring(element_tree, pretty_print=True,
+                          xml_declaration=True)
