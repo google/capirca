@@ -198,6 +198,10 @@ class ForwardingClassExcept(Field):
   """A forwarding-class-except field."""
 
 
+class IcmpCode(Field):
+  """A icmp-code field."""
+
+
 class IcmpType(Field):
   """A icmp-type field."""
 
@@ -340,6 +344,7 @@ field_map = {
     'fragment-offset': FragmentOffset,
     'forwarding-class': ForwardingClass,
     'forwarding-class-except': ForwardingClassExcept,
+    'icmp-code': IcmpCode,
     'icmp-type': IcmpType,
     'logging': Logging,
     'loss-priority': LossPriority,
@@ -479,6 +484,14 @@ class Term(Block):
       for protocol in protocols:
         all_protocols.update(protocol.value.split())
       pieces.append('using ' + ' or '.join(sorted(all_protocols)))
+
+    icmp_code = self.FieldsWithType(IcmpCode)
+    all_icmp_code = set()
+    if icmp_code:
+      handled.update(icmp_code)
+      for code in icmp_code:
+        all_icmp_code.update(code.value.split())
+      pieces.append('(ICMP code %s)' % ', '.join(sorted(all_icmp_code)))
 
     icmp_types = self.FieldsWithType(IcmpType)
     all_icmp_types = set()
