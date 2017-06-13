@@ -593,7 +593,8 @@ class Nsxv(aclgenerator.ACLGenerator):
 
     # add the p4 tags
     target.append('<!--')
-    target.extend(aclgenerator.AddRepositoryTags(' '))
+    target.extend(aclgenerator.AddRepositoryTags('\n'))
+    target.append('\n')
     target.append('-->')
 
     for (_, _, _, terms) in self.nsxv_policies:
@@ -622,4 +623,4 @@ class Nsxv(aclgenerator.ACLGenerator):
       target.append('\n')
 
       target_as_xml = xml.dom.minidom.parseString(''.join(target))
-    return target_as_xml.toprettyxml()
+    return target_as_xml.toprettyxml(indent=" ")
