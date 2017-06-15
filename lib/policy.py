@@ -317,6 +317,7 @@ class Term(object):
     qos: VarType.QOS
     pan-application: VarType.PAN_APPLICATION
     policer: VarType.POLICER
+    priority: VarType.PRIORITY
     vpn: VarType.VPN
   """
   ICMP_TYPE = {4: {'echo-reply': 0,
@@ -440,6 +441,7 @@ class Term(object):
     # gce specific
     self.source_tag = []
     self.destination_tag = []
+    self.priority = None
     # iptables specific
     self.source_interface = None
     self.destination_interface = None
@@ -717,6 +719,8 @@ class Term(object):
       ret_str.append('  logging: %s' % self.logging)
     if self.log_name:
       ret_str.append('  log_name: %s' % self.log_name)
+    if self.priority:
+      ret_str.append('  priority: %s' % self.priority)
     if self.counter:
       ret_str.append('  counter: %s' % self.counter)
     if self.traffic_class_count:
@@ -1116,6 +1120,8 @@ class Term(object):
       # police man, tryin'a take you jail
       elif obj.var_type is VarType.POLICER:
         self.policer = obj.value
+      elif obj.var_type is VarType.PRIORITY:
+        self.priority = obj.value
       # qos?
       elif obj.var_type is VarType.QOS:
         self.qos = obj.value
@@ -1447,6 +1453,7 @@ class VarType(object):
   TRAFFIC_CLASS_COUNT = 53
   PAN_APPLICATION = 54
   ICMP_CODE = 55
+  PRIORITY = 56
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1652,6 +1659,7 @@ tokens = (
     'PORT',
     'PRECEDENCE',
     'PRINCIPALS',
+    'PRIORITY',
     'PROTOCOL',
     'PROTOCOL_EXCEPT',
     'QOS',
@@ -1719,6 +1727,7 @@ reserved = {
     'port': 'PORT',
     'precedence': 'PRECEDENCE',
     'principals': 'PRINCIPALS',
+    'priority': 'PRIORITY',
     'protocol': 'PROTOCOL',
     'protocol-except': 'PROTOCOL_EXCEPT',
     'qos': 'QOS',
@@ -1890,6 +1899,7 @@ def p_term_spec(p):
                 | term_spec port_spec
                 | term_spec precedence_spec
                 | term_spec principals_spec
+                | term_spec priority_spec
                 | term_spec prefix_list_spec
                 | term_spec protocol_spec
                 | term_spec qos_spec
@@ -1992,6 +2002,10 @@ def p_icmp_type_spec(p):
 def p_icmp_code_spec(p):
   """ icmp_code_spec : ICMP_CODE ':' ':' one_or_more_ints """
   p[0] = VarType(VarType.ICMP_CODE, p[4])
+
+def p_priority_spec(p):
+  """ priority_spec : PRIORITY ':' ':' INTEGER """
+  p[0] = VarType(VarType.PRIORITY, p[4])
 
 def p_packet_length_spec(p):
   """ packet_length_spec : PACKET_LEN ':' ':' INTEGER

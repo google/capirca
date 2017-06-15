@@ -66,6 +66,18 @@ term good-term-2 {
 }
 """
 
+GOOD_TERM_3 = """
+term good-term-1 {
+  comment:: "DNS access from corp."
+  source-address:: CORP_EXTERNAL
+  destination-tag:: dns-servers
+  destination-port:: DNS
+  protocol:: udp tcp
+  priority:: 1
+  action:: accept
+}
+"""
+
 GOOD_TERM_EXCLUDE = """
 term good-term-1 {
   comment:: "DNS access from corp."
@@ -301,6 +313,7 @@ SUPPORTED_TOKENS = {
     'expiration',
     'name',
     'owner',
+    'priority',
     'protocol',
     'source_address',
     'source_address_exclude',
@@ -350,6 +363,14 @@ class GCETest(unittest.TestCase):
     self.naming.GetServiceByProto.assert_has_calls([
         mock.call('DNS', 'udp'),
         mock.call('DNS', 'tcp')])
+
+  def testTermWithPriority(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER + GOOD_TERM_3, self.naming), EXP_INFO)
+    self.failUnless('"priority": "1",' in str(acl), str(acl))
 
   def testGenericTermWithoutNetwork(self):
     self.naming.GetNetAddr.return_value = TEST_IPS

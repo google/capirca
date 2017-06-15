@@ -124,6 +124,8 @@ class Term(aclgenerator.Term):
       term_dict['sourceTags'] = self.term.source_tag
     if self.term.destination_tag:
       term_dict['targetTags'] = self.term.destination_tag
+    if self.term.priority:
+      term_dict['priority'] = self.term.priority
 
     rules = []
     saddrs = self.term.GetAddressOfVersion('source_address', 4)
@@ -197,6 +199,7 @@ class GCE(aclgenerator.ACLGenerator):
     supported_tokens |= {'destination_tag',
                          'expiration',
                          'owner',
+                         'priority',
                          'source_tag'}
 
     # remove unsupported things
