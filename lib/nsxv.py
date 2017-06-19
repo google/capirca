@@ -623,4 +623,4 @@ class Nsxv(aclgenerator.ACLGenerator):
       target.append('\n')
 
       target_as_xml = xml.dom.minidom.parseString(''.join(target))
-    return target_as_xml.toprettyxml(indent="  ")
+    return target_as_xml.toprettyxml(indent="  ", encoding="UTF-8")
