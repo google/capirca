@@ -21,17 +21,24 @@ from __future__ import unicode_literals
 import unittest
 
 from lib import arista
+from lib import nacaddr
 from lib import naming
 from lib import policy
 import mock
 
 GOOD_HEADER = """
 header {
-  comment:: "this is a test acl"
+  comment:: "this is a test extended acl"
   target:: arista test-filter extended
 }
 """
 
+GOOD_HEADER_2 = """
+header {
+  comment:: "this is a test acl"
+  target:: arista test-filter
+}
+"""
 
 GOOD_TERM = """
 term good-term {
@@ -46,6 +53,24 @@ term good-term-1 {
   protocol:: tcp
   option:: tcp-established
   policer:: batman
+  action:: accept
+}
+"""
+
+GOOD_TERM_2 = """
+term good-term-2 {
+  source-address:: SOME_HOST
+  destination-port:: SSH
+  protocol:: tcp
+  action:: accept
+}
+"""
+
+GOOD_TERM_3 = """
+term good-term-3 {
+  source-address:: SOME_HOST2
+  destination-port:: GOPENFLOW
+  protocol:: tcp
   action:: accept
 }
 """
@@ -156,6 +181,25 @@ class AristaTest(unittest.TestCase):
     st, sst = pol1._BuildTokens()
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+
+  def testStandardTermHost(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.0/24')]
+    self.naming.GetServiceByProto.return_value = ['22', '6537']
+
+    pol = policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_2 + GOOD_TERM_3,
+                             self.naming)
+    acl = arista.Arista(pol, EXP_INFO)
+    expected = 'ip access-list test-filter'
+    self.failUnless(expected in str(acl), '[%s]' % str(acl))
+    expected = ' permit tcp 10.1.1.0/24 any eq ssh'
+    self.failUnless(expected in str(acl), str(acl))
+    expected = ' permit tcp 10.1.1.0/24 any eq 6537'
+    self.failUnless(expected in str(acl), str(acl))
+
+    self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
+                                             mock.call('SOME_HOST2')])
+    self.naming.GetServiceByProto.assert_has_calls(
+        [mock.call('SSH', 'tcp'), mock.call('GOPENFLOW', 'tcp')])
 
 
 if __name__ == '__main__':
