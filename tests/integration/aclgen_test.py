@@ -32,8 +32,8 @@ class TestAclGenDemo(unittest.TestCase):
   """Ensure Capirca demo runs successfully out-of-the-box."""
 
   def setUp(self):
-    if aclgen.FLAGS.IsParsed():
-      aclgen.FLAGS.Reset()
+    if aclgen.FLAGS.is_parsed():
+      aclgen.FLAGS.unparse_flags()
 
     self.iobuff = StringIO()
     logger = logging.getLogger()
@@ -113,8 +113,8 @@ class AclGenCharacterizationTestBase(unittest.TestCase):
   """Ensures base functionality works."""
 
   def setUp(self):
-    if aclgen.FLAGS.IsParsed():
-      aclgen.FLAGS.Reset()
+    if aclgen.FLAGS.is_parsed():
+      aclgen.FLAGS.unparse_flags()
 
     self.iobuff = StringIO()
     logger = logging.getLogger()
