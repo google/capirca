@@ -452,6 +452,7 @@ class Term(object):
     self.flattened_addr = None
     self.flattened_saddr = None
     self.flattened_daddr = None
+    self.stateless_reply = False
 
     # AddObject touches variables which might not have been initialized
     # further up so this has to be at the end.

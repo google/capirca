@@ -516,6 +516,7 @@ SUPPORTED_TOKENS = {
     'hop_limit',
     'icmp_code',
     'icmp_type',
+    'stateless_reply',
     'logging',
     'loss_priority',
     'name',

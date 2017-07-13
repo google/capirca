@@ -311,6 +311,7 @@ SUPPORTED_TOKENS = {
     'destination_port',
     'destination_tag',
     'expiration',
+    'stateless_reply',
     'name',
     'owner',
     'priority',

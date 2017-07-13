@@ -177,6 +177,7 @@ SUPPORTED_TOKENS = {
     'destination_port',
     'expiration',
     'icmp_type',
+    'stateless_reply',
     'name',
     'option',
     'platform',
