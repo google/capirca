@@ -209,10 +209,11 @@ class Term(aclgenerator.Term):
     source_addr = []
     destination_addr = []
 
-    source_ipv4_address = False
-    source_ipv6_address = False
-    dest_ipv4_address = False
-    dest_ipv6_address = False
+    source_v4_addr = []
+    source_v6_addr = []
+    dest_v4_addr = []
+    dest_v6_addr = []
+
 
     for af in af_list:
       # source address
@@ -227,10 +228,10 @@ class Term(aclgenerator.Term):
 
         if source_address:
           if af == 4:
-            source_ipv4_address = True
+            source_v4_addr = source_address
           else:
-            source_ipv6_address = True
-        source_addr.extend(source_address)
+            source_v6_addr = source_address
+        source_addr = source_v4_addr + source_v6_addr
 
       # destination address
       if self.term.destination_address:
@@ -245,25 +246,28 @@ class Term(aclgenerator.Term):
 
         if destination_address:
           if af == 4:
-            dest_ipv4_address = True
+            dest_v4_addr = destination_address
           else:
-            dest_ipv6_address = True
-        destination_addr.extend(destination_address)
+            dest_v6_addr = destination_address
+        destination_addr = dest_v4_addr + dest_v6_addr
 
-    # Drop the mismatch IP if source and destination address are not valid
-    # for mixed filter
+    # Check for mismatch IP for source and destination address for mixed filter
     if self.filter_type == 'mixed':
       if source_addr and destination_addr:
-        if source_ipv4_address and not dest_ipv4_address:
-          source_addr = self._DropMismatchIpAddress(source_addr, 'source', 4)
-        elif source_ipv6_address and not dest_ipv6_address:
-          source_addr = self._DropMismatchIpAddress(source_addr, 'source', 6)
-        elif dest_ipv4_address and not source_ipv4_address:
-          destination_addr = self._DropMismatchIpAddress(destination_addr,
-                                                 'destination', 4)
-        elif dest_ipv6_address and not source_ipv6_address:
-          destination_addr = self._DropMismatchIpAddress(destination_addr,
-                                                 'destination', 6)
+        if source_v4_addr and not dest_v4_addr:
+          source_addr = source_v6_addr
+        elif source_v6_addr and not dest_v6_addr:
+          source_addr = source_v4_addr
+        elif dest_v4_addr and not source_v4_addr:
+          destination_addr = dest_v6_addr
+        elif dest_v6_addr and not source_v6_addr:
+          destination_addr = dest_v4_addr
+
+        if not source_addr or not destination_addr:
+          logging.warn('Term %s will not be rendered as it has IPv4/IPv6 '
+                       'mismatch for source/destination for mixed address '
+                       'family.', self.term.name)
+          return ''
 
     # ports
     source_port = None
@@ -373,18 +377,6 @@ class Term(aclgenerator.Term):
     stripped_ret_lines = [re.sub(r'\s+', ' ', x).rstrip() for x in ret_lines]
     ret_str.extend(stripped_ret_lines)
     return ''.join(ret_str)
-
-  def _DropMismatchIpAddress(self, ipaddress, direction_address, af):
-    modified_ipaddress = []
-    for addr in ipaddress:
-      if ((af == 4 and not type(addr) is nacaddr.IPv4)
-          or (af == 6 and not type(addr) is nacaddr.IPv6)):
-        modified_ipaddress.append(addr)
-      else:
-        logging.warn('Term %s has IPv4/IPv6 mismatch for %s for mixed '
-                     'address family, dropping %s ipaddress.', self.term.name,
-                     direction_address, addr)
-    return modified_ipaddress
 
   def _ServiceToString(self, proto, sports, dports, icmp_types):
     """Converts service to string.

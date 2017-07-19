@@ -234,8 +234,8 @@ TERM = """\
   }
   """
 
-SOURCE_IPv6_MISMATCH = """\
-  term source_ipv6_mismatch {
+MIXED_TO_V4 = """\
+  term mixed_to_v4 {
     source-address:: GOOGLE_DNS
     destination-address:: INTERNAL
     protocol:: tcp udp
@@ -243,8 +243,8 @@ SOURCE_IPv6_MISMATCH = """\
   }
   """
 
-DEST_IPv6_MISMATCH = """\
-  term dest_ipv6_mismatch {
+V4_TO_MIXED = """\
+  term v4_to_mixed {
     source-address:: INTERNAL
     destination-address:: GOOGLE_DNS
     protocol:: tcp udp
@@ -252,18 +252,65 @@ DEST_IPv6_MISMATCH = """\
   }
   """
 
-SOURCE_IPv4_MISMATCH = """\
-  term source_ipv4_mismatch {
+MIXED_TO_V6 = """\
+  term mixed_to_v6 {
     source-address:: GOOGLE_DNS
     destination-address:: SOME_HOST
     action:: accept
   }
   """
 
-DEST_IPv4_MISMATCH = """\
-  term dest_ipv4_mismatch {
+V6_TO_MIXED = """\
+  term v6_to_mixed {
     source-address:: SOME_HOST
     destination-address:: GOOGLE_DNS
+    action:: accept
+  }
+  """
+
+MIXED_TO_MIXED = """\
+  term mixed_to_mixed {
+    source-address:: GOOGLE_DNS
+    destination-address:: GOOGLE_DNS
+    action:: accept
+  }
+  """
+
+MIXED_TO_ANY = """\
+  term mixed_to_any {
+    source-address:: GOOGLE_DNS
+    action:: accept
+  }
+  """
+
+V4_TO_V4 = """\
+  term v4_to_v4 {
+    source-address:: NTP_SERVERS
+    destination-address:: INTERNAL
+    action:: accept
+  }
+  """
+
+V6_TO_V6 = """\
+  term v6_to_v6 {
+    source-address:: SOME_HOST
+    destination-address:: SOME_HOST
+    action:: accept
+  }
+  """
+
+V4_TO_V6 = """\
+  term v4_to_v6 {
+    source-address:: INTERNAL
+    destination-address:: SOME_HOST
+    action:: accept
+  }
+  """
+
+V6_TO_V4 = """\
+  term v6_to_v4 {
+    source-address:: SOME_HOST
+    destination-address:: INTERNAL
     action:: accept
   }
   """
@@ -396,7 +443,7 @@ class TermTest(unittest.TestCase):
     # check source address
     exp_sourceaddr = ['10.0.0.1', '10.0.0.2']
     source_address = root.findall('./sources/source')
-    self.assertIsNotNone(source_address)
+    self.assertFalse(len(source_address) == 0)
     for source in source_address:
       self.assertEqual((source.find('type').text), 'Ipv4Address')
       value = (source.find('value').text)
@@ -406,7 +453,7 @@ class TermTest(unittest.TestCase):
     # check destination address
     exp_destaddr = ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']
     destination_address = root.findall('./destinations/destination')
-    self.assertIsNotNone(destination_address)
+    self.assertFalse(len(destination_address) == 0)
     for destination in destination_address:
       self.assertEqual((destination.find('type').text), 'Ipv4Address')
       value = (destination.find('value').text)
@@ -608,7 +655,7 @@ class TermTest(unittest.TestCase):
     exp_ipv6dest = ['2001:4860:4860::8844', '2001:4860:4860::8888']
 
     destination_address = root.findall('./rule/destinations/destination')
-    self.assertIsNotNone(destination_address)
+    self.assertFalse(len(destination_address) == 0)
     for destination in destination_address:
       addr_type = destination.find('type').text
       value = (destination.find('value').text)
@@ -747,129 +794,178 @@ class TermTest(unittest.TestCase):
     self.assertRaises(nsxv.UnsupportedNsxvAccessListError,
                       nsxv.Nsxv, pol, EXP_INFO)
 
-  def testNsxvStrForSourceIpv6Mismatch(self):
+  def testMixedToV4(self):
     self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IP('8.8.4.4'),
-         nacaddr.IP('8.8.8.8'),
+        [nacaddr.IP('8.8.4.4'), nacaddr.IP('8.8.8.8'),
          nacaddr.IP('2001:4860:4860::8844'),
          nacaddr.IP('2001:4860:4860::8888')],
         [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('172.16.0.0/12'),
          nacaddr.IP('192.168.0.0/16')]]
-    pol = policy.ParsePolicy(MIXED_HEADER + SOURCE_IPv6_MISMATCH, self.naming,
-                             False)
-    target = nsxv.Nsxv(pol, EXP_INFO)
-    # parse the output and seperate sections and comment
-    section_tokens = str(target).split('<section')
-    sections = []
 
-    for sec in section_tokens:
-      section = sec.replace('name=', '<section name=')
-      sections.append(section)
-    # parse the xml
-    root = ET.fromstring(sections[1])
-
-    # check source has only Ipv4
-    source_address = root.findall('./rule/sources/source')
-    self.assertIsNotNone(source_address)
-    for source_addr in source_address:
-      addr_type = source_addr.find('type').text
-      self.assertEquals(addr_type, 'Ipv4Address')
-
+    source_addr, dest_addr = self.getSourceDestAddresses(MIXED_HEADER +
+                                                         MIXED_TO_V4)
+    self.verifyAddressType(source_addr, 'Ipv4Address')
+    self.verifyAddressType(dest_addr, 'Ipv4Address')
     self.naming.GetNetAddr.assert_has_calls(
         [mock.call('GOOGLE_DNS'), mock.call('INTERNAL')])
 
-  def testNsxvStrForDestIpv6Mismatch(self):
+  def testV4ToMixed(self):
     self.naming.GetNetAddr.side_effect = [
         [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('172.16.0.0/12'),
          nacaddr.IP('192.168.0.0/16')],
-        [nacaddr.IP('8.8.4.4'),
-         nacaddr.IP('8.8.8.8'),
+        [nacaddr.IP('8.8.4.4'), nacaddr.IP('8.8.8.8'),
          nacaddr.IP('2001:4860:4860::8844'),
          nacaddr.IP('2001:4860:4860::8888')]]
-    pol = policy.ParsePolicy(MIXED_HEADER + DEST_IPv6_MISMATCH, self.naming,
-                             False)
-    target = nsxv.Nsxv(pol, EXP_INFO)
-    # parse the output and seperate sections and comment
-    section_tokens = str(target).split('<section')
-    sections = []
 
-    for sec in section_tokens:
-      section = sec.replace('name=', '<section name=')
-      sections.append(section)
-    # parse the xml
-    root = ET.fromstring(sections[1])
-
-    # check destination has only Ipv4
-    destination_address = root.findall('./rule/destinations/destination')
-    self.assertIsNotNone(destination_address)
-    for dest_addr in destination_address:
-      addr_type = dest_addr.find('type').text
-      self.assertEquals(addr_type, 'Ipv4Address')
-
+    source_addr, dest_addr = self.getSourceDestAddresses(MIXED_HEADER +
+                                                         V4_TO_MIXED)
+    self.verifyAddressType(source_addr, 'Ipv4Address')
+    self.verifyAddressType(dest_addr, 'Ipv4Address')
     self.naming.GetNetAddr.assert_has_calls(
         [mock.call('INTERNAL'), mock.call('GOOGLE_DNS')])
 
-  def testNsxvStrForSourceIpv4Mismatch(self):
+  def testMixedToV6(self):
+     self.naming.GetNetAddr.side_effect = [
+         [nacaddr.IP('8.8.4.4'), nacaddr.IP('8.8.8.8'),
+          nacaddr.IP('2001:4860:4860::8844'),
+          nacaddr.IP('2001:4860:4860::8888')],
+         [nacaddr.IP('2001:4860:8000::/33')]]
+
+     source_addr, dest_addr = self.getSourceDestAddresses(MIXED_HEADER +
+                                                          MIXED_TO_V6)
+     self.verifyAddressType(source_addr, 'Ipv6Address')
+     self.verifyAddressType(dest_addr, 'Ipv6Address')
+     self.naming.GetNetAddr.assert_has_calls(
+         [mock.call('GOOGLE_DNS'), mock.call('SOME_HOST')])
+
+  def testV6ToMixed(self):
     self.naming.GetNetAddr.side_effect = [
         [nacaddr.IP('2001:4860:8000::/33')],
-        [nacaddr.IP('8.8.4.4'),
-         nacaddr.IP('8.8.8.8'),
+        [nacaddr.IP('8.8.4.4'), nacaddr.IP('8.8.8.8'),
          nacaddr.IP('2001:4860:4860::8844'),
          nacaddr.IP('2001:4860:4860::8888')]]
-    pol = policy.ParsePolicy(MIXED_HEADER + SOURCE_IPv4_MISMATCH, self.naming,
-                             False)
-    target = nsxv.Nsxv(pol, EXP_INFO)
 
-    # parse the output and seperate sections and comment
-    section_tokens = str(target).split('<section')
-    sections = []
-
-    for sec in section_tokens:
-      section = sec.replace('name=', '<section name=')
-      sections.append(section)
-    # parse the xml
-    root = ET.fromstring(sections[1])
-
-    # check source has only Ipv6
-    source_address = root.findall('./rule/sources/source')
-    self.assertIsNotNone(source_address)
-    for source_addr in source_address:
-      addr_type = source_addr.find('type').text
-      self.assertEquals(addr_type, 'Ipv6Address')
-
-    self.naming.GetNetAddr.assert_has_calls(
-        [mock.call('GOOGLE_DNS'), mock.call('SOME_HOST')])
-
-  def testNsxvStrForDestinationIpv4Mismatch(self):
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IP('8.8.4.4'),
-         nacaddr.IP('8.8.8.8'),
-         nacaddr.IP('2001:4860:4860::8844'),
-         nacaddr.IP('2001:4860:4860::8888')],
-        [nacaddr.IP('2001:4860:8000::/33')]]
-    pol = policy.ParsePolicy(MIXED_HEADER + DEST_IPv4_MISMATCH, self.naming,
-                             False)
-    target = nsxv.Nsxv(pol, EXP_INFO)
-
-    # parse the output and seperate sections and comment
-    section_tokens = str(target).split('<section')
-    sections = []
-
-    for sec in section_tokens:
-      section = sec.replace('name=', '<section name=')
-      sections.append(section)
-    # parse the xml
-    root = ET.fromstring(sections[1])
-
-    # check destination has only Ipv6
-    destination_address = root.findall('./rule/destinations/destination')
-    self.assertIsNotNone(destination_address)
-    for dest_addr in destination_address:
-      addr_type = dest_addr.find('type').text
-      self.assertEquals(addr_type, 'Ipv6Address')
-
+    source_addr, dest_addr = self.getSourceDestAddresses(MIXED_HEADER +
+                                                         V6_TO_MIXED)
+    self.verifyAddressType(source_addr, 'Ipv6Address')
+    self.verifyAddressType(dest_addr, 'Ipv6Address')
     self.naming.GetNetAddr.assert_has_calls(
         [mock.call('SOME_HOST'), mock.call('GOOGLE_DNS')])
+
+  def testMixedToMixed(self):
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IP('8.8.4.4'), nacaddr.IP('8.8.8.8'),
+         nacaddr.IP('2001:4860:4860::8844'),
+         nacaddr.IP('2001:4860:4860::8888')],
+        [nacaddr.IP('8.8.4.4'), nacaddr.IP('8.8.8.8'),
+         nacaddr.IP('2001:4860:4860::8844'),
+         nacaddr.IP('2001:4860:4860::8888')]]
+
+    source_addr, dest_addr = self.getSourceDestAddresses(MIXED_HEADER +
+                                                         MIXED_TO_MIXED)
+    self.assertFalse(len(source_addr) == 0)
+    for saddr in source_addr:
+      saddr_type = saddr.find('type').text
+      self.assertIn(saddr_type, ('Ipv4Address', 'Ipv6Address'))
+
+    self.assertFalse(len(dest_addr) == 0)
+    for daddr in dest_addr:
+      daddr_type = daddr.find('type').text
+      self.assertIn(daddr_type, ('Ipv4Address', 'Ipv6Address'))
+
+    self.naming.GetNetAddr.assert_has_calls([mock.call('GOOGLE_DNS')] * 2)
+
+  def testMixedToAny(self):
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IP('8.8.4.4'), nacaddr.IP('8.8.8.8'),
+         nacaddr.IP('2001:4860:4860::8844'),
+         nacaddr.IP('2001:4860:4860::8888')]]
+
+    source_addr, dest_addr = self.getSourceDestAddresses(MIXED_HEADER +
+                                                         MIXED_TO_ANY)
+    self.assertFalse(len(source_addr) == 0)
+    for saddr in source_addr:
+      saddr_type = saddr.find('type').text
+      self.assertIn(saddr_type, ('Ipv4Address', 'Ipv6Address'))
+
+    self.assertTrue(len(dest_addr) == 0)
+    self.naming.GetNetAddr.assert_has_calls([mock.call('GOOGLE_DNS')])
+
+  def testV4ToV4(self):
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IP('10.0.0.1'), nacaddr.IP('10.0.0.2')],
+        [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('172.16.0.0/12'),
+         nacaddr.IP('192.168.0.0/16')]]
+
+    source_addr, dest_addr = self.getSourceDestAddresses(MIXED_HEADER +
+                                                         V4_TO_V4)
+    self.verifyAddressType(source_addr, 'Ipv4Address')
+    self.verifyAddressType(dest_addr, 'Ipv4Address')
+    self.naming.GetNetAddr.assert_has_calls(
+        [mock.call('NTP_SERVERS'), mock.call('INTERNAL')])
+
+  def testV6ToV6(self):
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IP('2001:4860:8000::/33')],
+        [nacaddr.IP('2001:4860:8000::/33')]]
+
+    source_addr, dest_addr = self.getSourceDestAddresses(MIXED_HEADER +
+                                                         V6_TO_V6)
+    self.verifyAddressType(source_addr, 'Ipv6Address')
+    self.verifyAddressType(dest_addr, 'Ipv6Address')
+    self.naming.GetNetAddr.assert_has_calls(
+        [mock.call('SOME_HOST')] * 2)
+
+  def testV4ToV6(self):
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('172.16.0.0/12'),
+         nacaddr.IP('192.168.0.0/16')],
+        [nacaddr.IP('2001:4860:8000::/33')]]
+
+    source_addr, dest_addr = self.getSourceDestAddresses(MIXED_HEADER +
+                                                         V4_TO_V6)
+    self.assertTrue(len(source_addr) == 0)
+    self.assertTrue(len(dest_addr) == 0)
+    self.naming.GetNetAddr.assert_has_calls(
+        [mock.call('INTERNAL'), mock.call('SOME_HOST')])
+
+  def testV6ToV4(self):
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IP('2001:4860:8000::/33')],
+        [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('172.16.0.0/12'),
+         nacaddr.IP('192.168.0.0/16')]]
+
+    source_addr, dest_addr = self.getSourceDestAddresses(MIXED_HEADER +
+                                                         V6_TO_V4)
+    self.assertTrue(len(source_addr) == 0)
+    self.assertTrue(len(dest_addr) == 0)
+    self.naming.GetNetAddr.assert_has_calls(
+        [mock.call('SOME_HOST'), mock.call('INTERNAL')])
+
+  def getSourceDestAddresses(self, data):
+    pol = policy.ParsePolicy(data, self.naming, False)
+    target = nsxv.Nsxv(pol, EXP_INFO)
+
+    # parse the output and seperate sections and comment
+    section_tokens = str(target).split('<section')
+    sections = []
+
+    for sec in section_tokens:
+      section = sec.replace('name=', '<section name=')
+      sections.append(section)
+    # parse the xml
+    root = ET.fromstring(sections[1])
+
+    source_addr = root.findall('./rule/sources/source')
+    dest_addr = root.findall('./rule/destinations/destination')
+
+    return source_addr, dest_addr
+
+  def verifyAddressType(self, address, type):
+    self.assertFalse(len(address) == 0)
+    for addr in address:
+      addr_type = addr.find('type').text
+      self.assertEquals(addr_type, type)
 
 if __name__ == '__main__':
   unittest.main()
