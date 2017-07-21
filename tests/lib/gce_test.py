@@ -250,6 +250,17 @@ term good-term-unsupported-port {
 }
 """
 
+BAD_TERM_UNSUPPORTED_OPTION = """
+term bad-term-unsupported-option {
+  comment:: "Management access from corp."
+  source-address:: CORP_EXTERNAL
+  destination-port:: SSH
+  protocol:: tcp
+  action:: accept
+  option:: tcp-initial
+}
+"""
+
 GOOD_TERM_EXCLUDE_RANGE = """
 [
   {
@@ -313,6 +324,7 @@ SUPPORTED_TOKENS = {
     'expiration',
     'stateless_reply',
     'name',
+    'option',
     'owner',
     'priority',
     'protocol',
@@ -420,7 +432,7 @@ class GCETest(unittest.TestCase):
         mock.call('DNS', 'udp'),
         mock.call('DNS', 'tcp')])
 
-  def testExpiredTerm(self):
+  def testSkipExpiredTerm(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.return_value = ['22']
 
@@ -430,6 +442,26 @@ class GCETest(unittest.TestCase):
 
     self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
     self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
+
+  def testSkipStatelessReply(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.return_value = ['22']
+
+    # Add stateless_reply to terms, there is no current way to include it in the
+    # term definition.
+    ret = policy.ParsePolicy(
+        GOOD_HEADER + GOOD_TERM, self.naming)
+    _, terms = ret.filters[0]
+    for term in terms:
+      term.stateless_reply = True
+
+    acl = gce.GCE(ret, EXP_INFO)
+    self.assertEquals(self._StripAclHeaders(str(acl)), '[]\n\n')
+
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('DNS', 'udp'),
+        mock.call('DNS', 'tcp')])
 
   def testSourceNetworkSplit(self):
     lots_of_ips = []
@@ -545,6 +577,21 @@ class GCETest(unittest.TestCase):
     self.naming.GetServiceByProto.assert_has_calls([
         mock.call('SSH', 'tcp'),
         mock.call('SSH', 'icmp')])
+
+  def testRaisesWithUnsupportedOption(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.return_value = ['22']
+
+    self.assertRaisesRegexp(
+        gce.GceFirewallError,
+        'GCE firewall does not support term options.',
+        gce.GCE,
+        policy.ParsePolicy(
+            GOOD_HEADER + BAD_TERM_UNSUPPORTED_OPTION, self.naming),
+        EXP_INFO)
+
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+    self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
 
   def testBuildTokens(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
