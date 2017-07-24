@@ -283,6 +283,13 @@ MIXED_TO_ANY = """\
   }
   """
 
+ANY_TO_MIXED = """\
+  term any_to_mixed {
+    destination-address:: GOOGLE_DNS
+    action:: accept
+  }
+  """
+
 V4_TO_V4 = """\
   term v4_to_v4 {
     source-address:: NTP_SERVERS
@@ -891,6 +898,21 @@ class TermTest(unittest.TestCase):
     self.assertTrue(len(dest_addr) == 0)
     self.naming.GetNetAddr.assert_has_calls([mock.call('GOOGLE_DNS')])
 
+  def testAnyToMixed(self):
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IP('8.8.4.4'), nacaddr.IP('8.8.8.8'),
+         nacaddr.IP('2001:4860:4860::8844'),
+         nacaddr.IP('2001:4860:4860::8888')]]
+
+    source_addr, dest_addr = self.getSourceDestAddresses(MIXED_HEADER +
+                                                         ANY_TO_MIXED)
+    self.assertTrue(len(source_addr) == 0)
+    self.assertFalse(len(dest_addr) == 0)
+    for daddr in dest_addr:
+      daddr_type = daddr.find('type').text
+      self.assertIn(daddr_type, ('Ipv4Address', 'Ipv6Address'))
+    self.naming.GetNetAddr.assert_has_calls([mock.call('GOOGLE_DNS')])
+
   def testV4ToV4(self):
     self.naming.GetNetAddr.side_effect = [
         [nacaddr.IP('10.0.0.1'), nacaddr.IP('10.0.0.2')],
@@ -922,10 +944,10 @@ class TermTest(unittest.TestCase):
          nacaddr.IP('192.168.0.0/16')],
         [nacaddr.IP('2001:4860:8000::/33')]]
 
-    source_addr, dest_addr = self.getSourceDestAddresses(MIXED_HEADER +
-                                                         V4_TO_V6)
-    self.assertTrue(len(source_addr) == 0)
-    self.assertTrue(len(dest_addr) == 0)
+    root = self.getXmlRoot(MIXED_HEADER + V4_TO_V6)
+    rule = root.findall('./rule')
+    # No term(rule) will be rendered in this case
+    self.assertTrue(len(rule) == 0)
     self.naming.GetNetAddr.assert_has_calls(
         [mock.call('INTERNAL'), mock.call('SOME_HOST')])
 
@@ -935,14 +957,14 @@ class TermTest(unittest.TestCase):
         [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('172.16.0.0/12'),
          nacaddr.IP('192.168.0.0/16')]]
 
-    source_addr, dest_addr = self.getSourceDestAddresses(MIXED_HEADER +
-                                                         V6_TO_V4)
-    self.assertTrue(len(source_addr) == 0)
-    self.assertTrue(len(dest_addr) == 0)
+    root = self.getXmlRoot(MIXED_HEADER + V6_TO_V4)
+    rule = root.findall('./rule')
+    # No term(rule) will be rendered in this case
+    self.assertTrue(len(rule) == 0)
     self.naming.GetNetAddr.assert_has_calls(
         [mock.call('SOME_HOST'), mock.call('INTERNAL')])
 
-  def getSourceDestAddresses(self, data):
+  def getXmlRoot(self, data):
     pol = policy.ParsePolicy(data, self.naming, False)
     target = nsxv.Nsxv(pol, EXP_INFO)
 
@@ -955,7 +977,10 @@ class TermTest(unittest.TestCase):
       sections.append(section)
     # parse the xml
     root = ET.fromstring(sections[1])
+    return root
 
+  def getSourceDestAddresses(self, data):
+    root = self.getXmlRoot(data)
     source_addr = root.findall('./rule/sources/source')
     dest_addr = root.findall('./rule/destinations/destination')
 
