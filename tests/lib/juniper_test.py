@@ -311,7 +311,7 @@ term good_term_26-v6 {
 """
 GOOD_TERM_27 = """
 term good_term_27 {
-  forwarding-class:: floop
+  forwarding-class:: Floop
   action:: deny
 }
 """

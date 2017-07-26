@@ -391,12 +391,12 @@ class Term(aclgenerator.Term):
       # forwarding-class
       if self.term.forwarding_class:
         config.Append('forwarding-class %s' % self._Group(
-            self.term.forwarding_class))
+            self.term.forwarding_class, lc=False))
 
       # forwarding-class-except
       if self.term.forwarding_class_except:
         config.Append('forwarding-class-except %s' % self._Group(
-            self.term.forwarding_class_except))
+            self.term.forwarding_class_except, lc=False))
 
       # source prefix <except> list
       if self.term.source_prefix or self.term.source_prefix_except:
@@ -730,30 +730,35 @@ class Term(aclgenerator.Term):
       logging.debug('Ignoring non IPv4 or IPv6 address: %s', addr)
     return rval
 
-  def _Group(self, group):
+  def _Group(self, group, lc=True):
     """If 1 item return it, else return [ item1 item2 ].
 
     Args:
       group: a list.  could be a list of strings (protocols) or a list of
              tuples (ports)
-
+      lc: return a lower cased result for text.  Default is True.
+      
     Returns:
       rval: a string surrounded by '[' and '];' if len(group) > 1
             or with just ';' appended if len(group) == 1
     """
 
-    def _FormattedGroup(el):
+    def _FormattedGroup(el, lc=True):
       """Return the actual formatting of an individual element.
 
       Args:
         el: either a string (protocol) or a tuple (ports)
-
+        lc: return lower cased result for text.  Default is True.
+        
       Returns:
         string: either the lower()'ed string or the ports, hyphenated
                 if they're a range, or by itself if it's not.
       """
       if isinstance(el, str) or isinstance(el, unicode):
-        return el.lower()
+        if lc:
+          return el
+        else:
+          return el.lower()
       elif isinstance(el, int):
         return str(el)
       # type is a tuple below here
