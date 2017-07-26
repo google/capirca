@@ -1192,7 +1192,7 @@ class JuniperTest(unittest.TestCase):
     jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
     output = str(jcl)
-    self.failUnless('forwarding-class floop;' in output, output)
+    self.failUnless('forwarding-class Floop;' in output, output)
 
   def testForwardingClassExcept(self):
     policy_text = GOOD_HEADER + GOOD_TERM_32
