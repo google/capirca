@@ -870,15 +870,8 @@ class TermTest(unittest.TestCase):
 
     source_addr, dest_addr = self.getSourceDestAddresses(MIXED_HEADER +
                                                          MIXED_TO_MIXED)
-    self.assertFalse(len(source_addr) == 0)
-    for saddr in source_addr:
-      saddr_type = saddr.find('type').text
-      self.assertIn(saddr_type, ('Ipv4Address', 'Ipv6Address'))
-
-    self.assertFalse(len(dest_addr) == 0)
-    for daddr in dest_addr:
-      daddr_type = daddr.find('type').text
-      self.assertIn(daddr_type, ('Ipv4Address', 'Ipv6Address'))
+    self.verifyMixedAddressTypes(source_addr)
+    self.verifyMixedAddressTypes(dest_addr)
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('GOOGLE_DNS')] * 2)
 
@@ -890,12 +883,9 @@ class TermTest(unittest.TestCase):
 
     source_addr, dest_addr = self.getSourceDestAddresses(MIXED_HEADER +
                                                          MIXED_TO_ANY)
-    self.assertFalse(len(source_addr) == 0)
-    for saddr in source_addr:
-      saddr_type = saddr.find('type').text
-      self.assertIn(saddr_type, ('Ipv4Address', 'Ipv6Address'))
-
+    self.verifyMixedAddressTypes(source_addr)
     self.assertTrue(len(dest_addr) == 0)
+
     self.naming.GetNetAddr.assert_has_calls([mock.call('GOOGLE_DNS')])
 
   def testAnyToMixed(self):
@@ -907,10 +897,8 @@ class TermTest(unittest.TestCase):
     source_addr, dest_addr = self.getSourceDestAddresses(MIXED_HEADER +
                                                          ANY_TO_MIXED)
     self.assertTrue(len(source_addr) == 0)
-    self.assertFalse(len(dest_addr) == 0)
-    for daddr in dest_addr:
-      daddr_type = daddr.find('type').text
-      self.assertIn(daddr_type, ('Ipv4Address', 'Ipv6Address'))
+    self.verifyMixedAddressTypes(dest_addr)
+
     self.naming.GetNetAddr.assert_has_calls([mock.call('GOOGLE_DNS')])
 
   def testV4ToV4(self):
@@ -991,6 +979,20 @@ class TermTest(unittest.TestCase):
     for addr in address:
       addr_type = addr.find('type').text
       self.assertEquals(addr_type, type)
+
+  def verifyMixedAddressTypes(self, address):
+    self.assertFalse(len(address) == 0)
+    ipv4_address = False
+    ipv6_address = False
+    for addr in address:
+      addr_type = addr.find('type').text
+      if addr_type == 'Ipv4Address':
+        ipv4_address = True
+      if addr_type == 'Ipv6Address':
+        ipv6_address = True
+
+    self.assertTrue(ipv4_address)
+    self.assertTrue(ipv6_address)
 
 if __name__ == '__main__':
   unittest.main()
