@@ -24,7 +24,9 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 __author__ = 'pmoody@google.com'
+__author__ = 'watson@google.com'
 
+import atexit
 import copy
 import difflib
 import dircache
@@ -60,6 +62,10 @@ import gflags as flags
 import logging
 
 
+@atexit.register
+def OrderlyShutdown():
+  """Ensure logging handlers are flushed and closed cleanly."""
+  logging.shutdown()
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string(
@@ -484,7 +490,9 @@ def main(args):
   try:
     definitions = naming.Naming(FLAGS.definitions_directory)
   except naming.NoDefinitionsError:
-    logging.fatal('bad definitions directory: %s', FLAGS.definitions_directory)
+    logging.critical('bad definitions directory: %s',
+                     FLAGS.definitions_directory)
+    sys.exit(1)  # This will trigger OrderlyShutdown()
 
   # thead-safe list for storing files to write
   manager = multiprocessing.Manager()
