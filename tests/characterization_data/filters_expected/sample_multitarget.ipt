@@ -18,8 +18,7 @@
 -A I_deny-from-bogons -p all -s 198.18.0.0/15 -j DROP
 -A I_deny-from-bogons -p all -s 198.51.100.0/24 -j DROP
 -A I_deny-from-bogons -p all -s 203.0.113.0/24 -j DROP
--A I_deny-from-bogons -p all -s 224.0.0.0/4 -j DROP
--A I_deny-from-bogons -p all -s 240.0.0.0/4 -j DROP
+-A I_deny-from-bogons -p all -s 224.0.0.0/3 -j DROP
 -A INPUT -j I_deny-from-bogons
 -N I_deny-from-reserved
 -A I_deny-from-reserved -p all -s 0.0.0.0/8 -j DROP
