@@ -18,8 +18,7 @@ ipv4 access-list edge-inbound
  deny ipv4 198.18.0.0 0.1.255.255 any
  deny ipv4 198.51.100.0 0.0.0.255 any
  deny ipv4 203.0.113.0 0.0.0.255 any
- deny ipv4 224.0.0.0 15.255.255.255 any
- deny ipv4 240.0.0.0 15.255.255.255 any
+ deny ipv4 224.0.0.0 31.255.255.255 any
 
 
  remark deny-from-reserved
