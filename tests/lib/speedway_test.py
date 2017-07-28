@@ -63,6 +63,7 @@ SUPPORTED_TOKENS = {
     'fragment_offset',
     'icmp_code',
     'icmp_type',
+    'stateless_reply',
     'logging',
     'name',
     'option',

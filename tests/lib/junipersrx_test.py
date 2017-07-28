@@ -381,6 +381,7 @@ SUPPORTED_TOKENS = {
     'dscp_set',
     'expiration',
     'icmp_type',
+    'stateless_reply',
     'logging',
     'name',
     'option',

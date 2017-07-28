@@ -450,6 +450,7 @@ class Term(object):
     self.flattened_addr = None
     self.flattened_saddr = None
     self.flattened_daddr = None
+    self.stateless_reply = False
 
     # AddObject touches variables which might not have been initialized
     # further up so this has to be at the end.
@@ -1778,7 +1779,7 @@ def t_newline(t):
 
 
 def t_error(t):
-  print("Illegal character '%s' on line %s") % (t.value[0], t.lineno)
+  print("Illegal character '%s' on line %s" % (t.value[0], t.lineno))
   t.lexer.skip(1)
 
 
