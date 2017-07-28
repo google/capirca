@@ -153,11 +153,9 @@ class AclGenArgumentsTests(AclGenCharacterizationTestBase):
         '--output_directory={0}'.format(self.output_dir)
     ]
 
-    aclgen.main(args)
-
-    # NOTE that the code still continues work, even if a bad directory
-    # was passed in.
-    # TODO(jzohrab): verify this behaviour.
+    with self.assertRaises(SystemExit) as cm:
+        aclgen.main(args)
+    self.assertEqual(cm.exception.code, 1)
     self.assertTrue('bad definitions directory' in self.iobuff.getvalue())
 
 
