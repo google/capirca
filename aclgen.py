@@ -24,7 +24,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 __author__ = 'pmoody@google.com'
-__author__ = 'watson@google.com'
 
 import atexit
 import copy
