@@ -423,15 +423,13 @@ class Term(aclgenerator.Term):
       icmp_codes = self.term.icmp_code
     fixed_src_addresses = [self._GetIpString(x) for x in source_address]
     fixed_dst_addresses = [self._GetIpString(x) for x in destination_address]
-    fixed_src_ports = [self._FormatPort(x) for x in source_port]
-    fixed_dst_ports = [self._FormatPort(x) for x in destination_port]
     fixed_opts = {}
     for p in protocol:
       fixed_opts[p] = self._FixOptions(p, self.options)
     for saddr in fixed_src_addresses:
       for daddr in fixed_dst_addresses:
-        for sport in fixed_src_ports:
-          for dport in fixed_dst_ports:
+        for sport in source_port:
+          for dport in destination_port:
             for proto in protocol:
               opts = fixed_opts[proto]
               for icmp_type in icmp_types:
@@ -440,9 +438,9 @@ class Term(aclgenerator.Term):
                       _ACTION_TABLE.get(str(self.term.action[0])),
                       proto,
                       saddr,
-                      sport,
+                      self._FormatPort(sport, proto),
                       daddr,
-                      dport,
+                      self._FormatPort(dport, proto),
                       icmp_type,
                       icmp_code,
                       opts))
@@ -459,18 +457,20 @@ class Term(aclgenerator.Term):
     """
     if type(addr) is nacaddr.IPv4 or type(addr) is ipaddr.IPv4Network:
       if addr.numhosts > 1:
+        if self.platform == 'arista':
+          return addr.with_prefixlen
         return '%s %s' % (addr.ip, addr.hostmask)
       return 'host %s' % (addr.ip)
     if type(addr) is nacaddr.IPv6 or type(addr) is ipaddr.IPv6Network:
       if addr.numhosts > 1:
-        return '%s' % (addr.with_prefixlen)
+        return addr.with_prefixlen
       return 'host %s' % (addr.ip)
     # DSMO enabled
     if type(addr) is tuple:
       return '%s %s' % summarizer.ToDottedQuad(addr, negate=True)
     return addr
 
-  def _FormatPort(self, port):
+  def _FormatPort(self, port, proto):
     """Returns a formatted port string for the range.
 
     Args:
@@ -480,9 +480,132 @@ class Term(aclgenerator.Term):
     """
     if not port:
       return ''
+
+    port0 = port[0]
+    port1 = port[1]
+    if self.platform == 'arista':
+      port0 = self._TermPortToProtocol(port0, proto)
+      port1 = self._TermPortToProtocol(port1, proto)
+
     if port[0] != port[1]:
-      return 'range %d %d' % (port[0], port[1])
-    return 'eq %d' % (port[0])
+      return 'range %s %s' % (port0, port1)
+    return 'eq %s' % (port0)
+
+  def _TermPortToProtocol(self, portNumber, proto):
+    _PORTS_TCP = {
+        5190: 'aol',
+        179: 'bgp',
+        19: 'chargen',
+        1494: 'citrix-ica',
+        514: 'cmd',
+        2748: 'ctiqbe',
+        13: 'daytime',
+        9: 'discard',
+        53: 'domain',
+        7: 'echo',
+        512: 'exec',
+        79: 'finger',
+        21: 'ftp',
+        20: 'ftp-data',
+        70: 'gopher',
+        443: 'https',
+        1720: 'h323',
+        101: 'hostname',
+        113: 'ident',
+        143: 'imap4',
+        194: 'irc',
+        750: 'kerberos',
+        543: 'klogin',
+        544: 'kshell',
+        389: 'ldap',
+        636: 'ldaps',
+        515: 'lpd',
+        513: 'login',
+        1352: 'lotusnotes',
+        139: 'netbios-ssn',
+        2049: 'nfs',
+        119: 'nntp',
+        5631: 'pcanywhere-data',
+        496: 'pim-auto-rp',
+        109: 'pop2',
+        110: 'pop3',
+        1723: 'pptp',
+        25: 'smtp',
+        1521: 'sqlnet',
+        22: 'ssh',
+        111: 'sunrpc',
+        49: 'tacacs',
+        517: 'talk',
+        23: 'telnet',
+        540: 'uucp',
+        43: 'whois',
+        80: 'www',
+    }
+    _PORTS_UDP = {
+        512: 'biff',
+        68: 'bootpc',
+        67: 'bootps',
+        9: 'discard',
+        53: 'domain',
+        195: 'dnsix',
+        7: 'echo',
+        500: 'isakmp',
+        750: 'kerberos',
+        434: 'mobile-ip',
+        42: 'nameserver',
+        137: 'netbios-ns',
+        138: 'netbios-dgm',
+        2049: 'nfs',
+        123: 'ntp',
+        5632: 'pcanywhere-status',
+        496: 'pim-auto-rp',
+        1645: 'radius',
+        1646: 'radius-acct',
+        520: 'rip',
+        5510: 'secureid-udp',
+        161: 'snmp',
+        162: 'snmptrap',
+        111: 'sunrpc',
+        514: 'syslog',
+        49: 'tacacs',
+        517: 'talk',
+        69: 'tftp',
+        37: 'time',
+        513: 'who',
+        177: 'xdmcp',
+    }
+    _TYPES_ICMP = {
+        6: 'alternate-address',
+        31: 'conversion-error',
+        8: 'echo',
+        0: 'echo-reply',
+        16: 'information-reply',
+        15: 'information-request',
+        18: 'mask-reply',
+        17: 'mask-request',
+        32: 'mobile-redirect',
+        12: 'parameter-problem',
+        5: 'redirect',
+        9: 'router-advertisement',
+        10: 'router-solicitation',
+        4: 'source-quench',
+        11: 'time-exceeded',
+        14: 'timestamp-reply',
+        13: 'timestamp-request',
+        30: 'traceroute',
+        3: 'unreachable',
+    }
+
+    if proto == 'tcp':
+      if portNumber in _PORTS_TCP:
+        return _PORTS_TCP[portNumber]
+    elif proto == 'udp':
+      if portNumber in _PORTS_UDP:
+        return _PORTS_UDP[portNumber]
+    elif proto == 'icmp':
+      if portNumber in _TYPES_ICMP:
+        return _TYPES_ICMP[portNumber]
+    return portNumber
 
   def _FixOptions(self, proto, option):
     """Returns a set of options suitable for the given protocol

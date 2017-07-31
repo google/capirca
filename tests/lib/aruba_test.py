@@ -210,6 +210,7 @@ SUPPORTED_TOKENS = {
     'destination_address',
     'destination_port',
     'expiration',
+    'stateless_reply',
     'name',
     'option',
     'protocol',

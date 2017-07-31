@@ -206,7 +206,6 @@ class GCE(aclgenerator.ACLGenerator):
     supported_tokens -= {'destination_address',
                          'destination_address_exclude',
                          'icmp_type',
-                         'option',
                          'platform',
                          'platform_exclude',
                          'verbatim'}
@@ -236,6 +235,11 @@ class GCE(aclgenerator.ACLGenerator):
 
       term_names = set()
       for term in terms:
+        if term.stateless_reply:
+          logging.warn('WARNING: Term %s in policy %s is a stateless reply '
+                       'term and will not be rendered.',
+                       term.name, filter_name)
+          continue
         term.network = network
         if not term.comment:
           term.comment = header.comment
@@ -252,6 +256,9 @@ class GCE(aclgenerator.ACLGenerator):
             logging.warn('WARNING: Term %s in policy %s is expired and '
                          'will not be rendered.', term.name, filter_name)
             continue
+        if term.option:
+          raise GceFirewallError(
+              'GCE firewall does not support term options.')
 
         self.gce_policies.append(Term(term))
 

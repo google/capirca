@@ -311,7 +311,7 @@ term good_term_26-v6 {
 """
 GOOD_TERM_27 = """
 term good_term_27 {
-  forwarding-class:: floop
+  forwarding-class:: Floop
   action:: deny
 }
 """
@@ -516,6 +516,7 @@ SUPPORTED_TOKENS = {
     'hop_limit',
     'icmp_code',
     'icmp_type',
+    'stateless_reply',
     'logging',
     'loss_priority',
     'name',
@@ -1207,7 +1208,7 @@ class JuniperTest(unittest.TestCase):
     jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
                           EXP_INFO)
     output = str(jcl)
-    self.failUnless('forwarding-class floop;' in output, output)
+    self.failUnless('forwarding-class Floop;' in output, output)
 
   def testForwardingClassExcept(self):
     policy_text = GOOD_HEADER + GOOD_TERM_32

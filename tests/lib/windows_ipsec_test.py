@@ -103,6 +103,7 @@ SUPPORTED_TOKENS = {
     'destination_address_exclude',
     'destination_port',
     'expiration',
+    'stateless_reply',
     'name',
     'option',
     'platform',

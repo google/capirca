@@ -221,6 +221,7 @@ SUPPORTED_TOKENS = {
     'destination_port',
     'expiration',
     'icmp_type',
+    'stateless_reply',
     'logging',
     'log_name',
     'name',

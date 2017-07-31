@@ -331,6 +331,7 @@ SUPPORTED_TOKENS = {
     'expiration',
     'expiration',
     'icmp_type',
+    'stateless_reply',
     'logging',
     'name',
     'protocol',

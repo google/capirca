@@ -339,6 +339,7 @@ class ACLGenerator(object):
                         'destination_port',
                         'expiration',
                         'icmp_type',
+                        'stateless_reply',
                         'name',  # obj attribute, not token
                         'option',
                         'protocol',

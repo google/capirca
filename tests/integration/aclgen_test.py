@@ -32,8 +32,8 @@ class TestAclGenDemo(unittest.TestCase):
   """Ensure Capirca demo runs successfully out-of-the-box."""
 
   def setUp(self):
-    if aclgen.FLAGS.IsParsed():
-      aclgen.FLAGS.Reset()
+    if aclgen.FLAGS.is_parsed():
+      aclgen.FLAGS.unparse_flags()
 
     self.iobuff = StringIO()
     logger = logging.getLogger()
@@ -113,8 +113,8 @@ class AclGenCharacterizationTestBase(unittest.TestCase):
   """Ensures base functionality works."""
 
   def setUp(self):
-    if aclgen.FLAGS.IsParsed():
-      aclgen.FLAGS.Reset()
+    if aclgen.FLAGS.is_parsed():
+      aclgen.FLAGS.unparse_flags()
 
     self.iobuff = StringIO()
     logger = logging.getLogger()
@@ -153,11 +153,9 @@ class AclGenArgumentsTests(AclGenCharacterizationTestBase):
         '--output_directory={0}'.format(self.output_dir)
     ]
 
-    aclgen.main(args)
-
-    # NOTE that the code still continues work, even if a bad directory
-    # was passed in.
-    # TODO(jzohrab): verify this behaviour.
+    with self.assertRaises(SystemExit) as cm:
+        aclgen.main(args)
+    self.assertEqual(cm.exception.code, 1)
     self.assertTrue('bad definitions directory' in self.iobuff.getvalue())
 
 
