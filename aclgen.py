@@ -85,7 +85,7 @@ flags.DEFINE_string(
     'Directory to output the rendered acls.')
 flags.DEFINE_boolean(
     'optimize',
-    False,
+    True,
     'Turn on optimization.',
     short_name='o')
 flags.DEFINE_boolean(

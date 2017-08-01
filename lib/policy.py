@@ -49,7 +49,7 @@ _FLEXIBLE_MATCH_RANGE_ATTRIBUTES = {'byte-offset',
                                     'flexible-range-name'}
 _FLEXIBLE_MATCH_START_OPTIONS = {'layer-3', 'layer-4', 'payload'}
 _LOGGING = set(('true', 'True', 'syslog', 'local', 'disable', 'log-both'))
-_OPTIMIZE = True
+_OPTIMIZE = False
 _SHADE_CHECK = False
 
 
@@ -218,8 +218,6 @@ class Policy(object):
 
       # If argument is true, we optimize, otherwise just sort addresses
       term.AddressCleanup(_OPTIMIZE)
-      # Reset _OPTIMIZE global to default value
-      globals()['_OPTIMIZE'] = True
       term.SanityCheck()
       term.translated = True
 
@@ -2456,6 +2454,8 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
       globals()['DEFINITIONS'] = naming.Naming(DEFAULT_DEFINITIONS)
     if not optimize:
       globals()['_OPTIMIZE'] = False
+    else:
+      globals()['_OPTIMIZE'] = True
     if shade_check:
       globals()['_SHADE_CHECK'] = True
 
