@@ -18,7 +18,8 @@ ip access-list edge-inbound
  deny ip 198.18.0.0/15 any
  deny ip 198.51.100.0/24 any
  deny ip 203.0.113.0/24 any
- deny ip 224.0.0.0/3 any
+ deny ip 224.0.0.0/4 any
+ deny ip 240.0.0.0/4 any
 
 
  remark deny-from-reserved
