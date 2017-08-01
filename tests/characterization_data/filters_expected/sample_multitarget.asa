@@ -16,7 +16,8 @@ access-list asa_in extended deny ip 192.0.2.0 255.255.255.0 any
 access-list asa_in extended deny ip 198.18.0.0 255.254.0.0 any
 access-list asa_in extended deny ip 198.51.100.0 255.255.255.0 any
 access-list asa_in extended deny ip 203.0.113.0 255.255.255.0 any
-access-list asa_in extended deny ip 224.0.0.0 224.0.0.0 any
+access-list asa_in extended deny ip 224.0.0.0 240.0.0.0 any
+access-list asa_in extended deny ip 240.0.0.0 240.0.0.0 any
 
 
 access-list asa_in remark deny-from-reserved
