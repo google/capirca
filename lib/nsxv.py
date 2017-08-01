@@ -28,6 +28,7 @@ from lib import nacaddr
 import logging
 import xml.dom.minidom
 
+
 _ACTION_TABLE = {
     'accept': 'allow',
     'deny': 'deny',
@@ -623,4 +624,4 @@ class Nsxv(aclgenerator.ACLGenerator):
       target.append('\n')
 
       target_as_xml = xml.dom.minidom.parseString(''.join(target))
-    return target_as_xml.toprettyxml(indent="  ", encoding="UTF-8")
+    return target_as_xml.toprettyxml(indent='  ', encoding='UTF-8')

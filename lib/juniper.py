@@ -737,7 +737,7 @@ class Term(aclgenerator.Term):
       group: a list.  could be a list of strings (protocols) or a list of
              tuples (ports)
       lc: return a lower cased result for text.  Default is True.
-      
+
     Returns:
       rval: a string surrounded by '[' and '];' if len(group) > 1
             or with just ';' appended if len(group) == 1
@@ -749,7 +749,7 @@ class Term(aclgenerator.Term):
       Args:
         el: either a string (protocol) or a tuple (ports)
         lc: return lower cased result for text.  Default is True.
-        
+
       Returns:
         string: either the lower()'ed string or the ports, hyphenated
                 if they're a range, or by itself if it's not.
