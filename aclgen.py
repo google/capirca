@@ -25,7 +25,6 @@ from __future__ import unicode_literals
 
 __author__ = 'pmoody@google.com'
 
-import atexit
 import copy
 import dircache
 import multiprocessing
@@ -59,11 +58,6 @@ from lib import windows_advfirewall
 import gflags as flags
 import logging
 
-
-@atexit.register
-def OrderlyShutdown():
-  """Ensure logging handlers are flushed and closed cleanly."""
-  logging.shutdown()
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string(
