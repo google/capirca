@@ -477,7 +477,7 @@ def main(args):
   except naming.NoDefinitionsError:
     logging.critical('bad definitions directory: %s',
                      FLAGS.definitions_directory)
-    sys.exit(1)  # This will trigger OrderlyShutdown()
+    sys.exit(1)
 
   # thead-safe list for storing files to write
   manager = multiprocessing.Manager()
