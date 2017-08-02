@@ -316,6 +316,52 @@ GOOD_TERM_EXCLUDE_RANGE = """
 ]
 """
 
+GOOD_TERM_DENY = """
+term good-term-1 {
+  comment:: "DNS access from corp."
+  source-address:: CORP_EXTERNAL
+  destination-tag:: dns-servers
+  protocol:: udp tcp
+  action:: deny
+}
+"""
+
+GOOD_TERM_DENY_EXPECTED = """[
+  {
+    "denied": [
+      {
+        "IPProtocol": "udp"
+      }
+    ],
+    "description": "DNS access from corp.",
+    "name": "default-good-term-1-udp",
+    "network": "global/networks/default",
+    "sourceRanges": [
+      "10.2.3.4/32"
+    ],
+    "targetTags": [
+      "dns-servers"
+    ]
+  },
+  {
+    "denied": [
+      {
+        "IPProtocol": "tcp"
+      }
+    ],
+    "description": "DNS access from corp.",
+    "name": "default-good-term-1-tcp",
+    "network": "global/networks/default",
+    "sourceRanges": [
+      "10.2.3.4/32"
+    ],
+    "targetTags": [
+      "dns-servers"
+    ]
+  }
+]
+"""
+
 SUPPORTED_TOKENS = {
     'action',
     'comment',
@@ -335,7 +381,7 @@ SUPPORTED_TOKENS = {
     'translated',
 }
 
-SUPPORTED_SUB_TOKENS = {'action': {'accept'}}
+SUPPORTED_SUB_TOKENS = {'action': {'accept', 'deny'}}
 
 # Print a info message when a term is set to expire in that many weeks.
 # This is normally passed from command line.
@@ -611,6 +657,15 @@ class GCETest(unittest.TestCase):
     st, sst = pol1._BuildTokens()
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+
+  def testDenyAction(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER + GOOD_TERM_DENY, self.naming), EXP_INFO)
+    expected = json.loads(GOOD_TERM_DENY_EXPECTED)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
 
 
 if __name__ == '__main__':

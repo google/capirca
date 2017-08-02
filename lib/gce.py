@@ -57,6 +57,8 @@ class Term(aclgenerator.Term):
                'ah': 51,
                'sctp': 132,
               }
+  ACTION_MAP = {'accept': 'allowed',
+                'deny': 'denied'}
   # Restrict the number of terms to 256. Proto supports up to 256
   _TERM_ADDRESS_LIMIT = 256
 
@@ -113,7 +115,6 @@ class Term(aclgenerator.Term):
       self.term.comment.append('Owner: %s' % self.term.owner)
     term_dict = {
         'description': ' '.join(self.term.comment),
-        'allowed': [],
         'name': self.term.name,
         }
     if self.term.network:
@@ -149,7 +150,10 @@ class Term(aclgenerator.Term):
             ports.append(str(start))
           else:
             ports.append('%d-%d' % (start, end))
-      proto_dict['allowed'].append(dest)
+      action = self.ACTION_MAP[self.term.action[0]]
+      if action not in proto_dict:
+        proto_dict[action] = []
+      proto_dict[self.ACTION_MAP[self.term.action[0]]].append(dest)
 
       # There's a limit of 256 addresses each term can contain.
       # If we're above that limit, we're breaking it down in more terms.
@@ -210,7 +214,7 @@ class GCE(aclgenerator.ACLGenerator):
                          'platform_exclude',
                          'verbatim'}
     # easier to make a new structure
-    supported_sub_tokens = {'action': {'accept'}}
+    supported_sub_tokens = {'action': {'accept', 'deny'}}
 
     return supported_tokens, supported_sub_tokens
 
