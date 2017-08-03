@@ -116,6 +116,7 @@ class Term(aclgenerator.Term):
     term_dict = {
         'description': ' '.join(self.term.comment),
         'name': self.term.name,
+        'direction': self.term.direction
         }
     if self.term.network:
       term_dict['network'] = self.term.network
@@ -187,6 +188,7 @@ class GCE(aclgenerator.ACLGenerator):
   # Supported is 63 but we need to account for dynamic updates when the term
   # is rendered (which can add proto and a counter).
   _TERM_MAX_LENGTH = 53
+  _GOOD_DIRECTION = ["INGRESS", "EGRESS"]
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',
                                       'destination_tag',
                                       'source_tag'])
@@ -232,6 +234,13 @@ class GCE(aclgenerator.ACLGenerator):
       filter_name = header.FilterName(self._PLATFORM)
 
       network = ''
+      direction = 'INGRESS'
+      if filter_options:
+        for i in self._GOOD_DIRECTION:
+          if i in filter_options:
+            direction = i
+            filter_options.remove(i)
+
       if filter_options:
         network = filter_options[0]
       else:
@@ -252,6 +261,7 @@ class GCE(aclgenerator.ACLGenerator):
           raise GceFirewallError('Duplicate term name')
         term_names.add(term.name)
 
+        term.direction = direction
         if term.expiration:
           if term.expiration <= exp_info_date:
             logging.info('INFO: Term %s in policy %s expires '

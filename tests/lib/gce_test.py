@@ -36,6 +36,20 @@ header {
 }
 """
 
+GOOD_HEADER_INGRESS = """
+header {
+  comment:: "The general policy comment."
+  target:: gce INGRESS
+}
+"""
+
+GOOD_HEADER_EGRESS = """
+header {
+  comment:: "The general policy comment."
+  target:: gce EGRESS
+}
+"""
+
 GOOD_HEADER_NO_NETWORK = """
 header {
   comment:: "The general policy comment."
@@ -109,6 +123,7 @@ GOOD_TERM_JSON = """
     "targetTags": [
       "dns-servers"
     ],
+    "direction": "INGRESS",
     "network": "global/networks/default"
   },
   {
@@ -128,6 +143,7 @@ GOOD_TERM_JSON = """
     "targetTags": [
       "dns-servers"
     ],
+    "direction": "INGRESS",
     "network": "global/networks/default"
   }
 ]
@@ -149,6 +165,7 @@ GOOD_TERM_NO_NETWORK_JSON = """
       }
     ],
     "description": "DNS access from corp.",
+    "direction": "INGRESS",
     "targetTags": [
       "dns-servers"
     ]
@@ -167,6 +184,7 @@ GOOD_TERM_NO_NETWORK_JSON = """
       }
     ],
     "description": "DNS access from corp.",
+    "direction": "INGRESS",
     "targetTags": [
       "dns-servers"
     ]
@@ -283,6 +301,7 @@ GOOD_TERM_EXCLUDE_RANGE = """
       }
     ],
     "description": "DNS access from corp.",
+    "direction": "INGRESS",
     "targetTags": [
       "dns-servers"
     ],
@@ -311,6 +330,7 @@ GOOD_TERM_EXCLUDE_RANGE = """
     "targetTags": [
       "dns-servers"
     ],
+    "direction": "INGRESS",
     "network": "global/networks/default"
   }
 ]
@@ -339,6 +359,7 @@ GOOD_TERM_DENY_EXPECTED = """[
     "sourceRanges": [
       "10.2.3.4/32"
     ],
+    "direction": "INGRESS",
     "targetTags": [
       "dns-servers"
     ]
@@ -355,6 +376,7 @@ GOOD_TERM_DENY_EXPECTED = """[
     "sourceRanges": [
       "10.2.3.4/32"
     ],
+    "direction": "INGRESS",
     "targetTags": [
       "dns-servers"
     ]
@@ -666,7 +688,21 @@ class GCETest(unittest.TestCase):
     expected = json.loads(GOOD_TERM_DENY_EXPECTED)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
+  def testIngress(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER_INGRESS + GOOD_TERM, self.naming), EXP_INFO)
+    self.failUnless("INGRESS" in str(acl), str(acl))
+    self.failUnless("EGRESS" not in str(acl), str(acl))
 
+  def testEgress(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER_EGRESS + GOOD_TERM, self.naming), EXP_INFO)
+    self.failUnless("EGRESS" in str(acl), str(acl))
+    self.failUnless("INGRESS" not in str(acl), str(acl))
 
 if __name__ == '__main__':
   unittest.main()
