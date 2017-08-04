@@ -210,6 +210,12 @@ class Term(aclgenerator.Term):
     source_addr = []
     destination_addr = []
 
+    source_v4_addr = []
+    source_v6_addr = []
+    dest_v4_addr = []
+    dest_v6_addr = []
+
+
     for af in af_list:
       # source address
       if self.term.source_address:
@@ -220,14 +226,13 @@ class Term(aclgenerator.Term):
           source_address = nacaddr.ExcludeAddrs(
               source_address,
               source_address_exclude)
-        if not source_address:
-          logging.warn(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
-                                                      direction='source',
-                                                      af=self.filter_type))
-        if not source_addr:
-          source_addr.extend(source_address)
-        else:
-          source_addr = source_address
+
+        if source_address:
+          if af == 4:
+            source_v4_addr = source_address
+          else:
+            source_v6_addr = source_address
+        source_addr = source_v4_addr + source_v6_addr
 
       # destination address
       if self.term.destination_address:
@@ -239,11 +244,31 @@ class Term(aclgenerator.Term):
           destination_address = nacaddr.ExcludeAddrs(
               destination_address,
               destination_address_exclude)
-        if not destination_address:
-          logging.warn(self.NO_AF_LOG_ADDR.substitute(term=self.term.name,
-                                                      direction='destination',
-                                                      af=self.filter_type))
-        destination_addr.extend(destination_address)
+
+        if destination_address:
+          if af == 4:
+            dest_v4_addr = destination_address
+          else:
+            dest_v6_addr = destination_address
+        destination_addr = dest_v4_addr + dest_v6_addr
+
+    # Check for mismatch IP for source and destination address for mixed filter
+    if self.filter_type == 'mixed':
+      if source_addr and destination_addr:
+        if source_v4_addr and not dest_v4_addr:
+          source_addr = source_v6_addr
+        elif source_v6_addr and not dest_v6_addr:
+          source_addr = source_v4_addr
+        elif dest_v4_addr and not source_v4_addr:
+          destination_addr = dest_v6_addr
+        elif dest_v6_addr and not source_v6_addr:
+          destination_addr = dest_v4_addr
+
+        if not source_addr or not destination_addr:
+          logging.warn('Term %s will not be rendered as it has IPv4/IPv6 '
+                       'mismatch for source/destination for mixed address '
+                       'family.', self.term.name)
+          return ''
 
     # ports
     source_port = None
