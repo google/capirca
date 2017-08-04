@@ -73,6 +73,7 @@ class Term(aclgenerator.Term):
     super(Term, self).__init__(term)
     self.term = term
 
+    self._validateDirection()
     if self.term.source_address_exclude and not self.term.source_address:
       raise GceFirewallError(
           'GCE firewall does not support address exclusions without a source '
@@ -81,22 +82,49 @@ class Term(aclgenerator.Term):
         and self.term.destination_port):
       raise GceFirewallError(
           'Only TCP and UDP protocols support destination ports.')
-    if not self.term.source_address and not self.term.source_tag:
+    if (not self.term.source_address and
+        not self.term.source_tag) and self.term.direction == 'INGRESS':
       raise GceFirewallError(
           'GCE firewall needs either to specify source address or source tags.')
     if self.term.source_port:
       raise GceFirewallError(
           'GCE firewall does not support source port restrictions.')
-    if self.term.source_address_exclude and self.term.source_address:
+    if (self.term.source_address_exclude and self.term.source_address or
+        self.term.destination_address_exclude and
+        self.term.destination_address):
       self.term.FlattenAll()
-      if not self.term.source_address:
+      if not self.term.source_address and self.term.direction == 'INGRESS':
         raise GceFirewallError(
             'GCE firewall rule no longer contains any source addresses after '
             'the prefixes in source_address_exclude were removed.')
+      if not self.term.destination_address and self.term.direction == 'EGRESS':
+        raise GceFirewallError(
+            'GCE firewall rule no longer contains any destination addresses '
+            'after the prefixes in destination_address_exclude were removed.')
 
   def __str__(self):
     """Convert term to a string."""
     json.dumps(self.ConvertToDict(), indent=2, separators=(',', ': '))
+
+  def _validateDirection(self):
+    if self.term.direction == 'INGRESS':
+      if not self.term.source_address and not self.term.source_tag:
+        raise GceFirewallError(
+            'Ingress rule missing required field oneof "sourceRanges" or '
+            '"sourceTags".')
+
+      if self.term.destination_address:
+        raise GceFirewallError('Ingress rules cannot include '
+            '"destinationRanges.')
+
+    elif self.term.direction == 'EGRESS':
+      if self.term.source_address or self.term.source_tag:
+        raise GceFirewallError(
+            'Egress rules cannot include "sourceRanges", "sourceTags".')
+
+      if not self.term.destination_address:
+        raise GceFirewallError(
+            'Egress rule missing required field "destinationRanges".')
 
   def ConvertToDict(self):
     """Convert term to a dictionary.
@@ -131,6 +159,7 @@ class Term(aclgenerator.Term):
 
     rules = []
     saddrs = self.term.GetAddressOfVersion('source_address', 4)
+    daddrs = self.term.GetAddressOfVersion('destination_address', 4)
 
     if not self.term.protocol:
       raise GceFirewallError(
@@ -167,6 +196,16 @@ class Term(aclgenerator.Term):
           if len(source_addr_chunks) > 1:
             rule['name'] = '%s-%d' % (rule['name'], i+1)
           rule['sourceRanges'] = [str(saddr) for saddr in chunk]
+          rules.append(rule)
+      elif daddrs:
+        dest_addr_chunks = [
+            daddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in xrange(
+                0, len(daddrs), self._TERM_ADDRESS_LIMIT)]
+        for i, chunk in enumerate(dest_addr_chunks):
+          rule = copy.deepcopy(proto_dict)
+          if len(dest_addr_chunks) > 1:
+            rule['name'] = '%s-%d' % (rule['name'], i+1)
+          rule['destinationRanges'] = [str(daddr) for daddr in chunk]
           rules.append(rule)
       else:
         rules.append(proto_dict)
@@ -209,9 +248,7 @@ class GCE(aclgenerator.ACLGenerator):
                          'source_tag'}
 
     # remove unsupported things
-    supported_tokens -= {'destination_address',
-                         'destination_address_exclude',
-                         'icmp_type',
+    supported_tokens -= {'icmp_type',
                          'platform',
                          'platform_exclude',
                          'verbatim'}

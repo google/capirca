@@ -104,6 +104,17 @@ term good-term-1 {
 }
 """
 
+GOOD_TERM_4 = """
+term good-term-1 {
+  comment:: "DNS access from corp."
+  destination-address:: CORP_EXTERNAL
+  destination-tag:: dns-servers
+  destination-port:: DNS
+  protocol:: udp tcp
+  action:: accept
+}
+"""
+
 GOOD_TERM_JSON = """
 [
   {
@@ -387,6 +398,8 @@ GOOD_TERM_DENY_EXPECTED = """[
 SUPPORTED_TOKENS = {
     'action',
     'comment',
+    'destination_address',
+    'destination_address_exclude',
     'destination_port',
     'destination_tag',
     'expiration',
@@ -556,7 +569,7 @@ class GCETest(unittest.TestCase):
 
     self.assertRaisesRegexp(
         gce.GceFirewallError,
-        'GCE firewall needs either to specify source address or source tags.',
+        'Ingress rule missing required field oneof "sourceRanges" or "sourceTags.',
         gce.GCE,
         policy.ParsePolicy(
             GOOD_HEADER + BAD_TERM_NO_SOURCE, self.naming),
@@ -693,16 +706,45 @@ class GCETest(unittest.TestCase):
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER_INGRESS + GOOD_TERM, self.naming), EXP_INFO)
-    self.failUnless("INGRESS" in str(acl), str(acl))
-    self.failUnless("EGRESS" not in str(acl), str(acl))
+    self.failUnless('INGRESS' in str(acl), str(acl))
+    self.failUnless('EGRESS' not in str(acl), str(acl))
 
   def testEgress(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
     acl = gce.GCE(policy.ParsePolicy(
-        GOOD_HEADER_EGRESS + GOOD_TERM, self.naming), EXP_INFO)
-    self.failUnless("EGRESS" in str(acl), str(acl))
-    self.failUnless("INGRESS" not in str(acl), str(acl))
+        GOOD_HEADER_EGRESS + GOOD_TERM_4, self.naming), EXP_INFO)
+    self.failUnless('EGRESS' in str(acl), str(acl))
+    self.failUnless('INGRESS' not in str(acl), str(acl))
+
+  def testDestinationRanges(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER_EGRESS + GOOD_TERM_4, self.naming), EXP_INFO)
+    self.failUnless('destinationRanges' in str(acl), str(acl))
+    self.failUnless('sourceRanges' not in str(acl), str(acl))
+    self.failUnless('10.2.3.4/32' in str(acl), str(acl))
+
+  def testRaisesConflictingDirectionAddress(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.return_value = ['22']
+
+
+    self.assertRaisesRegexp(
+        gce.GceFirewallError,
+        'Ingress rule missing required field oneof "sourceRanges" or "sourceTags"',
+        gce.GCE,
+        policy.ParsePolicy(
+            GOOD_HEADER_INGRESS + GOOD_TERM_4, self.naming),
+        EXP_INFO)
+    self.assertRaisesRegexp(
+        gce.GceFirewallError,
+        'Egress rules cannot include "sourceRanges", "sourceTags".',
+        gce.GCE,
+        policy.ParsePolicy(
+            GOOD_HEADER_EGRESS + GOOD_TERM, self.naming),
+        EXP_INFO)
 
 if __name__ == '__main__':
   unittest.main()
