@@ -1028,6 +1028,16 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetServiceByProto.assert_has_calls(
         [mock.call('SMTP', 'tcp')] * 2)
 
+  def testDuplicatePolicy(self):
+    self.naming.GetNetAddr.return_value = _IPSET
+    self.naming.GetServiceByProto.side_effect = [['25'], ['26']]
+
+    pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_2 + GOOD_HEADER +
+                             GOOD_TERM_11, self.naming)
+
+    self.assertRaises(junipersrx.SRXDuplicatePolicy,
+                      junipersrx.JuniperSRX, pol, EXP_INFO)
+
   def testBuildTokens(self):
     self.naming.GetServiceByProto.side_effect = [['25'], ['26']]
     pol1 = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_2,
