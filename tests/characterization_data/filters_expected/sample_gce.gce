@@ -12,6 +12,7 @@
       }
     ],
     "description": "Allow SSH access to all instances from company.",
+    "direction": "INGRESS",
     "name": "default-test-ssh",
     "network": "global/networks/default",
     "sourceRanges": [
@@ -28,6 +29,7 @@
       }
     ],
     "description": "Allow HTTP/S to instances with webserver tag.",
+    "direction": "INGRESS",
     "name": "default-test-web",
     "network": "global/networks/default",
     "sourceRanges": [
@@ -44,6 +46,7 @@
       }
     ],
     "description": "Allow ICMP from company.",
+    "direction": "INGRESS",
     "name": "default-test-icmp",
     "network": "global/networks/default",
     "sourceRanges": [
@@ -57,6 +60,7 @@
       }
     ],
     "description": "Allow all GCE network internal traffic.",
+    "direction": "INGRESS",
     "name": "default-test-internal-tcp",
     "network": "global/networks/default",
     "sourceRanges": [
@@ -72,6 +76,7 @@
       }
     ],
     "description": "Allow all GCE network internal traffic.",
+    "direction": "INGRESS",
     "name": "default-test-internal-udp",
     "network": "global/networks/default",
     "sourceRanges": [
