@@ -247,8 +247,10 @@ class ObjectGroup(object):
             # We have addresses for this family and have not already seen it.
             if (net_def_name, family) not in netgroups:
               netgroups.add((net_def_name, family))
-              ret_str.append('object-group network ipv%d %s' % (
-                  family, net_def_name))
+              obj_grp_head = 'object-group network ipv%d %s' % (
+                  family, net_def_name)
+              ret_str.append('no ' + obj_grp_head)
+              ret_str.append(obj_grp_head)
               for addr in addrs:
                 ret_str.append(' %s/%s' % (addr.ip, addr.prefixlen))
               ret_str.append('exit\n')
@@ -260,7 +262,9 @@ class ObjectGroup(object):
         port_key = '%s-%s' % (port[0], port[1])
         if port_key not in ports:
           ports[port_key] = True
-          ret_str.append('object-group port %s' % port_key)
+          obj_grp_head = 'object-group port %s' % port_key
+          ret_str.append('no ' + obj_grp_head)
+          ret_str.append(obj_grp_head)
           if port[0] != port[1]:
             ret_str.append(' range %d %d' % (port[0], port[1]))
           else:
