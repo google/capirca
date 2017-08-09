@@ -60,9 +60,13 @@ class ExtendedACLTermError(Error):
   """Raised when there is a problem in an extended access list."""
 
 
+class DuplicateTermNameWithObjectGroups(Error):
+  """Raised when a filter has multipled terms with same name and
+  using object groups"""
+
+
 class TermStandard(object):
   """A single standard ACL Term."""
-
   def __init__(self, term, filter_name, platform='cisco'):
     self.term = term
     self.filter_name = filter_name
@@ -210,16 +214,58 @@ class ObjectGroup(object):
   def __init__(self):
     self.filter_name = ''
     self.terms = []
+    self.addr_groups = {}
 
   @property
   def valid(self):
     return bool(self.terms)
 
-  def AddTerm(self, term):
+  def AddTerm(self, term, addr_group_names):
+    if any(term.name == t.name for t in self.terms):
+        raise DuplicateTermNameWithObjectGroups(
+            'Please use unique term names within a filter '
+            'when using object-groups')
+
     self.terms.append(term)
+    self.addr_groups[term.name] = addr_group_names
 
   def AddName(self, filter_name):
     self.filter_name = filter_name
+
+  def GetAlternateNames(self, term, glb_table):
+      """Resolves the conflicts in object-names after checking
+      the global address object groups table.
+
+      Args:
+        term: object group term
+      Returns:
+        List of the alternate names to be used while
+      rendering ObjectGroupTerm
+      """
+      dup_addr_type = ('source_address', 'destination_address')
+      dup_addr_family = (4, 6)
+      group_name_alt = {}
+
+      for source_or_dest in dup_addr_type:
+          for family in dup_addr_family:
+              dup_addrs = term.GetAddressOfVersion(source_or_dest, family)
+              if dup_addrs:
+                  p_group_name = dup_addrs[0].parent_token
+                  p_alt_index = 0
+                  if p_group_name not in glb_table:
+                      glb_table[p_group_name] = [dup_addrs]
+                  else:
+                      for g_addrs in glb_table[p_group_name]:
+                          if dup_addrs == g_addrs:
+                              break
+                          else:
+                              p_alt_index += 1
+                      if p_alt_index == len(glb_table[p_group_name]):
+                          glb_table[p_group_name].append(dup_addrs)
+                  if p_alt_index > 0:
+                      group_name_alt[source_or_dest] = '%s_%d' % (p_group_name,
+                                                                  p_alt_index)
+      return group_name_alt
 
   def __str__(self):
     ret_str = ['\n']
@@ -228,22 +274,28 @@ class ObjectGroup(object):
     ports = {}
 
     for term in self.terms:
-      # I don't have an easy way get the token name used in the pol file
-      # w/o reading the pol file twice (with some other library) or doing
-      # some other ugly hackery. Instead, the entire block of source and dest
-      # addresses for a given term is given a unique, computable name which
-      # is not related to the NETWORK.net token name.  that's what you get
-      # for using cisco, which has decided to implement its own meta language.
+      # in current policy parsing logic, all tokens in src/dest fields are
+      # combined into a single list of IP addresses. To name that list as
+      # object group we depend on the parent_token of the first IP address of
+      # the list. If src/dest is a combination of multiple tokens from
+      # NETWORK.net, this logic of picking names could create naming conflicts.
+      # To prevent conflicts, we create alternative names if there is conflict
+      # e.g., parent token of an IP addresses already used for representing
+      # another object group
 
       # Create network object-groups
       addr_type = ('source_address', 'destination_address')
       addr_family = (4, 6)
+      term_addr_groups = self.addr_groups.get(term.name, {})
 
       for source_or_dest in addr_type:
         for family in addr_family:
           addrs = term.GetAddressOfVersion(source_or_dest, family)
           if addrs:
-            net_def_name = addrs[0].parent_token
+            net_def_name = term_addr_groups.get(str(source_or_dest), None)
+            if not net_def_name:
+                net_def_name = addrs[0].parent_token
+
             # We have addresses for this family and have not already seen it.
             if (net_def_name, family) not in netgroups:
               netgroups.add((net_def_name, family))
@@ -272,6 +324,7 @@ class ObjectGroup(object):
           ret_str.append('exit\n')
 
     return '\n'.join(ret_str)
+
 
 class Term(aclgenerator.Term):
   """A single ACL Term."""
@@ -697,11 +750,12 @@ class ObjectGroupTerm(Term):
   # Protocols should be emitted as integers rather than strings.
   _PROTO_INT = True
 
-  def __init__(self, term, filter_name, platform='cisco'):
+  def __init__(self, term, filter_name, platform='cisco', addr_groups={}):
     super(ObjectGroupTerm, self).__init__(term)
     self.term = term
     self.filter_name = filter_name
     self.platform = platform
+    self.addr_groups = addr_groups
 
   def __str__(self):
     # Verify platform specific terms. Skip whole term if platform does not
@@ -744,12 +798,27 @@ class ObjectGroupTerm(Term):
     source_address = self.term.source_address
     if not self.term.source_address:
       source_address = [nacaddr.IPv4('0.0.0.0/0', token='any')]
-    source_address_set.add(source_address[0].parent_token)
+
+    # get the summarized object group name from addr_groups to prevent
+    # naming conflicts else use the parent token from ip address
+    src_group_name = self.addr_groups.get('source_address', None)
+    if src_group_name:
+        source_address_set.add(src_group_name)
+    else:
+        source_address_set.add(source_address[0].parent_token)
 
     destination_address = self.term.destination_address
     if not self.term.destination_address:
       destination_address = [nacaddr.IPv4('0.0.0.0/0', token='any')]
-    destination_address_set.add(destination_address[0].parent_token)
+
+    # get the summarized object group name from addr_groups to prevent
+    # naming conflicts else use the parent token from ip address
+    dest_group_name = self.addr_groups.get('destination_address', None)
+    if dest_group_name:
+        destination_address_set.add(dest_group_name)
+    else:
+        destination_address_set.add(destination_address[0].parent_token)
+
     # ports
     source_port = [()]
     destination_port = [()]
@@ -823,6 +892,8 @@ class Cisco(aclgenerator.ACLGenerator):
     return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):
+    self.object_table = {}
+
     self.cisco_policies = []
     current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
@@ -900,9 +971,12 @@ class Cisco(aclgenerator.ACLGenerator):
                 Term(term, proto_int=self._PROTO_INT, enable_dsmo=enable_dsmo,
                      term_remark=self._TERM_REMARK, platform=self._PLATFORM))
           elif next_filter == 'object-group':
-            obj_target.AddTerm(term)
+            group_name_alt = obj_target.GetAlternateNames(term,
+                                                          self.object_table)
+            obj_target.AddTerm(term, group_name_alt)
             self._SetObjectGroupProtos(ObjectGroupTerm)
-            obj_group_term = ObjectGroupTerm(term, filter_name)
+            obj_group_term = ObjectGroupTerm(term, filter_name,
+                                             addr_groups=group_name_alt)
             new_terms.append(obj_group_term)
           elif next_filter == 'inet6':
             new_terms.append(Term(term, 6, proto_int=self._PROTO_INT))
