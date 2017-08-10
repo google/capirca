@@ -100,12 +100,13 @@ class Term(aclgenerator.Term):
              'log': 'log',
              'dscp': 'dscp'}
 
-  def __init__(self, term, zones):
+  def __init__(self, term, zones, token_translate={}):
     super(Term, self).__init__(term)
     self.term = term
     self.from_zone = zones[1]
     self.to_zone = zones[3]
     self.extra_actions = []
+    self.token_table = token_translate
 
   def __str__(self):
     """Render config output from this term object."""
@@ -134,9 +135,11 @@ class Term(aclgenerator.Term):
     ret_str.IndentAppend(4, 'match {')
     # SOURCE-ADDRESS
     if self.term.source_address:
+      src_tokens = self.token_table['source_address']
       saddr_check = set()
       for saddr in self.term.source_address:
-        saddr_check.add(saddr.parent_token)
+        grp_name = src_tokens.get(saddr.parent_token, saddr.parent_token)
+        saddr_check.add(grp_name)
       saddr_check = sorted(saddr_check)
       ret_str.IndentAppend(5, JunipersrxList('source-address', saddr_check))
     else:
@@ -144,9 +147,11 @@ class Term(aclgenerator.Term):
 
     # DESTINATION-ADDRESS
     if self.term.destination_address:
+      dest_tokens = self.token_table['destination_address']
       daddr_check = []
       for daddr in self.term.destination_address:
-        daddr_check.append(daddr.parent_token)
+        grp_name = dest_tokens.get(daddr.parent_token, daddr.parent_token)
+        daddr_check.append(grp_name)
       daddr_check = set(daddr_check)
       daddr_check = list(daddr_check)
       daddr_check.sort()
@@ -322,12 +327,13 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       ConflictingTargetOptions: Two target options are conflicting in the header
       MixedAddrBookTypes: Global and Zone address books in the same policy
       ConflictingApplicationSets: When two duplicate named terms have
-                                  conflicting applicaiton entries
+                                  conflicting application entries
     """
     self.srx_policies = []
     self.addressbook = collections.OrderedDict()
     self.applications = []
     self.ports = []
+    self.addr_token_table = collections.defaultdict(list)
     self.from_zone = ''
     self.to_zone = ''
     self.addr_book_type_global = True
@@ -490,14 +496,12 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                 term.source_address = ips
               if term.destination_address == ips:
                 term.destination_address = ips
-        for addr in term.source_address:
-          if addr.version in self._AF_MAP[filter_type]:
-            self._BuildAddressBook(self.from_zone, addr)
-        for addr in term.destination_address:
-          if addr.version in self._AF_MAP[filter_type]:
-            self._BuildAddressBook(self.to_zone, addr)
 
-        new_term = Term(term, filter_options)
+        term_tok_trans = collections.defaultdict(dict)
+        self._BuildAddressBook(filter_type, term.source_address, term_tok_trans, is_src=True)
+        self._BuildAddressBook(filter_type, term.destination_address, term_tok_trans, is_src=False)
+
+        new_term = Term(term, filter_options, token_translate=term_tok_trans)
         new_terms.append(new_term)
 
         # Because SRX terms can contain inet and inet6 addresses. We have to
@@ -614,25 +618,43 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       del terms[:]
       terms.extend(expanded_terms)
 
-  def _BuildAddressBook(self, zone, address):
-    """Create the address book configuration entries.
+  def _BuildAddressBook(self, filter_type, term_address_list, token_table, is_src=False):
+    zone = None
+    token_table_field = None
 
-    Args:
-      zone: the zone these objects will reside in
-      address: a naming library address object
-    """
+    if is_src:
+      zone = self.from_zone
+      token_table_field = 'source_address'
+    else:
+      zone = self.to_zone
+      token_table_field = 'destination_address'
+
     if zone not in self.addressbook:
       self.addressbook[zone] = collections.defaultdict(list)
-    name = address.parent_token
-    for ip in self.addressbook[zone][name]:
-      if ip.Contains(address):
-        return
-      if address.Contains(ip):
-        for index, ip_addr in enumerate(self.addressbook[zone][name]):
-          if ip_addr == ip:
-            self.addressbook[zone][name][index] = address
-        return
-    self.addressbook[zone][name].append(address)
+
+    src_addr_list = list(filter(lambda x: x.version in self._AF_MAP[filter_type],
+                                term_address_list))
+    addr_by_token = collections.defaultdict(list)
+    for ip_addr in src_addr_list:
+      addr_by_token[ip_addr.parent_token].append(ip_addr)
+
+    for grp_name, addr_list in sorted(addr_by_token.iteritems()):
+      if grp_name not in self.addr_token_table:
+        self.addr_token_table[grp_name].append(addr_list)
+        self.addressbook[zone][grp_name] = addr_list
+      else:
+        found_idx = 0
+        for ex_list in self.addr_token_table[grp_name]:
+          if src_addr_list == ex_list:
+            break
+          else:
+            found_idx += 1
+        if found_idx > 0:
+          grp_trans_name = '{}_v{}'.format(grp_name, found_idx)
+          token_table[token_table_field][grp_name] = grp_trans_name
+        if found_idx == len(self.addr_token_table[grp_name]):
+          self.addr_token_table[grp_name].append(addr_list)
+          self.addressbook[zone][grp_trans_name] = addr_list
 
   def _SortAddressBookNumCheck(self, item):
     """Used to give a natural order to the list of acl entries.
