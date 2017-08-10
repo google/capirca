@@ -645,7 +645,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       else:
         found_idx = 0
         for ex_list in self.addr_token_table[grp_name]:
-          if src_addr_list == ex_list:
+          if addr_list == ex_list:
             break
           else:
             found_idx += 1
