@@ -60,11 +60,6 @@ class ExtendedACLTermError(Error):
   """Raised when there is a problem in an extended access list."""
 
 
-class DuplicateTermNameWithObjectGroups(Error):
-  """Raised when a filter has multipled terms with same name and
-  using object groups"""
-
-
 class TermStandard(object):
   """A single standard ACL Term."""
   def __init__(self, term, filter_name, platform='cisco'):
@@ -220,14 +215,8 @@ class ObjectGroup(object):
   def valid(self):
     return bool(self.terms)
 
-  def AddTerm(self, term, addr_group_names):
-    if any(term.name == t.name for t in self.terms):
-        raise DuplicateTermNameWithObjectGroups(
-            'Please use unique term names within a filter '
-            'when using object-groups')
-
+  def AddTerm(self, term):
     self.terms.append(term)
-    self.addr_groups[term.name] = addr_group_names
 
   def AddName(self, filter_name):
     self.filter_name = filter_name
@@ -267,13 +256,14 @@ class ObjectGroup(object):
                                                                   p_alt_index)
       return group_name_alt
 
+
   def __str__(self):
     ret_str = ['\n']
     # netgroups will contain two-tuples of group name string and family int.
     netgroups = set()
     ports = {}
 
-    for term in self.terms:
+    for obj_term in self.terms:
       # in current policy parsing logic, all tokens in src/dest fields are
       # combined into a single list of IP addresses. To name that list as
       # object group we depend on the parent_token of the first IP address of
@@ -286,7 +276,9 @@ class ObjectGroup(object):
       # Create network object-groups
       addr_type = ('source_address', 'destination_address')
       addr_family = (4, 6)
-      term_addr_groups = self.addr_groups.get(term.name, {})
+      term = obj_term.term
+      term_addr_groups = obj_term.addr_groups
+
 
       for source_or_dest in addr_type:
         for family in addr_family:
@@ -973,10 +965,10 @@ class Cisco(aclgenerator.ACLGenerator):
           elif next_filter == 'object-group':
             group_name_alt = obj_target.GetAlternateNames(term,
                                                           self.object_table)
-            obj_target.AddTerm(term, group_name_alt)
-            self._SetObjectGroupProtos(ObjectGroupTerm)
             obj_group_term = ObjectGroupTerm(term, filter_name,
                                              addr_groups=group_name_alt)
+            obj_target.AddTerm(obj_group_term)
+            self._SetObjectGroupProtos(ObjectGroupTerm)
             new_terms.append(obj_group_term)
           elif next_filter == 'inet6':
             new_terms.append(Term(term, 6, proto_int=self._PROTO_INT))
@@ -1026,6 +1018,7 @@ class Cisco(aclgenerator.ACLGenerator):
     return target
 
   def __str__(self):
+    object_group_summary = ObjectGroup()
     target_header = []
     target = []
     # add the p4 tags
@@ -1061,9 +1054,13 @@ class Cisco(aclgenerator.ACLGenerator):
           if term_str:
             target.append(term_str)
 
-      if obj_target.valid:
-        target = [str(obj_target)] + target
+        if obj_target.valid:
+            for oterm in obj_target.terms:
+                object_group_summary.AddTerm(oterm)
+
       # ensure that the header is always first
       target = target_header + target
       target += ['', 'exit', '']
+
+    target = [str(object_group_summary)] + target
     return '\n'.join(target)
