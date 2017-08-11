@@ -1055,12 +1055,13 @@ class Cisco(aclgenerator.ACLGenerator):
             target.append(term_str)
 
         if obj_target.valid:
-            for oterm in obj_target.terms:
-                object_group_summary.AddTerm(oterm)
+          for oterm in obj_target.terms:
+            object_group_summary.AddTerm(oterm)
 
       # ensure that the header is always first
       target = target_header + target
       target += ['', 'exit', '']
 
-    target = [str(object_group_summary)] + target
+    if object_group_summary.valid:
+      target = [str(object_group_summary)] + target
     return '\n'.join(target)
