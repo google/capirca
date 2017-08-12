@@ -734,6 +734,11 @@ class Term(aclgenerator.Term):
     if ((proto == self.PROTO_MAP['udp'] or proto == 'udp')
         and 'established' in sane_options):
       sane_options.remove('established')
+
+    if 'tcp-established' in sane_options:
+      sane_options.remove('tcp-established')
+      sane_options.append('established')
+
     return sane_options
 
 
