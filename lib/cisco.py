@@ -375,7 +375,7 @@ class ObjectGroup(object):
               ret_str_ports.append(' eq %d' % port[0])
             ret_str_ports.append('exit\n')
 
-      ret_str_addrs.extend(ret_str_ports)
+    ret_str_addrs.extend(ret_str_ports)
 
     return '\n'.join(ret_str_addrs)
 
