@@ -74,6 +74,7 @@ class TestAclGenDemo(unittest.TestCase):
         'sample_multitarget.eacl',
         'sample_multitarget.ipt',
         'sample_multitarget.jcl',
+        'sample_multitarget.nacl',
         'sample_multitarget.xacl',
         'sample_nsxv.nsx',
         'sample_packetfilter.pf',
@@ -88,7 +89,8 @@ class TestAclGenDemo(unittest.TestCase):
     for expected_output in map(makeoutput, expected_files):
       self.assertTrue(expected_output in actual_output)
 
-    self.assertTrue('writing 16 files to disk...' in actual_output)
+    self.assertTrue('writing {} files to disk...'.format(len(expected_files))
+                    in actual_output)
 
   def test_generate_single_policy(self):
     args = [
