@@ -1272,13 +1272,24 @@ class PolicyTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = unoptimized_addr
     self.naming.GetServiceByProto.return_value = ['25']
     ret_unoptimized = policy.ParsePolicy(pol, self.naming, optimize=False)
+    self.assertFalse(policy._OPTIMIZE)
     ret_optimized = policy.ParsePolicy(pol, self.naming)
+    self.assertTrue(policy._OPTIMIZE)
     for _, terms in ret_unoptimized.filters:
       for term in terms:
         self.assertEqual(unoptimized_addr, term.source_address)
     for _, terms in ret_optimized.filters:
       for term in terms:
         self.assertEqual(optimized_addr, term.source_address)
+
+
+  def testShadeCheckConsistency(self):
+    pol = HEADER + TERM_SUPER_3 + TERM_SUB_2
+    self.assertRaises(policy.ShadingError, policy.ParsePolicy, pol, self.naming,
+                      shade_check=True)
+    self.assertTrue(policy._SHADE_CHECK)
+    _ = policy.ParsePolicy(pol, self.naming)
+    self.assertFalse(policy._SHADE_CHECK)
 
 if __name__ == '__main__':
   unittest.main()

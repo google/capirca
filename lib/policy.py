@@ -243,7 +243,6 @@ class Policy(object):
     Raises:
       ShadingError: When a term is impossible to reach.
     """
-    globals()['_SHADE_CHECK'] = False
     shading_errors = []
     for index, term in enumerate(terms):
       for prior_index in xrange(index):
@@ -2452,8 +2451,7 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
     else:
       globals()['DEFINITIONS'] = naming.Naming(DEFAULT_DEFINITIONS)
     globals()['_OPTIMIZE'] = optimize
-    if shade_check:
-      globals()['_SHADE_CHECK'] = True
+    globals()['_SHADE_CHECK'] = shade_check
 
     lexer = lex.lex()
 
