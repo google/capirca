@@ -218,8 +218,6 @@ class Policy(object):
 
       # If argument is true, we optimize, otherwise just sort addresses
       term.AddressCleanup(_OPTIMIZE)
-      # Reset _OPTIMIZE global to default value
-      globals()['_OPTIMIZE'] = True
       term.SanityCheck()
       term.translated = True
 
@@ -245,7 +243,6 @@ class Policy(object):
     Raises:
       ShadingError: When a term is impossible to reach.
     """
-    # Reset _OPTIMIZE global to default value
     globals()['_SHADE_CHECK'] = False
     shading_errors = []
     for index, term in enumerate(terms):
@@ -2454,8 +2451,7 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
       globals()['DEFINITIONS'] = definitions
     else:
       globals()['DEFINITIONS'] = naming.Naming(DEFAULT_DEFINITIONS)
-    if not optimize:
-      globals()['_OPTIMIZE'] = False
+    globals()['_OPTIMIZE'] = optimize
     if shade_check:
       globals()['_SHADE_CHECK'] = True
 

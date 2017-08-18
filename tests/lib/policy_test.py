@@ -1264,5 +1264,21 @@ class PolicyTest(unittest.TestCase):
     self.assertRaises(policy.ICMPCodeError, policy.ParsePolicy, pol2,
                       self.naming)
 
+  def testOptimizedConsistency(self):
+    pol = HEADER + GOOD_TERM_2 + GOOD_TERM_3
+    unoptimized_addr = [nacaddr.IPv4('10.16.128.6/32'),
+                        nacaddr.IPv4('10.16.128.7/32')]
+    optimized_addr = nacaddr.CollapseAddrList(unoptimized_addr)
+    self.naming.GetNetAddr.return_value = unoptimized_addr
+    self.naming.GetServiceByProto.return_value = ['25']
+    ret_unoptimized = policy.ParsePolicy(pol, self.naming, optimize=False)
+    ret_optimized = policy.ParsePolicy(pol, self.naming)
+    for _, terms in ret_unoptimized.filters:
+      for term in terms:
+        self.assertEqual(unoptimized_addr, term.source_address)
+    for _, terms in ret_optimized.filters:
+      for term in terms:
+        self.assertEqual(optimized_addr, term.source_address)
+
 if __name__ == '__main__':
   unittest.main()
