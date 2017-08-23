@@ -447,14 +447,16 @@ def WriteFiles(write_files):
   else:
     logging.info('no files changed, not writing to disk')
   for output_file, file_string in write_files:
-    try:
-      output = open(output_file, 'w')
-    except IOError:
-      logging.warn('error while writing file: %s', output_file)
-      raise
-    logging.info('writing file: %s', output_file)
-    output.write(file_string)
-    output.flush()
+    _WriteFile(output_file, file_string)
+
+def _WriteFile(output_file, file_string):
+  try:
+    with open(output_file, 'w') as output:
+      logging.info('writing file: %s', output_file)
+      output.write(file_string)
+  except IOError:
+    logging.warn('error while writing file: %s', output_file)
+    raise
 
 
 def main(args):
