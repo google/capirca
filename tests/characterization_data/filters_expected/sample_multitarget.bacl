@@ -17,8 +17,7 @@ ip access-list extended edge-inbound
  deny ip 198.18.0.0 0.1.255.255 any
  deny ip 198.51.100.0 0.0.0.255 any
  deny ip 203.0.113.0 0.0.0.255 any
- deny ip 224.0.0.0 15.255.255.255 any
- deny ip 240.0.0.0 15.255.255.255 any
+ deny ip 224.0.0.0 31.255.255.255 any
 
 
  deny ip 0.0.0.0 0.255.255.255 any

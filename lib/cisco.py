@@ -62,7 +62,6 @@ class ExtendedACLTermError(Error):
 
 class TermStandard(object):
   """A single standard ACL Term."""
-
   def __init__(self, term, filter_name, platform='cisco'):
     self.term = term
     self.filter_name = filter_name
@@ -205,11 +204,32 @@ class ObjectGroup(object):
       172.24.0.0
       172.28.0.0
     exit
+
+  for cat6k (catos), no ipv6 support
+
+    object-group ip address first-address-token-name
+      host-info 172.16.0.0
+      172.20.0.0 255.255.0.0
+      172.22.0.0 255.128.0.0
+      host-info 172.24.0.0
+      host-info 172.28.0.0
+    exit
+
+  for cat4k (iosxe), no port group support by capirca
+
+    object-group network first-address-token-name
+      host 172.16.0.0
+      172.20.0.0 255.255.0.0
+      172.22.0.0 255.128.0.0
+      host 172.24.0.0
+      host 172.28.0.0
+    exit
   """
 
-  def __init__(self):
+  def __init__(self, sub_platform=None):
     self.filter_name = ''
     self.terms = []
+    self.sub_platform = sub_platform
 
   @property
   def valid(self):
@@ -221,37 +241,124 @@ class ObjectGroup(object):
   def AddName(self, filter_name):
     self.filter_name = filter_name
 
+  def GetAlternateNames(self, term, glb_table):
+      """Resolves the conflicts in object-names after checking
+      the global address object groups table.
+
+      Args:
+        term: object group term
+      Returns:
+        List of the alternate names to be used while
+      rendering ObjectGroupTerm
+      """
+      dup_addr_type = ('source_address', 'destination_address')
+      dup_addr_family = (4, 6)
+      group_name_alt = {}
+
+      for source_or_dest in dup_addr_type:
+          for family in dup_addr_family:
+              dup_addrs = term.GetAddressOfVersion(source_or_dest, family)
+              if dup_addrs:
+                  p_group_name = dup_addrs[0].parent_token
+                  p_alt_index = 0
+                  if p_group_name not in glb_table:
+                      glb_table[p_group_name] = [dup_addrs]
+                  else:
+                      for g_addrs in glb_table[p_group_name]:
+                          if dup_addrs == g_addrs:
+                              break
+                          else:
+                              p_alt_index += 1
+                      if p_alt_index == len(glb_table[p_group_name]):
+                          glb_table[p_group_name].append(dup_addrs)
+                  if p_alt_index > 0:
+                      group_name_alt[source_or_dest] = '%s_%d' % (p_group_name,
+                                                                  p_alt_index)
+      return group_name_alt
+
   def __str__(self):
-    ret_str = ['\n']
+    def _GetObjectGroupHeader(sub_platform, group_type, family, group_name):
+      if group_type == 'network':
+        if not sub_platform:
+          return 'object-group network ipv%d %s' % (
+                  family, group_name)
+        elif sub_platform == 'iosxe':
+          if family == 6:
+            raise ExtendedACLTermError('Ios-Xe platform does not support object groups'
+                                       'with inet6 family')
+          return 'object-group network %s' % group_name
+        elif sub_platform == 'catos':
+          if family == 6:
+            raise ExtendedACLTermError('CatOS platform does not support object groups'
+                                       'with inet6 family')
+          return 'object-group ip address %s' % group_name
+      elif group_type == 'port':
+        if not sub_platform:
+          return 'object-group port %s' % group_name
+        elif sub_platform == 'catos':
+          return 'object-group ip port %s' % group_name
+
+      return None
+
+    def _GetObjectGroupAddrLine(sub_platform, addr):
+      if not sub_platform:
+        return ' %s/%s' % (addr.ip, addr.prefixlen)
+      elif sub_platform == 'catos':
+        if addr.numhosts > 1:
+          return ' %s %s' % (addr.ip, addr.netmask)
+        else:
+          return ' host-info %s' % addr.ip
+      elif sub_platform == 'iosxe':
+        if addr.numhosts > 1:
+          return ' %s %s' % (addr.ip, addr.netmask)
+        else:
+          return ' host %s' % addr.ip
+      return None
+
     # netgroups will contain two-tuples of group name string and family int.
     netgroups = set()
-    ports = {}
+    ports = set()
+    ret_str_addrs = ['\n']
+    ret_str_ports = ['\n']
 
-    for term in self.terms:
-      # I don't have an easy way get the token name used in the pol file
-      # w/o reading the pol file twice (with some other library) or doing
-      # some other ugly hackery. Instead, the entire block of source and dest
-      # addresses for a given term is given a unique, computable name which
-      # is not related to the NETWORK.net token name.  that's what you get
-      # for using cisco, which has decided to implement its own meta language.
+    for obj_term in self.terms:
+      # in current policy parsing logic, all tokens in src/dest fields are
+      # combined into a single list of IP addresses. To name that list as
+      # object group we depend on the parent_token of the first IP address of
+      # the list. If src/dest is a combination of multiple tokens from
+      # NETWORK.net, this logic of picking names could create naming conflicts.
+      # To prevent conflicts, we create alternative names if there is conflict
+      # e.g., parent token of an IP addresses already used for representing
+      # another object group
 
       # Create network object-groups
       addr_type = ('source_address', 'destination_address')
       addr_family = (4, 6)
+      term = obj_term.term
+      term_addr_groups = obj_term.addr_groups
+
 
       for source_or_dest in addr_type:
         for family in addr_family:
           addrs = term.GetAddressOfVersion(source_or_dest, family)
           if addrs:
-            net_def_name = addrs[0].parent_token
+            # if we have an alternative name in global table use it
+            # otherwise use the parent token to name object group
+            net_def_name = term_addr_groups.get(str(source_or_dest),
+                addrs[0].parent_token)
+
             # We have addresses for this family and have not already seen it.
             if (net_def_name, family) not in netgroups:
               netgroups.add((net_def_name, family))
-              ret_str.append('object-group network ipv%d %s' % (
-                  family, net_def_name))
+              group_header_str = _GetObjectGroupHeader(self.sub_platform,
+                  'network', family, net_def_name)
+              # remove the old object group first
+              ret_str_addrs.append("no " + group_header_str)
+              ret_str_addrs.append(group_header_str)
               for addr in addrs:
-                ret_str.append(' %s/%s' % (addr.ip, addr.prefixlen))
-              ret_str.append('exit\n')
+                ret_str_addrs.append(_GetObjectGroupAddrLine(self.sub_platform,
+                    addr))
+              ret_str_addrs.append('exit\n')
 
       # Create port object-groups
       for port in term.source_port + term.destination_port:
@@ -259,15 +366,22 @@ class ObjectGroup(object):
           continue
         port_key = '%s-%s' % (port[0], port[1])
         if port_key not in ports:
-          ports[port_key] = True
-          ret_str.append('object-group port %s' % port_key)
-          if port[0] != port[1]:
-            ret_str.append(' range %d %d' % (port[0], port[1]))
-          else:
-            ret_str.append(' eq %d' % port[0])
-          ret_str.append('exit\n')
+          group_header_str = _GetObjectGroupHeader(self.sub_platform, 'port',
+              None, port_key)
+          if group_header_str:
+            ports.add(port_key)
+            ret_str_ports.append("no " + group_header_str)
+            ret_str_ports.append(group_header_str)
+            if port[0] != port[1]:
+              ret_str_ports.append(' range %d %d' % (port[0], port[1]))
+            else:
+              ret_str_ports.append(' eq %d' % port[0])
+            ret_str_ports.append('exit\n')
 
-    return '\n'.join(ret_str)
+    ret_str_addrs.extend(ret_str_ports)
+
+    return '\n'.join(ret_str_addrs)
+
 
 class Term(aclgenerator.Term):
   """A single ACL Term."""
@@ -623,6 +737,11 @@ class Term(aclgenerator.Term):
     if ((proto == self.PROTO_MAP['udp'] or proto == 'udp')
         and 'established' in sane_options):
       sane_options.remove('established')
+
+    if 'tcp-established' in sane_options:
+      sane_options.remove('tcp-established')
+      sane_options.append('established')
+
     return sane_options
 
 
@@ -689,15 +808,28 @@ class ObjectGroupTerm(Term):
 
   where first-term-source-address, ANY and 179-179 are defined elsewhere
   in the acl.
+
+  for cat6k (catos):
+
+    permit tcp any addrgroup <object-group-name> any
+    permit tcp any any portgroup <object-group-name>
+
+  for cat4k (iosxe):
+
+    permit tcp object-group <object-group-name> any
   """
   # Protocols should be emitted as integers rather than strings.
   _PROTO_INT = True
 
-  def __init__(self, term, filter_name, platform='cisco'):
+  def __init__(self, term, filter_name, platform='cisco', sub_platform=None,
+               af=4, addr_groups={}):
     super(ObjectGroupTerm, self).__init__(term)
     self.term = term
     self.filter_name = filter_name
     self.platform = platform
+    self.sub_platform = sub_platform
+    self.af = af
+    self.addr_groups = addr_groups
 
   def __str__(self):
     # Verify platform specific terms. Skip whole term if platform does not
@@ -740,12 +872,23 @@ class ObjectGroupTerm(Term):
     source_address = self.term.source_address
     if not self.term.source_address:
       source_address = [nacaddr.IPv4('0.0.0.0/0', token='any')]
-    source_address_set.add(source_address[0].parent_token)
+
+    # get the summarized object group name from addr_groups to prevent
+    # naming conflicts else use the parent token from ip address
+    src_group_name = self.addr_groups.get('source_address',
+                                          source_address[0].parent_token)
+    source_address_set.add(src_group_name)
 
     destination_address = self.term.destination_address
     if not self.term.destination_address:
       destination_address = [nacaddr.IPv4('0.0.0.0/0', token='any')]
-    destination_address_set.add(destination_address[0].parent_token)
+
+    # get the summarized object group name from addr_groups to prevent
+    # naming conflicts else use the parent token from ip address
+    dest_group_name = self.addr_groups.get('destination_address',
+                                           destination_address[0].parent_token)
+    destination_address_set.add(dest_group_name)
+
     # ports
     source_port = [()]
     destination_port = [()]
@@ -754,36 +897,100 @@ class ObjectGroupTerm(Term):
     if self.term.destination_port:
       destination_port = self.term.destination_port
 
+    # logging
+    if self.term.logging:
+      self.term.option.append('log')
+
+    # icmp-types
+    icmp_types = ['']
+    if self.term.icmp_type:
+      icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type,
+                                           self.term.protocol,
+                                           self.af)
+    fixed_opts = {}
+    for p in protocol:
+      fixed_opts[p] = self._FixOptions(p, self.term.option)
+
+    icmp_codes = ['']
+    if self.term.icmp_code:
+      icmp_codes = self.term.icmp_code
+
     for saddr in source_address_set:
       for daddr in destination_address_set:
         for sport in source_port:
           for dport in destination_port:
             for proto in protocol:
-              ret_str.append(
-                  self._TermletToStr(_ACTION_TABLE.get(str(
-                      self.term.action[0])), proto, saddr, sport, daddr, dport))
-
+              opts = fixed_opts[proto]
+              for icmp_type in icmp_types:
+                for icmp_code in icmp_codes:
+                  ret_str.append(
+                    self._TermletToStr(
+                        _ACTION_TABLE.get(str(self.term.action[0])),
+                        proto,
+                        saddr,
+                        sport,
+                        daddr,
+                        dport,
+                        icmp_type,
+                        icmp_code,
+                        opts)
+                  )
     return '\n'.join(ret_str)
 
-  def _TermletToStr(self, action, proto, saddr, sport, daddr, dport):
+  def _TermletToStr(self, action, proto, saddr, sport, daddr, dport,
+                    icmp_type, icmp_code, option):
     """Output a portion of a cisco term/filter only, based on the 5-tuple."""
+    net_group_pre = 'net-group'
+    if self.sub_platform == 'catos':
+      net_group_pre = 'addrgroup'
+    elif self.sub_platform == 'iosxe':
+      net_group_pre = 'object-group'
+
     # Empty addr/port destinations should emit 'any'
     if saddr and saddr != 'any':
-      saddr = 'net-group %s' % saddr
+      saddr = '%s %s' % (net_group_pre, saddr)
     if daddr and daddr != 'any':
-      daddr = 'net-group %s' % daddr
+      daddr = '%s %s' % (net_group_pre, daddr)
+
+    port_group_pre = 'port-group'
+    if self.sub_platform == 'catos':
+      port_group_pre = 'portgroup'
+
     # fix ports
     if sport:
-      sport = ' port-group %d-%d' % (sport[0], sport[1])
+      if self.sub_platform != 'iosxe':
+        sport = '%s %d-%d' % (port_group_pre, sport[0], sport[1])
+      else:
+        if sport[0] != sport[1]:
+          sport = 'range %d %d' % (sport[0], sport[1])
+        else:
+          sport = 'eq %d' % sport[0]
     else:
       sport = ''
     if dport:
-      dport = ' port-group %d-%d' % (dport[0], dport[1])
+      if self.sub_platform != 'iosxe':
+        dport = '%s %d-%d' % (port_group_pre, dport[0], dport[1])
+      else:
+        if dport[0] != dport[1]:
+          dport = 'range %d %d' % (dport[0], dport[1])
+        else:
+          dport = 'eq %d' % dport[0]
     else:
       dport = ''
 
-    return (' %s %s %s%s %s%s' % (
-        action, proto, saddr, sport, daddr, dport)).rstrip()
+    # icmpv6 is not a valid keyword for ios/nxos
+    if proto == 'icmpv6':
+      proto = 'icmp'
+
+    # str(icmp_type) is needed to ensure 0 maps to '0' instead of FALSE
+    icmp_type = str(icmp_type)
+    icmp_code = str(icmp_code)
+    all_elements = [action, str(proto), saddr, sport, daddr, dport, icmp_type,
+                    icmp_code,
+                    ' '.join(option)]
+    non_empty_elements = [x for x in all_elements if x]
+    return ' ' + ' '.join(non_empty_elements)
+
 
 
 class Cisco(aclgenerator.ACLGenerator):
@@ -818,7 +1025,16 @@ class Cisco(aclgenerator.ACLGenerator):
                                             'reject-with-tcp-rst'}})
     return supported_tokens, supported_sub_tokens
 
+  def _GetSubPlatform(self, filter_options):
+    if 'iosxe' in filter_options:
+      return 'iosxe'
+    elif 'catos' in filter_options:
+      return 'catos'
+    return None
+
   def _TranslatePolicy(self, pol, exp_info):
+    self.object_table = {}
+
     self.cisco_policies = []
     current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
@@ -827,14 +1043,19 @@ class Cisco(aclgenerator.ACLGenerator):
     good_filters = ['extended', 'standard', 'object-group', 'inet6',
                     'mixed']
 
+    self.sub_platform = None
     for header, terms in pol.filters:
       if self._PLATFORM not in header.platforms:
         continue
 
-      obj_target = ObjectGroup()
-
       filter_options = header.FilterOptions(self._PLATFORM)
       filter_name = header.FilterName(self._PLATFORM)
+
+      sub_platform = self._GetSubPlatform(filter_options)
+      # assumption: is only one subplatform type ACL in the policy file
+      if not self.sub_platform:
+        self.sub_platform = sub_platform
+      obj_target = ObjectGroup(sub_platform=sub_platform)
 
       # extended is the most common filter type.
       filter_type = 'extended'
@@ -896,9 +1117,14 @@ class Cisco(aclgenerator.ACLGenerator):
                 Term(term, proto_int=self._PROTO_INT, enable_dsmo=enable_dsmo,
                      term_remark=self._TERM_REMARK, platform=self._PLATFORM))
           elif next_filter == 'object-group':
-            obj_target.AddTerm(term)
+            group_name_alt = obj_target.GetAlternateNames(term,
+                                                          self.object_table)
+            obj_group_term = ObjectGroupTerm(term, filter_name,
+                                             sub_platform=sub_platform,
+                                             af=(4 if af == 'inet' else 6),
+                                             addr_groups=group_name_alt)
+            obj_target.AddTerm(obj_group_term)
             self._SetObjectGroupProtos(ObjectGroupTerm)
-            obj_group_term = ObjectGroupTerm(term, filter_name)
             new_terms.append(obj_group_term)
           elif next_filter == 'inet6':
             new_terms.append(Term(term, 6, proto_int=self._PROTO_INT))
@@ -948,6 +1174,7 @@ class Cisco(aclgenerator.ACLGenerator):
     return target
 
   def __str__(self):
+    object_group_summary = ObjectGroup(sub_platform=self.sub_platform)
     target_header = []
     target = []
     # add the p4 tags
@@ -983,9 +1210,15 @@ class Cisco(aclgenerator.ACLGenerator):
           if term_str:
             target.append(term_str)
 
-      if obj_target.valid:
-        target = [str(obj_target)] + target
+        if obj_target.valid:
+          for oterm in obj_target.terms:
+            object_group_summary.AddTerm(oterm)
+
       # ensure that the header is always first
       target = target_header + target
       target += ['', 'exit', '']
+
+    if object_group_summary.valid:
+      target = [str(object_group_summary)] + target
+
     return '\n'.join(target)

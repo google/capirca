@@ -765,7 +765,7 @@ class JuniperSRXTest(unittest.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_12 + GOOD_HEADER +
                              GOOD_TERM_1, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
-    self.failUnless('address FOOBAR_0 10.23.0.0/22;' in output, output)
+    self.failUnless('address FOOBAR_v1_0 10.23.0.0/22;' in output, output)
 
     self.naming.GetNetAddr.assert_has_calls([
         mock.call('FOOBAR'),
@@ -1083,7 +1083,7 @@ class JuniperSRXTest(unittest.TestCase):
     srx = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless('address FOOBAR_0 172.16.0.0/12' in srx, srx)
     self.failUnless('address SOME_HOST_0 10.0.0.0/8;' in srx, srx)
-    self.failUnless('address SOME_HOST_1 172.20.0.0/15;' in srx, srx)
+    self.failUnless('address SOME_HOST_v1_1 172.20.0.0/15;' in srx, srx)
     self.failUnless('/16' not in srx, srx)
 
   def testUnoptimizeAcrossZones(self):
@@ -1115,7 +1115,7 @@ class JuniperSRXTest(unittest.TestCase):
     srx = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failUnless(('        security-zone trust {\n'
                      '            replace: address-book {\n'
-                     '                address FOOBAR_0 172.16.0.0/14;')
+                     '                address FOOBAR_v1_0 172.16.0.0/14;')
                     in srx, srx)
     self.failUnless(('        security-zone untrust {\n'
                      '            replace: address-book {\n'
