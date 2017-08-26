@@ -283,6 +283,9 @@ class ObjectGroup(object):
           return 'object-group network ipv%d %s' % (
                   family, group_name)
         elif sub_platform == 'iosxe':
+          if family == 6:
+            raise ExtendedACLTermError('Ios-Xe platform does not support object groups'
+                                       'with inet6 family')
           return 'object-group network %s' % group_name
         elif sub_platform == 'catos':
           if family == 6:
@@ -1040,6 +1043,7 @@ class Cisco(aclgenerator.ACLGenerator):
     good_filters = ['extended', 'standard', 'object-group', 'inet6',
                     'mixed']
 
+    self.sub_platform = None
     for header, terms in pol.filters:
       if self._PLATFORM not in header.platforms:
         continue
@@ -1049,7 +1053,8 @@ class Cisco(aclgenerator.ACLGenerator):
 
       sub_platform = self._GetSubPlatform(filter_options)
       # assumption: is only one subplatform type ACL in the policy file
-      self.sub_platform = sub_platform
+      if not self.sub_platform:
+        self.sub_platform = sub_platform
       obj_target = ObjectGroup(sub_platform=sub_platform)
 
       # extended is the most common filter type.
