@@ -435,7 +435,6 @@ def DescendRecursively(input_dirname, output_dirname, definitions, depth=1):
   return files
 
 
-# TODO(robankeny): Clean up this area to make it easier to abstract our writer.
 def WriteFiles(write_files):
   """Writes files to disk.
 
@@ -477,8 +476,8 @@ def main(args):
   try:
     definitions = naming.Naming(FLAGS.definitions_directory)
   except naming.NoDefinitionsError:
-    logging.critical('bad definitions directory: %s',
-                     FLAGS.definitions_directory)
+    err_msg = 'bad definitions directory: %s', FLAGS.definitions_directory
+    logging.critical(err_msg)
     sys.exit(1)
 
   # thead-safe list for storing files to write

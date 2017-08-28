@@ -17,15 +17,18 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from cStringIO import StringIO
-import filecmp
 import logging
 import os
-import shutil
-import tempfile
-import unittest
 
 import aclgen
+from lib import naming
+import mock
+import gflags as flags
+import logging
+import unittest
+
+
+FLAGS = flags.FLAGS
 
 
 class TestAclGenDemo(unittest.TestCase):
@@ -34,27 +37,15 @@ class TestAclGenDemo(unittest.TestCase):
   def setUp(self):
     if aclgen.FLAGS.is_parsed():
       aclgen.FLAGS.unparse_flags()
-
-    self.iobuff = StringIO()
-    logger = logging.getLogger()
-    logger.level = logging.DEBUG
-    self.s = logging.StreamHandler(self.iobuff)
-    self.s.level = logging.DEBUG
-    logger.addHandler(self.s)
-
-    # Capirca only writes if files have changed, so write out to a new
-    # temp dir for each test run.
-    self.output_dir = tempfile.mkdtemp()
+    self.output_dir = '.'
 
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     self.root_dir = os.path.realpath(os.path.join(curr_dir, '..', '..'))
     self.policies_dir = os.path.join(self.root_dir, 'policies')
     self.defs_dir = os.path.join(self.root_dir, 'def')
 
-  def tearDown(self):
-    shutil.rmtree(self.output_dir)
-
-  def test_smoke_test_generates_successfully(self):
+  @mock.patch.object(aclgen, '_WriteFile', autospec=True)
+  def test_smoke_test_generates_successfully(self, mock_writer):
     args = [
         'program',
         '--base_directory={0}'.format(self.policies_dir),
@@ -62,35 +53,28 @@ class TestAclGenDemo(unittest.TestCase):
         '--output_directory={0}'.format(self.output_dir)
     ]
     aclgen.main(args)
-
-    expected_files = [
-        'sample_cisco_lab.acl',
-        'sample_gce.gce',
-        'sample_ipset.ips',
-        'sample_juniper_loopback.jcl',
-        'sample_multitarget.acl',
-        'sample_multitarget.asa',
-        'sample_multitarget.bacl',
-        'sample_multitarget.eacl',
-        'sample_multitarget.ipt',
-        'sample_multitarget.jcl',
-        'sample_multitarget.xacl',
-        'sample_nsxv.nsx',
-        'sample_packetfilter.pf',
-        'sample_speedway.ipt',
-        'sample_srx.srx',
-        'sample_paloalto.xml'
+    expected = [
+        mock.call('./sample_cisco_lab.acl', mock.ANY),
+        mock.call('./sample_gce.gce', mock.ANY),
+        mock.call('./sample_ipset.ips', mock.ANY),
+        mock.call('./sample_juniper_loopback.jcl', mock.ANY),
+        mock.call('./sample_multitarget.acl', mock.ANY),
+        mock.call('./sample_multitarget.asa', mock.ANY),
+        mock.call('./sample_multitarget.bacl', mock.ANY),
+        mock.call('./sample_multitarget.eacl', mock.ANY),
+        mock.call('./sample_multitarget.ipt', mock.ANY),
+        mock.call('./sample_multitarget.jcl', mock.ANY),
+        mock.call('./sample_multitarget.xacl', mock.ANY),
+        mock.call('./sample_nsxv.nsx', mock.ANY),
+        mock.call('./sample_packetfilter.pf', mock.ANY),
+        mock.call('./sample_speedway.ipt', mock.ANY),
+        mock.call('./sample_srx.srx', mock.ANY),
+        mock.call('./sample_paloalto.xml', mock.ANY)
     ]
-    def makeoutput(f):
-      return 'writing file: {0}'.format(os.path.join(self.output_dir, f))
+    mock_writer.assert_has_calls(expected, any_order=True)
 
-    actual_output = self.iobuff.getvalue().split('\n')
-    for expected_output in map(makeoutput, expected_files):
-      self.assertTrue(expected_output in actual_output)
-
-    self.assertTrue('writing 16 files to disk...' in actual_output)
-
-  def test_generate_single_policy(self):
+  @mock.patch.object(aclgen, '_WriteFile', autospec=True)
+  def test_generate_single_policy(self, mock_writer):
     args = [
         'program',
         '--policy_file={0}'.format(os.path.join(self.policies_dir,
@@ -99,56 +83,15 @@ class TestAclGenDemo(unittest.TestCase):
         '--output_directory={0}'.format(self.output_dir)
     ]
     aclgen.main(args)
+    mock_writer.assert_called_with('./sample_cisco_lab.acl', mock.ANY)
 
-    actual_output = self.iobuff.getvalue()
-    expected_outputs = [
-        'rendering one file',
-        os.path.join(self.output_dir, 'sample_cisco_lab.acl')
-    ]
-    for s in expected_outputs:
-      self.assertTrue(s in actual_output)
-
-
-class AclGenCharacterizationTestBase(unittest.TestCase):
-  """Ensures base functionality works."""
-
-  def setUp(self):
-    if aclgen.FLAGS.is_parsed():
-      aclgen.FLAGS.unparse_flags()
-
-    self.iobuff = StringIO()
-    logger = logging.getLogger()
-    logger.level = logging.DEBUG
-    self.s = logging.StreamHandler(self.iobuff)
-    self.s.level = logging.DEBUG
-    logger.addHandler(self.s)
-
-    curr_dir = os.path.dirname(os.path.abspath(__file__))
-    self.test_dir = os.path.join(curr_dir, '..', 'characterization_data')
-    self.output_dir = self.dirpath('filters_actual')
-    if not os.path.exists(self.output_dir):
-      os.makedirs(self.output_dir)
-    self.empty_output_dir(self.output_dir)
-
-  def dirpath(self, *args):
-    return os.path.realpath(os.path.join(self.test_dir, *args))
-
-  def empty_output_dir(self, d):
-    entries = [os.path.join(d, f) for f in os.listdir(d)]
-    for f in [e for e in entries if os.path.isfile(e)]:
-      os.remove(f)
-    for d in [e for e in entries if os.path.isdir(e)]:
-      shutil.rmtree(d)
-
-
-class AclGenArgumentsTests(AclGenCharacterizationTestBase):
-
-  def test_missing_defs_folder_raises_error(self):
-    unused_def_dir, pol_dir, unused_expected_dir = map(
-        self.dirpath, ('def', 'policies', 'filters_expected'))
+  @mock.patch.object(logging, 'critical')
+  @mock.patch.object(naming, 'Naming', autospec=True)
+  def test_missing_defs_folder_raises_error(self, mock_naming, mock_error):
+    mock_naming.side_effect = naming.NoDefinitionsError()
     args = [
         'program',
-        '--base_directory={0}'.format(pol_dir),
+        '--base_directory={0}'.format(self.policies_dir),
         '--definitions_directory=/some_missing_dir/',
         '--output_directory={0}'.format(self.output_dir)
     ]
@@ -156,35 +99,9 @@ class AclGenArgumentsTests(AclGenCharacterizationTestBase):
     with self.assertRaises(SystemExit) as cm:
         aclgen.main(args)
     self.assertEqual(cm.exception.code, 1)
-    self.assertTrue('bad definitions directory' in self.iobuff.getvalue())
-
-
-class AclGenCharacterizationTests(AclGenCharacterizationTestBase):
-
-  def test_characterization(self):
-    def_dir, pol_dir, expected_dir = map(
-        self.dirpath, ('def', 'policies', 'filters_expected'))
-    args = [
-        'program',
-        '--base_directory={0}'.format(pol_dir),
-        '--definitions_directory={0}'.format(def_dir),
-        '--output_directory={0}'.format(self.output_dir)
-    ]
-    aclgen.main(args)
-    dircmp = filecmp.dircmp(self.output_dir, expected_dir)
-    self.assertEquals(
-        [],
-        dircmp.left_only,
-        'missing {0} in filters_expected'.format(dircmp.left_only))
-    self.assertEquals(
-        [],
-        dircmp.right_only,
-        'missing {0} in filters_actual'.format(dircmp.right_only))
-    self.assertEquals([], dircmp.diff_files)
-
-
-def main():
-  unittest.main()
+    self.assertTrue(mock_error.called)
+    mock_error.assert_called_with(((u'bad definitions directory: %s',
+                                    u'/some_missing_dir/')))
 
 if __name__ == '__main__':
-  main()
+  unittest.main()
