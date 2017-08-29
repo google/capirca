@@ -49,10 +49,6 @@ class UnsupportedHeader(Error):
   pass
 
 
-class SRXDuplicatePolicy(Error):
-  pass
-
-
 class SRXDuplicateTermError(Error):
   pass
 
@@ -322,7 +318,6 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     Raises:
       UnsupportedFilterError: An unsupported filter was specified
       UnsupportedHeader: A header option exists that is not understood/usable
-      SRXDuplicatePolicy: A policy with duplicate from-zone to-zone pairs
       SRXDuplicateTermError: Two terms were found with same name in same filter
       ConflictingTargetOptions: Two target options are conflicting in the header
       MixedAddrBookTypes: Global and Zone address books in the same policy
@@ -339,8 +334,6 @@ class JuniperSRX(aclgenerator.ACLGenerator):
 
     current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
-
-    pol_dup_check = set()
 
     # list is used for check if policy only utilizes one type of address book.
     # (global or zone)
@@ -371,13 +364,6 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                                      (filter_options[3]))
       else:
         self.to_zone = filter_options[3]
-
-      pol_from_to = "{}-{}".format(self.from_zone, self.to_zone)
-      if pol_from_to in pol_dup_check:
-        raise SRXDuplicatePolicy("You have multiple definition for zone pair"
-                                 " %s" % pol_from_to)
-      else:
-        pol_dup_check.add(pol_from_to)
 
       # variables used to collect target-options and set defaults
       target_options = []
