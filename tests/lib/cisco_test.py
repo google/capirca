@@ -467,6 +467,12 @@ class CiscoTest(unittest.TestCase):
     self.failIf('mary had a second lamb' in str(acl), str(acl))
     self.failIf('mary had a third lamb' in str(acl), str(acl))
 
+  def testDuplicateTermNames(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/24')]
+    pol = policy.ParsePolicy(GOOD_STANDARD_HEADER_1 + GOOD_STANDARD_TERM_1 +
+                             GOOD_STANDARD_TERM_1, self.naming)
+    self.assertRaises(cisco.CiscoDuplicateTermError, cisco.Cisco, pol, EXP_INFO)
+
   def testBadStandardTerm(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
 
@@ -742,11 +748,6 @@ class CiscoTest(unittest.TestCase):
                                          GOOD_TERM_13, self.naming), EXP_INFO)
     self.failUnless(re.search(' remark Owner: foo@google.com',
                               str(acl)), str(acl))
-
-  def testRemoveTrailingCommentWhitespace(self):
-    term = LONG_COMMENT_TERM%'a'*99
-    acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + term,
-                                         self.naming), EXP_INFO)
 
   def testBuildTokens(self):
     pol1 = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_5,

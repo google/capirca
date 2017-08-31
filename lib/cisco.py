@@ -25,7 +25,6 @@ __author__ = ['pmoody@google.com (Peter Moody)',
 
 
 import datetime
-import re
 
 from lib import aclgenerator
 from lib import nacaddr
@@ -46,6 +45,10 @@ _ACTION_TABLE = {
 # generic error class
 class Error(Exception):
   """Generic error class."""
+
+
+class CiscoDuplicateTermError(Error):
+  """Raised on duplicate term names."""
 
 
 class UnsupportedCiscoAccessListError(Error):
@@ -268,6 +271,7 @@ class ObjectGroup(object):
           ret_str.append('exit\n')
 
     return '\n'.join(ret_str)
+
 
 class Term(aclgenerator.Term):
   """A single ACL Term."""
@@ -608,7 +612,7 @@ class Term(aclgenerator.Term):
     return portNumber
 
   def _FixOptions(self, proto, option):
-    """Returns a set of options suitable for the given protocol
+    """Returns a set of options suitable for the given protocol.
 
     In practice this is only used to filter out 'established' for UDP.
 
@@ -624,7 +628,6 @@ class Term(aclgenerator.Term):
         and 'established' in sane_options):
       sane_options.remove('established')
     return sane_options
-
 
   def _TermletToStr(self, action, proto, saddr, sport, daddr, dport,
                     icmp_type, icmp_code, option):
@@ -866,8 +869,14 @@ class Cisco(aclgenerator.ACLGenerator):
                 'Standard access lists must be numeric in the range of 1-99'
                 ' or 1300-1999.')
 
+        term_dup_check = set()
         new_terms = []
         for term in terms:
+          if term.name in term_dup_check:
+            raise CiscoDuplicateTermError('You have a duplicate term: %s' %
+                                          term.name)
+          term_dup_check.add(term.name)
+
           term.name = self.FixTermLength(term.name)
           af = 'inet'
           if next_filter == 'inet6':
