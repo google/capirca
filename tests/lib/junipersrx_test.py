@@ -123,13 +123,6 @@ header {
 }
 """
 
-BAD_HEADER_2 = """
-header {
-  comment:: "This header has two address-book-types"
-  target:: srx from-zone trust to-zone untrust address-book-zone address-book-zone
-}
-"""
-
 BAD_HEADER_3 = """
 header {
   comment:: "This is a test acl with a global policy"
@@ -630,19 +623,6 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['25']
 
     pol = policy.ParsePolicy(BAD_HEADER_1 + GOOD_TERM_1, self.naming)
-    self.assertRaises(junipersrx.ConflictingTargetOptions,
-                      junipersrx.JuniperSRX,
-                      pol, EXP_INFO)
-
-    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
-    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
-
-  def testBadHeaderMultiAB(self):
-    # test for multiple address-book-types in header
-    self.naming.GetNetAddr.return_value = _IPSET
-    self.naming.GetServiceByProto.return_value = ['25']
-
-    pol = policy.ParsePolicy(BAD_HEADER_2 + GOOD_TERM_1, self.naming)
     self.assertRaises(junipersrx.ConflictingTargetOptions,
                       junipersrx.JuniperSRX,
                       pol, EXP_INFO)
