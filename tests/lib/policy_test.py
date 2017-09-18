@@ -74,6 +74,22 @@ header {
   target:: juniper test-filter inet6
 }
 """
+HEADER_SRX = """
+header {
+  target:: srx from-zone foo to-zone bar
+}
+"""
+HEADER_OBJ_GRP = """
+header {
+  target:: cisco foo object-group
+}
+"""
+HEADER_ADDRBOOK_MIXED = """
+header {
+  target:: srx from-zone to-zone bar
+  target:: cisco foo
+}
+"""
 INCLUDE_STATEMENT = """
 #include "/tmp/y.inc"
 """
@@ -1290,6 +1306,30 @@ class PolicyTest(unittest.TestCase):
     self.assertTrue(policy._SHADE_CHECK)
     _ = policy.ParsePolicy(pol, self.naming)
     self.assertFalse(policy._SHADE_CHECK)
+
+  def testNeedAddressBook(self):
+    pol1 = policy.ParsePolicy(HEADER + GOOD_TERM_1, self.naming)
+    pol2 = policy.ParsePolicy(HEADER_SRX + GOOD_TERM_1, self.naming)
+    pol3 = policy.ParsePolicy(HEADER_OBJ_GRP + GOOD_TERM_1, self.naming)
+    pol4 = policy.ParsePolicy(HEADER_ADDRBOOK_MIXED + GOOD_TERM_1, self.naming)
+    self.assertFalse(pol1._NeedsAddressBook())
+    self.assertTrue(pol2._NeedsAddressBook())
+    self.assertTrue(pol3._NeedsAddressBook())
+    self.assertTrue(pol4._NeedsAddressBook())
+
+  def testAddressCleanupCorrect(self):
+    unoptimized_addr = [nacaddr.IPv4('10.16.128.6/32', token='FOO'),
+                        nacaddr.IPv4('10.16.128.7/32', token='BAR')]
+    self.naming.GetNetAddr.return_value = unoptimized_addr
+    pol = policy.ParsePolicy(HEADER + GOOD_TERM_2, self.naming)
+    term = pol.filters[0][1][0]
+    self.assertEqual(nacaddr.CollapseAddrList(unoptimized_addr),
+                     term.source_address)
+    pol = policy.ParsePolicy(HEADER_SRX + GOOD_TERM_2, self.naming)
+    term = pol.filters[0][1][0]
+    self.assertEqual(nacaddr.CollapseAddrListPreserveTokens(unoptimized_addr),
+                     term.source_address)
+
 
 if __name__ == '__main__':
   unittest.main()

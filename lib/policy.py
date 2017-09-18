@@ -217,9 +217,22 @@ class Policy(object):
                   term.name))
 
       # If argument is true, we optimize, otherwise just sort addresses
-      term.AddressCleanup(_OPTIMIZE)
+      term.AddressCleanup(_OPTIMIZE, self._NeedsAddressBook())
       term.SanityCheck()
       term.translated = True
+
+  def _NeedsAddressBook(self):
+    """Returns True if the policy uses a generator needing an addressbook."""
+    for header in self.headers:
+      if not header:
+        continue
+      if 'srx' in header.platforms:
+        return True
+      for target in header.target:
+        opts = header.FilterOptions(target.platform)
+        if opts and 'object-group' in opts:
+          return True
+    return False
 
   @property
   def headers(self):
@@ -1216,7 +1229,7 @@ class Term(object):
           raise TermInvalidIcmpType('Term %s contains an invalid icmp-type:'
                                     '%s' % (self.name, icmptype))
 
-  def AddressCleanup(self, optimize=True):
+  def AddressCleanup(self, optimize=True, addressbook=False):
     """Do Address and Port collapsing.
 
     Notes:
@@ -1225,9 +1238,13 @@ class Term(object):
 
     Args:
       optimize: boolean value indicating whether to optimize addresses
+      addressbook: Boolean indicating if addressbook is used.
     """
     if optimize:
-      cleanup = nacaddr.CollapseAddrList
+      if addressbook:
+        cleanup = nacaddr.CollapseAddrListPreserveTokens
+      else:
+        cleanup = nacaddr.CollapseAddrList
     else:
       cleanup = nacaddr.SortAddrList
 

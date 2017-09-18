@@ -1051,47 +1051,12 @@ class JuniperSRXTest(unittest.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_17 + GOOD_HEADER_2 +
                              GOOD_TERM_15, self.naming)
     srx = str(junipersrx.JuniperSRX(pol, EXP_INFO))
-    self.failUnless('address FOOBAR_0 172.16.0.0/12' in srx, srx)
+    self.failUnless('address FOOBAR_0 172.16.0.0/14' in srx, srx)
+    self.failUnless('address FOOBAR_1 172.22.0.0/15;' in srx, srx)
+    self.failUnless('address FOOBAR_2 172.24.0.0/13;' in srx, srx)
     self.failUnless('address SOME_HOST_0 10.0.0.0/8;' in srx, srx)
     self.failUnless('address SOME_HOST_1 172.20.0.0/15;' in srx, srx)
     self.failUnless('/16' not in srx, srx)
-
-  def testUnoptimizeAcrossZones(self):
-    foobar_ips = [nacaddr.IP('172.16.0.0/16', token='FOOBAR'),
-                  nacaddr.IP('172.17.0.0/16', token='FOOBAR'),
-                  nacaddr.IP('172.18.0.0/16', token='FOOBAR'),
-                  nacaddr.IP('172.19.0.0/16', token='FOOBAR'),
-                  nacaddr.IP('172.22.0.0/16', token='FOOBAR'),
-                  nacaddr.IP('172.23.0.0/16', token='FOOBAR'),
-                  nacaddr.IP('172.24.0.0/16', token='FOOBAR'),
-                  nacaddr.IP('172.25.0.0/16', token='FOOBAR'),
-                  nacaddr.IP('172.26.0.0/16', token='FOOBAR'),
-                  nacaddr.IP('172.27.0.0/16', token='FOOBAR'),
-                  nacaddr.IP('172.28.0.0/16', token='FOOBAR'),
-                  nacaddr.IP('172.29.0.0/16', token='FOOBAR'),
-                  nacaddr.IP('172.30.0.0/16', token='FOOBAR'),
-                  nacaddr.IP('172.31.0.0/16', token='FOOBAR')]
-    some_host_ips = [nacaddr.IP('172.20.0.0/16', token='SOME_HOST'),
-                     nacaddr.IP('172.21.0.0/16', token='SOME_HOST'),
-                     nacaddr.IP('10.0.0.0/8', token='SOME_HOST')]
-
-    self.naming.GetNetAddr.side_effect = [foobar_ips, some_host_ips,
-                                          some_host_ips, foobar_ips]
-
-    self.naming.GetServiceByProto.return_value = ['25']
-    pol = policy.ParsePolicy(GOOD_HEADER_7 + GOOD_TERM_17 +
-                             GOOD_HEADER_12 + GOOD_TERM_15 + GOOD_TERM_12,
-                             self.naming)
-    srx = str(junipersrx.JuniperSRX(pol, EXP_INFO))
-    self.failUnless(('        security-zone trust {\n'
-                     '            replace: address-book {\n'
-                     '                address FOOBAR_0 172.16.0.0/14;')
-                    in srx, srx)
-    self.failUnless(('        security-zone untrust {\n'
-                     '            replace: address-book {\n'
-                     '                address FOOBAR_0 172.16.0.0/12;\n'
-                     '                address SOME_HOST_0 10.0.0.0/8;')
-                    in srx, srx)
 
   def testNakedExclude(self):
     SMALL = [nacaddr.IP('10.0.0.0/24', 'SMALL', 'SMALL')]

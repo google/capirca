@@ -217,5 +217,37 @@ class NacaddrUnitTest(unittest.TestCase):
     self.assertListEqual(nacaddr.AddressListExclude(superset, excludes),
                          expected)
 
+  def testCollapseAddrListPreserveTokens(self):
+    addr_list = [nacaddr.IPv4('10.0.1.7/32', token='BIZ'),
+                 nacaddr.IPv4('192.168.1.10/32', token='ALSOUNDERSUPER'),
+                 nacaddr.IPv4('10.0.0.6/32', token='FOO'),
+                 nacaddr.IPv4('10.0.0.9/32', token='BAR'),
+                 nacaddr.IPv4('10.0.0.8/32', token='FOO'),
+                 nacaddr.IPv4('10.0.0.7/32', token='BAR'),
+                 nacaddr.IPv4('192.168.1.1/24', token='SUPER'),
+                 nacaddr.IPv4('10.0.1.6/32', token='BIZ'),
+                 nacaddr.IPv4('192.168.1.7/31', token='UNDERSUPER')
+                ]
+    expected = [nacaddr.IPv4('10.0.0.7/32', token='BAR'),
+                nacaddr.IPv4('10.0.0.9/32', token='BAR'),
+                nacaddr.IPv4('10.0.1.6/31', token='BIZ'),
+                nacaddr.IPv4('10.0.0.6/32', token='FOO'),
+                nacaddr.IPv4('10.0.0.8/32', token='FOO'),
+                nacaddr.IPv4('192.168.1.1/24', token='SUPER'),]
+    collapsed = nacaddr.CollapseAddrListPreserveTokens(addr_list)
+    self.assertListEqual(collapsed, expected)
+
+  def testIsSupernet(self):
+    addrs1 = [nacaddr.IPv4('10.0.1.7/32'), nacaddr.IPv4('10.0.1.2/32')]
+    addrs2 = [nacaddr.IPv4('10.0.1.0/24')]
+    addrs3 = [nacaddr.IPv4('10.0.1.7/32'), nacaddr.IPv4('10.1.1.2/32')]
+    addrs4 = [nacaddr.IPv4('192.168.1.1/32', nacaddr.IPv4('172.0.0.1/32'))]
+    addrs5 = [nacaddr.IPv4('192.168.1.1/24'), nacaddr.IPv4('10.0.1.0/24')]
+    self.assertTrue(nacaddr.IsSuperNet(addrs2, addrs1))
+    self.assertFalse(nacaddr.IsSuperNet(addrs2, addrs3))
+    self.assertFalse(nacaddr.IsSuperNet(addrs2, addrs4))
+    self.assertFalse(nacaddr.IsSuperNet(addrs2, addrs5))
+    self.assertTrue(nacaddr.IsSuperNet(addrs5, addrs2))
+
 if __name__ == '__main__':
   unittest.main()
