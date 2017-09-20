@@ -19,8 +19,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = 'watson@google.com (Tony Watson)'
-
 import io
 import unittest
 

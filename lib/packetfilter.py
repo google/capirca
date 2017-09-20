@@ -20,8 +20,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = 'msu@google.com (Martin Suess)'
-
 import collections
 import copy
 import datetime
@@ -33,14 +31,18 @@ import logging
 class Error(Exception):
   """Base error class."""
 
+
 class DuplicateTermError(Error):
   """Raised when duplication of term names are detected."""
+
 
 class DuplicateShortenedTableName(Error):
   """Raised when a duplicate shortened table name is found."""
 
+
 class UnsupportedProtoError(Error):
   """Raised when a protocol is not supported."""
+
 
 class Term(aclgenerator.Term):
   """Generate PacketFilter policy terms."""

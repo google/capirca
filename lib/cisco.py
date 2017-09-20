@@ -20,10 +20,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = ['pmoody@google.com (Peter Moody)',
-              'watson@google.com (Tony Watson)']
-
-
 import datetime
 
 from lib import aclgenerator
@@ -124,7 +120,8 @@ class TermStandard(object):
           ret_str.append(str(next_verbatim.value[1]))
         return '\n'.join(ret_str)
 
-    v4_addresses = [x for x in self.term.address if type(x) != nacaddr.IPv6]
+    v4_addresses = [x for x in self.term.address if
+                    not isinstance(x, nacaddr.IPv6)]
     if self.filter_name.isdigit():
       ret_str.append('access-list %s remark %s' % (self.filter_name,
                                                    self.term.name))
@@ -412,7 +409,7 @@ class Term(aclgenerator.Term):
     # dscp; unlike srx, cisco only supports single, non-except values
     if self.term.dscp_match:
       if len(self.term.dscp_match) > 1:
-        raise ExtendedAclTermError(
+        raise ExtendedACLTermError(
             'Extended ACLs cannot specify more than one dscp match value')
       else:
         self.options.append('dscp %s' % ' '.join(self.term.dscp_match))
@@ -459,18 +456,18 @@ class Term(aclgenerator.Term):
     Returns:
       An address string suitable for the ACL.
     """
-    if type(addr) is nacaddr.IPv4 or type(addr) is ipaddr.IPv4Network:
+    if isinstance(addr, nacaddr.IPv4) or isinstance(addr, ipaddr.IPv4Network):
       if addr.numhosts > 1:
         if self.platform == 'arista':
           return addr.with_prefixlen
         return '%s %s' % (addr.ip, addr.hostmask)
       return 'host %s' % (addr.ip)
-    if type(addr) is nacaddr.IPv6 or type(addr) is ipaddr.IPv6Network:
+    if isinstance(addr, nacaddr.IPv6) or isinstance(addr, ipaddr.IPv6Network):
       if addr.numhosts > 1:
         return addr.with_prefixlen
       return 'host %s' % (addr.ip)
     # DSMO enabled
-    if type(addr) is tuple:
+    if isinstance(addr, tuple):
       return '%s %s' % summarizer.ToDottedQuad(addr, negate=True)
     return addr
 
@@ -478,13 +475,14 @@ class Term(aclgenerator.Term):
     """Returns a formatted port string for the range.
 
     Args:
-      port: str list or none, the port range
+      port: str list or none, the port range.
+      proto: str representing proto (tcp, udp, etc).
+
     Returns:
       A string suitable for the ACL.
     """
     if not port:
       return ''
-
     port0 = port[0]
     port1 = port[1]
     if self.platform == 'arista':
@@ -495,8 +493,17 @@ class Term(aclgenerator.Term):
       return 'range %s %s' % (port0, port1)
     return 'eq %s' % (port0)
 
-  def _TermPortToProtocol(self, portNumber, proto):
-    _PORTS_TCP = {
+  def _TermPortToProtocol(self, port_num, proto):
+    """Converts a port number to a name or returns the number.
+
+    Args:
+      port_num: integer representing the port number.
+      proto: string representing proto (tcp, udp, etc).
+
+    Returns:
+      A name of the protocol or the port number that was provided.
+    """
+    ports_tcp = {
         5190: 'aol',
         179: 'bgp',
         19: 'chargen',
@@ -545,7 +552,7 @@ class Term(aclgenerator.Term):
         43: 'whois',
         80: 'www',
     }
-    _PORTS_UDP = {
+    ports_udp = {
         512: 'biff',
         68: 'bootpc',
         67: 'bootps',
@@ -578,7 +585,7 @@ class Term(aclgenerator.Term):
         513: 'who',
         177: 'xdmcp',
     }
-    _TYPES_ICMP = {
+    types_icmp = {
         6: 'alternate-address',
         31: 'conversion-error',
         8: 'echo',
@@ -601,15 +608,15 @@ class Term(aclgenerator.Term):
     }
 
     if proto == 'tcp':
-      if portNumber in _PORTS_TCP:
-        return _PORTS_TCP[portNumber]
+      if port_num in ports_tcp:
+        return ports_tcp[port_num]
     elif proto == 'udp':
-      if portNumber in _PORTS_UDP:
-        return _PORTS_UDP[portNumber]
+      if port_num in ports_udp:
+        return ports_udp[port_num]
     elif proto == 'icmp':
-      if portNumber in _TYPES_ICMP:
-        return _TYPES_ICMP[portNumber]
-    return portNumber
+      if port_num in types_icmp:
+        return types_icmp[port_num]
+    return port_num
 
   def _FixOptions(self, proto, option):
     """Returns a set of options suitable for the given protocol.

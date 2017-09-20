@@ -25,9 +25,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = 'msu@google.com (Martin Suess)'
-
-
 import copy
 import datetime
 import json
@@ -115,7 +112,7 @@ class Term(aclgenerator.Term):
 
       if self.term.destination_address:
         raise GceFirewallError('Ingress rules cannot include '
-            '"destinationRanges.')
+                               '"destinationRanges.')
 
     elif self.term.direction == 'EGRESS':
       if self.term.source_address or self.term.source_tag:
@@ -227,7 +224,7 @@ class GCE(aclgenerator.ACLGenerator):
   # Supported is 63 but we need to account for dynamic updates when the term
   # is rendered (which can add proto and a counter).
   _TERM_MAX_LENGTH = 53
-  _GOOD_DIRECTION = ["INGRESS", "EGRESS"]
+  _GOOD_DIRECTION = ['INGRESS', 'EGRESS']
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',
                                       'destination_tag',
                                       'source_tag'])

@@ -21,9 +21,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = ['pmoody@google.com',
-              'watson@google.com']
-
 import datetime
 import os
 import sys

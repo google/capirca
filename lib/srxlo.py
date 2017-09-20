@@ -26,8 +26,6 @@ from __future__ import unicode_literals
 
 from lib import juniper
 
-__author__ = 'vklimovs@google.com (Vjaceslavs Klimovs)'
-
 
 class Term(juniper.Term):
   """Single SRXlo term representation."""

@@ -133,8 +133,8 @@ class Term(object):
                                        % str(term.protocol))
 
       term.protocol = ProtocolNameToNumber(term.protocol,
-                                                self.ALWAYS_PROTO_NUM,
-                                                self.PROTO_MAP)
+                                           self.ALWAYS_PROTO_NUM,
+                                           self.PROTO_MAP)
 
   def NormalizeAddressFamily(self, af):
     """Convert (if necessary) address family name to numeric value.
@@ -260,7 +260,7 @@ class ACLGenerator(object):
       ('replies', 'RPL'),
       ('request', 'REQ'),
   ]
-  # Maximum term length. Can be overriden by generator to enforce
+  # Maximum term length. Can be overridden by generator to enforce
   # platform specific restrictions.
   _TERM_MAX_LENGTH = 62
 
@@ -470,27 +470,28 @@ class ACLGenerator(object):
                                 self._TERM_MAX_LENGTH,
                                 len(new_term)))
 
-def ProtocolNameToNumber(protocols, protoToNumber, nameToNumberMap):
-  """Convert (if present in protoToNumber) a protocol name to a numeric
-     value.
+
+def ProtocolNameToNumber(protocols, proto_to_num, name_to_num_map):
+  """Convert a protocol name to a numeric value.
 
   Args:
     protocols: list of protocol names to inspect
-    protoToNumber: list of protocol names that should be converted to numbers
-    nameToNumberMap: map of protocol names to protocol numbers
+    proto_to_num: list of protocol names that should be converted to numbers
+    name_to_num_map: map of protocol names to protocol numbers
 
   Returns:
-    returnProto: list of protocol names, converted if applicable
+    return_proto: list of protocol names, converted if applicable
   """
-  returnProto = []
+  return_proto = []
 
   for protocol in protocols:
-    if protocol in protoToNumber:
-      returnProto.append(nameToNumberMap[protocol])
+    if protocol in proto_to_num:
+      return_proto.append(name_to_num_map[protocol])
     else:
-      returnProto.append(protocol)
+      return_proto.append(protocol)
 
-  return returnProto
+  return return_proto
+
 
 def AddRepositoryTags(prefix='', rid=True, date=True, revision=True):
   """Add repository tagging into the output.
@@ -520,7 +521,7 @@ def AddRepositoryTags(prefix='', rid=True, date=True, revision=True):
 
 
 def WrapWords(textlist, size, joiner='\n'):
-  """Insert breaks into the listed strings at specified width.
+  r"""Insert breaks into the listed strings at specified width.
 
   Args:
     textlist: a list of text strings

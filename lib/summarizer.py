@@ -19,8 +19,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = 'vklimovs@google.com (Vjaceslavs Klimovs)'
-
 import collections
 
 import ipaddr
@@ -116,7 +114,7 @@ def _IpaddrToTuple(net):
 
 
 def _ToPrettyBinaryFormat(num):
-  """Prettily formated string of binary representation of suplied number.
+  """Prettily formatted string of binary representation of suplied number.
 
   Useful for debugging.
 
@@ -124,7 +122,7 @@ def _ToPrettyBinaryFormat(num):
     num: number to be prettily formatted
 
   Returns:
-    prettily formated string
+    prettily formatted string
   """
   # like ipaddr.py make assumption that this is ipv4
   byte_strings = []

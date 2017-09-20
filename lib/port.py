@@ -42,18 +42,17 @@ class NotSinglePort(Error):
 
 
 class PPP(object):
-
-  """
-  PPP: [P]ort [P]rotocol [P]airs
+  """PPP: [P]ort [P]rotocol [P]airs.
 
   Make port/protocol pairs an object for easy comparisons
   """
 
   def __init__(self, service):
-    """
+    """Init for PPP object.
+
     Args:
-      A port/protocol pair as str (eg: '80/tcp', '22-23/tcp')
-      or a nested service name (eg: 'SSH')
+      service: A port/protocol pair as str (eg: '80/tcp', '22-23/tcp') or
+               a nested service name (eg: 'SSH')
     """
     # remove comments (if any)
     self.service = service.split('#')[0].strip()

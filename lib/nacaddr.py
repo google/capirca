@@ -20,8 +20,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = 'watson@google.com (Tony Watson)'
-
 import itertools
 
 import ipaddr
@@ -58,7 +56,7 @@ class IPv4(ipaddr.IPv4Network):
     self.parent_token = token
 
   def AddComment(self, comment=''):
-    """Append comment to self.text, comma seperated.
+    """Append comment to self.text, comma separated.
 
     Don't add the comment if it's the same as self.text.
 
@@ -137,7 +135,7 @@ class IPv6(ipaddr.IPv6Network):
   Supernet = supernet
 
   def AddComment(self, comment=''):
-    """Append comment to self.text, comma seperated.
+    """Append comment to self.text, comma separated.
 
     Don't add the comment if it's the same as self.text.
 
@@ -150,12 +148,14 @@ class IPv6(ipaddr.IPv6Network):
     else:
       self.text = comment
 
+
 def _InNetList(adders, ip):
-  """Returns True if ip is contained in adders"""
+  """Returns True if ip is contained in adders."""
   for addr in adders:
     if ip in addr:
       return True
   return False
+
 
 def IsSuperNet(supernets, subnets):
   """Returns True if subnets are fully consumed by supernets."""
@@ -163,7 +163,6 @@ def IsSuperNet(supernets, subnets):
     if not _InNetList(supernets, net):
       return False
   return True
-
 
 
 def CollapseAddrListPreserveTokens(addresses):
@@ -191,7 +190,7 @@ def CollapseAddrListPreserveTokens(addresses):
         break
       elif IsSuperNet(ip, dedup_array[k]):
         del dedup_array[k]
-      k = k + 1
+      k += 1
     if to_add:
       dedup_array.append(ip)
   return [i for sublist in dedup_array for i in sublist]

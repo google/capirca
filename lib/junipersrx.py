@@ -21,8 +21,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = 'robankeny@google.com (Robert Ankeny)'
-
 import collections
 import copy
 import datetime
@@ -324,7 +322,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       ConflictingTargetOptions: Two target options are conflicting in the header
       MixedAddrBookTypes: Global and Zone address books in the same policy
       ConflictingApplicationSets: When two duplicate named terms have
-                                  conflicting applicaiton entries
+                                  conflicting application entries
     """
     self.srx_policies = []
     self.addressbook = collections.OrderedDict()

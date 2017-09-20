@@ -20,8 +20,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = 'watson@google.com (Tony Watson)'
-
 import datetime
 import re
 from string import Template  # pylint: disable=g-importing-member
@@ -169,7 +167,7 @@ class Term(aclgenerator.Term):
         ret_str.append(self._COMMENT_FORMAT.substitute(
             filter=self.filter,
             term=self.term_name,
-            comment=str(line).replace('\"','')))
+            comment=str(line).replace('\"', '')))
 
     # Unsupported configuration; in the case of 'accept' or 'next', we
     # skip the rule.  In other cases, we blow up (raise an exception)

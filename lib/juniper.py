@@ -20,10 +20,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = ['pmoody@google.com (Peter Moody)',
-              'watson@google.com (Tony Watson)']
-
-
 import datetime
 
 from lib import aclgenerator

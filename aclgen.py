@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#
 # Copyright 2011 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,14 +21,11 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = 'pmoody@google.com'
-
 import copy
 import dircache
 import multiprocessing
 import os
 import sys
-import types
 
 from lib import aclgenerator
 from lib import arista
@@ -126,15 +121,6 @@ class ACLGeneratorError(Error):
 
 class ACLParserError(Error):
   """Raised when the ACL parser fails."""
-
-
-# Workaround http://bugs.python.org/issue1515, needed because of
-# http://codereview.appspot.com/4523073/.
-#  (more: http://code.google.com/p/ipaddr-py/issues/detail?id=84)
-# TODO(watson): Can be removed once we run under python >=2.7
-def _deepcopy_method(x, memo):
-  return type(x)(x.im_func, copy.deepcopy(x.im_self, memo), x.im_class)
-copy._deepcopy_dispatch[types.MethodType] = _deepcopy_method
 
 
 def SkipLines(text, skip_line_func=False):
@@ -347,11 +333,12 @@ def RenderACL(acl_text, acl_suffix, output_directory, input_file, write_files,
   """Write the ACL string out to file if appropriate.
 
   Args:
-    acl_text: Rendered ouput of an ACL Generator
-    acl_suffix: File suffix to append to output filename
-    output_directory: The directory to write the output file
-    input_file: The name of the policy file that was used to render ACL
-    write_files: a list of file tuples, (output_file, acl_text), to write
+    acl_text: Rendered output of an ACL Generator.
+    acl_suffix: File suffix to append to output filename.
+    output_directory: The directory to write the output file.
+    input_file: The name of the policy file that was used to render ACL.
+    write_files: A list of file tuples, (output_file, acl_text), to write.
+    binary: Boolean if the rendered ACL is in binary format.
   """
   output_file = os.path.join(output_directory, '%s%s') % (
       os.path.splitext(os.path.basename(input_file))[0], acl_suffix)
@@ -366,10 +353,12 @@ def RenderACL(acl_text, acl_suffix, output_directory, input_file, write_files,
 def FilesUpdated(file_name, new_text, binary):
   """Diff the rendered acl with what's already on disk.
 
-     Args:
-       file_name: Name of file on disk to check against.
-       file_string: Text of newly generated ACL.
-       binary: True if file is a binary format.
+  Args:
+    file_name: Name of file on disk to check against.
+    new_text: Text of newly generated ACL.
+    binary: True if file is a binary format.
+  Returns:
+    Boolean if config does not equal new text.
   """
   try:
     if binary:
@@ -397,8 +386,8 @@ def DescendRecursively(input_dirname, output_dirname, definitions, depth=1):
   Args:
     input_dirname: the base directory.
     output_dirname: where to place the rendered files.
-    definitions: naming.Naming object
-    depth: integer, used for outputing '---> rendering prod/corp-backbone.jcl'
+    definitions: naming.Naming object.
+    depth: integer, for outputting '---> rendering prod/corp-backbone.jcl'.
 
   Returns:
     the files that were found
@@ -447,6 +436,7 @@ def WriteFiles(write_files):
     logging.info('no files changed, not writing to disk')
   for output_file, file_string in write_files:
     _WriteFile(output_file, file_string)
+
 
 def _WriteFile(output_file, file_string):
   try:

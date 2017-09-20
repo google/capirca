@@ -22,11 +22,11 @@ from __future__ import unicode_literals
 
 import datetime
 import re
+import xml.dom.minidom
 
 from lib import aclgenerator
 from lib import nacaddr
 import logging
-import xml.dom.minidom
 
 
 _ACTION_TABLE = {
@@ -215,7 +215,6 @@ class Term(aclgenerator.Term):
     dest_v4_addr = []
     dest_v6_addr = []
 
-
     for af in af_list:
       # source address
       if self.term.source_address:
@@ -289,7 +288,7 @@ class Term(aclgenerator.Term):
       for saddr in source_addr:
 
         # inet4
-        if type(saddr) is nacaddr.IPv4:
+        if isinstance(saddr, nacaddr.IPv4):
           if saddr.numhosts > 1:
             saddr = '%s%s%s' % (_XML_TABLE.get('srcIpv4Start'),
                                 saddr.with_prefixlen,
@@ -300,7 +299,7 @@ class Term(aclgenerator.Term):
                                 _XML_TABLE.get('srcIpv4End'))
           sources = '%s%s' %(sources, saddr)
         # inet6
-        if type(saddr) is nacaddr.IPv6:
+        if isinstance(saddr, nacaddr.IPv6):
           if saddr.numhosts > 1:
             saddr = '%s%s%s' % (_XML_TABLE.get('srcIpv6Start'),
                                 saddr.with_prefixlen,
@@ -316,7 +315,7 @@ class Term(aclgenerator.Term):
       destinations = '<destinations excluded="false">'
       for daddr in destination_addr:
         # inet4
-        if type(daddr) is nacaddr.IPv4:
+        if isinstance(daddr, nacaddr.IPv4):
           if daddr.numhosts > 1:
             daddr = '%s%s%s' % (_XML_TABLE.get('destIpv4Start'),
                                 daddr.with_prefixlen,
@@ -327,7 +326,7 @@ class Term(aclgenerator.Term):
                                 _XML_TABLE.get('destIpv4End'))
           destinations = '%s%s' %(destinations, daddr)
         # inet6
-        if type(daddr) is nacaddr.IPv6:
+        if isinstance(daddr, nacaddr.IPv6):
           if daddr.numhosts > 1:
             daddr = '%s%s%s' % (_XML_TABLE.get('destIpv6Start'),
                                 daddr.with_prefixlen,
