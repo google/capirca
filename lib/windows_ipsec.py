@@ -23,7 +23,7 @@ from string import Template
 
 from lib import aclgenerator
 from lib import windows
-import logging
+from absl import logging
 
 
 class Term(windows.Term):

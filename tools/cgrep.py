@@ -48,7 +48,8 @@ import pprint
 from lib import nacaddr
 from lib import naming
 
-import logging
+from absl import app
+from absl import logging
 
 
 def is_valid_ip(arg):

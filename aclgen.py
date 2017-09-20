@@ -50,8 +50,9 @@ from lib import speedway
 from lib import srxlo
 from lib import windows_advfirewall
 
-import gflags as flags
-import logging
+from absl import app
+from absl import flags
+from absl import logging
 
 
 FLAGS = flags.FLAGS

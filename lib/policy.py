@@ -30,7 +30,7 @@ from lib import naming
 from ply import lex
 from ply import yacc
 
-import logging
+from absl import logging
 
 
 DEFINITIONS = None

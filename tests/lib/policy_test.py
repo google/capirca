@@ -25,7 +25,7 @@ from lib import nacaddr
 from lib import naming
 from lib import policy
 import mock
-import logging
+from absl import logging
 
 
 HEADER = """

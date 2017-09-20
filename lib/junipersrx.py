@@ -28,7 +28,7 @@ import itertools
 
 from lib import aclgenerator
 from lib import nacaddr
-import logging
+from absl import logging
 
 
 def JunipersrxList(name, data):

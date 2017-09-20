@@ -26,7 +26,7 @@ from lib import aclgenerator
 from lib import nacaddr
 from lib import summarizer
 import ipaddr
-import logging
+from absl import logging
 
 
 _ACTION_TABLE = {

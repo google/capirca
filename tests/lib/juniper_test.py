@@ -30,8 +30,8 @@ from lib import naming
 from lib import policy
 import mock
 
-import gflags as flags
-import logging
+from absl import flags
+from absl import logging
 
 FLAGS = flags.FLAGS
 

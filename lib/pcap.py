@@ -36,7 +36,7 @@ import datetime
 
 from lib import aclgenerator
 from lib import nacaddr
-import logging
+from absl import logging
 
 
 class Error(Exception):

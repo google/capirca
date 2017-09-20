@@ -23,8 +23,8 @@ import os
 import aclgen
 from lib import naming
 import mock
-import gflags as flags
-import logging
+from absl import flags
+from absl import logging
 import unittest
 
 

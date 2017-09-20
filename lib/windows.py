@@ -24,7 +24,7 @@ from string import Template
 
 from lib import aclgenerator
 from lib import nacaddr
-import logging
+from absl import logging
 
 
 CMD_PREFIX = 'netsh ipsec static add '

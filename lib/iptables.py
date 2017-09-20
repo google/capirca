@@ -26,7 +26,7 @@ from string import Template  # pylint: disable=g-importing-member
 
 from lib import aclgenerator
 from lib import nacaddr
-import logging
+from absl import logging
 
 
 class Term(aclgenerator.Term):

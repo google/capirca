@@ -30,7 +30,7 @@ from lib import policy
 
 import mock
 
-import logging
+from absl import logging
 
 
 BAD_HEADER = """

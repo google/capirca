@@ -25,7 +25,7 @@ import copy
 import datetime
 
 from lib import aclgenerator
-import logging
+from absl import logging
 
 
 class Error(Exception):

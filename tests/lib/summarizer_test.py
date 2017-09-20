@@ -27,7 +27,7 @@ import unittest
 
 from lib import summarizer
 import ipaddr
-import logging
+from absl import logging
 
 
 class SummarizerTest(unittest.TestCase):

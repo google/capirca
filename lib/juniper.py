@@ -25,7 +25,7 @@ import datetime
 from lib import aclgenerator
 from lib import nacaddr
 from lib import summarizer
-import logging
+from absl import logging
 
 
 # generic error class

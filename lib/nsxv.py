@@ -26,7 +26,7 @@ import xml.dom.minidom
 
 from lib import aclgenerator
 from lib import nacaddr
-import logging
+from absl import logging
 
 
 _ACTION_TABLE = {

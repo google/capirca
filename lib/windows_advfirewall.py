@@ -24,7 +24,7 @@ from string import Template
 # pylint: disable=unused-import
 # logging is used in the test mock
 from lib import windows
-import logging
+from absl import logging
 
 
 class Term(windows.Term):

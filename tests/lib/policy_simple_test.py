@@ -20,7 +20,7 @@ from __future__ import unicode_literals
 import unittest
 
 from lib import policy_simple
-import logging
+from absl import logging
 
 
 class FieldTest(unittest.TestCase):
