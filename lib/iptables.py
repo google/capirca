@@ -77,7 +77,8 @@ class Term(aclgenerator.Term):
       'sample': '',
       }
 
-  def __init__(self, term, filter_name, trackstate, filter_action, af='inet'):
+  def __init__(self, term, filter_name, trackstate, filter_action, af='inet',
+               verbose=True):
     """Setup a new term.
 
     Args:
@@ -86,6 +87,7 @@ class Term(aclgenerator.Term):
       trackstate: Specifies if conntrack should be used for new connections.
       filter_action: The default action of the filter.
       af: Which address family ('inet' or 'inet6') to apply the term to.
+      verbose: boolean if comments should be printed
 
     Raises:
       UnsupportedFilterError: Filter is not supported.
@@ -97,6 +99,7 @@ class Term(aclgenerator.Term):
     self.default_action = filter_action
     self.options = []
     self.af = af
+    self.verbose = verbose
 
     if af == 'inet6':
       self._all_ips = nacaddr.IPv6('::/0')
@@ -146,28 +149,29 @@ class Term(aclgenerator.Term):
       ret_str.append(self._PREJUMP_FORMAT.substitute(filter=self.filter,
                                                      term=self.term_name))
 
-    if self.term.owner:
-      self.term.comment.append('Owner: %s' % self.term.owner)
-    # reformat long comments, if needed
-    #
-    # iptables allows individual comments up to 256 chars.
-    # But our generator will limit a single comment line to < 120, using:
-    # max = 119 - 27 (static chars in comment command) - [length of term name]
-    comment_max_width = 92 - len(self.term_name)
-    if comment_max_width < 40:
-      comment_max_width = 40
-    comments = aclgenerator.WrapWords(self.term.comment, comment_max_width)
-    # append comments to output
-    if comments and comments[0]:
-      for line in comments:
-        if not line:
-          continue  # iptables-restore does not like 0-length comments.
-        # term comments
-        # Strip out quotes as iptables cant have nested quotes
-        ret_str.append(self._COMMENT_FORMAT.substitute(
-            filter=self.filter,
-            term=self.term_name,
-            comment=str(line).replace('\"', '')))
+    if self.verbose:
+      if self.term.owner:
+        self.term.comment.append('Owner: %s' % self.term.owner)
+      # reformat long comments, if needed
+      #
+      # iptables allows individual comments up to 256 chars.
+      # But our generator will limit a single comment line to < 120, using:
+      # max = 119 - 27 (static chars in comment command) - [length of term name]
+      comment_max_width = 92 - len(self.term_name)
+      if comment_max_width < 40:
+        comment_max_width = 40
+      comments = aclgenerator.WrapWords(self.term.comment, comment_max_width)
+      # append comments to output
+      if comments and comments[0]:
+        for line in comments:
+          if not line:
+            continue  # iptables-restore does not like 0-length comments.
+          # term comments
+          # Strip out quotes as iptables cant have nested quotes
+          ret_str.append(self._COMMENT_FORMAT.substitute(
+              filter=self.filter,
+              term=self.term_name,
+              comment=str(line).replace('\"', '')))
 
     # Unsupported configuration; in the case of 'accept' or 'next', we
     # skip the rule.  In other cases, we blow up (raise an exception)
@@ -687,8 +691,9 @@ class Iptables(aclgenerator.ACLGenerator):
     default_action = None
     good_default_actions = ['ACCEPT', 'DROP']
     good_afs = ['inet', 'inet6']
-    good_options = ['nostate', 'abbreviateterms', 'truncateterms']
+    good_options = ['nostate', 'abbreviateterms', 'truncateterms', 'noverbose']
     all_protocols_stateful = True
+    self.verbose = True
 
     for header, terms in pol.filters:
       filter_type = None
@@ -710,6 +715,8 @@ class Iptables(aclgenerator.ACLGenerator):
       # disable stateful?
       if 'nostate' in filter_options:
         all_protocols_stateful = False
+      if 'noverbose' in filter_options:
+        self.verbose = False
 
       # Check for matching af
       for address_family in good_afs:
@@ -765,7 +772,7 @@ class Iptables(aclgenerator.ACLGenerator):
             continue
 
         new_terms.append(self._TERM(term, filter_name, all_protocols_stateful,
-                                    default_action, filter_type))
+                                    default_action, filter_type, self.verbose))
 
       self.iptables_policies.append((header, filter_name, filter_type,
                                      default_action, new_terms))
