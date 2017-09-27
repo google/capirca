@@ -19,8 +19,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = 'watson@google.com (Tony Watson)'
-
 import unittest
 
 from lib import nacaddr
@@ -72,6 +70,22 @@ header {
   comment:: "this is a test inet6 acl"
   comment:: "this is another comment"
   target:: juniper test-filter inet6
+}
+"""
+HEADER_SRX = """
+header {
+  target:: srx from-zone foo to-zone bar
+}
+"""
+HEADER_OBJ_GRP = """
+header {
+  target:: cisco foo object-group
+}
+"""
+HEADER_ADDRBOOK_MIXED = """
+header {
+  target:: srx from-zone to-zone bar
+  target:: cisco foo
 }
 """
 INCLUDE_STATEMENT = """
@@ -1263,6 +1277,57 @@ class PolicyTest(unittest.TestCase):
                       self.naming)
     self.assertRaises(policy.ICMPCodeError, policy.ParsePolicy, pol2,
                       self.naming)
+
+  def testOptimizedConsistency(self):
+    pol = HEADER + GOOD_TERM_2 + GOOD_TERM_3
+    unoptimized_addr = [nacaddr.IPv4('10.16.128.6/32'),
+                        nacaddr.IPv4('10.16.128.7/32')]
+    optimized_addr = nacaddr.CollapseAddrList(unoptimized_addr)
+    self.naming.GetNetAddr.return_value = unoptimized_addr
+    self.naming.GetServiceByProto.return_value = ['25']
+    ret_unoptimized = policy.ParsePolicy(pol, self.naming, optimize=False)
+    self.assertFalse(policy._OPTIMIZE)
+    ret_optimized = policy.ParsePolicy(pol, self.naming)
+    self.assertTrue(policy._OPTIMIZE)
+    for _, terms in ret_unoptimized.filters:
+      for term in terms:
+        self.assertEqual(unoptimized_addr, term.source_address)
+    for _, terms in ret_optimized.filters:
+      for term in terms:
+        self.assertEqual(optimized_addr, term.source_address)
+
+
+  def testShadeCheckConsistency(self):
+    pol = HEADER + TERM_SUPER_3 + TERM_SUB_2
+    self.assertRaises(policy.ShadingError, policy.ParsePolicy, pol, self.naming,
+                      shade_check=True)
+    self.assertTrue(policy._SHADE_CHECK)
+    _ = policy.ParsePolicy(pol, self.naming)
+    self.assertFalse(policy._SHADE_CHECK)
+
+  def testNeedAddressBook(self):
+    pol1 = policy.ParsePolicy(HEADER + GOOD_TERM_1, self.naming)
+    pol2 = policy.ParsePolicy(HEADER_SRX + GOOD_TERM_1, self.naming)
+    pol3 = policy.ParsePolicy(HEADER_OBJ_GRP + GOOD_TERM_1, self.naming)
+    pol4 = policy.ParsePolicy(HEADER_ADDRBOOK_MIXED + GOOD_TERM_1, self.naming)
+    self.assertFalse(pol1._NeedsAddressBook())
+    self.assertTrue(pol2._NeedsAddressBook())
+    self.assertTrue(pol3._NeedsAddressBook())
+    self.assertTrue(pol4._NeedsAddressBook())
+
+  def testAddressCleanupCorrect(self):
+    unoptimized_addr = [nacaddr.IPv4('10.16.128.6/32', token='FOO'),
+                        nacaddr.IPv4('10.16.128.7/32', token='BAR')]
+    self.naming.GetNetAddr.return_value = unoptimized_addr
+    pol = policy.ParsePolicy(HEADER + GOOD_TERM_2, self.naming)
+    term = pol.filters[0][1][0]
+    self.assertEqual(nacaddr.CollapseAddrList(unoptimized_addr),
+                     term.source_address)
+    pol = policy.ParsePolicy(HEADER_SRX + GOOD_TERM_2, self.naming)
+    term = pol.filters[0][1][0]
+    self.assertEqual(nacaddr.CollapseAddrListPreserveTokens(unoptimized_addr),
+                     term.source_address)
+
 
 if __name__ == '__main__':
   unittest.main()

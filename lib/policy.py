@@ -21,9 +21,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = ['pmoody@google.com',
-              'watson@google.com']
-
 import datetime
 import os
 import sys
@@ -217,9 +214,22 @@ class Policy(object):
                   term.name))
 
       # If argument is true, we optimize, otherwise just sort addresses
-      term.AddressCleanup(_OPTIMIZE)
+      term.AddressCleanup(_OPTIMIZE, self._NeedsAddressBook())
       term.SanityCheck()
       term.translated = True
+
+  def _NeedsAddressBook(self):
+    """Returns True if the policy uses a generator needing an addressbook."""
+    for header in self.headers:
+      if not header:
+        continue
+      if 'srx' in header.platforms:
+        return True
+      for target in header.target:
+        opts = header.FilterOptions(target.platform)
+        if opts and 'object-group' in opts:
+          return True
+    return False
 
   @property
   def headers(self):
@@ -243,8 +253,6 @@ class Policy(object):
     Raises:
       ShadingError: When a term is impossible to reach.
     """
-    # Reset _OPTIMIZE global to default value
-    globals()['_SHADE_CHECK'] = False
     shading_errors = []
     for index, term in enumerate(terms):
       for prior_index in xrange(index):
@@ -1218,7 +1226,7 @@ class Term(object):
           raise TermInvalidIcmpType('Term %s contains an invalid icmp-type:'
                                     '%s' % (self.name, icmptype))
 
-  def AddressCleanup(self, optimize=True):
+  def AddressCleanup(self, optimize=True, addressbook=False):
     """Do Address and Port collapsing.
 
     Notes:
@@ -1227,9 +1235,13 @@ class Term(object):
 
     Args:
       optimize: boolean value indicating whether to optimize addresses
+      addressbook: Boolean indicating if addressbook is used.
     """
     if optimize:
-      cleanup = nacaddr.CollapseAddrList
+      if addressbook:
+        cleanup = nacaddr.CollapseAddrListPreserveTokens
+      else:
+        cleanup = nacaddr.CollapseAddrList
     else:
       cleanup = nacaddr.SortAddrList
 
@@ -2452,12 +2464,8 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
       globals()['DEFINITIONS'] = definitions
     else:
       globals()['DEFINITIONS'] = naming.Naming(DEFAULT_DEFINITIONS)
-    if not optimize:
-      globals()['_OPTIMIZE'] = False
-    else:
-      globals()['_OPTIMIZE'] = True
-    if shade_check:
-      globals()['_SHADE_CHECK'] = True
+    globals()['_OPTIMIZE'] = optimize
+    globals()['_SHADE_CHECK'] = shade_check
 
     lexer = lex.lex()
 

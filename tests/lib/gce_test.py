@@ -36,6 +36,20 @@ header {
 }
 """
 
+GOOD_HEADER_INGRESS = """
+header {
+  comment:: "The general policy comment."
+  target:: gce INGRESS
+}
+"""
+
+GOOD_HEADER_EGRESS = """
+header {
+  comment:: "The general policy comment."
+  target:: gce EGRESS
+}
+"""
+
 GOOD_HEADER_NO_NETWORK = """
 header {
   comment:: "The general policy comment."
@@ -90,6 +104,17 @@ term good-term-1 {
 }
 """
 
+GOOD_TERM_4 = """
+term good-term-1 {
+  comment:: "DNS access from corp."
+  destination-address:: CORP_EXTERNAL
+  destination-tag:: dns-servers
+  destination-port:: DNS
+  protocol:: udp tcp
+  action:: accept
+}
+"""
+
 GOOD_TERM_JSON = """
 [
   {
@@ -109,6 +134,7 @@ GOOD_TERM_JSON = """
     "targetTags": [
       "dns-servers"
     ],
+    "direction": "INGRESS",
     "network": "global/networks/default"
   },
   {
@@ -128,6 +154,7 @@ GOOD_TERM_JSON = """
     "targetTags": [
       "dns-servers"
     ],
+    "direction": "INGRESS",
     "network": "global/networks/default"
   }
 ]
@@ -149,6 +176,7 @@ GOOD_TERM_NO_NETWORK_JSON = """
       }
     ],
     "description": "DNS access from corp.",
+    "direction": "INGRESS",
     "targetTags": [
       "dns-servers"
     ]
@@ -167,6 +195,7 @@ GOOD_TERM_NO_NETWORK_JSON = """
       }
     ],
     "description": "DNS access from corp.",
+    "direction": "INGRESS",
     "targetTags": [
       "dns-servers"
     ]
@@ -283,6 +312,7 @@ GOOD_TERM_EXCLUDE_RANGE = """
       }
     ],
     "description": "DNS access from corp.",
+    "direction": "INGRESS",
     "targetTags": [
       "dns-servers"
     ],
@@ -311,7 +341,56 @@ GOOD_TERM_EXCLUDE_RANGE = """
     "targetTags": [
       "dns-servers"
     ],
+    "direction": "INGRESS",
     "network": "global/networks/default"
+  }
+]
+"""
+
+GOOD_TERM_DENY = """
+term good-term-1 {
+  comment:: "DNS access from corp."
+  source-address:: CORP_EXTERNAL
+  destination-tag:: dns-servers
+  protocol:: udp tcp
+  action:: deny
+}
+"""
+
+GOOD_TERM_DENY_EXPECTED = """[
+  {
+    "denied": [
+      {
+        "IPProtocol": "udp"
+      }
+    ],
+    "description": "DNS access from corp.",
+    "name": "default-good-term-1-udp",
+    "network": "global/networks/default",
+    "sourceRanges": [
+      "10.2.3.4/32"
+    ],
+    "direction": "INGRESS",
+    "targetTags": [
+      "dns-servers"
+    ]
+  },
+  {
+    "denied": [
+      {
+        "IPProtocol": "tcp"
+      }
+    ],
+    "description": "DNS access from corp.",
+    "name": "default-good-term-1-tcp",
+    "network": "global/networks/default",
+    "sourceRanges": [
+      "10.2.3.4/32"
+    ],
+    "direction": "INGRESS",
+    "targetTags": [
+      "dns-servers"
+    ]
   }
 ]
 """
@@ -319,6 +398,8 @@ GOOD_TERM_EXCLUDE_RANGE = """
 SUPPORTED_TOKENS = {
     'action',
     'comment',
+    'destination_address',
+    'destination_address_exclude',
     'destination_port',
     'destination_tag',
     'expiration',
@@ -335,7 +416,7 @@ SUPPORTED_TOKENS = {
     'translated',
 }
 
-SUPPORTED_SUB_TOKENS = {'action': {'accept'}}
+SUPPORTED_SUB_TOKENS = {'action': {'accept', 'deny'}}
 
 # Print a info message when a term is set to expire in that many weeks.
 # This is normally passed from command line.
@@ -488,7 +569,7 @@ class GCETest(unittest.TestCase):
 
     self.assertRaisesRegexp(
         gce.GceFirewallError,
-        'GCE firewall needs either to specify source address or source tags.',
+        'Ingress rule missing required field oneof "sourceRanges" or "sourceTags.',
         gce.GCE,
         policy.ParsePolicy(
             GOOD_HEADER + BAD_TERM_NO_SOURCE, self.naming),
@@ -612,6 +693,58 @@ class GCETest(unittest.TestCase):
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
+  def testDenyAction(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER + GOOD_TERM_DENY, self.naming), EXP_INFO)
+    expected = json.loads(GOOD_TERM_DENY_EXPECTED)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testIngress(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER_INGRESS + GOOD_TERM, self.naming), EXP_INFO)
+    self.failUnless('INGRESS' in str(acl), str(acl))
+    self.failUnless('EGRESS' not in str(acl), str(acl))
+
+  def testEgress(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER_EGRESS + GOOD_TERM_4, self.naming), EXP_INFO)
+    self.failUnless('EGRESS' in str(acl), str(acl))
+    self.failUnless('INGRESS' not in str(acl), str(acl))
+
+  def testDestinationRanges(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER_EGRESS + GOOD_TERM_4, self.naming), EXP_INFO)
+    self.failUnless('destinationRanges' in str(acl), str(acl))
+    self.failUnless('sourceRanges' not in str(acl), str(acl))
+    self.failUnless('10.2.3.4/32' in str(acl), str(acl))
+
+  def testRaisesConflictingDirectionAddress(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.return_value = ['22']
+
+
+    self.assertRaisesRegexp(
+        gce.GceFirewallError,
+        'Ingress rule missing required field oneof "sourceRanges" or "sourceTags"',
+        gce.GCE,
+        policy.ParsePolicy(
+            GOOD_HEADER_INGRESS + GOOD_TERM_4, self.naming),
+        EXP_INFO)
+    self.assertRaisesRegexp(
+        gce.GceFirewallError,
+        'Egress rules cannot include "sourceRanges", "sourceTags".',
+        gce.GCE,
+        policy.ParsePolicy(
+            GOOD_HEADER_EGRESS + GOOD_TERM, self.naming),
+        EXP_INFO)
 
 if __name__ == '__main__':
   unittest.main()

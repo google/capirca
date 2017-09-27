@@ -22,5 +22,3 @@ __version__ = '1.0.0'
 __all__ = ['generator', 'generator_factory', 'dns_generator',
            'filter_factory', 'global_filter', 'file_filter',
            'definition_filter', 'yaml_validator']
-
-__author__ = 'Martin Suess (msu@google.com)'

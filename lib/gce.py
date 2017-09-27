@@ -25,9 +25,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = 'msu@google.com (Martin Suess)'
-
-
 import copy
 import datetime
 import json
@@ -57,6 +54,8 @@ class Term(aclgenerator.Term):
                'ah': 51,
                'sctp': 132,
               }
+  ACTION_MAP = {'accept': 'allowed',
+                'deny': 'denied'}
   # Restrict the number of terms to 256. Proto supports up to 256
   _TERM_ADDRESS_LIMIT = 256
 
@@ -71,6 +70,7 @@ class Term(aclgenerator.Term):
     super(Term, self).__init__(term)
     self.term = term
 
+    self._validateDirection()
     if self.term.source_address_exclude and not self.term.source_address:
       raise GceFirewallError(
           'GCE firewall does not support address exclusions without a source '
@@ -79,22 +79,49 @@ class Term(aclgenerator.Term):
         and self.term.destination_port):
       raise GceFirewallError(
           'Only TCP and UDP protocols support destination ports.')
-    if not self.term.source_address and not self.term.source_tag:
+    if (not self.term.source_address and
+        not self.term.source_tag) and self.term.direction == 'INGRESS':
       raise GceFirewallError(
           'GCE firewall needs either to specify source address or source tags.')
     if self.term.source_port:
       raise GceFirewallError(
           'GCE firewall does not support source port restrictions.')
-    if self.term.source_address_exclude and self.term.source_address:
+    if (self.term.source_address_exclude and self.term.source_address or
+        self.term.destination_address_exclude and
+        self.term.destination_address):
       self.term.FlattenAll()
-      if not self.term.source_address:
+      if not self.term.source_address and self.term.direction == 'INGRESS':
         raise GceFirewallError(
             'GCE firewall rule no longer contains any source addresses after '
             'the prefixes in source_address_exclude were removed.')
+      if not self.term.destination_address and self.term.direction == 'EGRESS':
+        raise GceFirewallError(
+            'GCE firewall rule no longer contains any destination addresses '
+            'after the prefixes in destination_address_exclude were removed.')
 
   def __str__(self):
     """Convert term to a string."""
     json.dumps(self.ConvertToDict(), indent=2, separators=(',', ': '))
+
+  def _validateDirection(self):
+    if self.term.direction == 'INGRESS':
+      if not self.term.source_address and not self.term.source_tag:
+        raise GceFirewallError(
+            'Ingress rule missing required field oneof "sourceRanges" or '
+            '"sourceTags".')
+
+      if self.term.destination_address:
+        raise GceFirewallError('Ingress rules cannot include '
+                               '"destinationRanges.')
+
+    elif self.term.direction == 'EGRESS':
+      if self.term.source_address or self.term.source_tag:
+        raise GceFirewallError(
+            'Egress rules cannot include "sourceRanges", "sourceTags".')
+
+      if not self.term.destination_address:
+        raise GceFirewallError(
+            'Egress rule missing required field "destinationRanges".')
 
   def ConvertToDict(self):
     """Convert term to a dictionary.
@@ -113,8 +140,8 @@ class Term(aclgenerator.Term):
       self.term.comment.append('Owner: %s' % self.term.owner)
     term_dict = {
         'description': ' '.join(self.term.comment),
-        'allowed': [],
         'name': self.term.name,
+        'direction': self.term.direction
         }
     if self.term.network:
       term_dict['network'] = self.term.network
@@ -129,6 +156,7 @@ class Term(aclgenerator.Term):
 
     rules = []
     saddrs = self.term.GetAddressOfVersion('source_address', 4)
+    daddrs = self.term.GetAddressOfVersion('destination_address', 4)
 
     if not self.term.protocol:
       raise GceFirewallError(
@@ -149,7 +177,10 @@ class Term(aclgenerator.Term):
             ports.append(str(start))
           else:
             ports.append('%d-%d' % (start, end))
-      proto_dict['allowed'].append(dest)
+      action = self.ACTION_MAP[self.term.action[0]]
+      if action not in proto_dict:
+        proto_dict[action] = []
+      proto_dict[self.ACTION_MAP[self.term.action[0]]].append(dest)
 
       # There's a limit of 256 addresses each term can contain.
       # If we're above that limit, we're breaking it down in more terms.
@@ -162,6 +193,16 @@ class Term(aclgenerator.Term):
           if len(source_addr_chunks) > 1:
             rule['name'] = '%s-%d' % (rule['name'], i+1)
           rule['sourceRanges'] = [str(saddr) for saddr in chunk]
+          rules.append(rule)
+      elif daddrs:
+        dest_addr_chunks = [
+            daddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in xrange(
+                0, len(daddrs), self._TERM_ADDRESS_LIMIT)]
+        for i, chunk in enumerate(dest_addr_chunks):
+          rule = copy.deepcopy(proto_dict)
+          if len(dest_addr_chunks) > 1:
+            rule['name'] = '%s-%d' % (rule['name'], i+1)
+          rule['destinationRanges'] = [str(daddr) for daddr in chunk]
           rules.append(rule)
       else:
         rules.append(proto_dict)
@@ -183,6 +224,7 @@ class GCE(aclgenerator.ACLGenerator):
   # Supported is 63 but we need to account for dynamic updates when the term
   # is rendered (which can add proto and a counter).
   _TERM_MAX_LENGTH = 53
+  _GOOD_DIRECTION = ['INGRESS', 'EGRESS']
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',
                                       'destination_tag',
                                       'source_tag'])
@@ -203,14 +245,12 @@ class GCE(aclgenerator.ACLGenerator):
                          'source_tag'}
 
     # remove unsupported things
-    supported_tokens -= {'destination_address',
-                         'destination_address_exclude',
-                         'icmp_type',
+    supported_tokens -= {'icmp_type',
                          'platform',
                          'platform_exclude',
                          'verbatim'}
     # easier to make a new structure
-    supported_sub_tokens = {'action': {'accept'}}
+    supported_sub_tokens = {'action': {'accept', 'deny'}}
 
     return supported_tokens, supported_sub_tokens
 
@@ -228,6 +268,13 @@ class GCE(aclgenerator.ACLGenerator):
       filter_name = header.FilterName(self._PLATFORM)
 
       network = ''
+      direction = 'INGRESS'
+      if filter_options:
+        for i in self._GOOD_DIRECTION:
+          if i in filter_options:
+            direction = i
+            filter_options.remove(i)
+
       if filter_options:
         network = filter_options[0]
       else:
@@ -248,6 +295,7 @@ class GCE(aclgenerator.ACLGenerator):
           raise GceFirewallError('Duplicate term name')
         term_names.add(term.name)
 
+        term.direction = direction
         if term.expiration:
           if term.expiration <= exp_info_date:
             logging.info('INFO: Term %s in policy %s expires '

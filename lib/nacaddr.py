@@ -20,7 +20,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = 'watson@google.com (Tony Watson)'
+import itertools
 
 import ipaddr
 
@@ -56,7 +56,7 @@ class IPv4(ipaddr.IPv4Network):
     self.parent_token = token
 
   def AddComment(self, comment=''):
-    """Append comment to self.text, comma seperated.
+    """Append comment to self.text, comma separated.
 
     Don't add the comment if it's the same as self.text.
 
@@ -135,7 +135,7 @@ class IPv6(ipaddr.IPv6Network):
   Supernet = supernet
 
   def AddComment(self, comment=''):
-    """Append comment to self.text, comma seperated.
+    """Append comment to self.text, comma separated.
 
     Don't add the comment if it's the same as self.text.
 
@@ -147,6 +147,53 @@ class IPv6(ipaddr.IPv6Network):
         self.text += ', ' + comment
     else:
       self.text = comment
+
+
+def _InNetList(adders, ip):
+  """Returns True if ip is contained in adders."""
+  for addr in adders:
+    if ip in addr:
+      return True
+  return False
+
+
+def IsSuperNet(supernets, subnets):
+  """Returns True if subnets are fully consumed by supernets."""
+  for net in subnets:
+    if not _InNetList(supernets, net):
+      return False
+  return True
+
+
+def CollapseAddrListPreserveTokens(addresses):
+  """Collapse an array of IPs only when their tokens are the same.
+
+  Args:
+     addresses: list of ipaddr.IPNetwork objects.
+
+  Returns:
+    list of ipaddr.IPNetwork objects.
+  """
+  ret_array = []
+  for grp in itertools.groupby(sorted(addresses, key=lambda x: x.parent_token),
+                               lambda x: x.parent_token):
+    ret_array.append(CollapseAddrList(list(grp[1])))
+  dedup_array = []
+  i = 0
+  while len(ret_array) > i:
+    ip = ret_array.pop(0)
+    k = 0
+    to_add = True
+    while k < len(dedup_array):
+      if IsSuperNet(dedup_array[k], ip):
+        to_add = False
+        break
+      elif IsSuperNet(ip, dedup_array[k]):
+        del dedup_array[k]
+      k += 1
+    if to_add:
+      dedup_array.append(ip)
+  return [i for sublist in dedup_array for i in sublist]
 
 
 def CollapseAddrListRecursive(addresses):

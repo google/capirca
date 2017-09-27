@@ -21,8 +21,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = 'robankeny@google.com (Robert Ankeny)'
-
 import collections
 import copy
 import datetime
@@ -272,7 +270,9 @@ class JuniperSRX(aclgenerator.ACLGenerator):
   _PLATFORM = 'srx'
   SUFFIX = '.srx'
   _SUPPORTED_AF = set(('inet', 'inet6', 'mixed'))
-  _SUPPORTED_TARGET_OPTIONS = set(('address-book-zone', 'address-book-global'))
+  _ZONE_ADDR_BOOK = 'address-book-zone'
+  _GLOBAL_ADDR_BOOK = 'address-book-global'
+  _SUPPORTED_TARGET_OPTIONS = set((_ZONE_ADDR_BOOK, _GLOBAL_ADDR_BOOK))
   _AF_MAP = {'inet': (4,),
              'inet6': (6,),
              'mixed': (4, 6)}
@@ -336,14 +336,11 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     self.addr_token_table = collections.defaultdict(list)
     self.from_zone = ''
     self.to_zone = ''
-    self.addr_book_type_global = True
+    self.addr_book_type = set()
 
     current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
-    # list is used for check if policy only utilizes one type of address book.
-    # (global or zone)
-    addr_book_types = []
     for header, terms in pol.filters:
       if self._PLATFORM not in header.platforms:
         continue
@@ -374,9 +371,30 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       # variables used to collect target-options and set defaults
       target_options = []
       filter_type = ''
-      address_book_type = ''
 
       # parse srx target options
+      extra_options = filter_options[4:]
+      if self._SUPPORTED_TARGET_OPTIONS.issubset(extra_options):
+        raise ConflictingTargetOptions('only one address-book-type can '
+                                       'be specified per header "%s"' %
+                                       ' '.join(filter_options))
+      else:
+        address_book_type = self._SUPPORTED_TARGET_OPTIONS.intersection(
+            extra_options)
+        if len(address_book_type) is 0:
+          address_book_type = {self._GLOBAL_ADDR_BOOK}
+        self.addr_book_type.update(address_book_type)
+        if len(self.addr_book_type) > 1:
+          raise MixedAddrBookTypes('Global and Zone address-book-types cannot '
+                                   'be used in the same policy')
+        if self.from_zone == 'all' and self.to_zone == 'all':
+          if self._ZONE_ADDR_BOOK in self.addr_book_type:
+            raise UnsupportedFilterError('Zone address books cannot be used '
+                                         'with a global policy.')
+        elif self.from_zone == 'all' or self.to_zone == 'all':
+          raise UnsupportedFilterError('The zone name all is reserved for '
+                                       'global policies.')
+
       for filter_opt in filter_options[4:]:
 
           # validate address families
@@ -391,26 +409,6 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         elif filter_opt in self._SUPPORTED_TARGET_OPTIONS:
           target_options.append(filter_opt)
 
-          # check to see if option is an address-book-type and only one
-          # address-book-type is specified per header
-          if filter_opt == 'address-book-zone':
-            if not address_book_type:
-              address_book_type = 'zone'
-            else:
-              raise ConflictingTargetOptions('only one address-book-type can '
-                                             'be specified per header "%s"' %
-                                             ' '.join(filter_options))
-          elif filter_opt == 'address-book-global':
-            if not address_book_type:
-              address_book_type = 'global'
-            else:
-              raise ConflictingTargetOptions('only one address-book-type can '
-                                             'be specified per header "%s"' %
-                                             ' '.join(filter_options))
-          else:
-            raise UnsupportedHeader('SRX Generator currently does not '
-                                    'support %s as a header option "%s"' %
-                                    (filter_opt, ' '.join(filter_options)))
         else:
           raise UnsupportedHeader('SRX Generator currently does not support '
                                   '%s as a header option "%s"' %
@@ -419,19 +417,6 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       # if address-family and address-book-type have not been set then default
       if not filter_type:
         filter_type = 'mixed'
-      if not address_book_type:
-        address_book_type = 'global'
-
-      addr_book_types.append(address_book_type)
-
-      # check if policy is global
-      if self.from_zone == 'all' and self.to_zone == 'all':
-        if address_book_type == 'zone':
-          raise UnsupportedFilterError('Zone address books cannot be used with '
-                                       'a global policy.')
-      elif self.from_zone == 'all' or self.to_zone == 'all':
-        raise UnsupportedFilterError('The zone name all is reserved for global '
-                                     'policies.')
 
       term_dup_check = set()
       new_terms = []
@@ -488,7 +473,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
 
         # SRX policies are controlled by addresses that are used within, so
         # policy can be at the same time inet and inet6.
-        if address_book_type == 'global':
+        if self._GLOBAL_ADDR_BOOK in self.addr_book_type:
           for zone in self.addressbook:
             for unused_name, ips in sorted(self.addressbook[zone].iteritems()):
               ips = [i for i in ips]
@@ -545,15 +530,6 @@ class JuniperSRX(aclgenerator.ACLGenerator):
           self.applications.append(new_application_set)
 
       self.srx_policies.append((header, new_terms, filter_options))
-
-    # Check if policy only utilizes one type of address book. (global or zone)
-    if all(p == 'global' for p in addr_book_types):
-      self.addr_book_type_global = True
-    elif all(p == 'zone' for p in addr_book_types):
-      self.addr_book_type_global = False
-    else:
-      raise MixedAddrBookTypes('Global and Zone address-book-types cannot '
-                               'be used in the same policy')
 
   def _FixLargePolices(self, terms, address_family):
     """Loops over all terms finding terms exceeding SRXs policy limit.
@@ -698,7 +674,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     target = IndentList(self.INDENT)
 
     # create address books if address-book-type set to global
-    if self.addr_book_type_global:
+    if self._GLOBAL_ADDR_BOOK in self.addr_book_type:
       global_address_book = collections.defaultdict(list)
 
       target.IndentAppend(1, 'replace: address-book {')

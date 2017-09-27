@@ -130,7 +130,7 @@ class Term(aclgenerator.Term):
 
     # The windows ipsec driver requires either 'tcp' or 'udp' to be specified
     # if a srcport or dstport is specified.  Fail if src or dst ports are
-    # specified and and of the protocols are not exactly one or both of 'tcp'
+    # specified and of the protocols are not exactly one or both of 'tcp'
     # or 'udp'.
     if ((not set(protocols).issubset(set(['tcp', 'udp']))) and
         (len(src_ports) > 1 or len(dst_ports) > 1)):

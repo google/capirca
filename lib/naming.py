@@ -168,11 +168,12 @@ class Naming(object):
     base_parents = []
     recursive_parents = []
     # convert string to nacaddr, if arg is ipaddr then convert str() to nacaddr
-    if type(query) != nacaddr.IPv4 and type(query) != nacaddr.IPv6:
+    if (not isinstance(query, nacaddr.IPv4) and
+        not isinstance(query, nacaddr.IPv6)):
       if query[:1].isdigit():
         query = nacaddr.IP(query)
     # Get parent token for an IP
-    if type(query) == nacaddr.IPv4 or type(query) == nacaddr.IPv6:
+    if isinstance(query, nacaddr.IPv4) or isinstance(query, nacaddr.IPv6):
       for token in self.networks:
         for item in self.networks[token].items:
           item = item.split('#')[0].strip()
@@ -422,12 +423,12 @@ class Naming(object):
     if token not in self.networks:
       raise UndefinedAddressError('%s %s' % ('\nUNDEFINED:', str(token)))
 
-    for next in self.networks[token].items:
+    for i in self.networks[token].items:
       comment = ''
-      if next.find('#') > -1:
-        (net, comment) = next.split('#', 1)
+      if i.find('#') > -1:
+        (net, comment) = i.split('#', 1)
       else:
-        net = next
+        net = i
       try:
         net = net.strip()
         addr = nacaddr.IP(net)
@@ -443,8 +444,8 @@ class Naming(object):
         # if net was something like 'FOO', or the name of another token which
         # needs to be dereferenced, nacaddr.IP() will return a ValueError
         returnlist.extend(self.GetNet(net))
-    for next in returnlist:
-      next.parent_token = token
+    for i in returnlist:
+      i.parent_token = token
     return returnlist
 
   def _Parse(self, defdirectory, def_type):
@@ -521,13 +522,14 @@ class Naming(object):
       definition_type: Either 'networks' or 'services'
 
     Raises:
-      UnexpectedDefinitionType: when called with unexpected type of defintions
+      UnexpectedDefinitionType: called with unexpected type of definitions.
       NamespaceCollisionError: when overlapping tokens are found.
       ParseError: If errors occur
+      NamingSyntaxError: Syntax error parsing config.
     """
     if definition_type not in ['services', 'networks']:
       raise UnexpectedDefinitionType('%s %s' % (
-          'Received an unexpected defintion type:', definition_type))
+          'Received an unexpected definition type:', definition_type))
     line = line.strip()
     if not line or line.startswith('#'):  # Skip comments and blanks.
       return

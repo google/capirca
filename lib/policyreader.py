@@ -29,13 +29,19 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-__author__ = 'watson@google.com (Tony Watson)'
-
 from lib import naming
 
 
-class FileOpenError(Exception):
+class Error(Exception):
+  """Generic error class."""
+
+
+class FileOpenError(Error):
   """Trouble opening a file."""
+
+
+class InvalidFilterError(Error):
+  """Filter is invalid."""
 
 
 class Filter(object):
@@ -149,7 +155,7 @@ class Policy(object):
             in_term = False
 
   def __str__(self):
-    return '\n'.join(str(next) for next in self.filter)
+    return '\n'.join(str(i) for i in self.filter)
 
   def Matches(self, src=None, dst=None, dport=None, sport=None,
               filtername=None):
@@ -164,6 +170,9 @@ class Policy(object):
 
     Returns:
       results: list of lists, each list is index to filter & term in the policy
+
+    Raises:
+      InvalidFilterError: Error if filter is invalid.
 
     Example:
       p=policyreader.Policy('policy_path', 'definitions_path')
@@ -204,11 +213,11 @@ class Policy(object):
     if not filtername:
       filter_list = self.filter
     else:
-      for idx, next in enumerate(self.filter):
-        if filtername == next.name:
+      for idx, fil in enumerate(self.filter):
+        if filtername == fil.name:
           filter_list = [self.filter[idx]]
       if not filter_list:
-        raise 'invalid filter name: %s' % filtername
+        raise InvalidFilterError('invalid filter name: %s' % filtername)
 
     for findex, xfilter in enumerate(filter_list):
       mterms = []
@@ -243,6 +252,6 @@ class Policy(object):
           mterms[3].add(tindex)
       rval.append(list(mterms[0] & mterms[1] & mterms[2] & mterms[3]))
     for findex, fresult in enumerate(rval):
-      for next in list(fresult):
-        results.append([findex, next])
+      for i in list(fresult):
+        results.append([findex, i])
     return results

@@ -73,6 +73,13 @@ header {
 }
 """
 
+GOOD_HEADER_7 = """
+header {
+  comment:: "this is a test acl with a custom chain and no default target"
+  target:: iptables foo noverbose
+}
+"""
+
 IPV6_HEADER_1 = """
 header {
   comment:: "test header for inet6 terms"
@@ -214,6 +221,12 @@ term good_term_11 {
   protocol:: icmp
   icmp-type:: unreachable
   icmp-code:: 3 4
+  action:: accept
+}
+"""
+GOOD_TERM_12 = """
+term good_term_12 {
+  comment:: "FOOO"
   action:: accept
 }
 """
@@ -1189,6 +1202,10 @@ class AclCheckTest(unittest.TestCase):
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
+  def testNoVerbose(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_7 + GOOD_TERM_12, self.naming)
+    acl = iptables.Iptables(pol, EXP_INFO)
+    self.assertTrue('comment --comment "FOOO"' not in str(acl), acl)
 
 if __name__ == '__main__':
   unittest.main()
