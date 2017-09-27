@@ -745,7 +745,7 @@ class JuniperSRXTest(unittest.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_12 + GOOD_HEADER +
                              GOOD_TERM_1, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
-    self.failUnless('address FOOBAR_0 10.23.0.0/22;' in output, output)
+    self.failUnless('address FOOBAR_v1_0 10.23.0.0/22;' in output, output)
 
     self.naming.GetNetAddr.assert_has_calls([
         mock.call('FOOBAR'),
@@ -1055,7 +1055,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.failUnless('address FOOBAR_1 172.22.0.0/15;' in srx, srx)
     self.failUnless('address FOOBAR_2 172.24.0.0/13;' in srx, srx)
     self.failUnless('address SOME_HOST_0 10.0.0.0/8;' in srx, srx)
-    self.failUnless('address SOME_HOST_1 172.20.0.0/15;' in srx, srx)
+    self.failUnless('address SOME_HOST_v1_1 172.20.0.0/15;' in srx, srx)
     self.failUnless('/16' not in srx, srx)
 
   def testNakedExclude(self):

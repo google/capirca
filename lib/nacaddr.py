@@ -237,6 +237,8 @@ def CollapseAddrListRecursive(addresses):
           ret_array[-1].Supernet().network == ret_array[-1].network):
       ret_array.append(ret_array.pop().Supernet())
       # save the text from the subsumed address
+      ret_array[-1].token = cur_addr.token
+      ret_array[-1].parent_token = cur_addr.parent_token
       ret_array[-1].AddComment(cur_addr.text)
       optimized = True
     else:

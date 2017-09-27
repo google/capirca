@@ -61,6 +61,18 @@ header {
   target:: cisco objgroupheader object-group
 }
 """
+GOOD_OBJGRP_HEADER_XE = """
+header {
+  comment:: "obj group header test"
+  target:: cisco objgroupheader object-group iosxe
+}
+"""
+GOOD_OBJGRP_HEADER_CAT = """
+header {
+  comment:: "obj group header test"
+  target:: cisco objgroupheader object-group catos
+}
+"""
 GOOD_INET6_HEADER = """
 header {
   comment:: "inet6 header test"
@@ -281,6 +293,16 @@ term good_term_19 {
   icmp-type:: unreachable
   icmp-code:: 3 4
   action:: accept
+}
+"""
+GOOD_TERM_20 = """
+term good_term_20 {
+  protocol:: icmp
+  source-address:: SOME_HOST
+  icmp-type:: unreachable
+  icmp-code:: 3 4
+  action:: accept
+  logging:: true
 }
 """
 LONG_COMMENT_TERM = """
@@ -579,6 +601,90 @@ class CiscoTest(unittest.TestCase):
         ' 1024-65535' in str(acl), str(acl))
     self.failUnless(
         ' permit ip net-group SOME_HOST net-group SOME_HOST' in str(acl),
+        str(acl))
+
+    # There should be no addrgroups that look like IP addresses.
+    for addrgroup in re.findall(r'net-group ([a-f0-9.:/]+)', str(acl)):
+      self.assertRaises(ValueError, nacaddr.IP(addrgroup))
+
+    self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
+                                             mock.call('SOME_HOST')])
+    self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
+
+  def testObjectGroupIosXe(self):
+    ip_grp = ['no object-group network SOME_HOST']
+    ip_grp.append('object-group network SOME_HOST')
+    ip_grp.append(' 10.0.0.0 255.0.0.0')
+    ip_grp.append('exit')
+
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IP('10.0.0.0/8', token='SOME_HOST')]
+    self.naming.GetServiceByProto.return_value = ['80']
+
+    pol = policy.ParsePolicy(
+        GOOD_OBJGRP_HEADER_XE + GOOD_TERM_2 + GOOD_TERM_18
+        + GOOD_TERM_20, self.naming)
+    acl = cisco.Cisco(pol, EXP_INFO)
+
+    output = str(acl)
+
+    self.failUnless('\n'.join(ip_grp) in output, '%s %s' % (
+        '\n'.join(ip_grp), output))
+
+    # Object-group terms should use the object groups created.
+    self.failUnless(
+        ' permit tcp any eq 80 object-group SOME_HOST range'
+        ' 1024 65535 established' in str(acl), str(acl))
+    self.failUnless(
+        ' permit ip object-group SOME_HOST object-group SOME_HOST'
+        in output,
+        output)
+
+    self.failUnless(' permit icmp object-group SOME_HOST any 3 3'
+                    in output, output)
+    self.failUnless(' permit icmp object-group SOME_HOST any 3 4'
+                    in output, output)
+
+    # There should be no addrgroups that look like IP addresses.
+    for addrgroup in re.findall(r'net-group ([a-f0-9.:/]+)', str(acl)):
+      self.assertRaises(ValueError, nacaddr.IP(addrgroup))
+
+    self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
+                                             mock.call('SOME_HOST')])
+    self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
+
+  def testObjectGroupCatOs(self):
+    ip_grp = ['no object-group ip address SOME_HOST']
+    ip_grp.append('object-group ip address SOME_HOST')
+    ip_grp.append(' 10.0.0.0 255.0.0.0')
+    ip_grp.append('exit')
+    port_grp1 = ['no object-group ip port 80-80']
+    port_grp1.append('object-group ip port 80-80')
+    port_grp1.append(' eq 80')
+    port_grp1.append('exit')
+    port_grp2 = ['no object-group ip port 1024-65535']
+    port_grp2.append('object-group ip port 1024-65535')
+    port_grp2.append(' range 1024 65535')
+    port_grp2.append('exit')
+
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IP('10.0.0.0/8', token='SOME_HOST')]
+    self.naming.GetServiceByProto.return_value = ['80']
+
+    pol = policy.ParsePolicy(
+        GOOD_OBJGRP_HEADER_CAT + GOOD_TERM_2 + GOOD_TERM_18, self.naming)
+    acl = cisco.Cisco(pol, EXP_INFO)
+
+    self.failUnless('\n'.join(ip_grp) in str(acl), '%s %s' % (
+        '\n'.join(ip_grp), str(acl)))
+
+    # Object-group terms should use the object groups created.
+    self.failUnless(
+        ' permit tcp any portgroup 80-80 addrgroup SOME_HOST portgroup'
+        ' 1024-65535 established' in str(acl), str(acl))
+    self.failUnless(
+        ' permit ip addrgroup SOME_HOST addrgroup SOME_HOST'
+        in str(acl),
         str(acl))
 
     # There should be no addrgroups that look like IP addresses.

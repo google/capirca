@@ -7,8 +7,7 @@ add deny-to-reserved-dst 127.0.0.0/8
 add deny-to-reserved-dst 169.254.0.0/16
 add deny-to-reserved-dst 172.16.0.0/12
 add deny-to-reserved-dst 192.168.0.0/16
-add deny-to-reserved-dst 224.0.0.0/4
-add deny-to-reserved-dst 240.0.0.0/4
+add deny-to-reserved-dst 224.0.0.0/3
 create deny-to-bogons-dst hash:net family inet hashsize 16 maxelem 16
 add deny-to-bogons-dst 0.0.0.0/8
 add deny-to-bogons-dst 10.0.0.0/8

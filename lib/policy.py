@@ -46,7 +46,7 @@ _FLEXIBLE_MATCH_RANGE_ATTRIBUTES = {'byte-offset',
                                     'flexible-range-name'}
 _FLEXIBLE_MATCH_START_OPTIONS = {'layer-3', 'layer-4', 'payload'}
 _LOGGING = set(('true', 'True', 'syslog', 'local', 'disable', 'log-both'))
-_OPTIMIZE = True
+_OPTIMIZE = False
 _SHADE_CHECK = False
 
 
