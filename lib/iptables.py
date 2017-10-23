@@ -56,7 +56,7 @@ class Term(aclgenerator.Term):
       'udp': '-p udp',
       'all': '-p all',
       'esp': '-p esp',
-      'ah': '-p ah',
+      'ah': '-m ah',
       'gre': '-p gre',
       }
   _TCP_FLAGS_TABLE = {

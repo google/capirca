@@ -809,7 +809,7 @@ class AclCheckTest(unittest.TestCase):
     self.failUnless('-p tcp' in result, 'protocol tcp not found.')
     self.failUnless('-p udp' in result, 'protocol udp not found.')
     self.failUnless('-p esp' in result, 'protocol esp not found.')
-    self.failUnless('-p ah' in result, 'protocol ah not found.')
+    self.failUnless('-m ah' in result, 'protocol ah not found.')
     self.failUnless('-p gre' in result, 'protocol gre not found.')
     self.failUnless('-p icmp' in result, 'protocol icmp not found.')
     self.failUnless('-p 50' in result, 'protocol 50 not found.')
