@@ -438,6 +438,12 @@ term good-term-1 {
   action:: accept
 }
 """
+FRAGOFFSET_TERM = """
+term good-term-1 {
+  fragment-offset:: 1-7
+  action:: accept
+}
+"""
 GOOD_FLEX_MATCH_TERM = """
 term flex-match-term-1 {
   protocol:: tcp
@@ -1223,6 +1229,13 @@ class JuniperTest(unittest.TestCase):
                           EXP_INFO)
     output = str(jcl)
     self.failUnless('traffic-class-count floop;' in output, output)
+
+  def testFragmentOffset(self):
+    policy_text = GOOD_HEADER + FRAGOFFSET_TERM
+    jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
+                          EXP_INFO)
+    output = str(jcl)
+    self.failUnless('fragment-offset 1-7;' in output, output)
 
   def testMultipleForwardingClass(self):
     policy_text = GOOD_HEADER + GOOD_TERM_29

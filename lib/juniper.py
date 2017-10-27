@@ -276,6 +276,7 @@ class Term(aclgenerator.Term):
                           self.term.flexible_match_range or
                           self.term.forwarding_class or
                           self.term.forwarding_class_except or
+                          self.term.fragment_offset or
                           self.term.hop_limit or
                           self.term.next_ip or
                           self.term.port or
