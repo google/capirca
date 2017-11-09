@@ -835,7 +835,7 @@ class Cisco(aclgenerator.ACLGenerator):
 
     # a mixed filter outputs both ipv4 and ipv6 acls in the same output file
     good_filters = ['extended', 'standard', 'object-group', 'inet6',
-                    'mixed']
+                    'mixed', 'enable_dsmo']
 
     for header, terms in pol.filters:
       if self._PLATFORM not in header.platforms:
