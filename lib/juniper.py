@@ -287,7 +287,8 @@ class Term(aclgenerator.Term):
                           self.term.source_port or
                           self.term.source_prefix or
                           self.term.source_prefix_except or
-                          self.term.traffic_type)
+                          self.term.traffic_type or
+                          self.term.ttl)
 
     if has_match_criteria:
       config.Append('from {')
@@ -412,6 +413,9 @@ class Term(aclgenerator.Term):
         for epfx in self.term.destination_prefix_except:
           config.Append(epfx + ' except;')
         config.Append('}')
+
+      if self.term.ttl:
+        config.Append('ttl %s;' % self.term.ttl)
 
       # protocol
       if self.term.protocol:
@@ -823,7 +827,8 @@ class Juniper(aclgenerator.ACLGenerator):
                          'source_prefix',
                          'source_prefix_except',
                          'traffic_type',
-                         'traffic_class_count'}
+                         'traffic_class_count',
+                         'ttl'}
     supported_sub_tokens.update({
         'option': {
             'established',

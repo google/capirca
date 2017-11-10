@@ -94,6 +94,7 @@ SUPPORTED_TOKENS = {
     'traffic_class_count',
     'traffic_type',
     'translated',
+    'ttl',
     'verbatim',
 }
 

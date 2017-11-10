@@ -397,6 +397,12 @@ term good-term-42 {
   action:: accept
 }
 """
+GOOD_TERM_43 = """
+term good-term-43 {
+  ttl:: 10
+  action:: accept
+}
+"""
 GOOD_TERM_V6_1 = """
 term good-term-v6-1 {
   hop-limit:: 5
@@ -527,6 +533,12 @@ term bad-term-14 {
   protocol:: icmp
   icmp-type:: unreachable redirect
   icmp-code:: 3
+  action:: accept
+}
+"""
+BAD_TERM_15 = """
+term bad-term-15 {
+  ttl:: 300
   action:: accept
 }
 """
@@ -1304,6 +1316,16 @@ class PolicyTest(unittest.TestCase):
     self.assertTrue(policy._SHADE_CHECK)
     _ = policy.ParsePolicy(pol, self.naming)
     self.assertFalse(policy._SHADE_CHECK)
+
+  def testTTL(self):
+    pol = HEADER + GOOD_TERM_43
+    result = policy.ParsePolicy(pol, self.naming)
+    self.assertTrue('ttl: 10' in str(result))
+
+  def testInvalidTTL(self):
+    pol = HEADER + BAD_TERM_15
+    self.assertRaises(policy.InvalidTermTTLValue, policy.ParsePolicy,
+                      pol, self.naming)
 
   def testNeedAddressBook(self):
     pol1 = policy.ParsePolicy(HEADER + GOOD_TERM_1, self.naming)

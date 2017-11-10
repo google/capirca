@@ -255,6 +255,12 @@ term good-term-20-v6 {
   action:: accept
 }
 """
+GOOD_TERM_21 = """
+term good_term_21 {
+  ttl:: 10
+  action:: accept
+}
+"""
 GOOD_TERM_22 = """
 term good_term_22 {
   protocol:: tcp
@@ -547,6 +553,7 @@ SUPPORTED_TOKENS = {
     'traffic_class_count',
     'traffic_type',
     'translated',
+    'ttl',
     'verbatim',
 }
 
@@ -1277,6 +1284,12 @@ class JuniperTest(unittest.TestCase):
         ('next-ip 10.1.1.1/32') in output)
 
     self.naming.GetNetAddr.assert_called_once_with('TEST_NEXT')
+
+  def testTTL(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_21,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.assertTrue('ttl 10;' in output)
 
   def testNextIpFormat(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]

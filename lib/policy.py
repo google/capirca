@@ -48,6 +48,8 @@ _FLEXIBLE_MATCH_START_OPTIONS = {'layer-3', 'layer-4', 'payload'}
 _LOGGING = set(('true', 'True', 'syslog', 'local', 'disable', 'log-both'))
 _OPTIMIZE = True
 _SHADE_CHECK = False
+_MAX_TTL = 255
+_MIN_TTL = 0
 
 
 class Error(Exception):
@@ -117,8 +119,13 @@ class ShadingError(Error):
 class FlexibleMatchError(Error):
   """Error when a term contains an invalid flexible match value."""
 
+
 class ICMPCodeError(Error):
   """Error when ICMP Codes are used with multiple or invalid types."""
+
+
+class InvalidTermTTLValue(Error):
+  """Error when TTL value is invalid."""
 
 
 def TranslatePorts(ports, protocols, term_name):
@@ -424,6 +431,7 @@ class Term(object):
     self.source_address_exclude = []
     self.source_port = []
     self.source_prefix = []
+    self.ttl = None
     self.verbatim = []
     # juniper specific.
     self.packet_length = None
@@ -742,6 +750,8 @@ class Term(object):
       ret_str.append('  platform: %s' % self.platform)
     if self.platform_exclude:
       ret_str.append('  platform_exclude: %s' % self.platform_exclude)
+    if self.ttl:
+      ret_str.append('  ttl: %s' % self.ttl)
     if self.timeout:
       ret_str.append('  timeout: %s' % self.timeout)
     if self.vpn:
@@ -824,6 +834,9 @@ class Term(object):
     # tags
     if not (sorted(self.source_tag) == sorted(other.source_tag) and
             sorted(self.destination_tag) == sorted(other.destination_tag)):
+      return False
+
+    if self.ttl != other.ttl:
       return False
 
     if sorted(self.logging) != sorted(other.logging):
@@ -1148,6 +1161,8 @@ class Term(object):
         self.dscp_set = obj.value
       elif obj.var_type is VarType.VPN:
         self.vpn = (obj.value[0], obj.value[1])
+      elif obj.var_type is VarType.TTL:
+        self.ttl = int(obj.value)
       else:
         raise TermObjectTypeError(
             '%s isn\'t a type I know how to deal with' % (type(obj)))
@@ -1167,6 +1182,7 @@ class Term(object):
       TermProtocolEtherTypeError: if the term has both ether-type and
         upper-layer protocol restrictions
       InvalidTermActionError: action and routing-instance both defined
+      InvalidTermTTLValue: TTL value is invalid.
 
     This should be called when the term is fully formed, and
     all of the options are set.
@@ -1225,6 +1241,11 @@ class Term(object):
             self.ICMP_TYPE[6]):
           raise TermInvalidIcmpType('Term %s contains an invalid icmp-type:'
                                     '%s' % (self.name, icmptype))
+    if self.ttl:
+      if not _MIN_TTL <= self.ttl <= _MAX_TTL:
+
+        raise InvalidTermTTLValue('Term %s contains invalid TTL: %s'
+                                  % (self.name, self.ttl))
 
   def AddressCleanup(self, optimize=True, addressbook=False):
     """Do Address and Port collapsing.
@@ -1465,6 +1486,7 @@ class VarType(object):
   PAN_APPLICATION = 54
   ICMP_CODE = 55
   PRIORITY = 56
+  TTL = 57
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1689,6 +1711,7 @@ tokens = (
     'TIMEOUT',
     'TRAFFIC_CLASS_COUNT',
     'TRAFFIC_TYPE',
+    'TTL',
     'VERBATIM',
     'VPN',
 )
@@ -1756,6 +1779,7 @@ reserved = {
     'timeout': 'TIMEOUT',
     'traffic-class-count': 'TRAFFIC_CLASS_COUNT',
     'traffic-type': 'TRAFFIC_TYPE',
+    'ttl': 'TTL',
     'verbatim': 'VERBATIM',
     'vpn': 'VPN',
 }
@@ -1918,6 +1942,7 @@ def p_term_spec(p):
                 | term_spec routinginstance_spec
                 | term_spec tag_list_spec
                 | term_spec timeout_spec
+                | term_spec ttl_spec
                 | term_spec traffic_type_spec
                 | term_spec verbatim_spec
                 | term_spec vpn_spec
@@ -2301,6 +2326,11 @@ def p_apply_groups_except_spec(p):
 def p_timeout_spec(p):
   """ timeout_spec : TIMEOUT ':' ':' INTEGER """
   p[0] = VarType(VarType.TIMEOUT, p[4])
+
+
+def p_ttl_spec(p):
+  """ ttl_spec : TTL ':' ':' INTEGER """
+  p[0] = VarType(VarType.TTL, p[4])
 
 
 def p_one_or_more_strings(p):
