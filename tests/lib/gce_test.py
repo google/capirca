@@ -726,6 +726,14 @@ class GCETest(unittest.TestCase):
     self.failUnless('sourceRanges' not in str(acl), str(acl))
     self.failUnless('10.2.3.4/32' in str(acl), str(acl))
 
+  def testP4TagsNotPresent(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
+    self.assertTrue('$Id:' not in str(acl))
+
   def testRaisesConflictingDirectionAddress(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.return_value = ['22']

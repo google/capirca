@@ -316,8 +316,7 @@ class GCE(aclgenerator.ACLGenerator):
     for term in self.gce_policies:
       target.extend(term.ConvertToDict())
 
-    out = '%s\n%s\n\n' % ('\n'.join(aclgenerator.AddRepositoryTags('# ')),
-                          json.dumps(target,
+    out = '%s\n\n' % (json.dumps(target,
                                      indent=2,
                                      separators=(',', ': '),
                                      sort_keys=True))
