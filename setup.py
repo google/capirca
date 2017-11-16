@@ -50,4 +50,4 @@ setup(
                 ],
     include_package_data=True,
     data_files=data_files,
-    install_requires=['python-gflags', 'ply', 'ipaddr', 'mock'])
+    install_requires=['absl-py', 'ply', 'ipaddr', 'mock'])

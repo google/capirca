@@ -45,6 +45,7 @@ from __future__ import unicode_literals
 
 import argparse
 import pprint
+import sys
 from lib import nacaddr
 from lib import naming
 
@@ -130,12 +131,10 @@ def cli_options():
   return parser
 
 
-def main(parser):
-  """Determines the code path based on the arguments passed.
-
-  Args:
-    parser: the argument parser, but not parsed yet.
-  """
+def main(argv):
+  """Determines the code path based on the arguments passed."""
+  del argv  # Unused.
+  parser = cli_options()
   options = parser.parse_args()
   db = naming.Naming(options.defs)
   p = pprint.PrettyPrinter(indent=1, depth=4, width=1).pprint
@@ -487,4 +486,4 @@ def get_services(options, db):
 
 
 if __name__ == '__main__':
-  main(cli_options())
+  app.run(main, argv=sys.argv[:1])

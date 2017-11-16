@@ -517,4 +517,4 @@ def main(args):
     logging.info('done.')
 
 if __name__ == '__main__':
-  main(sys.argv)
+  app.run(main)
