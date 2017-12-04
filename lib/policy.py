@@ -703,9 +703,9 @@ class Term(object):
       ret_str.append('  forwarding_class_except: %s'
                      % self.forwarding_class_except)
     if self.icmp_type:
-      ret_str.append('  icmp_type: %s' % self.icmp_type)
+      ret_str.append('  icmp_type: %s' % sorted(self.icmp_type))
     if self.icmp_code:
-      ret_str.append('  icmp_code: %s' % self.icmp_code)
+      ret_str.append('  icmp_code: %s' % sorted(self.icmp_code))
     if self.next_ip:
       ret_str.append('  next_ip: %s' % self.next_ip)
     if self.protocol:

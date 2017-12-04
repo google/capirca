@@ -450,6 +450,20 @@ term term-sub {
   action:: accept
 }
 """
+TERM_UNSORTED_ICMP_TYPE = """
+term good-term-11 {
+  protocol:: icmp
+  icmp-type:: unreachable echo-request echo-reply
+  action:: accept
+}
+"""
+TERM_UNSORTED_ICMP_CODE = """
+term good-term-11 {
+  icmp-type:: unreachable
+  icmp-code:: 15 4 9 1
+  action:: accept
+}
+"""
 BAD_TERM_1 = """
 term bad-term- 1 {
   protocol:: tcp
@@ -1021,6 +1035,18 @@ class PolicyTest(unittest.TestCase):
     pol = HEADER + BAD_TERM_12
     self.assertRaises(policy.TermInvalidIcmpType,
                       policy.ParsePolicy, pol, self.naming)
+
+  def testICMPTypesSorting(self):
+    pol = HEADER + TERM_UNSORTED_ICMP_TYPE
+    ret = policy.ParsePolicy(pol, self.naming)
+    self.assertTrue(
+        'icmp_type: [u\'echo-reply\', u\'echo-request\', u\'unreachable\']' in
+        str(ret))
+
+  def testICMPCodesSorting(self):
+    pol = HEADER + TERM_UNSORTED_ICMP_CODE
+    ret = policy.ParsePolicy(pol, self.naming)
+    self.assertTrue('icmp_code: [1, 4, 9, 15]' in str(ret))
 
   def testReservedWordTermName(self):
     pol = HEADER + GOOD_TERM_12
