@@ -246,10 +246,6 @@ class Precedence(Field):
   """A precedence field."""
 
 
-class Principals(Field):
-  """A principals field."""
-
-
 class Protocol(Field):
   """A Protocol field."""
 
@@ -357,7 +353,6 @@ field_map = {
     'policer': Policer,
     'port': Port,
     'precedence': Precedence,
-    'principals': Principals,
     'protocol': Protocol,
     'protocol-except': ProtocolExcept,
     'qos': Qos,

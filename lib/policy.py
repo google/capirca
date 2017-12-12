@@ -421,7 +421,6 @@ class Term(object):
     self.policer = None
     self.port = []
     self.precedence = []
-    self.principals = []
     self.protocol = []
     self.protocol_except = []
     self.qos = None
@@ -540,11 +539,6 @@ class Term(object):
     if not (
         self.CheckAddressIsContained(
             self.flattened_daddr, other.flattened_daddr)):
-      return False
-
-    if not (
-        self.CheckPrincipalsContained(
-            self.principals, other.principals)):
       return False
 
     # check ports
@@ -1052,8 +1046,6 @@ class Term(object):
         # do we have a list of options?
         elif x.var_type is VarType.OPTION:
           self.option.append(x.value)
-        elif x.var_type is VarType.PRINCIPALS:
-          self.principals.append(x.value)
         elif x.var_type is VarType.SPFX:
           self.source_prefix.append(x.value)
         elif x.var_type is VarType.ESPFX:
@@ -1334,25 +1326,6 @@ class Term(object):
     """
     return self.CollapsePortListRecursive(sorted(ports))
 
-  def CheckPrincipalsContained(self, superset, subset):
-    """Check to if the given list of principals is wholly contained.
-
-    Args:
-      superset: list of principals
-      subset: list of principals
-
-    Returns:
-      bool: True if subset is contained in superset. false otherwise.
-    """
-    # Skip set comparison if neither term has principals.
-    if not superset and not subset:
-      return True
-
-    # Convert these lists to sets to use set comparison.
-    sup = set(superset)
-    sub = set(subset)
-    return sub.issubset(sup)
-
   def CheckProtocolIsContained(self, superset, subset):
     """Check if the given list of protocols is wholly contained.
 
@@ -1464,7 +1437,6 @@ class VarType(object):
   PORT = 32
   TIMEOUT = 33
   OWNER = 34
-  PRINCIPALS = 35
   ADDREXCLUDE = 36
   VPN = 37
   APPLY_GROUPS = 38
@@ -1691,7 +1663,6 @@ tokens = (
     'POLICER',
     'PORT',
     'PRECEDENCE',
-    'PRINCIPALS',
     'PRIORITY',
     'PROTOCOL',
     'PROTOCOL_EXCEPT',
@@ -1760,7 +1731,6 @@ reserved = {
     'policer': 'POLICER',
     'port': 'PORT',
     'precedence': 'PRECEDENCE',
-    'principals': 'PRINCIPALS',
     'priority': 'PRIORITY',
     'protocol': 'PROTOCOL',
     'protocol-except': 'PROTOCOL_EXCEPT',
@@ -1933,7 +1903,6 @@ def p_term_spec(p):
                 | term_spec policer_spec
                 | term_spec port_spec
                 | term_spec precedence_spec
-                | term_spec principals_spec
                 | term_spec priority_spec
                 | term_spec prefix_list_spec
                 | term_spec protocol_spec
@@ -2220,13 +2189,6 @@ def p_option_spec(p):
   p[0] = []
   for opt in p[4]:
     p[0].append(VarType(VarType.OPTION, opt))
-
-
-def p_principals_spec(p):
-  """ principals_spec : PRINCIPALS ':' ':' one_or_more_strings """
-  p[0] = []
-  for opt in p[4]:
-    p[0].append(VarType(VarType.PRINCIPALS, opt))
 
 
 def p_action_spec(p):
