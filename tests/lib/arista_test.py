@@ -40,6 +40,13 @@ header {
 }
 """
 
+GOOD_HEADER_IPV6 = """
+header {
+  comment:: "this is a test inet6 acl"
+  target:: arista test-filter inet6
+}
+"""
+
 GOOD_TERM = """
 term good-term {
   protocol:: tcp
@@ -201,6 +208,20 @@ class AristaTest(unittest.TestCase):
                                              mock.call('SOME_HOST2')])
     self.naming.GetServiceByProto.assert_has_calls(
         [mock.call('SSH', 'tcp'), mock.call('GOPENFLOW', 'tcp')])
+
+  def testStandardTermHostV6(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('2620:1::/64')]
+    self.naming.GetServiceByProto.return_value = ['22']
+
+    pol = policy.ParsePolicy(GOOD_HEADER_IPV6 + GOOD_TERM_2, self.naming)
+    acl = arista.Arista(pol, EXP_INFO)
+    expected = 'ipv6 access-list test-filter'
+    self.failUnless(expected in str(acl), '[%s]' % str(acl))
+    expected = ' permit tcp 2620:1::/64 any eq ssh'
+    self.failUnless(expected in str(acl), str(acl))
+
+    self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST')])
+    self.naming.GetServiceByProto.assert_has_calls([mock.call('SSH', 'tcp')])
 
 
 if __name__ == '__main__':

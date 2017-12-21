@@ -917,7 +917,10 @@ class Cisco(aclgenerator.ACLGenerator):
             obj_group_term = ObjectGroupTerm(term, filter_name)
             new_terms.append(obj_group_term)
           elif next_filter == 'inet6':
-            new_terms.append(Term(term, 6, proto_int=self._PROTO_INT))
+            new_terms.append(
+                Term(
+                    term, 6, proto_int=self._PROTO_INT,
+                    platform=self._PLATFORM))
 
         # cisco requires different name for the v4 and v6 acls
         if filter_type == 'mixed' and next_filter == 'inet6':
