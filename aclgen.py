@@ -468,7 +468,7 @@ def main(args):
     definitions = naming.Naming(FLAGS.definitions_directory)
   except naming.NoDefinitionsError:
     err_msg = 'bad definitions directory: %s', FLAGS.definitions_directory
-    logging.critical(err_msg)
+    logging.fatal(err_msg)
     sys.exit(1)
 
   # thead-safe list for storing files to write

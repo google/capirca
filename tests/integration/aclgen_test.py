@@ -85,7 +85,7 @@ class TestAclGenDemo(unittest.TestCase):
     aclgen.main(args)
     mock_writer.assert_called_with('./sample_cisco_lab.acl', mock.ANY)
 
-  @mock.patch.object(logging, 'critical')
+  @mock.patch.object(logging, 'fatal')
   @mock.patch.object(naming, 'Naming', autospec=True)
   def test_missing_defs_folder_raises_error(self, mock_naming, mock_error):
     mock_naming.side_effect = naming.NoDefinitionsError()
