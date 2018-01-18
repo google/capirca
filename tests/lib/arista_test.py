@@ -40,6 +40,13 @@ header {
 }
 """
 
+GOOD_HEADER_3 = """
+header {
+  comment:: "this is a test standard acl"
+  target:: arista test-filter standard
+}
+"""
+
 GOOD_HEADER_IPV6 = """
 header {
   comment:: "this is a test inet6 acl"
@@ -78,6 +85,14 @@ term good-term-3 {
   source-address:: SOME_HOST2
   destination-port:: GOPENFLOW
   protocol:: tcp
+  action:: accept
+}
+"""
+
+GOOD_TERM_4 = """
+term good-term-4 {
+  comment:: "Accept SNMP from internal sources."
+  address:: SOME_HOST
   action:: accept
 }
 """
@@ -222,6 +237,18 @@ class AristaTest(unittest.TestCase):
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST')])
     self.naming.GetServiceByProto.assert_has_calls([mock.call('SSH', 'tcp')])
+
+  def testStandardTermV4(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.0/24')]
+
+    pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_4, self.naming)
+    acl = arista.Arista(pol, EXP_INFO)
+    expected = 'ip access-list standard test-filter'
+    self.failUnless(expected in str(acl), '[%s]' % str(acl))
+    expected = ' permit 10.1.1.0/24\n'
+    self.failUnless(expected in str(acl), str(acl))
+
+    self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST')])
 
 
 if __name__ == '__main__':

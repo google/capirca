@@ -171,6 +171,12 @@ class TermStandard(object):
                                                 addr.ip,
                                                 self.logstring,
                                                 self.dscpstring))
+          elif self.platform == 'arista':
+            ret_str.append(' %s %s/%s%s%s' % (action,
+                                              addr.network,
+                                              addr.prefixlen,
+                                              self.logstring,
+                                              self.dscpstring))
           else:
             ret_str.append(' %s %s %s%s%s' % (action,
                                               addr.network,
