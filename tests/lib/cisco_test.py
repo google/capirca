@@ -512,7 +512,7 @@ class CiscoTest(unittest.TestCase):
     acl = cisco.Cisco(pol, EXP_INFO)
     expected = 'ip access-list standard FOO'
     self.failUnless(expected in str(acl), '[%s]' % str(acl))
-    expected = ' permit 10.0.0.0 0.255.255.255'
+    expected = ' permit 10.0.0.0 0.255.255.255\n'
     self.failUnless(expected in str(acl), '[%s]' % str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
