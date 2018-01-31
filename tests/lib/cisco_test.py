@@ -640,6 +640,30 @@ class CiscoTest(unittest.TestCase):
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
+  def testDsmo2(self):
+    fourth_octet = [2,8,20,26,28,32,40,52,58,86,130,136,148,154,156,160,168,180,186,214]
+    addr_list = list()
+
+    for octet3 in range(56, 60):
+      for octet4 in fourth_octet:
+        net = nacaddr.IP('192.168.' + str(octet3) + '.' + str(octet4) + '/31')
+        addr_list.append(net)
+
+    self.naming.GetNetAddr.return_value = addr_list
+
+    acl = cisco.Cisco(policy.ParsePolicy(GOOD_DSMO_HEADER + GOOD_TERM_8,
+                                         self.naming), EXP_INFO)
+
+    self.assertIn('permit tcp any 192.168.56.2 0.0.3.129', str(acl))
+    self.assertIn('permit tcp any 192.168.56.8 0.0.3.161', str(acl))
+    self.assertIn('permit tcp any 192.168.56.20 0.0.3.137', str(acl))
+    self.assertIn('permit tcp any 192.168.56.26 0.0.3.161', str(acl))
+    self.assertIn('permit tcp any 192.168.56.32 0.0.3.129', str(acl))
+    self.assertIn('permit tcp any 192.168.56.52 0.0.3.129', str(acl))
+    self.assertIn('permit tcp any 192.168.56.86 0.0.3.129', str(acl))
+
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+
   def testUdpEstablished(self):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_9,
                                          self.naming), EXP_INFO)
