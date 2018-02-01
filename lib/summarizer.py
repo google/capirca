@@ -186,8 +186,11 @@ def _SummarizeSameMask(nets):
         current_address, current_netmask = current_net
         pair_address, pair_netmask = pair_net
         xored_address = current_address ^ pair_address
-        # For networks with the same network mask, check if they have exactly one bit difference or they are "a pair".
-        if (xored_address & (xored_address - 1) == 0) and xored_address > 0 and current_netmask == pair_netmask:
+        # For networks with the same network mask:
+        # check if they have exactly one bit difference
+        # or they are "a pair".
+        if (current_netmask == pair_netmask and
+            (xored_address & (xored_address - 1) == 0) and xored_address > 0):
           # if pair was found, remove both, add paired up network
           # to combinetons for next run and move along
           # otherwise this network can never be paired
