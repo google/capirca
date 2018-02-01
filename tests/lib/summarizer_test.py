@@ -148,6 +148,22 @@ class SummarizerTest(unittest.TestCase):
         '00000000 00000000 00000000 00000000 00000000 00000000 00000000 '
         '00000000 00000001')
 
+  def testSummarizeDSMONetworks(self):
+    fourth_octet = [2,8,20,26,28,32,40,52,58,86,130,136,148,154,156,160,168,180,186,214]
+    nets = list()
+
+    for octet3 in range(56, 60):
+      for octet4 in fourth_octet:
+        nets.append(ipaddr.IPv4Network('192.168.' + str(octet3) + '.' + str(octet4) + '/31'))
+
+    result = summarizer.Summarize(nets)
+    self.assertEquals(result, [(3232249858, 4294966398),
+                               (3232249888, 4294966398),
+                               (3232249908, 4294966398),
+                               (3232249942, 4294966398),
+                               (3232249864, 4294966366),
+                               (3232249876, 4294966390),
+                               (3232249882, 4294966366)])
 
 if __name__ == '__main__':
   unittest.main()
