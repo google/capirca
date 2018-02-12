@@ -96,14 +96,17 @@ class Term(aclgenerator.Term):
              'reject': 'reject',
              'count': 'count',
              'log': 'log',
+             'expresspath': 'services-offload',
              'dscp': 'dscp'}
 
-  def __init__(self, term, zones):
+  def __init__(self, term, from_zone, to_zone, expresspath=False):
     super(Term, self).__init__(term)
     self.term = term
-    self.from_zone = zones[1]
-    self.to_zone = zones[3]
-    self.extra_actions = []
+    self.from_zone = from_zone
+    self.to_zone = to_zone
+    if expresspath:
+      self.term.action = [
+          a.replace('accept', 'expresspath') for a in self.term.action]
 
   def __str__(self):
     """Render config output from this term object."""
@@ -190,7 +193,6 @@ class Term(aclgenerator.Term):
 
         ret_str.IndentAppend(6, '}')
         ret_str.IndentAppend(5, '}')
-
       else:
         ret_str.IndentAppend(5, self.ACTIONS.get(str(action)) + ';')
 
@@ -267,7 +269,11 @@ class JuniperSRX(aclgenerator.ACLGenerator):
   _SUPPORTED_AF = set(('inet', 'inet6', 'mixed'))
   _ZONE_ADDR_BOOK = 'address-book-zone'
   _GLOBAL_ADDR_BOOK = 'address-book-global'
-  _SUPPORTED_TARGET_OPTIONS = set((_ZONE_ADDR_BOOK, _GLOBAL_ADDR_BOOK))
+  _ADDRESSBOOK_TYPES = set((_ZONE_ADDR_BOOK, _GLOBAL_ADDR_BOOK))
+  _EXPRESSPATH = 'expresspath'
+  _SUPPORTED_TARGET_OPTIONS = set((_ZONE_ADDR_BOOK, _GLOBAL_ADDR_BOOK,
+                                   _EXPRESSPATH))
+
   _AF_MAP = {'inet': (4,),
              'inet6': (6,),
              'mixed': (4, 6)}
@@ -341,6 +347,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
 
       filter_options = header.FilterOptions(self._PLATFORM)
 
+      # TODO(robankeny): Clean up option section.
       if (len(filter_options) < 4 or filter_options[0] != 'from-zone' or
           filter_options[2] != 'to-zone'):
         raise UnsupportedFilterError('SRX filter arguments must specify '
@@ -363,18 +370,18 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         self.to_zone = filter_options[3]
 
       # variables used to collect target-options and set defaults
-      target_options = []
       filter_type = ''
 
       # parse srx target options
       extra_options = filter_options[4:]
-      if self._SUPPORTED_TARGET_OPTIONS.issubset(extra_options):
+      if self._ADDRESSBOOK_TYPES.issubset(extra_options):
         raise ConflictingTargetOptions('only one address-book-type can '
                                        'be specified per header "%s"' %
                                        ' '.join(filter_options))
       else:
-        address_book_type = self._SUPPORTED_TARGET_OPTIONS.intersection(
-            extra_options)
+        address_book_type = set([
+            self._ZONE_ADDR_BOOK,
+            self._GLOBAL_ADDR_BOOK]).intersection(extra_options)
         if len(address_book_type) is 0:
           address_book_type = {self._GLOBAL_ADDR_BOOK}
         self.addr_book_type.update(address_book_type)
@@ -389,8 +396,12 @@ class JuniperSRX(aclgenerator.ACLGenerator):
           raise UnsupportedFilterError('The zone name all is reserved for '
                                        'global policies.')
 
-      for filter_opt in filter_options[4:]:
+      if self._EXPRESSPATH in filter_options[4:]:
+        self.expresspath = True
+      else:
+        self.expresspath = False
 
+      for filter_opt in filter_options[4:]:
           # validate address families
         if filter_opt in self._SUPPORTED_AF:
           if not filter_type:
@@ -399,10 +410,8 @@ class JuniperSRX(aclgenerator.ACLGenerator):
             raise ConflictingTargetOptions('only one address family can be '
                                            'specified per header "%s"' %
                                            ' '.join(filter_options))
-
         elif filter_opt in self._SUPPORTED_TARGET_OPTIONS:
-          target_options.append(filter_opt)
-
+          continue
         else:
           raise UnsupportedHeader('SRX Generator currently does not support '
                                   '%s as a header option "%s"' %
@@ -482,7 +491,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
           if addr.version in self._AF_MAP[filter_type]:
             self._BuildAddressBook(self.to_zone, addr)
 
-        new_term = Term(term, filter_options)
+        new_term = Term(term, self.from_zone, self.to_zone, self.expresspath)
         new_terms.append(new_term)
 
         # Because SRX terms can contain inet and inet6 addresses. We have to

@@ -110,6 +110,20 @@ header {
 }
 """
 
+GOOD_HEADER_13 = """
+header {
+  comment:: "This is a test acl with a comment"
+  target:: srx from-zone trust to-zone untrust inet expresspath
+}
+"""
+
+GOOD_HEADER_14 = """
+header {
+  comment:: "This is a test acl with a comment"
+  target:: srx from-zone trust to-zone untrust expresspath inet
+}
+"""
+
 BAD_HEADER = """
 header {
   target:: srx something
@@ -1115,6 +1129,20 @@ class JuniperSRXTest(unittest.TestCase):
                              self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.failIf('dup-of-term-1-app' in output)
+
+  def testExpressPath(self):
+    some_host = [nacaddr.IP('10.0.0.1/32', token='SOMEHOST')]
+    self.naming.GetNetAddr.side_effect = [some_host, some_host]
+
+    self.naming.GetServiceByProto.side_effect = [['25', '25'], ['25', '25']]
+
+    pol = policy.ParsePolicy(GOOD_HEADER_14 + GOOD_TERM_2 + DEFAULT_TERM_1 +
+                             GOOD_HEADER + GOOD_TERM_1, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    print(output)
+    self.assertIn('services-offload;', output)
+    self.assertIn('deny;', output)
+    self.assertIn('permit;', output)
 
 if __name__ == '__main__':
   unittest.main()
