@@ -50,5 +50,10 @@ class CiscoXR(cisco.Cisco):
       target.append('ipv4 access-list %s' % filter_name)
     return target
 
-  def _SetObjectGroupProtos(self, object_group_term):
-    object_group_term.ALLOWED_PROTO_STRINGS.extend(['pcp', 'esp'])
+  def _GetObjectGroupTerm(self, term, filter_name):
+    """Returns an ObjectGroupTerm object."""
+    return CiscoXRObjectGroupTerm(term, filter_name)
+
+
+class CiscoXRObjectGroupTerm(cisco.ObjectGroupTerm):
+  ALLOWED_PROTO_STRINGS = cisco.Term.ALLOWED_PROTO_STRINGS + ['pcp', 'esp']

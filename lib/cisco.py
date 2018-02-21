@@ -919,9 +919,7 @@ class Cisco(aclgenerator.ACLGenerator):
                      term_remark=self._TERM_REMARK, platform=self._PLATFORM))
           elif next_filter == 'object-group':
             obj_target.AddTerm(term)
-            self._SetObjectGroupProtos(ObjectGroupTerm)
-            obj_group_term = ObjectGroupTerm(term, filter_name)
-            new_terms.append(obj_group_term)
+            new_terms.append(self._GetObjectGroupTerm(term, filter_name))
           elif next_filter == 'inet6':
             new_terms.append(
                 Term(
@@ -934,8 +932,9 @@ class Cisco(aclgenerator.ACLGenerator):
         self.cisco_policies.append((header, filter_name, [next_filter],
                                     new_terms, obj_target))
 
-  def _SetObjectGroupProtos(self, object_group_term):
-    pass
+  def _GetObjectGroupTerm(self, term, filter_name):
+    """Returns an ObjectGroupTerm object."""
+    return ObjectGroupTerm(term, filter_name)
 
   def _AppendTargetByFilterType(self, filter_name, filter_type):
     """Takes in the filter name and type and appends headers.
