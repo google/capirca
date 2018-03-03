@@ -756,8 +756,8 @@ class AclCheckTest(unittest.TestCase):
     result = str(acl)
     self.failUnless('--tcp-flags FIN,RST FIN,RST' in result,
                     'tcp flags missing or incorrect.')
-    self.failUnless('-dport 1024:65535' in result,
-                    'destination port missing or incorrect.')
+    self.assertNotIn('-dport 1024:65535', result,
+                     'destination port present.')
     self.failUnless(
         '-m state --state ESTABLISHED,RELATED' in result,
         'missing or incorrect state information.')
@@ -909,8 +909,8 @@ class AclCheckTest(unittest.TestCase):
     result = str(acl)
     self.failUnless('-m state --state ESTABLISHED,RELATED' in result,
                     'udp connection tracking is missing state module')
-    self.failUnless('-dport 1024:65535' in result,
-                    'udp connection tracking is missing destination high-ports')
+    self.assertNotIn('-dport 1024:65535', result,
+                     'udp connection tracking contains destination high-ports')
     self.failUnless('-p udp' in result,
                     'udp connection tracking is missing protocol specification')
 
@@ -927,8 +927,8 @@ class AclCheckTest(unittest.TestCase):
     pol = policy.ParsePolicy(NOSTATE_HEADER + TCP_STATE_TERM, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
-    self.failUnless(
-        '-p tcp --tcp-flags ACK ACK --dport 1024:65535 -j ACCEPT' in result,
+    self.assertIn(
+        '-p tcp --tcp-flags ACK ACK --dport 1024:65535 -j ACCEPT', result,
         'No rule matching TCP packets with ACK bit.\n' + result)
     self.failUnless('%s %s' % ('--tcp-flags ACK,FIN,RST,SYN RST',
                                '--dport 1024:65535 -j ACCEPT') in result,
@@ -940,8 +940,8 @@ class AclCheckTest(unittest.TestCase):
     pol = policy.ParsePolicy(NOSTATE_HEADER + UDP_STATE_TERM, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
-    self.failUnless('-p udp --dport 1024:65535 -j ACCEPT' in result,
-                    'No rule matching TCP packets with ACK bit.\n' + result)
+    self.assertIn('-p udp --dport 1024:65535 -j ACCEPT', result,
+                  'No rule matching TCP packets with ACK bit.\n' + result)
     self.failIf('--state' in result,
                 'Nostate header should not use nf_conntrack --state flag')
 

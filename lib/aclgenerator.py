@@ -394,8 +394,23 @@ class ACLGenerator(object):
     # all good.
     return supported_tokens, supported_sub_tokens
 
+  # TODO(robankeny) Fix this function, it no longer does what it says.
   def FixHighPorts(self, term, af='inet', all_protocols_stateful=False):
-    """Evaluate protocol and ports of term, return sane version of term."""
+    """Evaluate protocol and ports of term, return sane version of term.
+
+    Args:
+      term: Term object to be checked
+      af: String presenting the address family, inet, inet6
+      all_protocols_stateful: Boolean suggesting if protocols are all stateful.
+
+    Returns:
+      Copy of term that has been fixed
+
+    Raises:
+      UnsupportedAF: Address family provided but unsupported.
+      UnsupportedFilter: Protocols do not match the address family.
+      EstablishedError: Established option used with inappropriate protocol.
+    """
     mod = term
 
     # Determine which protocols this term applies to.
@@ -423,7 +438,8 @@ class ACLGenerator(object):
         if not unstateful_protocols:
           # TCP/UDP: add in high ports then collapse to eliminate overlaps.
           mod = copy.deepcopy(term)
-          mod.destination_port.append((1024, 65535))
+          if not all_protocols_stateful:
+            mod.destination_port.append((1024, 65535))
           mod.destination_port = mod.CollapsePortList(mod.destination_port)
         elif not all_protocols_stateful:
           errmsg = 'Established option supplied with inappropriate protocol(s)'
