@@ -42,13 +42,6 @@ class Term(aclgenerator.Term):
   _COMMENT_FORMAT = Template('-A $term -m comment --comment "$comment"')
   _FILTER_TOP_FORMAT = Template('-A $term')
   _LOG_FORMAT = Template('-j LOG --log-prefix $term')
-  _ACTION_TABLE = {
-      'accept': '-j ACCEPT',
-      'deny': '-j DROP',
-      'reject': '-j REJECT --reject-with icmp-host-prohibited',
-      'reject-with-tcp-rst': '-j REJECT --reject-with tcp-reset',
-      'next': '-j RETURN'
-      }
   _PROTO_TABLE = {
       'icmpv6': '-p ipv6-icmp',
       'icmp': '-p icmp',
@@ -93,6 +86,13 @@ class Term(aclgenerator.Term):
       UnsupportedFilterError: Filter is not supported.
     """
     super(Term, self).__init__(term)
+    self._action_table = {
+        'accept': '-j ACCEPT',
+        'deny': '-j DROP',
+        'reject': '-j REJECT --reject-with icmp-host-prohibited',
+        'reject-with-tcp-rst': '-j REJECT --reject-with tcp-reset',
+        'next': '-j RETURN'
+        }
     self.trackstate = trackstate
     self.term = term  # term object
     self.filter = filter_name  # actual name of filter
@@ -100,14 +100,13 @@ class Term(aclgenerator.Term):
     self.options = []
     self.af = af
     self.verbose = verbose
-
     if af == 'inet6':
       self._all_ips = nacaddr.IPv6('::/0')
-      self._ACTION_TABLE['reject'] = ('-j REJECT --reject-with '
+      self._action_table['reject'] = ('-j REJECT --reject-with '
                                       'icmp6-adm-prohibited')
     else:
       self._all_ips = nacaddr.IPv4('0.0.0.0/0')
-      self._ACTION_TABLE['reject'] = ('-j REJECT --reject-with '
+      self._action_table['reject'] = ('-j REJECT --reject-with '
                                       'icmp-host-prohibited')
 
     self.term_name = '%s_%s' % (self.filter[:1], self.term.name)
@@ -280,11 +279,11 @@ class Term(aclgenerator.Term):
     for saddr in exclude_saddr:
       ret_str.extend(self._FormatPart(
           '', saddr, '', '', '', '', '', '', '', '', '', '', '',
-          self._ACTION_TABLE.get('next')))
+          self._action_table.get('next')))
     for daddr in exclude_daddr:
       ret_str.extend(self._FormatPart(
           '', '', '', daddr, '', '', '', '', '', '', '', '', '',
-          self._ACTION_TABLE.get('next')))
+          self._action_table.get('next')))
 
     for saddr in term_saddr:
       for daddr in term_daddr:
@@ -306,7 +305,7 @@ class Term(aclgenerator.Term):
                     source_interface,
                     destination_interface,
                     log_hits,
-                    self._ACTION_TABLE.get(str(self.term.action[0]))
+                    self._action_table.get(str(self.term.action[0]))
                     ))
 
     if self._POSTJUMP_FORMAT:
