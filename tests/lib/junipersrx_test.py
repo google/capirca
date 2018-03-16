@@ -294,12 +294,41 @@ term good_term_20 {
 }
 """
 
+GOOD_TERM_21 = """
+term good_term_21 {
+  destination-address:: FOO
+  destination-port:: QUIC
+  protocol:: udp
+  action:: accept
+}
+"""
+
 BAD_TERM_1 = """
 term bad-term-1 {
   destination-address:: SOME_HOST
   protocol:: tcp
   action:: deny
   vpn:: good-vpn-4 policy-4
+}
+"""
+
+TCP_ESTABLISHED_TERM = """
+term tcp-established-term {
+  source-address:: SOME_HOST
+  source-port:: SMTP
+  protocol:: tcp
+  option:: tcp-established
+  action:: accept
+}
+"""
+
+UDP_ESTABLISHED_TERM = """
+term udp-established-term {
+  source-address:: FOO
+  source-port:: QUIC
+  protocol:: udp
+  option:: established
+  action:: accept
 }
 """
 
@@ -1139,10 +1168,23 @@ class JuniperSRXTest(unittest.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER_14 + GOOD_TERM_2 + DEFAULT_TERM_1 +
                              GOOD_HEADER + GOOD_TERM_1, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
-    print(output)
     self.assertIn('services-offload;', output)
     self.assertIn('deny;', output)
     self.assertIn('permit;', output)
+
+  def testDropEstablished(self):
+    some_host = [nacaddr.IP('10.0.0.1/32', token='FOO')]
+    self.naming.GetServiceByProto.side_effect = [['25', '25'], ['443', '443'],
+                                                 ['25', '25'], ['443', '443']]
+    self.naming.GetNetAddr.side_effect = [some_host, some_host, some_host,
+                                          some_host]
+    pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1 + GOOD_TERM_21 +
+                             DEFAULT_TERM_1 + GOOD_HEADER_2 +
+                             TCP_ESTABLISHED_TERM + UDP_ESTABLISHED_TERM +
+                             DEFAULT_TERM_1, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    self.assertNotIn('udp-established-term', output)
+    self.assertNotIn('tcp-established-term', output)
 
 if __name__ == '__main__':
   unittest.main()

@@ -425,6 +425,10 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       new_terms = []
       self._FixLargePolices(terms, filter_type)
       for term in terms:
+        if set(['established', 'tcp-established']).intersection(term.option):
+          logging.debug('Skipping established term %s ' +
+                        'because SRX is stateful.', term.name)
+          continue
         term.name = self.FixTermLength(term.name)
         if term.name in term_dup_check:
           raise SRXDuplicateTermError('You have a duplicate term: %s'
@@ -836,7 +840,9 @@ class JuniperSRX(aclgenerator.ACLGenerator):
             JunipersrxList('apply-groups-except', header.apply_groups_except)
         )
       for term in terms:
-        target.append(str(term))
+        str_result = str(term)
+        if str_result:
+          target.append(str_result)
       target.IndentAppend(2, '}')
     target.IndentAppend(1, '}')
     target.append('}')
