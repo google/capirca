@@ -20,7 +20,7 @@ from __future__ import unicode_literals
 import logging
 import os
 
-import aclgen
+from capirca import aclgen
 from capirca.lib import naming
 import mock
 from absl import flags
