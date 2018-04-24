@@ -25,10 +25,10 @@ import textwrap
 import unittest
 
 
-from lib import aruba
-from lib import nacaddr
-from lib import naming
-from lib import policy
+from capirca.lib import aruba
+from capirca.lib import nacaddr
+from capirca.lib import naming
+from capirca.lib import policy
 import mock
 
 GOOD_HEADER_V4 = """

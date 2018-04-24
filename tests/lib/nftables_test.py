@@ -23,10 +23,10 @@ import datetime
 import unittest
 
 
-from lib import aclgenerator
-from lib import nacaddr
-from lib import nftables
-from lib import policy
+from capirca.lib import aclgenerator
+from capirca.lib import nacaddr
+from capirca.lib import nftables
+from capirca.lib import policy
 
 import mock
 

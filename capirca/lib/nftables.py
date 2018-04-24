@@ -30,8 +30,8 @@ from __future__ import unicode_literals
 import collections
 import datetime
 
-from lib import aclgenerator
-from lib import nacaddr
+from capirca.lib import aclgenerator
+from capirca.lib import nacaddr
 from absl import logging
 
 

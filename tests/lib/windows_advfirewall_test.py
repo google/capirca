@@ -22,11 +22,11 @@ import datetime
 import unittest
 
 
-from lib import aclgenerator
-from lib import nacaddr
-from lib import naming
-from lib import policy
-from lib import windows_advfirewall
+from capirca.lib import aclgenerator
+from capirca.lib import nacaddr
+from capirca.lib import naming
+from capirca.lib import policy
+from capirca.lib import windows_advfirewall
 import mock
 
 

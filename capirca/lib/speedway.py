@@ -21,7 +21,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from string import Template
-from lib import iptables
+from capirca.lib import iptables
 
 
 class Error(Exception):

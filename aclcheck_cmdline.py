@@ -22,9 +22,9 @@ from __future__ import unicode_literals
 
 from optparse import OptionParser
 
-from lib import aclcheck
-from lib import naming
-from lib import policy
+from capirca.lib import aclcheck
+from capirca.lib import naming
+from capirca.lib import policy
 
 
 def main():

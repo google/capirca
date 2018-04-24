@@ -27,8 +27,8 @@ from __future__ import unicode_literals
 
 import string
 
-from lib import iptables
-from lib import nacaddr
+from capirca.lib import iptables
+from capirca.lib import nacaddr
 
 
 class Error(Exception):

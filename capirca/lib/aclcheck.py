@@ -21,9 +21,9 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import logging
-from lib import nacaddr
-from lib import policy
-from lib import port
+from capirca.lib import nacaddr
+from capirca.lib import policy
+from capirca.lib import port
 
 
 class Error(Exception):

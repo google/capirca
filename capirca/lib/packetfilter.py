@@ -24,7 +24,7 @@ import collections
 import copy
 import datetime
 
-from lib import aclgenerator
+from capirca.lib import aclgenerator
 from absl import logging
 
 

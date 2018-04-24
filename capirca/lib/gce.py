@@ -31,7 +31,7 @@ import json
 import logging
 import re
 
-from lib import aclgenerator
+from capirca.lib import aclgenerator
 
 
 class Error(Exception):

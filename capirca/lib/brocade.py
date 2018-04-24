@@ -20,7 +20,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from lib import cisco
+from capirca.lib import cisco
 
 
 class Brocade(cisco.Cisco):

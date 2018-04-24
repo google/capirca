@@ -22,10 +22,10 @@ import unittest
 from xml.etree import ElementTree as ET
 
 
-from lib import nacaddr
-from lib import naming
-from lib import nsxv
-from lib import policy
+from capirca.lib import nacaddr
+from capirca.lib import naming
+from capirca.lib import nsxv
+from capirca.lib import policy
 
 import mock
 

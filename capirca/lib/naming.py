@@ -53,8 +53,8 @@ import glob
 import os
 import re
 
-from lib import nacaddr
-from lib import port as portlib
+from capirca.lib import nacaddr
+from capirca.lib import port as portlib
 
 
 

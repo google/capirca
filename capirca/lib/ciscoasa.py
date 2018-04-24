@@ -24,9 +24,9 @@ import datetime
 import logging
 import re
 
-from lib import aclgenerator
-from lib import cisco
-from lib import nacaddr
+from capirca.lib import aclgenerator
+from capirca.lib import cisco
+from capirca.lib import nacaddr
 import ipaddr
 
 

@@ -21,11 +21,11 @@ from __future__ import unicode_literals
 
 import unittest
 
-from lib import aclgenerator
-from lib import nacaddr
-from lib import naming
-from lib import paloaltofw
-from lib import policy
+from capirca.lib import aclgenerator
+from capirca.lib import nacaddr
+from capirca.lib import naming
+from capirca.lib import paloaltofw
+from capirca.lib import policy
 import mock
 
 

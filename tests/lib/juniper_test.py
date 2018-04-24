@@ -23,11 +23,11 @@ import datetime
 import re
 import unittest
 
-from lib import aclgenerator
-from lib import juniper
-from lib import nacaddr
-from lib import naming
-from lib import policy
+from capirca.lib import aclgenerator
+from capirca.lib import juniper
+from capirca.lib import nacaddr
+from capirca.lib import naming
+from capirca.lib import policy
 import mock
 
 from absl import flags

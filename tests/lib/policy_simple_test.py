@@ -19,7 +19,7 @@ from __future__ import unicode_literals
 
 import unittest
 
-from lib import policy_simple
+from capirca.lib import policy_simple
 from absl import logging
 
 

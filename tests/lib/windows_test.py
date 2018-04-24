@@ -21,9 +21,9 @@ from __future__ import unicode_literals
 
 import unittest
 
-from lib import naming
-from lib import policy
-from lib import windows
+from capirca.lib import naming
+from capirca.lib import policy
+from capirca.lib import windows
 import mock
 
 

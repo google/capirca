@@ -23,7 +23,7 @@ from __future__ import unicode_literals
 import datetime
 import logging
 
-from lib import aclgenerator
+from capirca.lib import aclgenerator
 
 _PLATFORM = 'aruba'
 _COMMENT_MARKER = '#'

@@ -46,8 +46,8 @@ from __future__ import unicode_literals
 import argparse
 import pprint
 import sys
-from lib import nacaddr
-from lib import naming
+from capirca.lib import nacaddr
+from capirca.lib import naming
 
 from absl import app
 from absl import logging

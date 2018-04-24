@@ -21,9 +21,9 @@ from __future__ import unicode_literals
 import re
 import unittest
 
-from lib import brocade
-from lib import naming
-from lib import policy
+from capirca.lib import brocade
+from capirca.lib import naming
+from capirca.lib import policy
 import mock
 
 GOOD_HEADER = """

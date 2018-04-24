@@ -25,7 +25,7 @@ import random
 import time
 import unittest
 
-from lib import summarizer
+from capirca.lib import summarizer
 import ipaddr
 from absl import logging
 

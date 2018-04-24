@@ -22,11 +22,11 @@ from __future__ import unicode_literals
 import json
 import unittest
 
-from lib import aclgenerator
-from lib import gce
-from lib import nacaddr
-from lib import naming
-from lib import policy
+from capirca.lib import aclgenerator
+from capirca.lib import gce
+from capirca.lib import nacaddr
+from capirca.lib import naming
+from capirca.lib import policy
 import mock
 
 GOOD_HEADER = """

@@ -21,7 +21,7 @@ import logging
 import os
 
 import aclgen
-from lib import naming
+from capirca.lib import naming
 import mock
 from absl import flags
 from absl import logging

@@ -24,7 +24,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from lib import juniper
+from capirca.lib import juniper
 
 
 class Term(juniper.Term):

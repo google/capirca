@@ -27,28 +27,28 @@ import multiprocessing
 import os
 import sys
 
-from lib import aclgenerator
-from lib import arista
-from lib import aruba
-from lib import brocade
-from lib import cisco
-from lib import ciscoasa
-from lib import ciscoxr
-from lib import gce
-from lib import ipset
-from lib import iptables
-from lib import juniper
-from lib import junipersrx
-from lib import naming
-from lib import nftables
-from lib import nsxv
-from lib import packetfilter
-from lib import paloaltofw
-from lib import pcap
-from lib import policy
-from lib import speedway
-from lib import srxlo
-from lib import windows_advfirewall
+from capirca.lib import aclgenerator
+from capirca.lib import arista
+from capirca.lib import aruba
+from capirca.lib import brocade
+from capirca.lib import cisco
+from capirca.lib import ciscoasa
+from capirca.lib import ciscoxr
+from capirca.lib import gce
+from capirca.lib import ipset
+from capirca.lib import iptables
+from capirca.lib import juniper
+from capirca.lib import junipersrx
+from capirca.lib import naming
+from capirca.lib import nftables
+from capirca.lib import nsxv
+from capirca.lib import packetfilter
+from capirca.lib import paloaltofw
+from capirca.lib import pcap
+from capirca.lib import policy
+from capirca.lib import speedway
+from capirca.lib import srxlo
+from capirca.lib import windows_advfirewall
 
 from absl import app
 from absl import flags

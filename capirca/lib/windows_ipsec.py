@@ -21,8 +21,8 @@ from __future__ import unicode_literals
 # pylint: disable=g-importing-member
 from string import Template
 
-from lib import aclgenerator
-from lib import windows
+from capirca.lib import aclgenerator
+from capirca.lib import windows
 from absl import logging
 
 

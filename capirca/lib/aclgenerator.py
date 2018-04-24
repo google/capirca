@@ -25,7 +25,7 @@ import logging
 import re
 from string import Template
 
-from lib import policy
+from capirca.lib import policy
 
 
 # generic error class

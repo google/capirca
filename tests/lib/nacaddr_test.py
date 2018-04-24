@@ -21,7 +21,7 @@ from __future__ import unicode_literals
 
 import unittest
 
-from lib import nacaddr
+from capirca.lib import nacaddr
 
 
 class NacaddrUnitTest(unittest.TestCase):

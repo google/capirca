@@ -20,10 +20,10 @@ from __future__ import unicode_literals
 
 import unittest
 
-from lib import arista
-from lib import nacaddr
-from lib import naming
-from lib import policy
+from capirca.lib import arista
+from capirca.lib import nacaddr
+from capirca.lib import naming
+from capirca.lib import policy
 import mock
 
 GOOD_HEADER = """

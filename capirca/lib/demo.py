@@ -22,7 +22,7 @@ from __future__ import unicode_literals
 import datetime
 import logging
 
-from lib import aclgenerator
+from capirca.lib import aclgenerator
 
 
 class Term(aclgenerator.Term):
