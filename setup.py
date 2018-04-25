@@ -25,10 +25,10 @@ def find_data_files(source):
     result.append((directory, files))
 
   return result
-data_files = (["aclcheck_cmdline.py", "aclgen.py", "definate.py"] +
+data_files = (["aclcheck_cmdline.py", "definate.py"] +
               find_data_files("def") +
               find_data_files("definate") +
-              find_data_files("lib") +
+              find_data_files("capirca") +
               find_data_files("policies") +
               find_data_files("tests") +
               find_data_files("third_party") +
