@@ -45,15 +45,6 @@ class GceFirewallError(Error):
 class Term(aclgenerator.Term):
   """Creates the term for the GCE firewall."""
 
-  # Restrict to the supported subset of IP protocols:
-  # https://cloud.google.com/compute/docs/networking#firewalls_1
-  PROTO_MAP = {'icmp': 1,
-               'tcp': 6,
-               'udp': 17,
-               'esp': 50,
-               'ah': 51,
-               'sctp': 132,
-              }
   ACTION_MAP = {'accept': 'allowed',
                 'deny': 'denied'}
   # Restrict the number of terms to 256. Proto supports up to 256
@@ -65,6 +56,14 @@ class Term(aclgenerator.Term):
   # cannot be a dash.
   # Details: https://cloud.google.com/compute/docs/reference/latest/firewalls
   _TERM_NAME_RE = re.compile(r'^[a-z]([-a-z0-9]*[a-z0-9])?$')
+
+  # Protocols allowed by name from:
+  # https://cloud.google.com/vpc/docs/firewalls#protocols_and_ports
+  _ALLOW_PROTO_NAME = frozenset(
+      ['tcp', 'udp', 'icmp', 'esp', 'ah', 'ipip', 'sctp'])
+
+  # Any protocol not in _ALLOW_PROTO_NAME must be passed by number.
+  ALWAYS_PROTO_NUM = set(aclgenerator.Term.PROTO_MAP.keys()) - _ALLOW_PROTO_NAME
 
   def __init__(self, term):
     super(Term, self).__init__(term)
@@ -162,14 +161,13 @@ class Term(aclgenerator.Term):
       raise GceFirewallError(
           'GCE firewall rule contains no protocol, it must be specified.')
 
-    # Each rule can only contain one protocol.
+    proto_dict = copy.deepcopy(term_dict)
+
     for proto in self.term.protocol:
       dest = {
           'IPProtocol': proto
           }
-      proto_dict = copy.deepcopy(term_dict)
-      if len(self.term.protocol) > 1:
-        proto_dict['name'] = '%s-%s' % (proto_dict['name'], proto)
+
       if self.term.destination_port:
         ports = dest.setdefault('ports', [])
         for start, end in self.term.destination_port:
@@ -182,30 +180,30 @@ class Term(aclgenerator.Term):
         proto_dict[action] = []
       proto_dict[self.ACTION_MAP[self.term.action[0]]].append(dest)
 
-      # There's a limit of 256 addresses each term can contain.
-      # If we're above that limit, we're breaking it down in more terms.
-      if saddrs:
-        source_addr_chunks = [
-            saddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in xrange(
-                0, len(saddrs), self._TERM_ADDRESS_LIMIT)]
-        for i, chunk in enumerate(source_addr_chunks):
-          rule = copy.deepcopy(proto_dict)
-          if len(source_addr_chunks) > 1:
-            rule['name'] = '%s-%d' % (rule['name'], i+1)
-          rule['sourceRanges'] = [str(saddr) for saddr in chunk]
-          rules.append(rule)
-      elif daddrs:
-        dest_addr_chunks = [
-            daddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in xrange(
-                0, len(daddrs), self._TERM_ADDRESS_LIMIT)]
-        for i, chunk in enumerate(dest_addr_chunks):
-          rule = copy.deepcopy(proto_dict)
-          if len(dest_addr_chunks) > 1:
-            rule['name'] = '%s-%d' % (rule['name'], i+1)
-          rule['destinationRanges'] = [str(daddr) for daddr in chunk]
-          rules.append(rule)
-      else:
-        rules.append(proto_dict)
+    # There's a limit of 256 addresses each term can contain.
+    # If we're above that limit, we're breaking it down in more terms.
+    if saddrs:
+      source_addr_chunks = [
+          saddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in xrange(
+              0, len(saddrs), self._TERM_ADDRESS_LIMIT)]
+      for i, chunk in enumerate(source_addr_chunks):
+        rule = copy.deepcopy(proto_dict)
+        if len(source_addr_chunks) > 1:
+          rule['name'] = '%s-%d' % (rule['name'], i+1)
+        rule['sourceRanges'] = [str(saddr) for saddr in chunk]
+        rules.append(rule)
+    elif daddrs:
+      dest_addr_chunks = [
+          daddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in xrange(
+              0, len(daddrs), self._TERM_ADDRESS_LIMIT)]
+      for i, chunk in enumerate(dest_addr_chunks):
+        rule = copy.deepcopy(proto_dict)
+        if len(dest_addr_chunks) > 1:
+          rule['name'] = '%s-%d' % (rule['name'], i+1)
+        rule['destinationRanges'] = [str(daddr) for daddr in chunk]
+        rules.append(rule)
+    else:
+      rules.append(proto_dict)
 
     # Sanity checking term name lengths.
     long_rules = [rule['name'] for rule in rules if len(rule['name']) > 63]

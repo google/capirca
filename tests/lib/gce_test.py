@@ -118,7 +118,7 @@ term good-term-1 {
 GOOD_TERM_JSON = """
 [
   {
-    "name": "default-good-term-1-udp",
+    "name": "default-good-term-1",
     "sourceRanges": [
       "10.2.3.4/32"
     ],
@@ -128,21 +128,7 @@ GOOD_TERM_JSON = """
           "53"
         ],
         "IPProtocol": "udp"
-      }
-    ],
-    "description": "DNS access from corp.",
-    "targetTags": [
-      "dns-servers"
-    ],
-    "direction": "INGRESS",
-    "network": "global/networks/default"
-  },
-  {
-    "name": "default-good-term-1-tcp",
-    "sourceRanges": [
-      "10.2.3.4/32"
-    ],
-    "allowed": [
+      },
       {
         "ports": [
           "53"
@@ -163,7 +149,7 @@ GOOD_TERM_JSON = """
 GOOD_TERM_NO_NETWORK_JSON = """
 [
   {
-    "name": "good-term-1-udp",
+    "name": "good-term-1",
     "sourceRanges": [
       "10.2.3.4/32"
     ],
@@ -173,20 +159,7 @@ GOOD_TERM_NO_NETWORK_JSON = """
           "53"
         ],
         "IPProtocol": "udp"
-      }
-    ],
-    "description": "DNS access from corp.",
-    "direction": "INGRESS",
-    "targetTags": [
-      "dns-servers"
-    ]
-  },
-  {
-    "name": "good-term-1-tcp",
-    "sourceRanges": [
-      "10.2.3.4/32"
-    ],
-    "allowed": [
+      },
       {
         "ports": [
           "53"
@@ -293,7 +266,7 @@ term bad-term-unsupported-option {
 GOOD_TERM_EXCLUDE_RANGE = """
 [
   {
-    "name": "default-good-term-1-udp",
+    "name": "default-good-term-1",
     "sourceRanges": [
       "10.128.0.0/10",
       "10.192.0.0/11",
@@ -309,27 +282,7 @@ GOOD_TERM_EXCLUDE_RANGE = """
           "53"
         ],
         "IPProtocol": "udp"
-      }
-    ],
-    "description": "DNS access from corp.",
-    "direction": "INGRESS",
-    "targetTags": [
-      "dns-servers"
-    ],
-    "network": "global/networks/default"
-  },
-  {
-    "name": "default-good-term-1-tcp",
-    "sourceRanges": [
-      "10.128.0.0/10",
-      "10.192.0.0/11",
-      "10.224.0.0/12",
-      "10.241.0.0/16",
-      "10.242.0.0/15",
-      "10.244.0.0/14",
-      "10.248.0.0/13"
-    ],
-    "allowed": [
+      },
       {
         "ports": [
           "53"
@@ -338,10 +291,10 @@ GOOD_TERM_EXCLUDE_RANGE = """
       }
     ],
     "description": "DNS access from corp.",
+    "direction": "INGRESS",
     "targetTags": [
       "dns-servers"
     ],
-    "direction": "INGRESS",
     "network": "global/networks/default"
   }
 ]
@@ -362,27 +315,13 @@ GOOD_TERM_DENY_EXPECTED = """[
     "denied": [
       {
         "IPProtocol": "udp"
-      }
-    ],
-    "description": "DNS access from corp.",
-    "name": "default-good-term-1-udp",
-    "network": "global/networks/default",
-    "sourceRanges": [
-      "10.2.3.4/32"
-    ],
-    "direction": "INGRESS",
-    "targetTags": [
-      "dns-servers"
-    ]
-  },
-  {
-    "denied": [
+      },
       {
         "IPProtocol": "tcp"
       }
     ],
     "description": "DNS access from corp.",
-    "name": "default-good-term-1-tcp",
+    "name": "default-good-term-1",
     "network": "global/networks/default",
     "sourceRanges": [
       "10.2.3.4/32"
@@ -554,10 +493,8 @@ class GCETest(unittest.TestCase):
 
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
-    self.assertTrue('default-good-term-1-udp-1' in str(acl))
-    self.assertTrue('default-good-term-1-udp-2' in str(acl))
-    self.assertTrue('default-good-term-1-tcp-1' in str(acl))
-    self.assertTrue('default-good-term-1-tcp-2' in str(acl))
+    self.assertTrue('default-good-term-1-1' in str(acl))
+    self.assertTrue('default-good-term-1-2' in str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
     self.naming.GetServiceByProto.assert_has_calls([

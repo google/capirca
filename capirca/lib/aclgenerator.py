@@ -102,6 +102,7 @@ class Term(object):
                'vrrp': 112,
                'l2tp': 115,
                'sctp': 132,
+               'udplite': 136,
               }
   AF_MAP = {'inet': 4,
             'inet6': 6,
