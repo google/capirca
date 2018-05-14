@@ -171,7 +171,8 @@ SUPPORTED_SUB_TOKENS = {
         'version-2-multicast-listener-report',
     },
     'option': {'established',
-               'tcp-established'}
+               'tcp-established',
+               'fragments'}
 }
 
 # Print a info message when a term is set to expire in that many weeks.
