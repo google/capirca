@@ -284,6 +284,14 @@ term good_term_19 {
   action:: accept
 }
 """
+GOOD_TERM_20 = """
+term good_term_20 {
+  source-address:: SOME_HOST
+  destination-address:: SOME_HOST
+  option:: fragments
+  action:: accept
+}
+"""
 LONG_COMMENT_TERM = """
 term long-comment-term {
   comment:: "%s "
@@ -365,7 +373,8 @@ SUPPORTED_SUB_TOKENS = {
         'version-2-multicast-listener-report',
     },
     'option': {'established',
-               'tcp-established'}
+               'tcp-established',
+               'fragments'}
 }
 
 # Print a info message when a term is set to expire in that many weeks.
@@ -774,6 +783,16 @@ class CiscoTest(unittest.TestCase):
                     'established' in str(acl), str(acl))
     self.failUnless('permit udp any any range 1024 65535' in str(acl),
                     str(acl))
+
+  def testFragments(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/24')]
+    acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_20,
+                                         self.naming), EXP_INFO)
+    first_string = 'permit ip 10.0.0.0 0.0.0.255 10.0.0.0 0.0.0.255 fragments'
+    self.failUnless(first_string in str(acl), str(acl))
+
+    self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
+                                             mock.call('SOME_HOST')])
 
 if __name__ == '__main__':
   unittest.main()
