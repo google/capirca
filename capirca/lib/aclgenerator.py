@@ -220,13 +220,17 @@ class ACLGenerator(object):
 
   # Only warn if these tokens are not implemented by a platform. These are not
   # meant to be overridden in subclasses like supported tokens/sub tokens.
-  WARN_IF_UNSUPPORTED = {'counter',
-                         'logging',
-                         'loss_priority',
-                         'owner',
-                         'qos',
-                         'routing_instance',
-                         'policer'}
+  WARN_IF_UNSUPPORTED = {
+      'counter',
+      'destination_tag',
+      'logging',
+      'loss_priority',
+      'owner',
+      'qos',
+      'routing_instance',
+      'policer',
+      'source_tag'
+  }
 
   # Abbreviation table used to automatically abbreviate terms that exceed
   # specified limit. We use uppercase for abbreviations to distinguish
