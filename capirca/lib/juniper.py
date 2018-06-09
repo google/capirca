@@ -303,12 +303,11 @@ class Term(aclgenerator.Term):
       if address:
         config.Append('%s {' % family_keywords['addr'])
         for addr in address:
+          for comment in self._Comment(addr):
+            config.Append('%s' % comment)
           if self.enable_dsmo:
-            config.Append('%s/%s;' % summarizer.ToDottedQuad(addr,
-                                                             nondsm=True))
+            config.Append('%s/%s;' % summarizer.ToDottedQuad(addr, nondsm=True))
           else:
-            for comment in self._Comment(addr):
-              config.Append('%s' % comment)
             config.Append('%s;' % addr)
         config.Append('}')
       elif self.term.address:
@@ -329,20 +328,19 @@ class Term(aclgenerator.Term):
       if src_addr:
         config.Append('%s {' % family_keywords['saddr'])
         for addr in src_addr:
+          for comment in self._Comment(addr):
+            config.Append('%s' % comment)
           if self.enable_dsmo:
-            config.Append('%s/%s;' % summarizer.ToDottedQuad(addr,
-                                                             nondsm=True))
+            config.Append('%s/%s;' % summarizer.ToDottedQuad(addr, nondsm=True))
           else:
-            for comment in self._Comment(addr):
-              config.Append('%s' % comment)
             config.Append('%s;' % addr)
         for addr in src_addr_ex:
+          for comment in self._Comment(addr, exclude=True):
+            config.Append('%s' % comment)
           if self.enable_dsmo:
             config.Append('%s/%s except;' %
                           summarizer.ToDottedQuad(addr, nondsm=True))
           else:
-            for comment in self._Comment(addr, exclude=True):
-              config.Append('%s' % comment)
             config.Append('%s except;' % addr)
         config.Append('}')
       elif self.term.source_address:
@@ -364,20 +362,20 @@ class Term(aclgenerator.Term):
       if dst_addr:
         config.Append('%s {' % family_keywords['daddr'])
         for addr in dst_addr:
+          for comment in self._Comment(addr):
+            config.Append('%s' % comment)
           if self.enable_dsmo:
             config.Append('%s/%s;' % summarizer.ToDottedQuad(addr,
                                                              nondsm=True))
           else:
-            for comment in self._Comment(addr):
-              config.Append('%s' % comment)
             config.Append('%s;' % addr)
         for addr in dst_addr_ex:
+          for comment in self._Comment(addr, exclude=True):
+            config.Append('%s' % comment)
           if self.enable_dsmo:
             config.Append('%s/%s except;' %
                           summarizer.ToDottedQuad(addr, nondsm=True))
           else:
-            for comment in self._Comment(addr, exclude=True):
-              config.Append('%s' % comment)
             config.Append('%s except;' % addr)
         config.Append('}')
       elif self.term.destination_address:
@@ -691,7 +689,7 @@ class Term(aclgenerator.Term):
     # to keep from wrapping
     length_eol = 77 - indentation
 
-    if isinstance(addr, (nacaddr.IPv4, nacaddr.IPv6)):
+    if isinstance(addr, (nacaddr.IPv4, nacaddr.IPv6, summarizer.DSMNet)):
       if addr.text:
 
         if line_length == 0:

@@ -25,8 +25,8 @@ import random
 import time
 import unittest
 
+from capirca.lib import nacaddr
 from capirca.lib import summarizer
-import ipaddr
 from absl import logging
 
 
@@ -44,32 +44,36 @@ class SummarizerTest(unittest.TestCase):
     random.seed(random_seed)
 
   def testToDottedQuad(self):
-    net = (1<<32, 4294967264)
+    net = summarizer.DSMNet(1<<32, 4294967264)
     self.assertRaises(ValueError)
-    net = (3232235584, 1<<16)
+    net = summarizer.DSMNet(3232235584, 1<<16)
     self.assertRaises(ValueError)
-    net = (3232235584, 4294967264)
-    self.assertEquals(summarizer.ToDottedQuad(net),
-                      ('192.168.0.64', '255.255.255.224'))
-    net = (3232235584, 4294901984)
-    self.assertEquals(summarizer.ToDottedQuad(net, negate=True),
-                      ('192.168.0.64', '0.0.255.31'))
+    net = summarizer.DSMNet(3232235584, 4294967264)
+    self.assertEqual(summarizer.ToDottedQuad(net),
+                     ('192.168.0.64', '255.255.255.224'))
+    net = summarizer.DSMNet(3232235584, 4294901984)
+    self.assertEqual(summarizer.ToDottedQuad(net, negate=True),
+                     ('192.168.0.64', '0.0.255.31'))
 
-    test_data = [((3232235584, 4294967295), True, ('192.168.0.64', '32')),
-                 ((3232235584, 4294901760), True, ('192.168.0.64', '16')),
-                 ((3232235584, 4294967294), True, ('192.168.0.64', '31')),
-                 ((3232235584, 4290772992), True, ('192.168.0.64', '10')),
-                 ((3232235584, 4294966016), True, ('192.168.0.64',
-                                                   '255.255.251.0')),
-                 ((3232235584, 4294901504), True, ('192.168.0.64',
-                                                   '255.254.255.0'))]
+    test_data = [(summarizer.DSMNet(3232235584, 4294967295), True,
+                  ('192.168.0.64', '32')),
+                 (summarizer.DSMNet(3232235584, 4294901760), True,
+                  ('192.168.0.64', '16')),
+                 (summarizer.DSMNet(3232235584, 4294967294), True,
+                  ('192.168.0.64', '31')),
+                 (summarizer.DSMNet(3232235584, 4290772992), True,
+                  ('192.168.0.64', '10')),
+                 (summarizer.DSMNet(3232235584, 4294966016), True,
+                  ('192.168.0.64', '255.255.251.0')),
+                 (summarizer.DSMNet(3232235584, 4294901504), True,
+                  ('192.168.0.64', '255.254.255.0'))]
 
     for net, nondsm, expected in test_data:
-      self.assertEquals(summarizer.ToDottedQuad(net, nondsm=nondsm), expected)
+      self.assertEqual(summarizer.ToDottedQuad(net, nondsm=nondsm), expected)
 
   def testInt32ToDottedQuad(self):
-    self.assertEquals(summarizer._Int32ToDottedQuad(3232235584),
-                      '192.168.0.64')
+    self.assertEqual(summarizer._Int32ToDottedQuad(3232235584),
+                     '192.168.0.64')
 
   def testSummarizeEmptyList(self):
     nets = []
@@ -79,8 +83,8 @@ class SummarizerTest(unittest.TestCase):
   def testSummarizeNoNetworks(self):
     nets = []
     for octet in range(0, 256):
-      net = ipaddr.IPv4Network('192.' + str(255 - octet) + '.' +
-                               str(octet) + '.64/27')
+      net = nacaddr.IPv4('192.' + str(255 - octet) + '.' +
+                         str(octet) + '.64/27')
       nets.append(net)
     random.shuffle(nets)
     result = summarizer.Summarize(nets)
@@ -89,46 +93,47 @@ class SummarizerTest(unittest.TestCase):
   def testSummarizeSomeNetworks(self):
     nets = [
         # continiously summarizable to one /25
-        ipaddr.IPv4Network('192.168.0.0/27'),
-        ipaddr.IPv4Network('192.168.0.32/27'),
-        ipaddr.IPv4Network('192.168.0.64/27'),
-        ipaddr.IPv4Network('192.168.0.96/27'),
+        nacaddr.IPv4('192.168.0.0/27'),
+        nacaddr.IPv4('192.168.0.32/27'),
+        nacaddr.IPv4('192.168.0.64/27'),
+        nacaddr.IPv4('192.168.0.96/27'),
         # discontiniously summarizable with above
-        ipaddr.IPv4Network('128.168.0.0/25'),
+        nacaddr.IPv4('128.168.0.0/25'),
         # not summarizable with above
-        ipaddr.IPv4Network('10.0.0.0/8'),
+        nacaddr.IPv4('10.0.0.0/8'),
     ]
     for octet in range(0, 256):
-      net = ipaddr.IPv4Network('172.16.' + str(octet) + '.96/30')
+      net = nacaddr.IPv4('172.16.' + str(octet) + '.96/30')
       nets.append(net)
     random.shuffle(nets)
     result = summarizer.Summarize(nets)
-    self.assertEquals(result, [(167772160, 4278190080),
-                               (2158493696, 3221225344),
-                               (2886729824, 4294902012)])
+    self.assertEqual(result, [summarizer.DSMNet(167772160, 4278190080),
+                              summarizer.DSMNet(2158493696, 3221225344),
+                              summarizer.DSMNet(2886729824, 4294902012)])
 
   def testSummarizeAllNetworks(self):
     nets = []
     for octet in range(0, 256):
-      net = ipaddr.IPv4Network('192.168.' + str(octet) + '.64/27')
+      net = nacaddr.IPv4('192.168.' + str(octet) + '.64/27')
       nets.append(net)
     random.shuffle(nets)
     result = summarizer.Summarize(nets)
     # summarizes to 192.168.0.64 / 255.255.0.224
-    self.assertEquals(result, [(3232235584, 4294901984)])
+    self.assertEqual(result, [summarizer.DSMNet(3232235584, 4294901984)])
 
   def testSummarizeToAllSpace(self):
     nets = [
-        ipaddr.IPv4Network('0.0.0.0/1'),
-        ipaddr.IPv4Network('128.0.0.0/1'),
+        nacaddr.IPv4('0.0.0.0/1'),
+        nacaddr.IPv4('128.0.0.0/1'),
     ]
     random.shuffle(nets)
     result = summarizer.Summarize(nets)
-    self.assertEquals(result, [(0, 0)])
+    self.assertEqual(result, [summarizer.DSMNet(0, 0)])
 
-  def testIpaddrToTuple(self):
-    net = ipaddr.IPv4Network('192.168.0.64/27')
-    self.assertEqual(summarizer._IpaddrToTuple(net), (3232235584, 4294967264))
+  def testNacaddrNetToDSMNet(self):
+    nacaddr_net = nacaddr.IPv4('192.168.0.64/27')
+    dsm_net = summarizer.DSMNet(3232235584, 4294967264, '')
+    self.assertEqual(summarizer._NacaddrNetToDSMNet(nacaddr_net), dsm_net)
 
   def testToPrettyBinaryFormat(self):
     # 192.168.0.64
@@ -149,21 +154,38 @@ class SummarizerTest(unittest.TestCase):
         '00000000 00000001')
 
   def testSummarizeDSMONetworks(self):
-    fourth_octet = [2,8,20,26,28,32,40,52,58,86,130,136,148,154,156,160,168,180,186,214]
+    fourth_octet = [2, 8, 20, 26, 28, 32, 40, 52, 58, 86, 130, 136, 148,
+                    154, 156, 160, 168, 180, 186, 214]
     nets = list()
 
     for octet3 in range(56, 60):
       for octet4 in fourth_octet:
-        nets.append(ipaddr.IPv4Network('192.168.' + str(octet3) + '.' + str(octet4) + '/31'))
+        nets.append(nacaddr.IPv4('192.168.' + str(octet3) + '.'
+                                 + str(octet4) + '/31'))
 
     result = summarizer.Summarize(nets)
-    self.assertEquals(result, [(3232249858, 4294966398),
-                               (3232249888, 4294966398),
-                               (3232249908, 4294966398),
-                               (3232249942, 4294966398),
-                               (3232249864, 4294966366),
-                               (3232249876, 4294966390),
-                               (3232249882, 4294966366)])
+    self.assertEqual(result, [summarizer.DSMNet(3232249858, 4294966398),
+                              summarizer.DSMNet(3232249888, 4294966398),
+                              summarizer.DSMNet(3232249908, 4294966398),
+                              summarizer.DSMNet(3232249942, 4294966398),
+                              summarizer.DSMNet(3232249864, 4294966366),
+                              summarizer.DSMNet(3232249876, 4294966390),
+                              summarizer.DSMNet(3232249882, 4294966366)])
+
+  def testMergeText(self):
+    existing_comment = 'comment that already exists'
+    addition = 'addition'
+
+    dsm_net = summarizer.DSMNet(167772160, 4278190080)
+    self.assertEqual(dsm_net.MergeText(addition), addition)
+
+    dsm_net = summarizer.DSMNet(167772160, 4278190080, existing_comment)
+    self.assertEqual(dsm_net.MergeText(existing_comment), existing_comment)
+
+    dsm_net = summarizer.DSMNet(167772160, 4278190080, existing_comment)
+    self.assertEqual(dsm_net.MergeText(addition),
+                     existing_comment + ', ' + addition)
+
 
 if __name__ == '__main__':
   unittest.main()

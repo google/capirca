@@ -21,16 +21,99 @@ from __future__ import unicode_literals
 
 import collections
 
-import ipaddr
+from capirca.lib import nacaddr
+
+
+class DSMNet(object):
+  """Value object to hold IP address information for the purposes
+    of discontinuous subnet mask summarization.
+
+    ipaddr maintainers explicitly declared that they will not
+    support discontinuous subnet masks, hence this is required.
+  """
+
+  def __init__(self, address, netmask, text=''):
+    """Creates DSMNet.
+
+    Args:
+      address: network address as int.
+      netmask: subnet mask as int.
+      text: text comment.
+    """
+    self.address = address
+    self.netmask = netmask
+    self.text = text
+
+  def __eq__(self, other):
+    try:
+      return (self.address == other.address and
+              self.netmask == other.netmask)
+    except AttributeError:
+      return NotImplemented
+
+  def __ne__(self, other):
+    eq = self.__eq__(other)
+    if eq is NotImplemented:
+      return NotImplemented
+    return not eq
+
+  def __le__(self, other):
+    gt = self.__gt__(other)
+    if gt is NotImplemented:
+      return NotImplemented
+    return not gt
+
+  def __ge__(self, other):
+    lt = self.__lt__(other)
+    if lt is NotImplemented:
+      return NotImplemented
+    return not lt
+
+  def __lt__(self, other):
+    try:
+      if self.address != other.address:
+        return self.address < other.address
+    except AttributeError:
+      return NotImplemented
+    return False
+
+  def __gt__(self, other):
+    try:
+      if self.address != other.address:
+        return self.address > other.address
+    except AttributeError:
+      return NotImplemented
+    return False
+
+  def __str__(self):
+    return ' '.join([self.address, self.netmask])
+
+  def MergeText(self, text=''):
+    """Returns self.text joined with optional text.
+
+    Don't join the text if it's already contained in self.text.
+
+    Args:
+      text: text to be combined with self.text.
+
+    Returns:
+      Combined text.
+    """
+    if self.text:
+      if text and text not in self.text:
+        return ', '.join([self.text, text])
+      return self.text
+    else:
+      return text
 
 
 def ToDottedQuad(net, negate=False, nondsm=False):
-  """Turns a int tuple into decimal dotted quad tuple.
+  """Turns a DSMNet object into decimal dotted quad tuple.
 
   Args:
-    net: tuple (network address as int, subnet mask as int).
+    net: DSMNet object.
     negate: if subnet mask should be negated (and become wildcard).
-    nondsm: if mask should be generated in prefixlen when non-DSM
+    nondsm: if mask should be generated in prefixlen when non-DSM.
 
   Returns:
     tuple (decimal dotted address, decimal dotted mask).
@@ -39,19 +122,20 @@ def ToDottedQuad(net, negate=False, nondsm=False):
     ValueError: if address is larger than 32 bits or mask is not exactly
       0 or 32 bits.
   """
-  address, netmask = net
-  if address.bit_length() > 32:
+  if net.address.bit_length() > 32:
     raise ValueError('Addresses larger than 32 bits '
                      'are currently not supported.')
-  if netmask.bit_length() not in (0, 32):
+  if net.netmask.bit_length() not in (0, 32):
     raise ValueError('Subnet masks other than 0 or 32 '
                      'are currently not supported.')
   if negate:
-    netmask = ~netmask
+    netmask = ~net.netmask
+  else:
+    netmask = net.netmask
 
-  return (_Int32ToDottedQuad(address),
+  return (_Int32ToDottedQuad(net.address),
           _PrefixlenForNonDSM(netmask)) if nondsm else (
-              _Int32ToDottedQuad(address), _Int32ToDottedQuad(netmask))
+              _Int32ToDottedQuad(net.address), _Int32ToDottedQuad(netmask))
 
 
 def _PrefixlenForNonDSM(intmask):
@@ -95,14 +179,14 @@ def _Int32ToDottedQuad(num):
   return '.'.join(octets)
 
 
-def _IpaddrToTuple(net):
-  """Converts ipaddr networks object into tuple.
+def _NacaddrNetToDSMNet(net):
+  """Converts nacaddr.IPv4 or nacaddr.IPv6 object into DSMNet object.
 
   Args:
-    net: ipaddr.IPv4Network or ipaddr.IPv6Network object
+    net: nacaddr.IPv4 or nacaddr.IPv6 object.
 
   Returns:
-    tuple (network address as int, subnet mask as int)
+    DSMNet object.
   """
 
   # left shift number of subnet mask bits, then leftshift until
@@ -110,7 +194,7 @@ def _IpaddrToTuple(net):
   address_as_int = int(net)
   netmask_as_int = (((1 << net.prefixlen) - 1) <<
                     (net.max_prefixlen - net.prefixlen))
-  return (address_as_int, netmask_as_int)
+  return DSMNet(address_as_int, netmask_as_int, net.text)
 
 
 def _ToPrettyBinaryFormat(num):
@@ -124,7 +208,7 @@ def _ToPrettyBinaryFormat(num):
   Returns:
     prettily formatted string
   """
-  # like ipaddr.py make assumption that this is ipv4
+  # like ipaddr make assumption that this is ipv4
   byte_strings = []
   while num > 0 or len(byte_strings) < 4:
     byte_strings.append('{0:08b}'.format(num & 0xff))
@@ -136,20 +220,20 @@ def Summarize(nets):
   """Summarizes networks while allowing for discontinuous subnet mask.
 
   Args:
-    nets: list of ipaddr.IPv4Network or ipaddr.IPv6Network objects.
+    nets: list of nacaddr.IPv4 or nacaddr.IPv6 objects.
         Address family can be mixed, however there is no support for rendering
         anything other than IPv4.
 
   Returns:
-    sorted list of tuples (network address as int, subnet mask as int)
+    sorted list of DSMIPNet objects.
   """
 
   result = []
-  optimized_nets = ipaddr.CollapseAddrList(nets)
+  optimized_nets = nacaddr.CollapseAddrList(nets)
   nets_by_netmask = collections.defaultdict(list)
   # group nets by subnet mask
   for net in optimized_nets:
-    nets_by_netmask[net.prefixlen].append(_IpaddrToTuple(net))
+    nets_by_netmask[net.prefixlen].append(_NacaddrNetToDSMNet(net))
   for nets in nets_by_netmask.values():
     result.extend(_SummarizeSameMask(nets))
   return result
@@ -158,17 +242,11 @@ def Summarize(nets):
 def _SummarizeSameMask(nets):
   """Summarizes networks while allowing for discontinuous subnet mask.
 
-  ipaddr.py does not support discontinuous subnet masks, hence
-  the format this method operates on is simple tuple
-  (network address as int, subnet mask as int).
-
   Args:
-    nets: list of tuples (network address as int, subnet mask as int).
-    Must be already fully summarized as far as continuos subnet masks go.
-    Subnet mask must be the same for all networks.
+    nets: list of unique, summarized DSMNet objects with the same netmask.
 
   Returns:
-    sorted list of tuples (network address as int, subnet mask as int)
+    sorted list of DSMNet objects that are discontinuously summarized.
   """
 
   # singletons can not possible be paired and are our result
@@ -183,23 +261,22 @@ def _SummarizeSameMask(nets):
       current_net = current_nets.pop(0)
       # look for pair net, but keep index handy
       for pair_net_index, pair_net in enumerate(current_nets):
-        current_address, current_netmask = current_net
-        pair_address, pair_netmask = pair_net
-        xored_address = current_address ^ pair_address
+        xored_address = current_net.address ^ pair_net.address
         # For networks with the same network mask:
         # check if they have exactly one bit difference
         # or they are "a pair".
-        if (current_netmask == pair_netmask and
+        if (current_net.netmask == pair_net.netmask and
             (xored_address & (xored_address - 1) == 0) and xored_address > 0):
           # if pair was found, remove both, add paired up network
           # to combinetons for next run and move along
           # otherwise this network can never be paired
           current_nets.pop(pair_net_index)
-          new_netmask = current_netmask ^ xored_address
+          new_netmask = current_net.netmask ^ xored_address
           # summarize supplied networks into one using discontinuous
           # subnet mask.
-          combinetons.append((min(current_address, pair_address),
-                              new_netmask))
+          combinetons.append(DSMNet(min(current_net.address, pair_net.address),
+                                    new_netmask,
+                                    current_net.MergeText(pair_net.text)))
           break
       else:
         singletons.append(current_net)

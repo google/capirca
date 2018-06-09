@@ -473,7 +473,7 @@ class Term(aclgenerator.Term):
         return addr.with_prefixlen
       return 'host %s' % (addr.ip)
     # DSMO enabled
-    if isinstance(addr, tuple):
+    if isinstance(addr, summarizer.DSMNet):
       return '%s %s' % summarizer.ToDottedQuad(addr, negate=True)
     return addr
 
