@@ -165,12 +165,13 @@ class SummarizerTest(unittest.TestCase):
 
     result = summarizer.Summarize(nets)
     self.assertEqual(result, [summarizer.DSMNet(3232249858, 4294966398),
+                              summarizer.DSMNet(3232249864, 4294966366),
+                              summarizer.DSMNet(3232249876, 4294966390),
+                              summarizer.DSMNet(3232249882, 4294966366),
                               summarizer.DSMNet(3232249888, 4294966398),
                               summarizer.DSMNet(3232249908, 4294966398),
                               summarizer.DSMNet(3232249942, 4294966398),
-                              summarizer.DSMNet(3232249864, 4294966366),
-                              summarizer.DSMNet(3232249876, 4294966390),
-                              summarizer.DSMNet(3232249882, 4294966366)])
+                             ])
 
   def testMergeText(self):
     existing_comment = 'comment that already exists'
@@ -185,6 +186,19 @@ class SummarizerTest(unittest.TestCase):
     dsm_net = summarizer.DSMNet(167772160, 4278190080, existing_comment)
     self.assertEqual(dsm_net.MergeText(addition),
                      existing_comment + ', ' + addition)
+
+  def testOrder(self):
+    nets = [
+        # not discontinously summarizable with the other two
+        nacaddr.IPv4('209.85.147.129/32'),
+        # discontinuosly summarizable, but should come before the first one
+        nacaddr.IPv4('74.125.20.129/32'),
+        nacaddr.IPv4('74.125.21.129/32'),
+    ]
+    result = summarizer.Summarize(nets)
+    self.assertEqual(result, [summarizer.DSMNet(1249711233, 4294967039),
+                              summarizer.DSMNet(3512046465, 4294967295)
+                             ])
 
 
 if __name__ == '__main__':

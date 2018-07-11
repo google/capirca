@@ -236,7 +236,7 @@ def Summarize(nets):
     nets_by_netmask[net.prefixlen].append(_NacaddrNetToDSMNet(net))
   for nets in nets_by_netmask.values():
     result.extend(_SummarizeSameMask(nets))
-  return result
+  return sorted(result)
 
 
 def _SummarizeSameMask(nets):
@@ -252,7 +252,7 @@ def _SummarizeSameMask(nets):
   # singletons can not possible be paired and are our result
   singletons = []
   # combinetons can potentially be paired
-  combinetons = sorted(nets)
+  combinetons = nets
 
   while combinetons:
     current_nets = combinetons
