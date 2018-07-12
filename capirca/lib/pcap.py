@@ -35,7 +35,6 @@ from __future__ import unicode_literals
 import datetime
 
 from capirca.lib import aclgenerator
-from capirca.lib import nacaddr
 from absl import logging
 
 
@@ -244,13 +243,13 @@ class Term(aclgenerator.Term):
 
   def _GenerateAddrStatement(self, addrs, exclude_addrs):
     addrlist = []
-    for d in nacaddr.CollapseAddrListRecursive(addrs):
+    for d in addrs:
       if d != 'any' and str(d) != '::/0':
         addrlist.append('dst net %s' % (d))
 
     excludes = []
     if exclude_addrs:
-      for d in nacaddr.CollapseAddrListRecursive(exclude_addrs):
+      for d in exclude_addrs:
         if d != 'any' and str(d) != '::/0':
           excludes.append('not dst net %s' % (d))
         else:
