@@ -196,7 +196,32 @@ def CollapseAddrListPreserveTokens(addresses):
   return [i for sublist in dedup_array for i in sublist]
 
 
-def CollapseAddrListRecursive(addresses):
+def SafeToMerge(address, merge_target, check_addresses):
+  """Determine if it's safe to merge address into merge target.
+
+  Checks given address against merge target and a list of check_addresses
+  if it's OK to roll address into merge target such that it not less specific
+  than any of the check_addresses. See description of why ir is important
+  within public function CollapseAddrList.
+
+  Args:
+    address: Address that is being merged.
+    merge_target: Merge candidate address.
+    check_addresses: A list of address to compare specificity with.
+
+  Returns:
+    True if safe to merge, False otherwise.
+  """
+  for check_address in check_addresses:
+    if (address.network == check_address.network and
+        address.netmask > check_address.netmask and
+        merge_target.netmask <= check_address.netmask):
+      return False
+  return True
+
+
+def CollapseAddrListRecursive(addresses, complement_addresses=None,
+                              merge_risk=False):
   """Recursively loops through the addresses, collapsing concurent netblocks.
 
    Example:
@@ -216,6 +241,10 @@ def CollapseAddrListRecursive(addresses):
 
   Args:
     addresses: List of IPv4 or IPv6 objects
+    complement_addresses: List of IPv4 or IPv6 objects that, if present,
+      will be considered to avoid harmful optimizations.
+    merge_risk: boolean that specifies if complement address list should be
+      considered. If False, allows to shortcut the checks.
 
   Returns:
     List of IPv4 or IPv6 objects (depending on what we were passed)
@@ -227,14 +256,18 @@ def CollapseAddrListRecursive(addresses):
     if not ret_array:
       ret_array.append(cur_addr)
       continue
-    if ret_array[-1].Contains(cur_addr):
+    safe_to_merge = True
+    if merge_risk:
+      safe_to_merge = SafeToMerge(cur_addr, ret_array[-1], complement_addresses)
+    if ret_array[-1].Contains(cur_addr) and safe_to_merge:
       # save the comment from the subsumed address
       ret_array[-1].AddComment(cur_addr.text)
       optimized = True
-    elif (ret_array[-1].version == cur_addr.version and
-          ret_array[-1].prefixlen == cur_addr.prefixlen and
-          ret_array[-1].broadcast + 1 == cur_addr.network and
-          ret_array[-1].Supernet().network == ret_array[-1].network):
+    elif ((ret_array[-1].version == cur_addr.version and
+           ret_array[-1].prefixlen == cur_addr.prefixlen and
+           ret_array[-1].broadcast + 1 == cur_addr.network and
+           ret_array[-1].Supernet().network == ret_array[-1].network) and
+          safe_to_merge):
       ret_array.append(ret_array.pop().Supernet())
       # save the text from the subsumed address
       ret_array[-1].AddComment(cur_addr.text)
@@ -247,21 +280,43 @@ def CollapseAddrListRecursive(addresses):
   return ret_array
 
 
-def CollapseAddrList(addresses):
+def CollapseAddrList(addresses, complement_addresses=None):
   """Collapse an array of IP objects.
 
   Example:  CollapseAddrList(
     [IPv4('1.1.0.0/24'), IPv4('1.1.1.0/24')]) -> [IPv4('1.1.0.0/23')]
     Note: this works just as well with IPv6 addresses too.
 
+  On platforms that support exclude semantics with most specific match,
+  this method should _always_ be called with complement addresses supplied.
+  Not doing so can lead to *reversal* of intent. Consider this case:
+
+    destination-address:: 10.0.0.0/8, 10.0.0.0/10
+    destination-exclude:: 10.0.0.0/9
+
+  Without optimization, 10.0.0.1 will _match_. With optimization, most specific
+  prefix will _not_ match, reversing the intent. Supplying complement_addresses
+  allows this method to consider those implications.
+
   Args:
      addresses: list of ipaddr.IPNetwork objects
+     complement_addresses: list of ipaddr.IPNetwork objects that, if present,
+      will be considered to avoid harmful optimizations.
 
   Returns:
     list of ipaddr.IPNetwork objects
   """
+  merge_risk = False
+  if complement_addresses:
+    address_set = set([a.network for a in addresses])
+    ca_address_set = set([ca.network for ca in complement_addresses])
+    merge_risk = not address_set.isdisjoint(ca_address_set)
+
   return CollapseAddrListRecursive(
-      sorted(addresses, key=ipaddr._BaseNet._get_networks_key))
+      # pylint: disable=protected-access
+      sorted(addresses, key=ipaddr._BaseNet._get_networks_key),
+      complement_addresses, merge_risk)
+      # pylint: enable=protected-access
 
 
 def SortAddrList(addresses):

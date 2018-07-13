@@ -678,7 +678,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       for name in names:
         counter = 0
         ips = nacaddr.SortAddrList(global_address_book[name])
-        ips = nacaddr.CollapseAddrListRecursive(ips)
+        ips = nacaddr.CollapseAddrList(ips)
         global_address_book[name] = ips
         for ip in ips:
           target.IndentAppend(4, 'address ' + name + '_' + str(counter) + ' ' +
@@ -706,7 +706,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         groups = sorted(self.addressbook[zone])
         for group in groups:
           ips = nacaddr.SortAddrList(self.addressbook[zone][group])
-          ips = nacaddr.CollapseAddrListRecursive(ips)
+          ips = nacaddr.CollapseAddrList(ips)
           self.addressbook[zone][group] = ips
           count = 0
           for address in self.addressbook[zone][group]:

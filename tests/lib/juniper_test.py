@@ -1190,6 +1190,25 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetNetAddr.assert_has_calls([
         mock.call('INCLUDES'), mock.call('EXCLUDES')])
 
+  def testNoMatchReversal(self):
+    includes = ['10.0.0.0/8', '10.0.0.0/10']
+    excludes = ['10.0.0.0/9']
+
+    expected = ['10.0.0.0/8;',
+                '10.0.0.0/10;',
+                '10.0.0.0/9 except;']
+
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IPv4(ip) for ip in includes],
+        [nacaddr.IPv4(ip) for ip in excludes]]
+
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_19, self.naming),
+        EXP_INFO)
+    output = str(jcl)
+    for result in expected:
+      self.assertIn(result, output)
+
   def testConfigHelper(self):
     config = juniper.Config()
     config.Append('test {')

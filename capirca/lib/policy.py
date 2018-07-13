@@ -1250,26 +1250,31 @@ class Term(object):
       optimize: boolean value indicating whether to optimize addresses
       addressbook: Boolean indicating if addressbook is used.
     """
-    if optimize:
+    def cleanup(addresses, complement_addresses):
+      if not optimize:
+        return nacaddr.SortAddrList(addresses)
       if addressbook:
-        cleanup = nacaddr.CollapseAddrListPreserveTokens
+        return nacaddr.CollapseAddrListPreserveTokens(addresses)
       else:
-        cleanup = nacaddr.CollapseAddrList
-    else:
-      cleanup = nacaddr.SortAddrList
+        return nacaddr.CollapseAddrList(addresses, complement_addresses)
 
     # address collapsing.
     if self.address:
-      self.address = cleanup(self.address)
+      self.address = cleanup(self.address, None)
+
     if self.source_address:
-      self.source_address = cleanup(self.source_address)
+      self.source_address = cleanup(self.source_address,
+                                    self.source_address_exclude)
     if self.source_address_exclude:
-      self.source_address_exclude = cleanup(self.source_address_exclude)
+      self.source_address_exclude = cleanup(self.source_address_exclude,
+                                            self.source_address)
+
     if self.destination_address:
-      self.destination_address = cleanup(self.destination_address)
+      self.destination_address = cleanup(self.destination_address,
+                                         self.destination_address_exclude)
     if self.destination_address_exclude:
       self.destination_address_exclude = cleanup(
-          self.destination_address_exclude)
+          self.destination_address_exclude, self.destination_address)
 
     # port collapsing.
     if self.port:
