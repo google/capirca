@@ -115,6 +115,37 @@ term good-term-1 {
 }
 """
 
+GOOD_TERM_EGRESS = """
+term good-term-1 {
+  comment:: "DNS access from corp."
+  destination-address:: CORP_EXTERNAL
+  destination-port:: DNS
+  protocol:: udp tcp
+  action:: accept
+}
+"""
+
+GOOD_TERM_EGRESS_SOURCETAG = """
+term good-term-1 {
+  comment:: "DNS access from corp."
+  destination-address:: CORP_EXTERNAL
+  source-tag:: dns-servers
+  destination-port:: DNS
+  protocol:: udp tcp
+  action:: accept
+}
+"""
+
+GOOD_TERM_INGRESS_SOURCETAG = """
+term good-term-1 {
+  comment:: "Allow all GCE network internal traffic."
+  source-tag:: internal-servers
+  protocol:: udp tcp
+  action:: accept
+}
+"""
+
+
 GOOD_TERM_JSON = """
 [
   {
@@ -260,6 +291,40 @@ term bad-term-unsupported-option {
   protocol:: tcp
   action:: accept
   option:: tcp-initial
+}
+"""
+
+BAD_TERM_EGRESS = """
+term bad-term-dest-tag {
+  comment:: "DNS access from corp."
+  destination-address:: CORP_EXTERNAL
+  destination-tag:: dns-servers
+  destination-port:: DNS
+  protocol:: udp tcp
+  action:: accept
+}
+"""
+
+BAD_TERM_EGRESS_SOURCE_ADDRESS = """
+term bad-term-source-address {
+  comment:: "DNS access from corp."
+  destination-address:: CORP_EXTERNAL
+  source-address:: CORP_EXTERNAL
+  destination-port:: DNS
+  protocol:: udp tcp
+  action:: accept
+}
+"""
+
+BAD_TERM_EGRESS_SOURCE_DEST_TAG = """
+term bad-term-source-dest-tag {
+  comment:: "DNS access from corp."
+  destination-address:: CORP_EXTERNAL
+  destination-tag:: dns-servers
+  source-tag:: ssh-bastion
+  destination-port:: DNS
+  protocol:: udp tcp
+  action:: accept
 }
 """
 
@@ -650,15 +715,81 @@ class GCETest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
     acl = gce.GCE(policy.ParsePolicy(
-        GOOD_HEADER_EGRESS + GOOD_TERM_4, self.naming), EXP_INFO)
+        GOOD_HEADER_EGRESS + GOOD_TERM_EGRESS, self.naming), EXP_INFO)
     self.failUnless('EGRESS' in str(acl), str(acl))
     self.failUnless('INGRESS' not in str(acl), str(acl))
+
+  def testRaisesWithEgressDestinationTag(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    self.assertRaisesRegexp(
+        gce.GceFirewallError,
+        'GCE Egress rule cannot have destination tag.',
+        gce.GCE,
+        policy.ParsePolicy(
+            GOOD_HEADER_EGRESS + BAD_TERM_EGRESS, self.naming),
+        EXP_INFO)
+
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('DNS', 'udp'),
+        mock.call('DNS', 'tcp')])
+
+  def testRaisesWithEgressSourceAddress(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    self.assertRaisesRegexp(
+        gce.GceFirewallError,
+        'Egress rules cannot include "sourceRanges".',
+        gce.GCE,
+        policy.ParsePolicy(
+            GOOD_HEADER_EGRESS + BAD_TERM_EGRESS_SOURCE_ADDRESS, self.naming),
+        EXP_INFO)
+
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('DNS', 'udp'),
+        mock.call('DNS', 'tcp')])
+
+  def testRaisesWithEgressSourceAndDestTag(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    self.assertRaisesRegexp(
+        gce.GceFirewallError,
+        'GCE Egress rule cannot have destination tag.',
+        gce.GCE,
+        policy.ParsePolicy(
+            GOOD_HEADER_EGRESS + BAD_TERM_EGRESS_SOURCE_DEST_TAG, self.naming),
+        EXP_INFO)
+
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('DNS', 'udp'),
+        mock.call('DNS', 'tcp')])
+
+  def testEgressTags(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER_EGRESS + GOOD_TERM_EGRESS_SOURCETAG, self.naming), EXP_INFO)
+
+    self.assertIn('targetTags', str(acl))
+    self.assertNotIn('sourceTags', str(acl))
+
+  def testIngressTags(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER_INGRESS + GOOD_TERM_INGRESS_SOURCETAG, self.naming),
+                  EXP_INFO)
+
+    self.assertIn('sourceTags', str(acl))
+    self.assertNotIn('targetTags', str(acl))
 
   def testDestinationRanges(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
     acl = gce.GCE(policy.ParsePolicy(
-        GOOD_HEADER_EGRESS + GOOD_TERM_4, self.naming), EXP_INFO)
+        GOOD_HEADER_EGRESS + GOOD_TERM_EGRESS, self.naming), EXP_INFO)
     self.failUnless('destinationRanges' in str(acl), str(acl))
     self.failUnless('sourceRanges' not in str(acl), str(acl))
     self.failUnless('10.2.3.4/32' in str(acl), str(acl))
@@ -685,7 +816,7 @@ class GCETest(unittest.TestCase):
         EXP_INFO)
     self.assertRaisesRegexp(
         gce.GceFirewallError,
-        'Egress rules cannot include "sourceRanges", "sourceTags".',
+        'Egress rules cannot include "sourceRanges".',
         gce.GCE,
         policy.ParsePolicy(
             GOOD_HEADER_EGRESS + GOOD_TERM, self.naming),

@@ -114,13 +114,17 @@ class Term(aclgenerator.Term):
                                '"destinationRanges.')
 
     elif self.term.direction == 'EGRESS':
-      if self.term.source_address or self.term.source_tag:
+      if self.term.source_address:
         raise GceFirewallError(
-            'Egress rules cannot include "sourceRanges", "sourceTags".')
+            'Egress rules cannot include "sourceRanges".')
 
       if not self.term.destination_address:
         raise GceFirewallError(
             'Egress rule missing required field "destinationRanges".')
+
+      if self.term.destination_tag:
+        raise GceFirewallError(
+            'GCE Egress rule cannot have destination tag.')
 
   def ConvertToDict(self):
     """Convert term to a dictionary.
@@ -146,9 +150,13 @@ class Term(aclgenerator.Term):
       term_dict['network'] = self.term.network
       term_dict['name'] = '%s-%s' % (
           self.term.network.split('/')[-1], term_dict['name'])
+
     if self.term.source_tag:
-      term_dict['sourceTags'] = self.term.source_tag
-    if self.term.destination_tag:
+      if self.term.direction == 'INGRESS':
+        term_dict['sourceTags'] = self.term.source_tag
+      elif self.term.direction == 'EGRESS':
+        term_dict['targetTags'] = self.term.source_tag
+    if self.term.destination_tag and self.term.direction == 'INGRESS':
       term_dict['targetTags'] = self.term.destination_tag
     if self.term.priority:
       term_dict['priority'] = self.term.priority

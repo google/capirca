@@ -1,5 +1,6 @@
 #
 # This is an example policy for capirca
+# Target defaults to INGRESS is not specified in the header
 #
 header {
   comment:: "this is a sample policy to generate GCE filter"
@@ -36,3 +37,31 @@ term test-internal {
   protocol:: tcp udp
   action:: accept
 }
+
+#
+# Sample EGRESS policy
+# If source-tag is included, it maps to targetTags in the GCP Egress rule
+#
+header {
+  comment:: "this is a sample policy to generate EGRESS GCE filter"
+  target:: gce EGRESS global/networks/default
+}
+
+term test-egress-address {
+  comment:: "Outbound to Mail Server"
+  protocol:: tcp
+  destination-port:: SMTP
+  destination-address:: MAIL_SERVERS
+  action:: accept
+}
+
+term test-egress-tag {
+  comment:: "Outbound to RFC1918"
+  protocol:: tcp
+  destination-port:: SSH
+  destination-address:: PUBLIC_NAT
+  source-tag:: webserver
+  action:: accept
+}
+
+
