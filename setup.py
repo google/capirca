@@ -18,22 +18,6 @@
 import os
 from setuptools import setup, find_packages
 
-def find_data_files(source):
-  result = []
-  for directory, _, files in os.walk(source):
-    files = [os.path.join(directory, x) for x in files]
-    result.append((directory, files))
-
-  return result
-data_files = (["aclcheck_cmdline.py", "definate.py"] +
-              find_data_files("def") +
-              find_data_files("definate") +
-              find_data_files("capirca") +
-              find_data_files("policies") +
-              find_data_files("tests") +
-              find_data_files("third_party") +
-              find_data_files("tools"))
-
 setup(
     name='capirca',
     version="1.120",
@@ -42,12 +26,10 @@ setup(
     url='https://github.com/google/capirca/',
     maintainer='Rob Ankeny',
     maintainer_email='robankeny at google dot com',
-    packages=find_packages(),
+    packages=find_packages(exclude=["tests*"]),
     zip_safe=False,
     classifiers=[
                  'Topic :: Security',
                  'Topic :: System :: Networking :: Firewalls',
                 ],
-    include_package_data=True,
-    data_files=data_files,
     install_requires=['absl-py', 'ply', 'ipaddr', 'mock'])
