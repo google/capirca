@@ -24,7 +24,7 @@ from __future__ import unicode_literals
 import logging
 import socket
 
-from third_party import ipaddr
+import ipaddr
 import generator
 
 
