@@ -25,7 +25,7 @@ setup(
     license='Apache License, Version 2.0',
     url='https://github.com/google/capirca/',
     maintainer='Rob Ankeny',
-    maintainer_email='robankeny at google dot com',
+    maintainer_email='robankeny@google.com',
     packages=find_packages(exclude=["tests*"]),
     zip_safe=False,
     classifiers=[
