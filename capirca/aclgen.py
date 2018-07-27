@@ -513,5 +513,9 @@ def main(unused_argv):
   else:
     logging.info('done.')
 
-if __name__ == '__main__':
+
+def entry_point():
   app.run(main)
+
+if __name__ == '__main__':
+  entry_point()

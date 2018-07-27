@@ -20,7 +20,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='capirca',
-    version="1.120",
+    version='1.121',
     description='Capirca',
     license='Apache License, Version 2.0',
     url='https://github.com/google/capirca/',
@@ -28,8 +28,12 @@ setup(
     maintainer_email='robankeny@google.com',
     packages=find_packages(exclude=["tests*"]),
     zip_safe=False,
+    entry_points={
+        'console_scripts': ['aclgen = capirca.aclgen:entry_point'],
+    },
     classifiers=[
                  'Topic :: Security',
                  'Topic :: System :: Networking :: Firewalls',
                 ],
-    install_requires=['absl-py', 'ply', 'ipaddr', 'mock'])
+    install_requires=['absl-py', 'ply', 'ipaddr', 'mock']
+)
