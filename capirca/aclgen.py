@@ -27,6 +27,9 @@ import multiprocessing
 import os
 import sys
 
+from absl import app
+from absl import flags
+from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import arista
 from capirca.lib import aruba
@@ -49,10 +52,6 @@ from capirca.lib import policy
 from capirca.lib import speedway
 from capirca.lib import srxlo
 from capirca.lib import windows_advfirewall
-
-from absl import app
-from absl import flags
-from absl import logging
 
 
 FLAGS = flags.FLAGS
@@ -449,8 +448,7 @@ def _WriteFile(output_file, file_string):
     raise
 
 
-def main(args):
-  FLAGS(args)
+def main(unused_argv):
   if FLAGS.verbose:
     logging.basicConfig(level=logging.INFO)
   if FLAGS.debug:
@@ -467,9 +465,8 @@ def main(args):
   try:
     definitions = naming.Naming(FLAGS.definitions_directory)
   except naming.NoDefinitionsError:
-    err_msg = 'bad definitions directory: %s', FLAGS.definitions_directory
+    err_msg = 'bad definitions directory: %s' % FLAGS.definitions_directory
     logging.fatal(err_msg)
-    sys.exit(1)
 
   # thead-safe list for storing files to write
   manager = multiprocessing.Manager()

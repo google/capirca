@@ -17,14 +17,14 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import logging
 import os
+import shutil
+import tempfile
 
-from capirca import aclgen
-from capirca.lib import naming
-import mock
 from absl import flags
-from absl import logging
+from absl.testing import flagsaver
+from capirca import aclgen
+import mock
 import unittest
 
 
@@ -35,73 +35,44 @@ class TestAclGenDemo(unittest.TestCase):
   """Ensure Capirca demo runs successfully out-of-the-box."""
 
   def setUp(self):
-    if aclgen.FLAGS.is_parsed():
-      aclgen.FLAGS.unparse_flags()
-    self.output_dir = '.'
+    # Need to initialize flags since unittest doesn't do this for us.
+    FLAGS(['aclgen_test.py'])
+    self.saved_flag_values = flagsaver.save_flag_values()
+    self.test_subdirectory = tempfile.mkdtemp()
+    self.def_dir = os.path.join(self.test_subdirectory, 'def')
+    self.pol_dir = os.path.join(self.test_subdirectory, 'policies')
+    shutil.rmtree(self.test_subdirectory, ignore_errors=True)
+    os.mkdir(self.test_subdirectory)
+    shutil.copytree('def', self.def_dir)
+    shutil.copytree('policies', self.pol_dir)
+    FLAGS.base_directory = self.pol_dir
+    FLAGS.definitions_directory = self.def_dir
+    FLAGS.output_directory = self.test_subdirectory
 
-    curr_dir = os.path.dirname(os.path.abspath(__file__))
-    self.root_dir = os.path.realpath(os.path.join(curr_dir, '..', '..'))
-    self.policies_dir = os.path.join(self.root_dir, 'policies')
-    self.defs_dir = os.path.join(self.root_dir, 'def')
+  def tearDown(self):
+    flagsaver.restore_flag_values(self.saved_flag_values)
 
   @mock.patch.object(aclgen, '_WriteFile', autospec=True)
   def test_smoke_test_generates_successfully(self, mock_writer):
-    args = [
-        'program',
-        '--base_directory={0}'.format(self.policies_dir),
-        '--definitions_directory={0}'.format(self.defs_dir),
-        '--output_directory={0}'.format(self.output_dir)
-    ]
-    aclgen.main(args)
-    expected = [
-        mock.call('./sample_cisco_lab.acl', mock.ANY),
-        mock.call('./sample_gce.gce', mock.ANY),
-        mock.call('./sample_ipset.ips', mock.ANY),
-        mock.call('./sample_juniper_loopback.jcl', mock.ANY),
-        mock.call('./sample_multitarget.acl', mock.ANY),
-        mock.call('./sample_multitarget.asa', mock.ANY),
-        mock.call('./sample_multitarget.bacl', mock.ANY),
-        mock.call('./sample_multitarget.eacl', mock.ANY),
-        mock.call('./sample_multitarget.ipt', mock.ANY),
-        mock.call('./sample_multitarget.jcl', mock.ANY),
-        mock.call('./sample_multitarget.xacl', mock.ANY),
-        mock.call('./sample_nsxv.nsx', mock.ANY),
-        mock.call('./sample_packetfilter.pf', mock.ANY),
-        mock.call('./sample_speedway.ipt', mock.ANY),
-        mock.call('./sample_srx.srx', mock.ANY),
-        mock.call('./sample_paloalto.xml', mock.ANY)
-    ]
+    aclgen.main([])
+    files = ['sample_cisco_lab.acl', 'sample_gce.gce', 'sample_ipset.ips',
+             'sample_juniper_loopback.jcl', 'sample_multitarget.acl',
+             'sample_multitarget.asa', 'sample_multitarget.bacl',
+             'sample_multitarget.eacl', 'sample_multitarget.ipt',
+             'sample_multitarget.jcl', 'sample_multitarget.xacl',
+             'sample_nsxv.nsx', 'sample_packetfilter.pf',
+             'sample_speedway.ipt', 'sample_srx.srx', 'sample_paloalto.xml']
+    expected = [mock.call(
+        os.path.join(self.test_subdirectory, f), mock.ANY) for f in files]
     mock_writer.assert_has_calls(expected, any_order=True)
 
   @mock.patch.object(aclgen, '_WriteFile', autospec=True)
   def test_generate_single_policy(self, mock_writer):
-    args = [
-        'program',
-        '--policy_file={0}'.format(os.path.join(self.policies_dir,
-                                                'pol', 'sample_cisco_lab.pol')),
-        '--definitions_directory={0}'.format(self.defs_dir),
-        '--output_directory={0}'.format(self.output_dir)
-    ]
-    aclgen.main(args)
-    mock_writer.assert_called_with('./sample_cisco_lab.acl', mock.ANY)
-
-  @mock.patch.object(logging, 'fatal')
-  @mock.patch.object(naming, 'Naming', autospec=True)
-  def test_missing_defs_folder_raises_error(self, mock_naming, mock_error):
-    mock_naming.side_effect = naming.NoDefinitionsError()
-    args = [
-        'program',
-        '--base_directory={0}'.format(self.policies_dir),
-        '--definitions_directory=/some_missing_dir/',
-        '--output_directory={0}'.format(self.output_dir)
-    ]
-
-    with self.assertRaises(SystemExit) as cm:
-        aclgen.main(args)
-    self.assertEqual(cm.exception.code, 1)
-    self.assertTrue(mock_error.called)
-    mock_error.assert_called_with(((u'bad definitions directory: %s',
-                                    u'/some_missing_dir/')))
+    FLAGS.policy_file = os.path.join(self.test_subdirectory,
+                                     'policies/pol/sample_cisco_lab.pol')
+    aclgen.main([])
+    mock_writer.assert_called_with(
+        os.path.join(self.test_subdirectory, 'sample_cisco_lab.acl'), mock.ANY)
 
 if __name__ == '__main__':
   unittest.main()
