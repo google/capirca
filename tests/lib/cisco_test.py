@@ -788,8 +788,8 @@ class CiscoTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/24')]
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_20,
                                          self.naming), EXP_INFO)
-    first_string = 'permit ip 10.0.0.0 0.0.0.255 10.0.0.0 0.0.0.255 fragments'
-    self.failUnless(first_string in str(acl), str(acl))
+    expected = 'permit ip 10.0.0.0 0.0.0.255 10.0.0.0 0.0.0.255 fragments'
+    self.failUnless(expected in str(acl), str(acl))
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
                                              mock.call('SOME_HOST')])
