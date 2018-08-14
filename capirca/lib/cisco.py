@@ -999,10 +999,7 @@ class Cisco(aclgenerator.ACLGenerator):
         # add a header comment if one exists
         for comment in header.comment:
           for line in comment.split('\n'):
-            if filter_type == 'standard':
-              target.append(' access-list %s remark %s' % (filter_name, line))
-            else:
-              target.append(' remark %s' % line)
+            target.append(' remark %s' % line)
 
         # now add the terms
         for term in terms:
