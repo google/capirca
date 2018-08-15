@@ -1001,7 +1001,7 @@ class Cisco(aclgenerator.ACLGenerator):
           for line in comment.split('\n'):
             if (self._PLATFORM == 'cisco' and filter_type == 'standard' and
                 filter_name.isdigit()):
-              target.append(' access-list %s remark %s' % (filter_name, line))
+              target.append('access-list %s remark %s' % (filter_name, line))
             else:
               target.append(' remark %s' % line)
 
