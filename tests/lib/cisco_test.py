@@ -443,8 +443,10 @@ class CiscoTest(unittest.TestCase):
     acl = cisco.Cisco(policy.ParsePolicy(
         GOOD_STANDARD_NUMBERED_HEADER + GOOD_STANDARD_TERM_1, self.naming),
                       EXP_INFO)
-    self.failUnless('access-list 50 remark numbered standard' in str(acl))
-    self.failUnless('access-list 50 remark' in str(acl), str(acl))
+    self.failUnless('access-list 51 remark numbered standard' in str(acl),
+                    str(acl))
+    self.failUnless('access-list 50 remark standard-term-1' in str(acl),
+                    str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
