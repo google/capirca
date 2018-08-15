@@ -184,6 +184,21 @@ class AristaTest(unittest.TestCase):
   def setUp(self):
     self.naming = mock.create_autospec(naming.Naming)
 
+  def testRemark(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
+
+    pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_4,
+                             self.naming)
+    acl = arista.Arista(pol, EXP_INFO)
+    expected = 'remark this is a test standard acl'
+    self.failUnless(expected in str(acl), '[%s]' % str(acl))
+    expected = 'remark good-term-4'
+    self.failUnless(expected in str(acl), str(acl))
+    expected = 'test-filter remark'
+    self.failIf(expected in str(acl), str(acl))
+
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+
   def testExtendedEosSyntax(self):
     # Extended access-lists should not use the "extended" argument to ip
     # access-list.
