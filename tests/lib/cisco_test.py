@@ -439,10 +439,11 @@ class CiscoTest(unittest.TestCase):
     self.failUnless('ip access-list extended 150' in str(acl), str(acl))
     self.failUnless(' remark numbered extended' in str(acl), str(acl))
     self.failIf('150 remark' in str(acl), str(acl))
-    # Extended ACLs should have extended remark style.
+    # Standard ACLs should have standard remark style.
     acl = cisco.Cisco(policy.ParsePolicy(
         GOOD_STANDARD_NUMBERED_HEADER + GOOD_STANDARD_TERM_1, self.naming),
                       EXP_INFO)
+    self.failUnless('access-list 50 remark numbered standard' in str(acl))
     self.failUnless('access-list 50 remark' in str(acl), str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
