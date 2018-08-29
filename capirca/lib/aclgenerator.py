@@ -26,6 +26,8 @@ import re
 from string import Template
 
 from capirca.lib import policy
+import six
+from six.moves import range
 
 
 # generic error class
@@ -113,8 +115,8 @@ class Term(object):
   #  mapping.
   ALWAYS_PROTO_NUM = ['ipip']
   # provide flipped key/value dicts
-  PROTO_MAP_BY_NUMBER = dict([(v, k) for (k, v) in PROTO_MAP.iteritems()])
-  AF_MAP_BY_NUMBER = dict([(v, k) for (k, v) in AF_MAP.iteritems()])
+  PROTO_MAP_BY_NUMBER = dict([(v, k) for (k, v) in six.iteritems(PROTO_MAP)])
+  AF_MAP_BY_NUMBER = dict([(v, k) for (k, v) in six.iteritems(AF_MAP)])
 
   NO_AF_LOG_ADDR = Template('Term $term will not be rendered, as it has'
                             ' $direction address match specified but no'
@@ -376,7 +378,7 @@ class ACLGenerator(object):
             'reject',
             'reject-with-tcp-rst',
         },
-        'icmp_type': set(Term.ICMP_TYPE[4].keys() + Term.ICMP_TYPE[6].keys())
+        'icmp_type': set(list(Term.ICMP_TYPE[4].keys()) + list(Term.ICMP_TYPE[6].keys()))
     }
     return supported_tokens, supported_sub_tokens
 

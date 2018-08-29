@@ -261,7 +261,7 @@ class Naming(object):
 
   def GetServiceNames(self):
     """Returns the list of all known service names."""
-    return self.services.keys()
+    return list(self.services.keys())
 
   def GetService(self, query):
     """Given a service name, return a list of associated ports and protocols.

@@ -29,6 +29,7 @@ from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
 import mock
+from six.moves import range
 
 from absl import flags
 from absl import logging

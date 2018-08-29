@@ -32,6 +32,7 @@ import logging
 import re
 
 from capirca.lib import aclgenerator
+from six.moves import range
 
 
 class Error(Exception):
@@ -192,7 +193,7 @@ class Term(aclgenerator.Term):
     # If we're above that limit, we're breaking it down in more terms.
     if saddrs:
       source_addr_chunks = [
-          saddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in xrange(
+          saddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in range(
               0, len(saddrs), self._TERM_ADDRESS_LIMIT)]
       for i, chunk in enumerate(source_addr_chunks):
         rule = copy.deepcopy(proto_dict)
@@ -202,7 +203,7 @@ class Term(aclgenerator.Term):
         rules.append(rule)
     elif daddrs:
       dest_addr_chunks = [
-          daddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in xrange(
+          daddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in range(
               0, len(daddrs), self._TERM_ADDRESS_LIMIT)]
       for i, chunk in enumerate(dest_addr_chunks):
         rule = copy.deepcopy(proto_dict)

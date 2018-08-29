@@ -231,7 +231,7 @@ class Term(aclgenerator.Term):
       A string consisting of the joined elements.  If all elements are False
       or whitespace-only, the empty string.
     """
-    condition_list = filter(None, condition_list)
+    condition_list = [_f for _f in condition_list if _f]
     condition_list = [str(x).strip(' ') for x in condition_list
                       if str(x).strip()]
     if not condition_list:

@@ -26,6 +26,7 @@ from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from capirca.lib import summarizer
 import ipaddr
+from six.moves import range
 from absl import logging
 
 
@@ -872,12 +873,12 @@ class Cisco(aclgenerator.ACLGenerator):
         # Numeric access lists can be extended or standard, but have specific
         # known ranges.
         if next_filter == 'extended' and filter_name.isdigit():
-          if int(filter_name) in range(1, 100) + range(1300, 2000):
+          if int(filter_name) in list(range(1, 100)) + list(range(1300, 2000)):
             raise UnsupportedCiscoAccessListError(
                 'Access lists between 1-99 and 1300-1999 are reserved for '
                 'standard ACLs')
         if next_filter == 'standard' and filter_name.isdigit():
-          if int(filter_name) not in range(1, 100) + range(1300, 2000):
+          if int(filter_name) not in list(range(1, 100)) + list(range(1300, 2000)):
             raise UnsupportedCiscoAccessListError(
                 'Standard access lists must be numeric in the range of 1-99'
                 ' or 1300-1999.')

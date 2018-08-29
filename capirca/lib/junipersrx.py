@@ -28,6 +28,7 @@ import itertools
 
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
+import six
 from absl import logging
 
 
@@ -482,7 +483,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         # policy can be at the same time inet and inet6.
         if self._GLOBAL_ADDR_BOOK in self.addr_book_type:
           for zone in self.addressbook:
-            for unused_name, ips in sorted(self.addressbook[zone].iteritems()):
+            for unused_name, ips in sorted(six.iteritems(self.addressbook[zone])):
               ips = [i for i in ips]
               if term.source_address == ips:
                 term.source_address = ips
@@ -524,7 +525,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                                'timeout': term.timeout}
 
         for application_set in self.applications:
-          if all(item in application_set.items() for item in
+          if all(item in list(application_set.items()) for item in
                  new_application_set.items()):
             new_application_set = ''
             term.replacement_application_name = application_set['name']

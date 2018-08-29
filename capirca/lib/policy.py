@@ -29,6 +29,8 @@ from capirca.lib import nacaddr
 from capirca.lib import naming
 from ply import lex
 from ply import yacc
+from six.moves import map
+from six.moves import range
 
 from absl import logging
 
@@ -262,7 +264,7 @@ class Policy(object):
     """
     shading_errors = []
     for index, term in enumerate(terms):
-      for prior_index in xrange(index):
+      for prior_index in range(index):
         # Check each term that came before for shading. Terms with next as an
         # action do not terminate evaluation, so cannot shade.
         if (term in terms[prior_index]
@@ -990,7 +992,7 @@ class Term(object):
     if not af:
       return getattr(self, addr_type)
 
-    return filter(lambda x: x.version == af, getattr(self, addr_type))
+    return [x for x in getattr(self, addr_type) if x.version == af]
 
   def AddObject(self, obj):
     """Add an object of unknown type to this term.
@@ -1525,7 +1527,7 @@ class Header(object):
   @property
   def platforms(self):
     """The platform targets of this particular header."""
-    return map(lambda x: x.platform, self.target)
+    return [x.platform for x in self.target]
 
   def FilterOptions(self, platform):
     """Given a platform return the options.
@@ -1969,15 +1971,15 @@ def p_flex_match_key_values(p):
       raise FlexibleMatchError('%s value is not valid' % p[1])
   # per Juniper, max bit length is 32
   elif p[1] == 'bit-length':
-    if int(p[2]) not in range(33):
+    if int(p[2]) not in list(range(33)):
       raise FlexibleMatchError('%s value is not valid' % p[1])
   # per Juniper, max bit offset is 7
   elif p[1] == 'bit-offset':
-    if int(p[2]) not in range(8):
+    if int(p[2]) not in list(range(8)):
       raise FlexibleMatchError('%s value is not valid' % p[1])
   # per Juniper, offset can be up to 256 bytes
   elif p[1] == 'byte-offset':
-    if int(p[2]) not in range(256):
+    if int(p[2]) not in list(range(256)):
       raise FlexibleMatchError('%s value is not valid' % p[1])
 
   if type(p[0]) == type([]):

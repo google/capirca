@@ -23,6 +23,7 @@ from string import Template
 
 from capirca.lib import aclgenerator
 from capirca.lib import windows
+from six.moves import range
 from absl import logging
 
 
@@ -122,7 +123,7 @@ class Term(windows.Term):
     for tpl in port_tuples:
       if tpl:
         (port_start, port_end) = tpl
-        ports = range(port_start, port_end+1)
+        ports = list(range(port_start, port_end+1))
     return ports
 
   def _ComposeFilterList(self):

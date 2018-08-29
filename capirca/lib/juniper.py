@@ -25,6 +25,8 @@ import datetime
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from capirca.lib import summarizer
+import six
+from six.moves import range
 from absl import logging
 
 
@@ -753,7 +755,7 @@ class Term(aclgenerator.Term):
         string: either the lower()'ed string or the ports, hyphenated
                 if they're a range, or by itself if it's not.
       """
-      if isinstance(el, str) or isinstance(el, unicode):
+      if isinstance(el, str) or isinstance(el, six.text_type):
         if lc:
           return el
         else:

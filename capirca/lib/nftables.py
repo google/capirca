@@ -32,6 +32,7 @@ import datetime
 
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
+import six
 from absl import logging
 
 
@@ -173,7 +174,7 @@ class Term(aclgenerator.Term):
       if icmp_types != ['']:
         # nft intepreter requires ICMP types to be spelled out
         icmp_name_types = self.ICMP_TYPE[self.AF_MAP[self.af]]
-        icmp_type_names = dict((v, k) for k, v in icmp_name_types.iteritems())
+        icmp_type_names = dict((v, k) for k, v in six.iteritems(icmp_name_types))
         output.append('icmp type %s' %
                       self._FormatMatch([icmp_type_names[icmp_type] for
                                          icmp_type in icmp_types]))

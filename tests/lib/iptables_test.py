@@ -29,6 +29,7 @@ from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
 import mock
+from six.moves import range
 
 
 GOOD_HEADER_1 = """
@@ -671,12 +672,12 @@ class AclCheckTest(unittest.TestCase):
     # the excluded range.
     #
     source_range = []
-    for i in xrange(18):
+    for i in range(18):
       address = nacaddr.IPv4(10 * 256 * 256 * 256 + i * 256 * 256)
       source_range.append(address.supernet(15))  # Grow to /17
 
     dest_range = []
-    for i in xrange(40):
+    for i in range(40):
       address = nacaddr.IPv4(10 * 256 * 256 * 256 + i * 256)
       dest_range.append(address.supernet(7))  # Grow to /25
 
@@ -713,12 +714,12 @@ class AclCheckTest(unittest.TestCase):
     # the excluded range.
     #
     source_range = []
-    for i in xrange(40):
+    for i in range(40):
       address = nacaddr.IPv4(10 * 256 * 256 * 256 + i * 256)
       source_range.append(address.supernet(7))  # Grow to /25
 
     dest_range = []
-    for i in xrange(18):
+    for i in range(18):
       address = nacaddr.IPv4(10 * 256 * 256 * 256 + i * 256 * 256)
       dest_range.append(address.supernet(15))  # Grow to /17
 
@@ -991,8 +992,8 @@ class AclCheckTest(unittest.TestCase):
             'FOURTEEN_PORTS', 'tcp')
 
   def testMultiPortWithRanges(self):
-    ports = [str(x) for x in 1, 3, 5, 7, 9, 11, 13, 15, 17, '19-21', '23-25',
-             '27-29']
+    ports = [str(x) for x in (1, 3, 5, 7, 9, 11, 13, 15, 17, '19-21', '23-25',
+             '27-29')]
     self.naming.GetServiceByProto.return_value = ports
 
     acl = iptables.Iptables(policy.ParsePolicy(

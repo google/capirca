@@ -22,7 +22,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import copy
-import dircache
 import multiprocessing
 import os
 import sys
@@ -398,11 +397,11 @@ def DescendRecursively(input_dirname, output_dirname, definitions, depth=1):
 
   files = []
   # calling all directories
-  for curdir in [x for x in dircache.listdir(input_dirname) if
+  for curdir in [x for x in os.listdir(input_dirname) if
                  os.path.isdir(input_dirname + '/' + x)]:
     # be on the lookout for a policy directory
     if curdir == 'pol':
-      for input_file in [x for x in dircache.listdir(input_dirname + '/pol')
+      for input_file in [x for x in os.listdir(input_dirname + '/pol')
                          if x.endswith('.pol')]:
         files.append({'in_file': os.path.join(input_dirname, 'pol', input_file),
                       'out_dir': output_dirname,

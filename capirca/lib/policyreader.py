@@ -101,7 +101,7 @@ class Policy(object):
     self.filter = []
     try:
       self.data = open(filename, 'r').readlines()
-    except IOError, error_info:
+    except IOError as error_info:
       info = str(filename) + ' cannot be opened'
       raise FileOpenError('%s\n%s' % (info, error_info))
 

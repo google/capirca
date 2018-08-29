@@ -22,6 +22,7 @@ from __future__ import unicode_literals
 import collections
 
 from capirca.lib import nacaddr
+from six.moves import range
 
 
 class DSMNet(object):
@@ -172,7 +173,7 @@ def _Int32ToDottedQuad(num):
 
   """
   octets = []
-  for _ in xrange(4):
+  for _ in range(4):
     octet = num & 0xFF
     octets.insert(0, str(octet))
     num >>= 8

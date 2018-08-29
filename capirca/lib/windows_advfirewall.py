@@ -24,6 +24,7 @@ from string import Template
 # pylint: disable=unused-import
 # logging is used in the test mock
 from capirca.lib import windows
+from six.moves import range
 from absl import logging
 
 

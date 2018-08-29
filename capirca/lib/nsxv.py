@@ -26,6 +26,8 @@ import xml.dom.minidom
 
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
+from six.moves import map
+from six.moves import range
 from absl import logging
 
 
@@ -189,7 +191,7 @@ class Term(aclgenerator.Term):
     protocol = None
 
     if self.term.protocol:
-      protocol = map(self.PROTO_MAP.get, self.term.protocol, self.term.protocol)
+      protocol = list(map(self.PROTO_MAP.get, self.term.protocol, self.term.protocol))
 
       # icmp-types
       icmp_types = ['']
