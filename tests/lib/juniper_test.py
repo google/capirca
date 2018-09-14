@@ -982,8 +982,7 @@ class JuniperTest(unittest.TestCase):
   def testNoVerboseV6(self):
     addr_list = list()
     for octet in range(0, 256):
-      net = nacaddr.IPv6('2001:db8:1010:' + str(octet) + '::64/64',
-                         strict=False)
+      net = nacaddr.IPv6('2001:db8:1010:' + str(octet) + '::64/64')
       addr_list.append(net)
     self.naming.GetNetAddr.return_value = addr_list
     self.naming.GetServiceByProto.return_value = ['25']
@@ -1346,8 +1345,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetNetAddr.assert_called_once_with('TEST_NEXT')
 
   def testFailNextIpNetworkIP(self):
-    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/26',
-                                                      strict=False)]
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/26')]
 
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
                                              self.naming), EXP_INFO)
@@ -1356,8 +1354,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetNetAddr.assert_called_once_with('TEST_NEXT')
 
   def testBuildTokens(self):
-    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/26',
-                                                      strict=False)]
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/26')]
 
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
                                              self.naming), EXP_INFO)

@@ -199,17 +199,13 @@ class Term(aclgenerator.Term):
       A string line using either 'host' or 'network', properly formatted for
       Aruba ACLs.
     """
-    if address.num_addresses == 1:
-      return '%s %s' % (self._HOST_STRING, address.network_address)
+    if address.numhosts == 1:
+      return '%s %s' % (self._HOST_STRING, address.ip)
 
     if address.version == 6:
-      return '%s %s/%s' % (self._NETWORK_STRING,
-                           address.network_address,
-                           address.prefixlen)
+      return '%s %s/%s' % (self._NETWORK_STRING, address.ip, address.prefixlen)
 
-    return '%s %s %s' % (self._NETWORK_STRING,
-                         address.network_address,
-                         address.netmask)
+    return '%s %s %s' % (self._NETWORK_STRING, address.ip, address.netmask)
 
   def _GeneratePortTokens(self, protocols, ports):
     """Generates string tokens for ports.

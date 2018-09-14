@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 
-"""A subclass of the ipaddress library that includes comments for ipaddress."""
+"""A subclass of the ipaddr library that includes comments for ipaddr."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -21,58 +21,39 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import itertools
-import ipaddress
+
+import ipaddr
 
 
-def IP(ip, comment='', token='', strict=True):
+def IP(ipaddress, comment='', token=''):
   """Take an ip string and return an object of the correct type.
 
   Args:
-    ip: the ip address.
+    ipaddress: the ip address.
     comment: option comment field
     token: option token name where this address was extracted from
-    strict: If strict should be used in ipaddress object.
 
   Returns:
-    ipaddress.IPv4 or ipaddress.IPv6 object or raises ValueError.
+    ipaddr.IPv4 or ipaddr.IPv6 object or raises ValueError.
 
   Raises:
     ValueError: if the string passed isn't either a v4 or a v6 address.
   """
-  imprecise_ip = ipaddress.ip_network(ip, strict=strict)
-  if imprecise_ip.version == 4:
-    return IPv4(ip, comment, token, strict=strict)
-  elif imprecise_ip.version == 6:
-    return IPv6(ip, comment, token, strict=strict)
+  a = ipaddr.IPNetwork(ipaddress)
+  if a.version == 4:
+    return IPv4(ipaddress, comment, token)
+  elif a.version == 6:
+    return IPv6(ipaddress, comment, token)
 
 
-class IPv4(ipaddress.IPv4Network):
+class IPv4(ipaddr.IPv4Network):
   """This subclass allows us to keep text comments related to each object."""
 
-  def __init__(self, ip_string, comment='', token='', strict=True):
+  def __init__(self, ip_string, comment='', token=''):
+    ipaddr.IPv4Network.__init__(self, ip_string)
     self.text = comment
     self.token = token
     self.parent_token = token
-    super(IPv4, self).__init__(ip_string, strict)
-
-  def subnet_of(self, other):
-    """Return True if this network is a subnet of other."""
-    if self.version != other.version:
-      return False
-    return self._is_subnet_of(self, other)
-
-  def supernet_of(self, other):
-    """Return True if this network is a supernet of other."""
-    if self.version != other.version:
-      return False
-    return self._is_subnet_of(other, self)
-
-  def __deepcopy__(self, memo):
-    result = self.__class__(unicode(self.with_prefixlen))
-    result.text = self.text
-    result.token = self.token
-    result.parent_token = self.parent_token
-    return result
 
   def AddComment(self, comment=''):
     """Append comment to self.text, comma separated.
@@ -89,9 +70,9 @@ class IPv4(ipaddress.IPv4Network):
       self.text = comment
 
   def supernet(self, prefixlen_diff=1):
-    """Override ipaddress.IPv4 supernet so we can maintain comments.
+    """Override ipaddr.IPv4 supernet so we can maintain comments.
 
-    See ipaddress.IPv4.Supernet for complete documentation.
+    See ipaddr.IPv4.Supernet for complete documentation.
 
     Args:
       prefixlen_diff: Prefix length difference.
@@ -109,7 +90,7 @@ class IPv4(ipaddress.IPv4Network):
       raise PrefixlenDiffInvalidError(
           'current prefixlen is %d, cannot have a prefixlen_diff of %d' % (
               self.prefixlen, prefixlen_diff))
-    ret_addr = IPv4(ipaddress.IPv4Network.supernet(self, prefixlen_diff),
+    ret_addr = IPv4(ipaddr.IPv4Network.supernet(self, prefixlen_diff),
                     comment=self.text, token=self.token)
     return ret_addr
 
@@ -117,38 +98,19 @@ class IPv4(ipaddress.IPv4Network):
   Supernet = supernet
 
 
-class IPv6(ipaddress.IPv6Network):
+class IPv6(ipaddr.IPv6Network):
   """This subclass allows us to keep text comments related to each object."""
 
-  def __init__(self, ip_string, comment='', token='', strict=True):
+  def __init__(self, ip_string, comment='', token=''):
+    ipaddr.IPv6Network.__init__(self, ip_string)
     self.text = comment
     self.token = token
     self.parent_token = token
-    super(IPv6, self).__init__(ip_string, strict)
-
-  def subnet_of(self, other):
-    """Return True if this network is a subnet of other."""
-    if self.version != other.version:
-      return False
-    return self._is_subnet_of(self, other)
-
-  def supernet_of(self, other):
-    """Return True if this network is a supernet of other."""
-    if self.version != other.version:
-      return False
-    return self._is_subnet_of(other, self)
-
-  def __deepcopy__(self, memo):
-    result = self.__class__(unicode(self.with_prefixlen))
-    result.text = self.text
-    result.token = self.token
-    result.parent_token = self.parent_token
-    return result
 
   def supernet(self, prefixlen_diff=1):
-    """Override ipaddress.IPv6Network supernet so we can maintain comments.
+    """Override ipaddr.IPv6Network supernet so we can maintain comments.
 
-    See ipaddress.IPv6Network.Supernet for complete documentation.
+    See ipaddr.IPv6Network.Supernet for complete documentation.
     Args:
       prefixlen_diff: Prefix length difference.
 
@@ -165,7 +127,7 @@ class IPv6(ipaddress.IPv6Network):
       raise PrefixlenDiffInvalidError(
           'current prefixlen is %d, cannot have a prefixlen_diff of %d' % (
               self.prefixlen, prefixlen_diff))
-    ret_addr = IPv6(ipaddress.IPv6Network.supernet(self, prefixlen_diff),
+    ret_addr = IPv6(ipaddr.IPv6Network.supernet(self, prefixlen_diff),
                     comment=self.text, token=self.token)
     return ret_addr
 
@@ -190,7 +152,7 @@ class IPv6(ipaddress.IPv6Network):
 def _InNetList(adders, ip):
   """Returns True if ip is contained in adders."""
   for addr in adders:
-    if ip.subnet_of(addr):
+    if ip in addr:
       return True
   return False
 
@@ -207,10 +169,10 @@ def CollapseAddrListPreserveTokens(addresses):
   """Collapse an array of IPs only when their tokens are the same.
 
   Args:
-     addresses: list of ipaddress.IPNetwork objects.
+     addresses: list of ipaddr.IPNetwork objects.
 
   Returns:
-    list of ipaddress.IPNetwork objects.
+    list of ipaddr.IPNetwork objects.
   """
   ret_array = []
   for grp in itertools.groupby(sorted(addresses, key=lambda x: x.parent_token),
@@ -251,7 +213,7 @@ def SafeToMerge(address, merge_target, check_addresses):
     True if safe to merge, False otherwise.
   """
   for check_address in check_addresses:
-    if (address.network_address == check_address.network_address and
+    if (address.network == check_address.network and
         address.netmask > check_address.netmask and
         merge_target.netmask <= check_address.netmask):
       return False
@@ -264,12 +226,12 @@ def CollapseAddrListRecursive(addresses, complement_addresses=None,
 
    Example:
 
-   ip1 = ipaddress.IPv4Network('1.1.0.0/24')
-   ip2 = ipaddress.IPv4Network('1.1.1.0/24')
-   ip3 = ipaddress.IPv4Network('1.1.2.0/24')
-   ip4 = ipaddress.IPv4Network('1.1.3.0/24')
-   ip5 = ipaddress.IPv4Network('1.1.4.0/24')
-   ip6 = ipaddress.IPv4Network('1.1.0.1/22')
+   ip1 = ipaddr.IPv4Network('1.1.0.0/24')
+   ip2 = ipaddr.IPv4Network('1.1.1.0/24')
+   ip3 = ipaddr.IPv4Network('1.1.2.0/24')
+   ip4 = ipaddr.IPv4Network('1.1.3.0/24')
+   ip5 = ipaddr.IPv4Network('1.1.4.0/24')
+   ip6 = ipaddr.IPv4Network('1.1.0.1/22')
 
    CollapseAddrListRecursive([ip1, ip2, ip3, ip4, ip5, ip6]) ->
    [IPv4Network('1.1.0.0/22'), IPv4Network('1.1.4.0/24')]
@@ -295,17 +257,16 @@ def CollapseAddrListRecursive(addresses, complement_addresses=None,
       ret_array.append(cur_addr)
       continue
     safe_to_merge = True
-    ip = ret_array[-1]
     if merge_risk:
-      safe_to_merge = SafeToMerge(cur_addr, ip, complement_addresses)
-    if ip.supernet_of(cur_addr) and safe_to_merge:
+      safe_to_merge = SafeToMerge(cur_addr, ret_array[-1], complement_addresses)
+    if ret_array[-1].Contains(cur_addr) and safe_to_merge:
       # save the comment from the subsumed address
-      ip.AddComment(cur_addr.text)
+      ret_array[-1].AddComment(cur_addr.text)
       optimized = True
-    elif ((ip.version == cur_addr.version and
-           ip.prefixlen == cur_addr.prefixlen and
-           ip.broadcast_address + 1 == cur_addr.network_address and
-           ip.Supernet().network_address == ip.network_address) and
+    elif ((ret_array[-1].version == cur_addr.version and
+           ret_array[-1].prefixlen == cur_addr.prefixlen and
+           ret_array[-1].broadcast + 1 == cur_addr.network and
+           ret_array[-1].Supernet().network == ret_array[-1].network) and
           safe_to_merge):
       ret_array.append(ret_array.pop().Supernet())
       # save the text from the subsumed address
@@ -338,29 +299,29 @@ def CollapseAddrList(addresses, complement_addresses=None):
   allows this method to consider those implications.
 
   Args:
-     addresses: list of ipaddress.IPNetwork objects
-     complement_addresses: list of ipaddress.IPNetwork objects that, if present,
+     addresses: list of ipaddr.IPNetwork objects
+     complement_addresses: list of ipaddr.IPNetwork objects that, if present,
       will be considered to avoid harmful optimizations.
 
   Returns:
-    list of ipaddress.IPNetwork objects
+    list of ipaddr.IPNetwork objects
   """
   merge_risk = False
   if complement_addresses:
-    address_set = set([a.network_address for a in addresses])
-    ca_address_set = set([ca.network_address for ca in complement_addresses])
+    address_set = set([a.network for a in addresses])
+    ca_address_set = set([ca.network for ca in complement_addresses])
     merge_risk = not address_set.isdisjoint(ca_address_set)
+
   return CollapseAddrListRecursive(
       # pylint: disable=protected-access
-
-      sorted(addresses, key=ipaddress.get_mixed_type_key),
+      sorted(addresses, key=ipaddr._BaseNet._get_networks_key),
       complement_addresses, merge_risk)
       # pylint: enable=protected-access
 
 
 def SortAddrList(addresses):
   """Return a sorted list of nacaddr objects."""
-  return sorted(addresses, key=ipaddress.get_mixed_type_key)
+  return sorted(addresses, key=ipaddr._BaseNet._get_networks_key)
 
 
 def RemoveAddressFromList(superset, exclude):
@@ -375,15 +336,15 @@ def RemoveAddressFromList(superset, exclude):
   """
   ret_array = []
   for addr in superset:
-    if exclude == addr or addr.subnet_of(exclude):
+    if exclude == addr or addr in exclude:
       pass
-    elif exclude.version == addr.version and exclude.subnet_of(addr):
+    elif exclude.version == addr.version and exclude in addr:
       # this could be optimized except that one group uses this
       # code with ipaddrs (instead of nacaddrs).
-      ret_array.extend([IP(x) for x in addr.address_exclude(exclude)])
+      ret_array.extend([IP(x) for x in addr.AddressExclude(exclude)])
     else:
       ret_array.append(addr)
-  return sorted(ret_array)
+  return ret_array
 
 
 def AddressListExclude(superset, excludes):
@@ -414,7 +375,7 @@ def AddressListExclude(superset, excludes):
 ExcludeAddrs = AddressListExclude
 
 
-class PrefixlenDiffInvalidError(ipaddress.NetmaskValueError):
+class PrefixlenDiffInvalidError(ipaddr.NetmaskValueError):
   """Holdover from ipaddr v1."""
 
 

@@ -237,7 +237,7 @@ class CgrepTest(unittest.TestCase):
   # 1.1.1.1 should not be in CLASS-E
   def test_one_ip_fail(self):
     expected_results = [('CLASS-E', ['240.0.0.0/4'])]
-    ip = nacaddr.IP('1.1.1.1/32')
+    ip = '1.1.1.1'
     results = cgrep.get_ip_parents(ip, self.db)
     self.assertNotEquals(results, expected_results)
 

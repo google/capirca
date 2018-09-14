@@ -423,7 +423,6 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         filter_type = 'mixed'
 
       term_dup_check = set()
-
       new_terms = []
       self._FixLargePolices(terms, filter_type)
       for term in terms:
@@ -616,9 +615,9 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       self.addressbook[zone] = collections.defaultdict(list)
     name = address.parent_token
     for ip in self.addressbook[zone][name]:
-      if ip.supernet_of(address):
+      if ip.Contains(address):
         return
-      if address.supernet_of(ip):
+      if address.Contains(ip):
         for index, ip_addr in enumerate(self.addressbook[zone][name]):
           if ip_addr == ip:
             self.addressbook[zone][name][index] = address

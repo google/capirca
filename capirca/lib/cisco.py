@@ -25,7 +25,7 @@ import datetime
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from capirca.lib import summarizer
-import ipaddress
+import ipaddr
 from six.moves import range
 from absl import logging
 
@@ -140,17 +140,16 @@ class TermStandard(object):
           if addr.prefixlen == 32:
             ret_str.append('access-list %s %s %s%s%s' % (self.filter_name,
                                                          action,
-                                                         addr.network_address,
+                                                         addr.ip,
                                                          self.logstring,
                                                          self.dscpstring))
           else:
-            ret_str.append('access-list %s %s %s %s%s%s' % (
-                self.filter_name,
-                action,
-                addr.network_address,
-                addr.hostmask,
-                self.logstring,
-                self.dscpstring))
+            ret_str.append('access-list %s %s %s %s%s%s' % (self.filter_name,
+                                                            action,
+                                                            addr.network,
+                                                            addr.hostmask,
+                                                            self.logstring,
+                                                            self.dscpstring))
       else:
         ret_str.append('access-list %s %s %s%s%s' % (self.filter_name,
                                                      action,
@@ -170,18 +169,18 @@ class TermStandard(object):
         for addr in v4_addresses:
           if addr.prefixlen == 32:
             ret_str.append(' %s host %s%s%s' % (action,
-                                                addr.network_address,
+                                                addr.ip,
                                                 self.logstring,
                                                 self.dscpstring))
           elif self.platform == 'arista':
             ret_str.append(' %s %s/%s%s%s' % (action,
-                                              addr.network_address,
+                                              addr.network,
                                               addr.prefixlen,
                                               self.logstring,
                                               self.dscpstring))
           else:
             ret_str.append(' %s %s %s%s%s' % (action,
-                                              addr.network_address,
+                                              addr.network,
                                               addr.hostmask,
                                               self.logstring,
                                               self.dscpstring))
@@ -258,8 +257,7 @@ class ObjectGroup(object):
               ret_str.append('object-group network ipv%d %s' % (
                   family, net_def_name))
               for addr in addrs:
-                ret_str.append(' %s/%s' % (addr.network_address,
-                                           addr.prefixlen))
+                ret_str.append(' %s/%s' % (addr.ip, addr.prefixlen))
               ret_str.append('exit\n')
 
       # Create port object-groups
@@ -465,18 +463,16 @@ class Term(aclgenerator.Term):
     Returns:
       An address string suitable for the ACL.
     """
-    if isinstance(addr, nacaddr.IPv4) or isinstance(addr,
-                                                    ipaddress.IPv4Network):
-      if addr.num_addresses > 1:
+    if isinstance(addr, nacaddr.IPv4) or isinstance(addr, ipaddr.IPv4Network):
+      if addr.numhosts > 1:
         if self.platform == 'arista':
           return addr.with_prefixlen
-        return '%s %s' % (addr.network_address, addr.hostmask)
-      return 'host %s' % (addr.network_address)
-    if isinstance(addr, nacaddr.IPv6) or isinstance(addr,
-                                                    ipaddress.IPv6Network):
-      if addr.num_addresses > 1:
+        return '%s %s' % (addr.ip, addr.hostmask)
+      return 'host %s' % (addr.ip)
+    if isinstance(addr, nacaddr.IPv6) or isinstance(addr, ipaddr.IPv6Network):
+      if addr.numhosts > 1:
         return addr.with_prefixlen
-      return 'host %s' % (addr.network_address)
+      return 'host %s' % (addr.ip)
     # DSMO enabled
     if isinstance(addr, summarizer.DSMNet):
       return '%s %s' % summarizer.ToDottedQuad(addr, negate=True)
@@ -774,6 +770,7 @@ class ObjectGroupTerm(Term):
       source_port = self.term.source_port
     if self.term.destination_port:
       destination_port = self.term.destination_port
+
     for saddr in source_address_set:
       for daddr in destination_address_set:
         for sport in source_port:
@@ -850,6 +847,7 @@ class Cisco(aclgenerator.ACLGenerator):
     for header, terms in pol.filters:
       if self._PLATFORM not in header.platforms:
         continue
+
       obj_target = ObjectGroup()
 
       filter_options = header.FilterOptions(self._PLATFORM)

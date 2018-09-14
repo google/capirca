@@ -268,9 +268,8 @@ def check_encapsulated(obj_type, first_obj, second_obj, db):
   # somewhere in the second.
   for obj in first:
     for sec_obj in second:
-      if obj.version == sec_obj.version:
-        if obj.subnet_of(sec_obj):
-          break
+      if obj in sec_obj:
+        break
     # if we got through every object in the second group, and didn't have
     # a match, then the first group is not entirely contained.
     else:
@@ -374,11 +373,10 @@ def get_nets_and_highest_prefix(ip, net_group, db):
   # loop through all the networks in the net_group
   for net in get_nets([net_group], db)[0][1]:
     # find the highest prefix length for the networks that contain the IP
-    if ip.version == net.version:
-      if ip.subnet_of(net):
-        networks.append(str(net))
-        if net.prefixlen > highest_prefix_length:
-          highest_prefix_length = net.prefixlen
+    if ip in net:
+      networks.append(str(net))
+      if net.prefixlen > highest_prefix_length:
+        highest_prefix_length = net.prefixlen
   return highest_prefix_length, networks
 
 

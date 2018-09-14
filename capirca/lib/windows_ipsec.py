@@ -114,13 +114,9 @@ class Term(windows.Term):
         for proto in protocol:
           for sport in src_port:
             for dport in dst_port:
-              ret_str.append(self._ComposeFilter(saddr.network_address,
-                                                 daddr.network_address,
-                                                 proto,
-                                                 saddr.prefixlen,
-                                                 daddr.prefixlen,
-                                                 sport,
-                                                 dport))
+              ret_str.append(self._ComposeFilter(
+                  saddr.ip, daddr.ip, proto, saddr.prefixlen,
+                  daddr.prefixlen, sport, dport))
 
   def _CollapsePortTuples(self, port_tuples):
     ports = ['']

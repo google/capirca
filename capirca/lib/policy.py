@@ -962,13 +962,13 @@ class Term(object):
 
     for index, in_addr in enumerate(include):
       for ex_addr in exclude:
-        if ex_addr.subnet_of(in_addr):
-          reduced_list = list(in_addr.address_exclude(ex_addr))
+        if ex_addr in in_addr:
+          reduced_list = in_addr.address_exclude(ex_addr)
           include[index] = None
           for term in Term._FlattenAddresses(reduced_list, exclude[1:]):
             if term not in include:
               include.append(term)
-        elif in_addr.subnet_of(ex_addr):
+        elif in_addr in ex_addr:
           include[index] = None
 
     # Remove items from include outside of the enumerate loop
@@ -1398,7 +1398,7 @@ class Term(object):
       sub_contained = False
       for sup_addr in superset:
         # ipaddr ensures that version numbers match for inclusion.
-        if sub_addr.subnet_of(sup_addr):
+        if sub_addr in sup_addr:
           sub_contained = True
           break
       if not sub_contained:

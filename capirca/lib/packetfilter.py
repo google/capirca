@@ -530,9 +530,8 @@ class PacketFilter(aclgenerator.ACLGenerator):
     pretty_platform = '%s%s' % (self._PLATFORM[0].upper(), self._PLATFORM[1:])
     # Create address table.
     for name in sorted(self.address_book):
-      v4 = sorted([x for x in self.address_book[name] if x.version == 4])
-      v6 = sorted([x for x in self.address_book[name] if x.version == 6])
-      entries = ',\\\n'.join(str(x) for x in v4 + v6)
+      entries = ',\\\n'.join(str(x) for x in
+                             sorted(self.address_book[name], key=int))
       target.append('table <%s> {%s}' % (name, entries))
     # pylint: disable=unused-variable
     for (header, filter_name, filter_type, terms) in self.pf_policies:

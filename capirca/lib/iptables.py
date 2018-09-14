@@ -551,11 +551,11 @@ class Term(aclgenerator.Term):
     if not saddr or saddr == self._all_ips:
       src = ''
     else:
-      src = '-s %s/%d' % (saddr.network_address, saddr.prefixlen)
+      src = '-s %s/%d' % (saddr.ip, saddr.prefixlen)
     if not daddr or daddr == self._all_ips:
       dst = ''
     else:
-      dst = '-d %s/%d' % (daddr.network_address, daddr.prefixlen)
+      dst = '-d %s/%d' % (daddr.ip, daddr.prefixlen)
     return (src, dst)
 
   def _GeneratePortStatement(self, ports, source=False, dest=False):

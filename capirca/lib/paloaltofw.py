@@ -472,7 +472,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       for group in groups:
         for address, name in self.addressbook[zone][group]:
           if name in address_book_names_dict:
-            if address_book_names_dict[name].supernet_of(address):
+            if address_book_names_dict[name].Contains(address):
               continue
           address_book_names_dict[name] = address
 
