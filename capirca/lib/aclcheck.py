@@ -181,11 +181,11 @@ class AclCheck(object):
   def ActionMatch(self, action='any'):
     """Return list of matched terms with specified actions."""
     match_list = []
-    for next in self.matches:
-      if next.action:
-        if not next.possibles:
-          if action is 'any' or action in next.action:
-            match_list.append(next)
+    for match in self.matches:
+      if match.action:
+        if not match.possibles:
+          if action is 'any' or action in match.action:
+            match_list.append(match)
     return match_list
 
   def DescribeMatches(self):
@@ -195,26 +195,26 @@ class AclCheck(object):
       ret_str: text sentences describing matches
     """
     ret_str = []
-    for next in self.matches:
-      text = str(next)
+    for match in self.matches:
+      text = str(match)
       ret_str.append(text)
     return '\n'.join(ret_str)
 
   def __str__(self):
     text = []
     last_filter = ''
-    for next in self.matches:
-      if next.filter != last_filter:
-        last_filter = next.filter
-        text.append('  filter: ' + next.filter)
-      if next.possibles:
-        text.append(' ' * 10 + 'term: ' + str(next.term) + ' (possible match)')
+    for match in self.matches:
+      if match.filter != last_filter:
+        last_filter = match.filter
+        text.append('  filter: ' + match.filter)
+      if match.possibles:
+        text.append(' ' * 10 + 'term: ' + str(match.term) + ' (possible match)')
       else:
-        text.append(' ' * 10 + 'term: ' + str(next.term))
-      if next.possibles:
-        text.append(' ' * 16 + next.action + ' if ' + str(next.possibles))
+        text.append(' ' * 10 + 'term: ' + str(match.term))
+      if match.possibles:
+        text.append(' ' * 16 + match.action + ' if ' + str(match.possibles))
       else:
-        text.append(' ' * 16 + next.action)
+        text.append(' ' * 16 + match.action)
     return '\n'.join(text)
 
   def _PossibleMatch(self, term):
@@ -251,11 +251,10 @@ class AclCheck(object):
     """
     if addr is 'any': return True   # always true if we match for any addr
     if not addresses: return True   # always true if term has nothing to match
-    for next in addresses:
+    for ip in addresses:
       # ipaddr can incorrectly report ipv4 as contained with ipv6 addrs
-      if type(addr) is type(next):
-        if addr in next:
-          return True
+      if addr.subnet_of(ip):
+        return True
     return False
 
   def _PortInside(self, myport, port_list):

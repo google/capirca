@@ -318,6 +318,7 @@ class Term(aclgenerator.Term):
         return ''
 
       # source address
+
       src_addr = self.term.GetAddressOfVersion('source_address', term_af)
       src_addr_ex = self.term.GetAddressOfVersion('source_address_exclude',
                                                   term_af)
@@ -634,7 +635,7 @@ class Term(aclgenerator.Term):
     if len(next_ip) > 1:
       raise JuniperNextIpError('The following term has more '
                                'than one next IP value: %s' % term_name)
-    if next_ip[0].numhosts > 1:
+    if next_ip[0].num_addresses > 1:
       raise JuniperNextIpError('The following term has a subnet '
                                'instead of a host: %s' % term_name)
 
@@ -666,7 +667,7 @@ class Term(aclgenerator.Term):
     exclude_result = []
     for exclude_prefix in exclude:
       for include_prefix in include_result:
-        if exclude_prefix in include_prefix:
+        if exclude_prefix.subnet_of(include_prefix):
           exclude_result.append(exclude_prefix)
           break
 

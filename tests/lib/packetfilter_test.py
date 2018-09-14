@@ -728,7 +728,7 @@ class PacketFilterTest(unittest.TestCase):
   def testTableCreation(self):
     prod_network = nacaddr.IP('10.0.0.0/8')
     prod_network.parent_token = 'PROD_NETWORK'
-    corp_internal_one = nacaddr.IP('100.96.0.1/11')
+    corp_internal_one = nacaddr.IP('100.96.0.1/11', strict=False)
     corp_internal_one.parent_token = 'CORP_INTERNAL'
     corp_internal_two = nacaddr.IP('172.16.0.0/16')
     corp_internal_two.parent_token = 'CORP_INTERNAL'
@@ -745,7 +745,7 @@ class PacketFilterTest(unittest.TestCase):
         'table <PROD_NETWORK> {10.0.0.0/8}' in result,
         'did not find PROD_NETWORKtable in header')
     self.failUnless(
-        'table <CORP_INTERNAL> {100.96.0.1/11,\\\n'
+        'table <CORP_INTERNAL> {100.96.0.0/11,\\\n'
         '172.16.0.0/16}' in result,
         'did not find CORP_INTERNAL table in header')
     self.failUnless(
@@ -785,7 +785,7 @@ class PacketFilterTest(unittest.TestCase):
   def testTableDuplicateShortNameError(self):
     prod_network = nacaddr.IP('10.0.0.0/8')
     prod_network.parent_token = 'PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME'
-    prod_network_two = nacaddr.IP('172.0.0.1/8')
+    prod_network_two = nacaddr.IP('172.0.0.0/8')
     prod_network_two.parent_token = 'PROD_NETWORK_EXTREAMLY_LONG_VERY_GOOD_NAME'
     self.naming.GetNetAddr.side_effect = [
         [prod_network], [prod_network_two]]
@@ -874,7 +874,7 @@ class PacketFilterTest(unittest.TestCase):
   def testTableDiffObjectsShortenedAndNonShortened(self):
     prod_network = nacaddr.IP('10.0.0.0/8')
     prod_network.parent_token = 'PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME'
-    prod_network_two = nacaddr.IP('172.0.0.1/8')
+    prod_network_two = nacaddr.IP('172.0.0.0/8')
     prod_network_two.parent_token = 'PROD_NETWORK_EXTREAMLY_LONG_VER'
     self.naming.GetNetAddr.side_effect = [
         [prod_network], [prod_network_two]]
@@ -899,7 +899,7 @@ class PacketFilterTest(unittest.TestCase):
   def testTableDuplicateShortNameErrorDiffFilter(self):
     prod_network = nacaddr.IP('10.0.0.0/8')
     prod_network.parent_token = 'PROD_NETWORK_EXTREAMLY_LONG_VERY_NO_GOOD_NAME'
-    prod_network_two = nacaddr.IP('172.0.0.1/8')
+    prod_network_two = nacaddr.IP('172.0.0.0/8')
     prod_network_two.parent_token = 'PROD_NETWORK_EXTREAMLY_LONG_VER'
     self.naming.GetNetAddr.side_effect = [
         [prod_network], [prod_network_two]]

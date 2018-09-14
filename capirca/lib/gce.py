@@ -32,6 +32,7 @@ import logging
 import re
 
 from capirca.lib import aclgenerator
+import ipaddress
 from six.moves import range
 
 
@@ -163,8 +164,10 @@ class Term(aclgenerator.Term):
       term_dict['priority'] = self.term.priority
 
     rules = []
-    saddrs = self.term.GetAddressOfVersion('source_address', 4)
-    daddrs = self.term.GetAddressOfVersion('destination_address', 4)
+    saddrs = sorted(self.term.GetAddressOfVersion('source_address', 4),
+                    key=ipaddress.get_mixed_type_key)
+    daddrs = sorted(self.term.GetAddressOfVersion('destination_address', 4),
+                    key=ipaddress.get_mixed_type_key)
 
     if not self.term.protocol:
       raise GceFirewallError(
