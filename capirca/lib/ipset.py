@@ -153,13 +153,15 @@ class Term(iptables.Term):
           src_addr_stmt = ('-m set --match-set %s src' %
                            self.addr_sets['src'][0])
       else:
-        src_addr_stmt = '-s %s/%d' % (src_addr.ip, src_addr.prefixlen)
+        src_addr_stmt = '-s %s/%d' % (src_addr.network_address,
+                                      src_addr.prefixlen)
       if dst_addr == self._all_ips:
         if 'dst' in self.addr_sets:
           dst_addr_stmt = ('-m set --match-set %s dst' %
                            self.addr_sets['dst'][0])
       else:
-        dst_addr_stmt = '-d %s/%d' % (dst_addr.ip, dst_addr.prefixlen)
+        dst_addr_stmt = '-d %s/%d' % (dst_addr.network_address,
+                                      dst_addr.prefixlen)
     return (src_addr_stmt, dst_addr_stmt)
 
   def _GenerateSetName(self, term_name, suffix):

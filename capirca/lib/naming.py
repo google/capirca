@@ -180,7 +180,8 @@ class Naming(object):
           if not item[:1].isdigit():
             continue
           try:
-            if nacaddr.IP(item).Contains(query):
+            supernet = nacaddr.IP(item, strict=False)
+            if supernet.supernet_of(query):
               base_parents.append(token)
           except ValueError:
             # item was not an IP
@@ -431,12 +432,8 @@ class Naming(object):
         net = i
       try:
         net = net.strip()
-        addr = nacaddr.IP(net)
-        # we want to make sure that we're storing the network addresses
-        # ie, FOO = 192.168.1.1/24 should actually return 192.168.1.0/24
-        if addr.ip != addr.network:
-          addr = nacaddr.IP('%s/%d' % (addr.network, addr.prefixlen))
-
+        # TODO(robankeny): Fix using error to continue processing.
+        addr = nacaddr.IP(net, strict=False)
         addr.text = comment.lstrip()
         addr.token = token
         returnlist.append(addr)

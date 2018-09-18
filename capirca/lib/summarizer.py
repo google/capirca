@@ -192,7 +192,7 @@ def _NacaddrNetToDSMNet(net):
 
   # left shift number of subnet mask bits, then leftshift until
   # full length of address reached
-  address_as_int = int(net)
+  address_as_int = int(net.network_address)
   netmask_as_int = (((1 << net.prefixlen) - 1) <<
                     (net.max_prefixlen - net.prefixlen))
   return DSMNet(address_as_int, netmask_as_int, net.text)

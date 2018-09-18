@@ -27,7 +27,7 @@ import re
 from capirca.lib import aclgenerator
 from capirca.lib import cisco
 from capirca.lib import nacaddr
-import ipaddr
+import ipaddress
 
 
 _ACTION_TABLE = {
@@ -179,12 +179,14 @@ class Term(cisco.Term):
                 # only output address family appropriate IP addresses
                 do_output = False
                 if self.af == 4:
-                  if (((type(saddr) is nacaddr.IPv4) or (saddr == 'any')) and
-                      ((type(daddr) is nacaddr.IPv4) or (daddr == 'any'))):
+                  if (((isinstance(saddr, nacaddr.IPv4)) or
+                       (saddr == 'any')) and
+                      ((isinstance(daddr, nacaddr.IPv4)) or (daddr == 'any'))):
                     do_output = True
                 if self.af == 6:
-                  if (((type(saddr) is nacaddr.IPv6) or (saddr == 'any')) and
-                      ((type(daddr) is nacaddr.IPv6) or (daddr == 'any'))):
+                  if (((isinstance(saddr, nacaddr.IPv6)) or
+                       (saddr == 'any')) and
+                      ((isinstance(daddr, nacaddr.IPv6)) or (daddr == 'any'))):
                     do_output = True
                 if do_output:
                   ret_str.extend(self._TermletToStr(
@@ -208,9 +210,9 @@ class Term(cisco.Term):
       filter_name: name of the filter
       action: str, action
       proto: str, protocl
-      saddr: str or ipaddr, source address
+      saddr: str or ipaddress, source address
       sport: str list or none, the source port
-      daddr: str or ipaddr, the destination address
+      daddr: str or ipaddress, the destination address
       dport: str list or none, the destination port
       icmp_type: icmp-type numeric specification (if any)
       option: list or none, optional, eg. 'logging' tokens.
@@ -219,27 +221,31 @@ class Term(cisco.Term):
       string of the cisco acl line, suitable for printing.
     """
     # inet4
-    if type(saddr) is nacaddr.IPv4 or type(saddr) is ipaddr.IPv4Network:
-      if saddr.numhosts > 1:
-        saddr = '%s %s' % (saddr.ip, saddr.netmask)
+    if isinstance(saddr, nacaddr.IPv4) or isinstance(saddr,
+                                                     ipaddress.IPv4Network):
+      if saddr.num_addresses > 1:
+        saddr = '%s %s' % (saddr.network_address, saddr.netmask)
       else:
-        saddr = 'host %s' % (saddr.ip)
-    if type(daddr) is nacaddr.IPv4 or type(daddr) is ipaddr.IPv4Network:
-      if daddr.numhosts > 1:
-        daddr = '%s %s' % (daddr.ip, daddr.netmask)
+        saddr = 'host %s' % (saddr.network_address)
+    if isinstance(daddr, nacaddr.IPv4) or isinstance(daddr,
+                                                     ipaddress.IPv4Network):
+      if daddr.num_addresses > 1:
+        daddr = '%s %s' % (daddr.network_address, daddr.netmask)
       else:
-        daddr = 'host %s' % (daddr.ip)
+        daddr = 'host %s' % (daddr.network_address)
     # inet6
-    if type(saddr) is nacaddr.IPv6 or type(saddr) is ipaddr.IPv6Network:
-      if saddr.numhosts > 1:
-        saddr = '%s/%s' % (saddr.ip, saddr.prefixlen)
+    if isinstance(saddr, nacaddr.IPv6) or isinstance(saddr,
+                                                     ipaddress.IPv6Network):
+      if saddr.num_addresses > 1:
+        saddr = '%s/%s' % (saddr.network_address, saddr.prefixlen)
       else:
-        saddr = 'host %s' % (saddr.ip)
-    if type(daddr) is nacaddr.IPv6 or type(daddr) is ipaddr.IPv6Network:
-      if daddr.numhosts > 1:
-        daddr = '%s/%s' % (daddr.ip, daddr.prefixlen)
+        saddr = 'host %s' % (saddr.network_address)
+    if isinstance(daddr, nacaddr.IPv6) or isinstance(daddr,
+                                                     ipaddress.IPv6Network):
+      if daddr.num_addresses > 1:
+        daddr = '%s/%s' % (daddr.network_address, daddr.prefixlen)
       else:
-        daddr = 'host %s' % (daddr.ip)
+        daddr = 'host %s' % (daddr.network_address)
 
     # fix ports
     if not sport:
