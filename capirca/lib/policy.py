@@ -2197,9 +2197,11 @@ def p_logging_spec(p):
   """ logging_spec : LOGGING ':' ':' STRING """
   p[0] = VarType(VarType.LOGGING, p[4])
 
+
 def p_log_limit_spec(p):
   """ log_limit_spec : LOG_LIMIT ':' ':' INTEGER '/' STRING"""
-  p[0] = VarType(VarType.LOG_LIMIT, (p[4],p[6]))
+  p[0] = VarType(VarType.LOG_LIMIT, (p[4], p[6]))
+
 
 def p_log_name_spec(p):
   """ log_name_spec : LOG_NAME ':' ':' DQUOTEDSTRING """

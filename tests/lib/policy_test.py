@@ -1388,7 +1388,7 @@ class PolicyTest(unittest.TestCase):
   def testLogLimit(self):
     pol = policy.ParsePolicy(HEADER_4 + GOOD_TERM_44, self.naming)
     term = pol.filters[0][1][0]
-    self.assertEqual((u'999',u'day'), term.log_limit)
+    self.assertEqual((u'999', u'day'), term.log_limit)
 
 
 if __name__ == '__main__':
