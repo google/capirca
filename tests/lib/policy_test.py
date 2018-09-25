@@ -403,6 +403,13 @@ term good-term-43 {
   action:: accept
 }
 """
+GOOD_TERM_44 = """
+term good-term-44 {
+  logging:: syslog
+  log-limit:: 999/day
+  action:: accept
+}
+"""
 GOOD_TERM_V6_1 = """
 term good-term-v6-1 {
   hop-limit:: 5
@@ -1377,6 +1384,11 @@ class PolicyTest(unittest.TestCase):
     term = pol.filters[0][1][0]
     self.assertEqual(nacaddr.CollapseAddrListPreserveTokens(unoptimized_addr),
                      term.source_address)
+
+  def testLogLimit(self):
+    pol = policy.ParsePolicy(HEADER_4 + GOOD_TERM_44, self.naming)
+    term = pol.filters[0][1][0]
+    self.assertEqual((u'999',u'day'), term.log_limit)
 
 
 if __name__ == '__main__':

@@ -416,6 +416,7 @@ class Term(object):
     self.forwarding_class = []
     self.forwarding_class_except = []
     self.logging = []
+    self.log_limit = None
     self.log_name = None
     self.loss_priority = None
     self.option = []
@@ -728,6 +729,9 @@ class Term(object):
       ret_str.append('  pan_application: %s' % self.pan_application)
     if self.logging:
       ret_str.append('  logging: %s' % self.logging)
+    if self.log_limit:
+      ret_str.append('  log_limit: %s/%s' % (self.log_limit[0],
+                                             self.log_limit[1]))
     if self.log_name:
       ret_str.append('  log_name: %s' % self.log_name)
     if self.priority:
@@ -836,6 +840,8 @@ class Term(object):
       return False
 
     if sorted(self.logging) != sorted(other.logging):
+      return False
+    if self.log_limit != other.log_limit:
       return False
     if self.qos != other.qos:
       return False
@@ -1129,6 +1135,8 @@ class Term(object):
           raise InvalidTermLoggingError('%s is not a valid logging option' %
                                         obj)
         self.logging.append(obj)
+      elif obj.var_type is VarType.LOG_LIMIT:
+        self.log_limit = obj.value
       elif obj.var_type is VarType.LOG_NAME:
         self.log_name = obj.value
       # police man, tryin'a take you jail
@@ -1466,6 +1474,7 @@ class VarType(object):
   ICMP_CODE = 55
   PRIORITY = 56
   TTL = 57
+  LOG_LIMIT = 58
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1659,6 +1668,7 @@ tokens = (
     'ICMP_CODE',
     'INTEGER',
     'LOGGING',
+    'LOG_LIMIT',
     'LOG_NAME',
     'LOSS_PRIORITY',
     'NEXT_IP',
@@ -1694,7 +1704,7 @@ tokens = (
     'VPN',
 )
 
-literals = r':{},-'
+literals = r':{},-/'
 t_ignore = ' \t'
 
 reserved = {
@@ -1727,6 +1737,7 @@ reserved = {
     'icmp-type': 'ICMP_TYPE',
     'icmp-code': 'ICMP_CODE',
     'logging': 'LOGGING',
+    'log-limit': 'LOG_LIMIT',
     'log_name': 'LOG_NAME',
     'loss-priority': 'LOSS_PRIORITY',
     'next-ip': 'NEXT_IP',
@@ -1900,6 +1911,7 @@ def p_term_spec(p):
                 | term_spec icmp_code_spec
                 | term_spec interface_spec
                 | term_spec logging_spec
+                | term_spec log_limit_spec
                 | term_spec log_name_spec
                 | term_spec losspriority_spec
                 | term_spec next_ip_spec
@@ -2185,6 +2197,9 @@ def p_logging_spec(p):
   """ logging_spec : LOGGING ':' ':' STRING """
   p[0] = VarType(VarType.LOGGING, p[4])
 
+def p_log_limit_spec(p):
+  """ log_limit_spec : LOG_LIMIT ':' ':' INTEGER '/' STRING"""
+  p[0] = VarType(VarType.LOG_LIMIT, (p[4],p[6]))
 
 def p_log_name_spec(p):
   """ log_name_spec : LOG_NAME ':' ':' DQUOTEDSTRING """
