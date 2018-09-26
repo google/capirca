@@ -225,9 +225,25 @@ term good_term_11 {
   action:: accept
 }
 """
+
 GOOD_TERM_12 = """
 term good_term_12 {
   comment:: "FOOO"
+  action:: accept
+}
+"""
+
+GOOD_TERM_13 = """
+term good_term_13 {
+  logging:: syslog
+  log-limit:: 99/day
+  action:: accept
+}
+"""
+
+BAD_LOGGING_TERM = """
+term bad_logging_term {
+  log-limit:: 99/day
   action:: accept
 }
 """
@@ -460,6 +476,7 @@ SUPPORTED_TOKENS = {
     'icmp_type',
     'stateless_reply',
     'logging',
+    'log_limit',
     'name',
     'option',
     'owner',
@@ -1207,6 +1224,17 @@ class AclCheckTest(unittest.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER_7 + GOOD_TERM_12, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     self.assertTrue('comment --comment "FOOO"' not in str(acl), acl)
+
+  def testLogLimit(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_13, self.naming)
+    acl = iptables.Iptables(pol, EXP_INFO)
+    self.assertTrue(
+        "-m --limit 99/day -j LOG --log-prefix good_term_13" in str(acl), acl)
+
+  def testLogLimitFailsWithoutLogging(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + BAD_LOGGING_TERM, self.naming)
+    self.assertRaises(iptables.LimitButNoLogError,
+                      iptables.Iptables, pol, EXP_INFO)
 
 if __name__ == '__main__':
   unittest.main()

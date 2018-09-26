@@ -81,6 +81,7 @@ SUPPORTED_TOKENS = {
     'icmp_type',
     'stateless_reply',
     'logging',
+    'log_limit',
     'name',
     'option',
     'owner',

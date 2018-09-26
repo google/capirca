@@ -434,6 +434,10 @@ class Term(aclgenerator.Term):
     log_jump = ''
     if log_hits:
       log_jump = self._LOG_FORMAT.substitute(term=self.term.name)
+      if self.term.log_limit:
+        log_jump = '-m --limit {}/{} {}'.format(self.term.log_limit[0],
+                                            self.term.log_limit[1],
+                                            log_jump)
 
     if not options:
       options = []
@@ -650,6 +654,7 @@ class Iptables(aclgenerator.ACLGenerator):
                          'fragment_offset',
                          'icmp_code',
                          'logging',
+                         'log_limit',
                          'owner',
                          'packet_length',
                          'routing_instance',
@@ -755,6 +760,9 @@ class Iptables(aclgenerator.ACLGenerator):
           raise aclgenerator.DuplicateTermError(
               'You have a duplicate term: %s' % term.name)
         term_names.add(term.name)
+        if not term.logging and term.log_limit:
+          raise LimitButNoLogError(
+              "Term %s: Cannoy use log-limit without logging" % term.name)
 
         term = self.FixHighPorts(term, af=filter_type,
                                  all_protocols_stateful=all_protocols_stateful)
@@ -869,3 +877,6 @@ class UnsupportedDefaultAction(Error):
 
 class UnsupportedTargetOption(Error):
   """Raised when a filter has an impermissible default action specified."""
+
+class LimitButNoLogError(Error):
+  """Raised when log-limit is used by logging is not."""
