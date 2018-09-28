@@ -49,6 +49,35 @@ term good-warning-term {
 }
 """
 
+GOOD_TERM = """
+term good-term {
+  source-port:: FOO
+  destination-port:: BAR
+  protocol:: tcp
+  action:: accept
+}
+"""
+
+TCP_ESTABLISHED_TERM = """
+term tcp-established {
+  source-port:: FOO
+  destination-port:: BAR
+  protocol:: tcp
+  option:: tcp-established
+  action:: accept
+}
+"""
+
+UDP_ESTABLISHED_TERM = """
+term udp-established-term {
+  source-port:: FOO
+  destination-port:: BAR
+  protocol:: udp
+  option:: established
+  action:: accept
+}
+"""
+
 SUPPORTED_TOKENS = {
     'action',
     'comment',
@@ -140,6 +169,15 @@ class WindowsGeneratorTest(unittest.TestCase):
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
+  def testSkipEstablished(self):
+    # self.naming.GetNetAddr.return_value = _IPSET
+    self.naming.GetServiceByProto.return_value = ['123']
+    pol = windows.WindowsGenerator(policy.ParsePolicy(
+        GOOD_HEADER + TCP_ESTABLISHED_TERM + GOOD_TERM, self.naming), EXP_INFO)
+    self.assertEqual(len(pol.windows_policies[0][4]), 1)
+    pol = windows.WindowsGenerator(policy.ParsePolicy(
+        GOOD_HEADER + UDP_ESTABLISHED_TERM + GOOD_TERM, self.naming), EXP_INFO)
+    self.assertEqual(len(pol.windows_policies[0][4]), 1)
 
 if __name__ == '__main__':
   unittest.main()
