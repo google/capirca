@@ -130,6 +130,10 @@ class InvalidTermTTLValue(Error):
   """Error when TTL value is invalid."""
 
 
+class MixedPortandNonPortProtos(Error):
+  """Error when TCP or UDP are used with protocols that do not use ports."""
+
+
 def TranslatePorts(ports, protocols, term_name):
   """Return all ports of all protocols requested.
 
@@ -1243,6 +1247,13 @@ class Term(object):
             self.ICMP_TYPE[6]):
           raise TermInvalidIcmpType('Term %s contains an invalid icmp-type:'
                                     '%s' % (self.name, icmptype))
+    proto_copy = [p for p in self.protocol if p != 'tcp' and p != 'udp']
+    if ('tcp'in self.protocol or 'udp' in self.protocol) and proto_copy:
+      if self.source_port or self.destination_port or self.port:
+        raise MixedPortandNonPortProtos('Term %s contains mixed uses of '
+           'protocols with and without port numbers.\nProtocols: %s' %
+            (self.name, self.protocol))
+
     if self.ttl:
       if not _MIN_TTL <= self.ttl <= _MAX_TTL:
 

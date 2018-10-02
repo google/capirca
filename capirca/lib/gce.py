@@ -76,10 +76,6 @@ class Term(aclgenerator.Term):
       raise GceFirewallError(
           'GCE firewall does not support address exclusions without a source '
           'address list.')
-    if (bool(set(self.term.protocol) - set(['udp', 'tcp']))
-        and self.term.destination_port):
-      raise GceFirewallError(
-          'Only TCP and UDP protocols support destination ports.')
     if (not self.term.source_address and
         not self.term.source_tag) and self.term.direction == 'INGRESS':
       raise GceFirewallError(

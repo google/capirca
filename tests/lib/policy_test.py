@@ -563,6 +563,13 @@ term bad-term-15 {
   action:: accept
 }
 """
+BAD_TERM_16 = """
+term bad-term-16 {
+  destination-port:: FOO
+  protocol:: tcp udp gre
+  action:: accept
+}
+"""
 
 # pylint: disable=maybe-no-member
 
@@ -1389,6 +1396,12 @@ class PolicyTest(unittest.TestCase):
     pol = policy.ParsePolicy(HEADER_4 + GOOD_TERM_44, self.naming)
     term = pol.filters[0][1][0]
     self.assertEqual((u'999', u'day'), term.log_limit)
+
+  def testGREandTCPUDPError(self):
+    pol = HEADER + BAD_TERM_16
+    self.naming.GetServiceByProto.return_value = ['25']
+    self.assertRaises(policy.MixedPortandNonPortProtos, policy.ParsePolicy,
+                      pol, self.naming)
 
 
 if __name__ == '__main__':

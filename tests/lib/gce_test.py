@@ -644,23 +644,6 @@ class GCETest(unittest.TestCase):
     self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
     self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
 
-  def testRaisesWithIcmpAndDestinationPort(self):
-    self.naming.GetNetAddr.return_value = TEST_IPS
-    self.naming.GetServiceByProto.side_effect = [['22'], ['22']]
-
-    self.assertRaisesRegexp(
-        gce.GceFirewallError,
-        'Only TCP and UDP protocols support destination ports.',
-        gce.GCE,
-        policy.ParsePolicy(
-            GOOD_HEADER + BAD_TERM_UNSUPPORTED_PORT, self.naming),
-        EXP_INFO)
-
-    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
-    self.naming.GetServiceByProto.assert_has_calls([
-        mock.call('SSH', 'tcp'),
-        mock.call('SSH', 'icmp')])
-
   def testRaisesWithUnsupportedOption(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.return_value = ['22']
