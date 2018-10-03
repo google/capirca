@@ -189,6 +189,9 @@ class Term(aclgenerator.Term):
       protocol = self.term.protocol
     else:
       protocol = ['all']
+    if 'hopopt' in protocol and self.af == 'inet':
+      logging.warn('Term %s is using hopopt in IPv4 context.', self.term_name)
+      return ''
 
     (term_saddr, exclude_saddr,
      term_daddr, exclude_daddr) = self._CalculateAddresses(

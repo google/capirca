@@ -241,6 +241,13 @@ term good_term_13 {
 }
 """
 
+HOPOPT_TERM = """
+term hopopt-term {
+  protocol:: hopopt
+  action:: accept
+}
+"""
+
 BAD_LOGGING_TERM = """
 term bad_logging_term {
   log-limit:: 99/day
@@ -1235,6 +1242,15 @@ class AclCheckTest(unittest.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + BAD_LOGGING_TERM, self.naming)
     self.assertRaises(iptables.LimitButNoLogError,
                       iptables.Iptables, pol, EXP_INFO)
+
+  def testSkipHopByHopinV4(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + HOPOPT_TERM + GOOD_TERM_1,
+                             self.naming)
+    acl = iptables.Iptables(pol, EXP_INFO)
+    result = str(acl)
+
+    self.assertNotIn('-m u32 --u32 "0x3&0xff=0x0"', result,
+                     'match for hop-by-hop header is missing')
 
 if __name__ == '__main__':
   unittest.main()
