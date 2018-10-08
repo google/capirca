@@ -650,12 +650,6 @@ class Term(aclgenerator.Term):
     if ((proto == self.PROTO_MAP['udp'] or proto == 'udp')
         and 'established' in sane_options):
       sane_options.remove('established')
-    if ((proto == self.PROTO_MAP['tcp'] or proto == 'tcp')
-        and 'fragments' in sane_options):
-      sane_options.remove('fragments')
-    if ((proto == self.PROTO_MAP['udp'] or proto == 'udp')
-        and 'fragments' in sane_options):
-      sane_options.remove('fragments')
     return sane_options
 
   def _TermletToStr(self, action, proto, saddr, sport, daddr, dport,
