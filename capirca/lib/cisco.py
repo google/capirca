@@ -401,6 +401,9 @@ class Term(aclgenerator.Term):
         and ('tcp-established' in opts or 'established' in opts)):
       if 'established' not in self.options:
         self.options.append('established')
+    if ('ip' in protocol) and ('fragments' in opts):
+      if 'fragments' not in self.options:
+          self.options.append('fragments')
 
     # ports
     source_port = [()]
@@ -632,7 +635,9 @@ class Term(aclgenerator.Term):
   def _FixOptions(self, proto, option):
     """Returns a set of options suitable for the given protocol.
 
-    In practice this is only used to filter out 'established' for UDP.
+    Fix done:
+    - Filter out 'established' for UDP.
+    - Filter out 'fragments' for TCP/UDP
 
     Args:
       proto: str or int, protocol
@@ -831,7 +836,8 @@ class Cisco(aclgenerator.ACLGenerator):
                          'owner'}
 
     supported_sub_tokens.update({'option': {'established',
-                                            'tcp-established'},
+                                            'tcp-established',
+                                            'fragments'},
                                  # Warning, some of these are mapped
                                  # differently. See _ACTION_TABLE
                                  'action': {'accept', 'deny', 'reject', 'next',
