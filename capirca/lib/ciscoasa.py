@@ -102,8 +102,8 @@ class Term(cisco.Term):
     # code by returning early.  Warnings provided in policy.py.
     if self.term.verbatim:
       for next in self.term.verbatim:
-        if next.value[0] == 'ciscoasa':
-          ret_str.append(str(next.value[1]))
+        if next[0] == 'ciscoasa':
+          ret_str.append(str(next[1]))
         return '\n'.join(ret_str)
 
     # protocol

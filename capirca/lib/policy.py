@@ -482,7 +482,7 @@ class Term(object):
     """Determine if other term is contained in this term."""
     if self.verbatim or other.verbatim:
       # short circuit these
-      if sorted(self.verbatim) != sorted(other.verbatim):
+      if sorted(list(self.verbatim)) != sorted(other.verbatim):
         return False
 
     # check protocols
@@ -1121,7 +1121,7 @@ class Term(object):
       elif obj.var_type is VarType.NEXT_IP:
         self.next_ip = DEFINITIONS.GetNetAddr(obj.value)
       elif obj.var_type is VarType.VERBATIM:
-        self.verbatim.append(obj)
+        self.verbatim.append(obj.value)
       elif obj.var_type is VarType.ACTION:
         if str(obj) not in ACTIONS:
           raise InvalidTermActionError('%s is not a valid action' % obj)

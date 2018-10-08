@@ -117,8 +117,8 @@ class TermStandard(object):
     # code by returning early.  Warnings provided in policy.py.
     if self.term.verbatim:
       for next_verbatim in self.term.verbatim:
-        if next_verbatim.value[0] == self.platform:
-          ret_str.append(str(next_verbatim.value[1]))
+        if next_verbatim[0] == self.platform:
+          ret_str.append(str(next_verbatim[1]))
         return '\n'.join(ret_str)
 
     v4_addresses = [x for x in self.term.address if
@@ -334,8 +334,8 @@ class Term(aclgenerator.Term):
     # code by returning early.  Warnings provided in policy.py.
     if self.term.verbatim:
       for next_verbatim in self.term.verbatim:
-        if next_verbatim.value[0] == self.platform:
-          ret_str.append(str(next_verbatim.value[1]))
+        if next_verbatim[0] == self.platform:
+          ret_str.append(str(next_verbatim[1]))
         return '\n'.join(ret_str)
 
     # protocol
@@ -749,8 +749,8 @@ class ObjectGroupTerm(Term):
     # code by returning early.  Warnings provided in policy.py.
     if self.term.verbatim:
       for next_verbatim in self.term.verbatim:
-        if next_verbatim.value[0] == self._PLATFORM:
-          ret_str.append(str(next_verbatim.value[1]))
+        if next_verbatim[0] == self._PLATFORM:
+          ret_str.append(str(next_verbatim[1]))
         return '\n'.join(ret_str)
 
     # protocol

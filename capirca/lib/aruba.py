@@ -83,8 +83,8 @@ class Term(aclgenerator.Term):
 
     if self.term.verbatim:
       for next_verbatim in self.term.verbatim:
-        if next_verbatim.value[0] == _PLATFORM and next_verbatim.value[1]:
-          ret_str.append('%s%s' % (self._IDENT, next_verbatim.value[1]))
+        if next_verbatim[0] == _PLATFORM and next_verbatim[1]:
+          ret_str.append('%s%s' % (self._IDENT, next_verbatim[1]))
 
       return '\n'.join(t for t in ret_str if t)
 

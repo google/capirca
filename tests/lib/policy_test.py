@@ -1171,10 +1171,10 @@ class PolicyTest(unittest.TestCase):
   def testVerbatimTerm(self):
     pol = policy.ParsePolicy(HEADER + GOOD_TERM_18, self.naming)
     _, terms = pol.filters[0]
-    self.assertEqual(terms[0].verbatim[0].value[0], 'iptables')
-    self.assertEqual(terms[0].verbatim[0].value[1], 'mary had a little lamb')
-    self.assertEqual(terms[0].verbatim[1].value[0], 'juniper')
-    self.assertEqual(terms[0].verbatim[1].value[1], 'mary had another lamb')
+    self.assertEqual(terms[0].verbatim[0][0], 'iptables')
+    self.assertEqual(terms[0].verbatim[0][1], 'mary had a little lamb')
+    self.assertEqual(terms[0].verbatim[1][0], 'juniper')
+    self.assertEqual(terms[0].verbatim[1][1], 'mary had another lamb')
 
   def testVerbatimMixed(self):
     pol = HEADER + BAD_TERM_10
@@ -1403,6 +1403,19 @@ class PolicyTest(unittest.TestCase):
     self.assertRaises(policy.MixedPortandNonPortProtos, policy.ParsePolicy,
                       pol, self.naming)
 
+  def testVerbatimEquality(self):
+    t = """
+    term foo {
+      verbatim:: iptables "%s"
+      verbatim:: iptables "%s"
+    }
+
+    """
+    pol_one = policy.ParsePolicy(HEADER + t  % ('foo', 'bar'), self.naming)
+    pol_two = policy.ParsePolicy(HEADER + t  % ('bar', 'foo'), self.naming)
+    pol_three = policy.ParsePolicy(HEADER + t % ('biz', 'bat'), self.naming)
+    self.assertIn(pol_one.filters[0][1][0], pol_two.filters[0][1][0])
+    self.assertNotIn(pol_one.filters[0][1][0], pol_three.filters[0][1][0])
 
 if __name__ == '__main__':
   unittest.main()

@@ -217,8 +217,8 @@ class Term(aclgenerator.Term):
     # code.  Warning generated from policy.py if appropriate.
     if self.term.verbatim:
       for next_term in self.term.verbatim:
-        if next_term.value[0] == self._PLATFORM:
-          config.Append(str(next_term.value[1]), verbatim=True)
+        if next_term[0] == self._PLATFORM:
+          config.Append(str(next_term[1]), verbatim=True)
       return str(config)
 
     # Helper for per-address-family keywords.

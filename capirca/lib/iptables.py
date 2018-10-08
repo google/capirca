@@ -135,8 +135,8 @@ class Term(aclgenerator.Term):
     # creation code by returning early. Warnings provided in policy.py
     if self.term.verbatim:
       for next_verbatim in self.term.verbatim:
-        if next_verbatim.value[0] == self._PLATFORM:
-          ret_str.append(str(next_verbatim.value[1]))
+        if next_verbatim[0] == self._PLATFORM:
+          ret_str.append(str(next_verbatim[1]))
       return '\n'.join(ret_str)
 
     # Create a new term

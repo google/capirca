@@ -113,7 +113,7 @@ class Term(aclgenerator.Term):
     # creation code by returning early. Warnings provided in policy.py.
     if self.term.verbatim:
       for verbatim_line in self.term.verbatim:
-        platform, contents = verbatim_line.value
+        platform, contents = verbatim_line
         if platform == self._PLATFORM:
           output.append(str(contents))
       return '\n'.join(output)
