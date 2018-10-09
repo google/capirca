@@ -769,139 +769,6 @@ class PolicyTest(unittest.TestCase):
         mock.call('MYSQL', 'tcp'),
         mock.call('HTTPS', 'tcp')], any_order=True)
 
-  def testIpAndPortContains(self):
-    pol = HEADER + TERM_SUPER_1 + TERM_SUB_1
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IPv4('10.0.0.0/8')],
-        [nacaddr.IPv4('10.1.1.1/32')]]
-    self.naming.GetServiceByProto.side_effect = [['22'], ['80'], ['22']]
-
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
-    self.assertEqual(len(ret.filters), 1)
-    _, terms = ret.filters[0]
-    self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
-                    str(terms[1]))
-    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[0]) + '\n' +
-                     str(terms[1]))
-
-    self.naming.GetNetAddr.assert_has_calls([
-        mock.call('PROD'),
-        mock.call('RANDOM_PROD')])
-    self.naming.GetServiceByProto.assert_has_calls([
-        mock.call('SSH', 'tcp'),
-        mock.call('HTTP', 'tcp'),
-        mock.call('SSH', 'tcp')], any_order=True)
-
-  def testEmptyIpContains(self):
-    # testTermContains2 differs from testTermContains in that TERM_SUPER_2
-    # only defines a source addres. it's meant to catch the case where
-    # the containing term has less detail (and is hence, less restrictive)
-    # than the contained term
-    pol = HEADER + TERM_SUPER_2 + TERM_SUB_1
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IPv4('10.0.0.0/8')],
-        [nacaddr.IPv4('10.1.1.1/32')]]
-    self.naming.GetServiceByProto.return_value = ['22']
-
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
-    self.assertEqual(len(ret.filters), 1)
-    _, terms = ret.filters[0]
-    self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
-                    str(terms[1]))
-    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[0]) + '\n' +
-                     str(terms[1]))
-
-    self.naming.GetNetAddr.assert_has_calls([
-        mock.call('PROD'), mock.call('RANDOM_PROD')], any_order=True)
-    self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
-
-  def testIpExcludeContains(self):
-    # This "contains" test kicks the tires on source-address and
-    # source-address-exclude.
-    pol = HEADER + GOOD_TERM_2 + GOOD_TERM_26
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IPv4('10.0.0.0/8')],
-        [nacaddr.IPv4('10.0.0.0/8')],
-        [nacaddr.IPv4('10.62.0.0/15')]]
-
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
-    self.assertEqual(len(ret.filters), 1)
-    _, terms = ret.filters[0]
-    self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
-                    str(terms[1]))
-    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[0]) + '\n' +
-                     str(terms[1]))
-
-    self.naming.GetNetAddr.assert_has_calls([
-        mock.call('PROD_NETWRK'),
-        mock.call('PROD_NETWRK'),
-        mock.call('PROD_EH')], any_order=True)
-
-  def testIpDualExcludeContains(self):
-    # One term has (10.0.0.0/8, except 10.10.0.0/24), it should contain a term
-    # that has (10.0.0.0/8 except 10.0.0.0/9.
-    pol = HEADER + GOOD_TERM_26 + GOOD_TERM_28
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IPv4('10.0.0.0/8')],
-        [nacaddr.IPv4('10.10.0.0/24')],
-        [nacaddr.IPv4('10.0.0.0/8')],
-        [nacaddr.IPv4('10.0.0.0/9')]]
-
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
-    self.assertEqual(len(ret.filters), 1)
-    _, terms = ret.filters[0]
-    self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
-                    str(terms[1]))
-    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[0]) + '\n' +
-                     str(terms[1]))
-
-    self.naming.GetNetAddr.assert_has_calls([
-        mock.call('PROD_NETWRK'),
-        mock.call('PROD_EH'),
-        mock.call('PROD_NETWRK'),
-        mock.call('BOTTOM_HALF')], any_order=True)
-
-  def testOptionsContains(self):
-    # Tests "contains" testing of the options field. A term without set options
-    # contains one which has them set.
-    pol = HEADER + GOOD_TERM_2 + GOOD_TERM_29
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IPv4('10.0.0.0/8')],
-        [nacaddr.IPv4('10.0.0.0/8')]]
-
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
-    self.assertEqual(len(ret.filters), 1)
-    _, terms = ret.filters[0]
-    self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
-                    str(terms[1]))
-    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[1]) + '\n' +
-                     str(terms[0]))
-
-    self.naming.GetNetAddr.assert_has_calls([
-        mock.call('PROD_NETWRK'),
-        mock.call('PROD_NETWRK')], any_order=True)
-
-  def testPrecedenceContains(self):
-    # Tests "contains" testing of the precedence field. A term without set
-    # precedence contains one which has them set.
-    pol = HEADER + TERM_SUB_2 + GOOD_TERM_22
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
-    self.assertEqual(len(ret.filters), 1)
-    _, terms = ret.filters[0]
-    self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
-                    str(terms[1]))
-    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[1]) + '\n' +
-                     str(terms[0]))
-
-  def testProtocolExceptContains(self):
-    # Test the protocol-except keyword.
-    pol = HEADER + TERM_SUPER_3 + TERM_SUB_2
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
-    _, terms = ret.filters[0]
-    self.assertEqual(len(ret.filters), 1)
-    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[0]) + '\n' +
-                     str(terms[1]))
-
   def testGoodDestAddrExcludes(self):
     pol = HEADER + GOOD_TERM_7
     self.naming.GetNetAddr.side_effect = [
@@ -1403,7 +1270,9 @@ class PolicyTest(unittest.TestCase):
     self.assertRaises(policy.MixedPortandNonPortProtos, policy.ParsePolicy,
                       pol, self.naming)
 
-  def testVerbatimEquality(self):
+  # Contains Tests
+
+  def testVerbatimContains(self):
     t = """
     term foo {
       verbatim:: iptables "%s"
@@ -1416,6 +1285,139 @@ class PolicyTest(unittest.TestCase):
     pol_three = policy.ParsePolicy(HEADER + t % ('biz', 'bat'), self.naming)
     self.assertIn(pol_one.filters[0][1][0], pol_two.filters[0][1][0])
     self.assertNotIn(pol_one.filters[0][1][0], pol_three.filters[0][1][0])
+
+  def testIpAndPortContains(self):
+    pol = HEADER + TERM_SUPER_1 + TERM_SUB_1
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IPv4('10.0.0.0/8')],
+        [nacaddr.IPv4('10.1.1.1/32')]]
+    self.naming.GetServiceByProto.side_effect = [['22'], ['80'], ['22']]
+
+    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
+    self.assertEqual(len(ret.filters), 1)
+    _, terms = ret.filters[0]
+    self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
+                    str(terms[1]))
+    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[0]) + '\n' +
+                     str(terms[1]))
+
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('PROD'),
+        mock.call('RANDOM_PROD')])
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('SSH', 'tcp'),
+        mock.call('HTTP', 'tcp'),
+        mock.call('SSH', 'tcp')], any_order=True)
+
+  def testEmptyIpContains(self):
+    # testTermContains2 differs from testTermContains in that TERM_SUPER_2
+    # only defines a source addres. it's meant to catch the case where
+    # the containing term has less detail (and is hence, less restrictive)
+    # than the contained term
+    pol = HEADER + TERM_SUPER_2 + TERM_SUB_1
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IPv4('10.0.0.0/8')],
+        [nacaddr.IPv4('10.1.1.1/32')]]
+    self.naming.GetServiceByProto.return_value = ['22']
+
+    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
+    self.assertEqual(len(ret.filters), 1)
+    _, terms = ret.filters[0]
+    self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
+                    str(terms[1]))
+    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[0]) + '\n' +
+                     str(terms[1]))
+
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('PROD'), mock.call('RANDOM_PROD')], any_order=True)
+    self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
+
+  def testIpExcludeContains(self):
+    # This "contains" test kicks the tires on source-address and
+    # source-address-exclude.
+    pol = HEADER + GOOD_TERM_2 + GOOD_TERM_26
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IPv4('10.0.0.0/8')],
+        [nacaddr.IPv4('10.0.0.0/8')],
+        [nacaddr.IPv4('10.62.0.0/15')]]
+
+    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
+    self.assertEqual(len(ret.filters), 1)
+    _, terms = ret.filters[0]
+    self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
+                    str(terms[1]))
+    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[0]) + '\n' +
+                     str(terms[1]))
+
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('PROD_NETWRK'),
+        mock.call('PROD_NETWRK'),
+        mock.call('PROD_EH')], any_order=True)
+
+  def testIpDualExcludeContains(self):
+    # One term has (10.0.0.0/8, except 10.10.0.0/24), it should contain a term
+    # that has (10.0.0.0/8 except 10.0.0.0/9.
+    pol = HEADER + GOOD_TERM_26 + GOOD_TERM_28
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IPv4('10.0.0.0/8')],
+        [nacaddr.IPv4('10.10.0.0/24')],
+        [nacaddr.IPv4('10.0.0.0/8')],
+        [nacaddr.IPv4('10.0.0.0/9')]]
+
+    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
+    self.assertEqual(len(ret.filters), 1)
+    _, terms = ret.filters[0]
+    self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
+                    str(terms[1]))
+    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[0]) + '\n' +
+                     str(terms[1]))
+
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('PROD_NETWRK'),
+        mock.call('PROD_EH'),
+        mock.call('PROD_NETWRK'),
+        mock.call('BOTTOM_HALF')], any_order=True)
+
+  def testOptionsContains(self):
+    # Tests "contains" testing of the options field. A term without set options
+    # contains one which has them set.
+    pol = HEADER + GOOD_TERM_2 + GOOD_TERM_29
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IPv4('10.0.0.0/8')],
+        [nacaddr.IPv4('10.0.0.0/8')]]
+
+    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
+    self.assertEqual(len(ret.filters), 1)
+    _, terms = ret.filters[0]
+    self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
+                    str(terms[1]))
+    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[1]) + '\n' +
+                     str(terms[0]))
+
+    self.naming.GetNetAddr.assert_has_calls([
+        mock.call('PROD_NETWRK'),
+        mock.call('PROD_NETWRK')], any_order=True)
+
+  def testPrecedenceContains(self):
+    # Tests "contains" testing of the precedence field. A term without set
+    # precedence contains one which has them set.
+    pol = HEADER + TERM_SUB_2 + GOOD_TERM_22
+    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
+    self.assertEqual(len(ret.filters), 1)
+    _, terms = ret.filters[0]
+    self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
+                    str(terms[1]))
+    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[1]) + '\n' +
+                     str(terms[0]))
+
+  def testProtocolExceptContains(self):
+    # Test the protocol-except keyword.
+    pol = HEADER + TERM_SUPER_3 + TERM_SUB_2
+    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
+    _, terms = ret.filters[0]
+    self.assertEqual(len(ret.filters), 1)
+    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[0]) + '\n' +
+                     str(terms[1]))
 
 if __name__ == '__main__':
   unittest.main()
