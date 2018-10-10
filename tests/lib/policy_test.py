@@ -1412,24 +1412,26 @@ class PolicyTest(unittest.TestCase):
 
   def testProtocolExceptContains(self):
     # Test the protocol-except keyword.
-    pol = HEADER + TERM_SUPER_3 + TERM_SUB_2
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
-    _, terms = ret.filters[0]
-    self.assertEqual(len(ret.filters), 1)
-    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[0]) + '\n' +
-                     str(terms[1]))
+    pexcept_term = policy.Term([policy.VarType(8, 'tcp')])
+    pexpect_term_udp = policy.Term([policy.VarType(8, 'udp')])
+    p_term = policy.Term([policy.VarType(10, 'icmp')])
+    p_term_tcp = policy.Term([policy.VarType(10, 'tcp')])
+    self.assertIn(p_term, pexcept_term)
+    self.assertIn(pexcept_term, pexcept_term)
+    self.assertNotIn(p_term_tcp, pexcept_term)
+    self.assertNotIn(pexpect_term_udp, pexcept_term)
 
   def testPortContains(self):
     # Test "contains" against port field and that it matches
     # source/destination/port fields.
     port_term = policy.Term([policy.VarType(32, [25, 25])])
-    sport_term = policy.Term([policy.VarType(6, [25 ,25])])
+    sport_term = policy.Term([policy.VarType(6, [25, 25])])
     dport_term = policy.Term([policy.VarType(7, [25, 25])])
     self.assertIn(sport_term, port_term)
     self.assertIn(dport_term, port_term)
     self.assertIn(port_term, port_term)
     alt_port_term = policy.Term([policy.VarType(32, [25, 30])])
-    sport_term = policy.Term([policy.VarType(6, [25 ,30])])
+    sport_term = policy.Term([policy.VarType(6, [25, 30])])
     dport_term = policy.Term([policy.VarType(7, [25, 30])])
     self.assertNotIn(alt_port_term, port_term)
     self.assertNotIn(sport_term, port_term)

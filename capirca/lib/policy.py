@@ -500,7 +500,7 @@ class Term(object):
         return False
     elif self.protocol_except:
       if other.protocol_except:
-        if self.CheckProtocolIsContained(
+        if not self.CheckProtocolIsContained(
             self.protocol_except, other.protocol_except):
           return False
       elif other.protocol:
