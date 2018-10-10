@@ -1401,14 +1401,12 @@ class PolicyTest(unittest.TestCase):
   def testPrecedenceContains(self):
     # Tests "contains" testing of the precedence field. A term without set
     # precedence contains one which has them set.
-    pol = HEADER + TERM_SUB_2 + GOOD_TERM_22
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
-    self.assertEqual(len(ret.filters), 1)
-    _, terms = ret.filters[0]
-    self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
-                    str(terms[1]))
-    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[1]) + '\n' +
-                     str(terms[0]))
+    p_term = policy.Term([policy.VarType(26, 1)])
+    no_p_term = policy.Term([])
+    self.assertIn(p_term, p_term)
+    self.assertIn(no_p_term, no_p_term)
+    self.assertNotIn(no_p_term, p_term)
+    self.assertNotIn(p_term, no_p_term)
 
   def testProtocolExceptContains(self):
     # Test the protocol-except keyword.

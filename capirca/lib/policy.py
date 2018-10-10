@@ -593,6 +593,8 @@ class Term(object):
       for precedence in other.precedence:
         if precedence not in self.precedence:
           return False
+    elif other.precedence:
+      return False
     # check various options
     if self.option:
       if not other.option:
