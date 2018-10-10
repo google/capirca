@@ -1419,5 +1419,21 @@ class PolicyTest(unittest.TestCase):
     self.assertFalse(terms[0] in terms[1], '\n' + str(terms[0]) + '\n' +
                      str(terms[1]))
 
+  def testPortContains(self):
+    # Test "contains" against port field and that it matches
+    # source/destination/port fields.
+    port_term = policy.Term([policy.VarType(32, [25, 25])])
+    sport_term = policy.Term([policy.VarType(6, [25 ,25])])
+    dport_term = policy.Term([policy.VarType(7, [25, 25])])
+    self.assertIn(sport_term, port_term)
+    self.assertIn(dport_term, port_term)
+    self.assertIn(port_term, port_term)
+    alt_port_term = policy.Term([policy.VarType(32, [25, 30])])
+    sport_term = policy.Term([policy.VarType(6, [25 ,30])])
+    dport_term = policy.Term([policy.VarType(7, [25, 30])])
+    self.assertNotIn(alt_port_term, port_term)
+    self.assertNotIn(sport_term, port_term)
+    self.assertNotIn(dport_term, port_term)
+
 if __name__ == '__main__':
   unittest.main()

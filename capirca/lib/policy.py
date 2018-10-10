@@ -553,8 +553,8 @@ class Term(object):
     # be either source or destination.
     if self.port:
       if not (self.CheckPortIsContained(self.port, other.port) or
-              self.CheckPortIsContained(self.port, other.sport) or
-              self.CheckPortIsContained(self.port, other.dport)):
+              self.CheckPortIsContained(self.port, other.source_port) or
+              self.CheckPortIsContained(self.port, other.destination_port)):
         return False
     if not self.CheckPortIsContained(self.source_port, other.source_port):
       return False
