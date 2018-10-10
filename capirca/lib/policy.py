@@ -602,6 +602,8 @@ class Term(object):
       for opt in other.option:
         if opt not in self.option:
           return False
+    elif other.option:
+      return False
     # check forwarding-class
     if self.forwarding_class:
       if not other.forwarding_class:

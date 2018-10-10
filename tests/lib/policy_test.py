@@ -1381,22 +1381,14 @@ class PolicyTest(unittest.TestCase):
   def testOptionsContains(self):
     # Tests "contains" testing of the options field. A term without set options
     # contains one which has them set.
-    pol = HEADER + GOOD_TERM_2 + GOOD_TERM_29
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IPv4('10.0.0.0/8')],
-        [nacaddr.IPv4('10.0.0.0/8')]]
-
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
-    self.assertEqual(len(ret.filters), 1)
-    _, terms = ret.filters[0]
-    self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
-                    str(terms[1]))
-    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[1]) + '\n' +
-                     str(terms[0]))
-
-    self.naming.GetNetAddr.assert_has_calls([
-        mock.call('PROD_NETWRK'),
-        mock.call('PROD_NETWRK')], any_order=True)
+    tcp_est_term = policy.Term([policy.VarType(9, 'tcp-established')])
+    term = policy.Term([])
+    tcp_udp_est_term = policy.Term([policy.VarType(9, 'tcp-established'),
+                                    policy.VarType(9, 'established')])
+    self.assertNotIn(term, tcp_est_term)
+    self.assertNotIn(tcp_est_term, term)
+    self.assertIn(tcp_est_term, tcp_udp_est_term)
+    self.assertNotIn(tcp_udp_est_term, tcp_est_term)
 
   def testPrecedenceContains(self):
     # Tests "contains" testing of the precedence field. A term without set
