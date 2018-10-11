@@ -1363,6 +1363,26 @@ class PolicyTest(unittest.TestCase):
     self.assertNotIn(p_term_tcp, pexcept_term)
     self.assertNotIn(pexpect_term_udp, pexcept_term)
 
+  def testProtocolTermNotInAnotherTermContains(self):
+    term_one = policy.Term([policy.VarType(10, 'tcp')])
+    term_two = policy.Term([policy.VarType(10, 'udp')])
+    self.assertNotIn(term_one, term_two)
+
+  def testProtoExceptNotInEmptyTerm(self):
+    term_one = policy.Term([policy.VarType(8, 'tcp')])
+    term_two = policy.Term([])
+    self.assertNotIn(term_two, term_one)
+
+  def testProtocolNotInProtoExcept(self):
+    term_one = policy.Term([policy.VarType(8, 'tcp')])
+    term_two = policy.Term([policy.VarType(10, 'udp')])
+    self.assertNotIn(term_one, term_two)
+
+  def testProtocolNotInEmptyTerm(self):
+    term_one = policy.Term([policy.VarType(10, 'tcp')])
+    term_two = policy.Term([])
+    self.assertNotIn(term_two, term_one)
+
   def testPortContains(self):
     # Test "contains" against port field and that it matches
     # source/destination/port fields.
@@ -1378,6 +1398,7 @@ class PolicyTest(unittest.TestCase):
     self.assertNotIn(alt_port_term, port_term)
     self.assertNotIn(sport_term, port_term)
     self.assertNotIn(dport_term, port_term)
+
 
 if __name__ == '__main__':
   unittest.main()
