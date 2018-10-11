@@ -1383,6 +1383,31 @@ class PolicyTest(unittest.TestCase):
     term_two = policy.Term([])
     self.assertNotIn(term_two, term_one)
 
+  @mock.patch.object(policy, 'DEFINITIONS')
+  def testAddrNotInAddr(self, mock_naming):
+    mock_naming.GetNetAddr.side_effect = [
+        [nacaddr.IPv4('192.168.1.1/32')],
+        [nacaddr.IPv4('10.1.1.0/24')],
+        [nacaddr.IPv4('10.1.1.0/24')],
+        [nacaddr.IPv4('10.1.1.0/24')]]
+    term = policy.Term([policy.VarType(5, 'FOO')])
+    addr_term = policy.Term([policy.VarType(5, 'FOO')])
+    saddr_term = policy.Term([policy.VarType(3, 'FOO')])
+    daddr_term = policy.Term([policy.VarType(4, 'FOO')])
+    self.assertNotIn(addr_term, term)
+    self.assertNotIn(saddr_term, term)
+    self.assertNotIn(daddr_term, term)
+
+  @mock.patch.object(policy, 'DEFINITIONS')
+  def testDestAddrNotInDestAddr(self, mock_naming):
+    mock_naming.GetNetAddr.side_effect = [
+        [nacaddr.IPv4('192.168.1.1/32')],
+        [nacaddr.IPv4('10.1.1.0/24')]]
+    term_one = policy.Term([policy.VarType(4, 'FOO')])
+    term_two = policy.Term([policy.VarType(4, 'FOO')])
+    self.assertNotIn(term_one, term_two)
+
+
   def testPortContains(self):
     # Test "contains" against port field and that it matches
     # source/destination/port fields.
