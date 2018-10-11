@@ -422,14 +422,7 @@ term good-term-v6-1 {
   action:: accept
 }
 """
-TERM_SUPER_1 = """
-term term-super {
-  source-address:: PROD
-  protocol:: tcp
-  destination-port:: SSH HTTP
-  action:: accept
-  }
-"""
+
 TERM_SUPER_2 = """
 term term-super {
   address:: PROD
@@ -441,14 +434,6 @@ term term-super {
   protocol-except:: tcp udp icmpv6
   counter:: stuff_and_things
   action:: reject
-}
-"""
-TERM_SUB_1 = """
-term term-sub {
-  source-address:: RANDOM_PROD
-  protocol:: tcp
-  destination-port:: SSH
-  action:: accept
 }
 """
 TERM_SUB_2 = """
@@ -1273,110 +1258,77 @@ class PolicyTest(unittest.TestCase):
   # Contains Tests
 
   def testVerbatimContains(self):
-    t = """
-    term foo {
-      verbatim:: iptables "%s"
-      verbatim:: iptables "%s"
-    }
+    term_one = policy.Term(policy.VarType(23, ('iptables', 'foo')))
+    term_two = policy.Term(policy.VarType(23, ('iptables', 'bar')))
+    term_three = policy.Term(policy.VarType(23, ('juniper', 'foo')))
+    self.assertIn(term_one, term_one)
+    self.assertNotIn(term_two, term_one)
+    self.assertNotIn(term_three, term_one)
 
-    """
-    pol_one = policy.ParsePolicy(HEADER + t  % ('foo', 'bar'), self.naming)
-    pol_two = policy.ParsePolicy(HEADER + t  % ('bar', 'foo'), self.naming)
-    pol_three = policy.ParsePolicy(HEADER + t % ('biz', 'bat'), self.naming)
-    self.assertIn(pol_one.filters[0][1][0], pol_two.filters[0][1][0])
-    self.assertNotIn(pol_one.filters[0][1][0], pol_three.filters[0][1][0])
 
-  def testIpAndPortContains(self):
-    pol = HEADER + TERM_SUPER_1 + TERM_SUB_1
-    self.naming.GetNetAddr.side_effect = [
+  @mock.patch.object(policy, 'DEFINITIONS')
+  def testIpAndPortContains(self, mock_naming):
+    mock_naming.GetNetAddr.side_effect = [
         [nacaddr.IPv4('10.0.0.0/8')],
         [nacaddr.IPv4('10.1.1.1/32')]]
-    self.naming.GetServiceByProto.side_effect = [['22'], ['80'], ['22']]
+    term_one = policy.Term([policy.VarType(3, 'PROD'),
+                            policy.VarType(7, (22, 22)),
+                            policy.VarType(7, (80, 80)),
+                            policy.VarType(10, 'tcp')])
+    term_one.AddObject(policy.VarType(2, 'accept'))
+    term_two = policy.Term([policy.VarType(3, 'SMALLER_PROD'),
+                            policy.VarType(7, (22, 22)),
+                            policy.VarType(10, 'tcp')])
+    term_two.AddObject(policy.VarType(2, 'accept'))
+    self.assertIn(term_two, term_one)
+    self.assertNotIn(term_one, term_two)
 
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
-    self.assertEqual(len(ret.filters), 1)
-    _, terms = ret.filters[0]
-    self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
-                    str(terms[1]))
-    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[0]) + '\n' +
-                     str(terms[1]))
-
-    self.naming.GetNetAddr.assert_has_calls([
-        mock.call('PROD'),
-        mock.call('RANDOM_PROD')])
-    self.naming.GetServiceByProto.assert_has_calls([
-        mock.call('SSH', 'tcp'),
-        mock.call('HTTP', 'tcp'),
-        mock.call('SSH', 'tcp')], any_order=True)
-
-  def testEmptyIpContains(self):
+  @mock.patch.object(policy, 'DEFINITIONS')
+  def testEmptyIpContains(self, mock_naming):
     # testTermContains2 differs from testTermContains in that TERM_SUPER_2
     # only defines a source addres. it's meant to catch the case where
     # the containing term has less detail (and is hence, less restrictive)
     # than the contained term
-    pol = HEADER + TERM_SUPER_2 + TERM_SUB_1
-    self.naming.GetNetAddr.side_effect = [
+    mock_naming.GetNetAddr.side_effect = [
         [nacaddr.IPv4('10.0.0.0/8')],
         [nacaddr.IPv4('10.1.1.1/32')]]
-    self.naming.GetServiceByProto.return_value = ['22']
+    term_one = policy.Term([policy.VarType(5, 'PROD')])
+    term_one.AddObject(policy.VarType(2, 'accept'))
+    term_two = policy.Term([policy.VarType(3, 'SMALLER_PROD'),
+                            policy.VarType(7, (22, 22))])
+    term_two.AddObject(policy.VarType(2, 'accept'))
+    self.assertIn(term_two, term_one)
+    self.assertNotIn(term_one, term_two)
 
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
-    self.assertEqual(len(ret.filters), 1)
-    _, terms = ret.filters[0]
-    self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
-                    str(terms[1]))
-    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[0]) + '\n' +
-                     str(terms[1]))
-
-    self.naming.GetNetAddr.assert_has_calls([
-        mock.call('PROD'), mock.call('RANDOM_PROD')], any_order=True)
-    self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
-
-  def testIpExcludeContains(self):
+  @mock.patch.object(policy, 'DEFINITIONS')
+  def testIpExcludeContains(self, mock_naming):
     # This "contains" test kicks the tires on source-address and
     # source-address-exclude.
-    pol = HEADER + GOOD_TERM_2 + GOOD_TERM_26
-    self.naming.GetNetAddr.side_effect = [
+    mock_naming.GetNetAddr.side_effect = [
         [nacaddr.IPv4('10.0.0.0/8')],
         [nacaddr.IPv4('10.0.0.0/8')],
         [nacaddr.IPv4('10.62.0.0/15')]]
+    term_one = policy.Term([policy.VarType(3, 'FOO')])
+    term_two = policy.Term([policy.VarType(3, 'FOO'),
+                            policy.VarType(11, 'BAR')])
+    self.assertIn(term_two, term_one)
+    self.assertNotIn(term_one, term_two)
 
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
-    self.assertEqual(len(ret.filters), 1)
-    _, terms = ret.filters[0]
-    self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
-                    str(terms[1]))
-    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[0]) + '\n' +
-                     str(terms[1]))
-
-    self.naming.GetNetAddr.assert_has_calls([
-        mock.call('PROD_NETWRK'),
-        mock.call('PROD_NETWRK'),
-        mock.call('PROD_EH')], any_order=True)
-
-  def testIpDualExcludeContains(self):
+  @mock.patch.object(policy, 'DEFINITIONS')
+  def testIpDualExcludeContains(self, mock_naming):
     # One term has (10.0.0.0/8, except 10.10.0.0/24), it should contain a term
     # that has (10.0.0.0/8 except 10.0.0.0/9.
-    pol = HEADER + GOOD_TERM_26 + GOOD_TERM_28
-    self.naming.GetNetAddr.side_effect = [
+    mock_naming.GetNetAddr.side_effect = [
         [nacaddr.IPv4('10.0.0.0/8')],
         [nacaddr.IPv4('10.10.0.0/24')],
         [nacaddr.IPv4('10.0.0.0/8')],
         [nacaddr.IPv4('10.0.0.0/9')]]
-
-    ret = policy.ParsePolicy(pol, self.naming, shade_check=False)
-    self.assertEqual(len(ret.filters), 1)
-    _, terms = ret.filters[0]
-    self.assertTrue(terms[1] in terms[0], '\n' + str(terms[0]) + '\n' +
-                    str(terms[1]))
-    self.assertFalse(terms[0] in terms[1], '\n' + str(terms[0]) + '\n' +
-                     str(terms[1]))
-
-    self.naming.GetNetAddr.assert_has_calls([
-        mock.call('PROD_NETWRK'),
-        mock.call('PROD_EH'),
-        mock.call('PROD_NETWRK'),
-        mock.call('BOTTOM_HALF')], any_order=True)
+    term_one = policy.Term([policy.VarType(3, 'FOO'),
+                            policy.VarType(11, 'BAR')])
+    term_two = policy.Term([policy.VarType(3, 'FOO'),
+                            policy.VarType(11, 'BAR')])
+    self.assertIn(term_two, term_one)
+    self.assertNotIn(term_one, term_two)
 
   def testOptionsContains(self):
     # Tests "contains" testing of the options field. A term without set options
@@ -1414,15 +1366,15 @@ class PolicyTest(unittest.TestCase):
   def testPortContains(self):
     # Test "contains" against port field and that it matches
     # source/destination/port fields.
-    port_term = policy.Term([policy.VarType(32, [25, 25])])
-    sport_term = policy.Term([policy.VarType(6, [25, 25])])
-    dport_term = policy.Term([policy.VarType(7, [25, 25])])
+    port_term = policy.Term([policy.VarType(32, (25, 25))])
+    sport_term = policy.Term([policy.VarType(6, (25, 25))])
+    dport_term = policy.Term([policy.VarType(7, (25, 25))])
     self.assertIn(sport_term, port_term)
     self.assertIn(dport_term, port_term)
     self.assertIn(port_term, port_term)
-    alt_port_term = policy.Term([policy.VarType(32, [25, 30])])
-    sport_term = policy.Term([policy.VarType(6, [25, 30])])
-    dport_term = policy.Term([policy.VarType(7, [25, 30])])
+    alt_port_term = policy.Term([policy.VarType(32, (25, 30))])
+    sport_term = policy.Term([policy.VarType(6, (25, 30))])
+    dport_term = policy.Term([policy.VarType(7, (25, 30))])
     self.assertNotIn(alt_port_term, port_term)
     self.assertNotIn(sport_term, port_term)
     self.assertNotIn(dport_term, port_term)
