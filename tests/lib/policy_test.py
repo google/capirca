@@ -1417,6 +1417,57 @@ class PolicyTest(unittest.TestCase):
     term_two = policy.Term([policy.VarType(7, (23, 23))])
     self.assertNotIn(term_one, term_two)
 
+
+  def testSourcePrefixContains(self):
+    term_one = policy.Term([policy.VarType(19, "foo")])
+    self.assertIn(term_one, term_one)
+
+  def testSourcePrefixNotInSourcePrefix(self):
+    term_one = policy.Term([policy.VarType(19, "foo")])
+    term_two = policy.Term([policy.VarType(19, "bar")])
+    self.assertNotIn(term_one, term_two)
+
+  def testDestinationPrefixContains(self):
+    term_one = policy.Term([policy.VarType(20, "foo")])
+    term_two = policy.Term([policy.VarType(20, "bar")])
+    self.assertIn(term_one, term_one)
+
+  def testDestinationPrefixNotInDestinationPrefix(self):
+    term_one = policy.Term([policy.VarType(20, "foo")])
+    term_two = policy.Term([policy.VarType(20, "bar")])
+    self.assertNotIn(term_one, term_two)
+
+
+  def testSourcePrefixExceptContains(self):
+    term_one = policy.Term([policy.VarType(50, "foo")])
+    self.assertIn(term_one, term_one)
+
+  def testSourcePrefixExceptNotInSourcePrefixExcept(self):
+    term_one = policy.Term([policy.VarType(50, "foo")])
+    term_two = policy.Term([policy.VarType(50, "bar")])
+    self.assertNotIn(term_one, term_two)
+
+  def testDestinationPrefixExceptContains(self):
+    term_one = policy.Term([policy.VarType(51, "foo")])
+    term_two = policy.Term([policy.VarType(51, "bar")])
+    self.assertIn(term_one, term_one)
+
+  def testDestinationPrefixExceptNotInDestinationPrefixExcept(self):
+    term_one = policy.Term([policy.VarType(51, "foo")])
+    term_two = policy.Term([policy.VarType(51, "bar")])
+    self.assertNotIn(term_one, term_two)
+
+  def testSourceTagContains(self):
+    term_one = policy.Term([policy.VarType(44, "foo")])
+    self.assertIn(term_one, term_one)
+
+  def testSourceTagNotInSourceTag(self):
+    term_one = policy.Term([policy.VarType(44, "foo")])
+    term_two = policy.Term([policy.VarType(44, "bar")])
+    self.assertNotIn(term_one, term_two)
+
+
+
   def testPortContains(self):
     # Test "contains" against port field and that it matches
     # source/destination/port fields.

@@ -581,9 +581,9 @@ class Term(object):
 
     # check source and destination tags
     if self.source_tag:
-      if sorted(self.source_tag != sorted(other.source_tag)):
+      if sorted(self.source_tag) != sorted(other.source_tag):
         return False
-      if sorted(self.destination_tag != sorted(other.destination_tag)):
+      if sorted(self.destination_tag) != sorted(other.destination_tag):
         return False
 
     # check precedence
