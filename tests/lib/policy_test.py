@@ -1407,6 +1407,15 @@ class PolicyTest(unittest.TestCase):
     term_two = policy.Term([policy.VarType(4, 'FOO')])
     self.assertNotIn(term_one, term_two)
 
+  def testSourcePortNotInSourcePort(self):
+    term_one = policy.Term([policy.VarType(6, (22, 22))])
+    term_two = policy.Term([policy.VarType(6, (23, 23))])
+    self.assertNotIn(term_one, term_two)
+
+  def testDestinationPortNotInDestinationPort(self):
+    term_one = policy.Term([policy.VarType(7, (22, 22))])
+    term_two = policy.Term([policy.VarType(7, (23, 23))])
+    self.assertNotIn(term_one, term_two)
 
   def testPortContains(self):
     # Test "contains" against port field and that it matches
