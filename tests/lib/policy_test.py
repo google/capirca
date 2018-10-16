@@ -1466,7 +1466,44 @@ class PolicyTest(unittest.TestCase):
     term_two = policy.Term([policy.VarType(44, "bar")])
     self.assertNotIn(term_one, term_two)
 
+  def testForwardingClassContains(self):
+    term_one = policy.Term([policy.VarType(43, "foo")])
+    term_two = policy.Term([policy.VarType(43, "bar"), policy.VarType(43, "foo")])
+    self.assertIn(term_one, term_one)
+    self.assertIn(term_one, term_two)
 
+  def testForwardingClassNotIn(self):
+    term_one = policy.Term([policy.VarType(43, "foo")])
+    term_two = policy.Term([policy.VarType(43, "bar")])
+    term_three = policy.Term([])
+    self.assertNotIn(term_one, term_two)
+    self.assertNotIn(term_three, term_one)
+
+  def testForwardingClassExceptContains(self):
+    term_one = policy.Term([policy.VarType(52, "foo")])
+    self.assertIn(term_one, term_one)
+
+  def testForwardingClassExceptNotIn(self):
+    term_one = policy.Term([policy.VarType(52, "foo")])
+    term_two = policy.Term([policy.VarType(52, "bar")])
+    term_three = policy.Term([])
+    self.assertNotIn(term_one, term_two)
+    self.assertNotIn(term_three, term_one)
+
+  @mock.patch.object(policy, 'DEFINITIONS')
+  def testNextIPContained(self, mock_naming):
+    mock_naming.GetNetAddr.side_effect = [
+        [nacaddr.IPv4('192.168.1.1/32')]]
+    term_one = policy.Term([policy.VarType(46, "FOO")])
+    self.assertIn(term_one, term_one)
+
+  @mock.patch.object(policy, 'DEFINITIONS')
+  def testNextIPNotIn(self, mock_naming):
+    mock_naming.GetNetAddr.side_effect = [
+        [nacaddr.IPv4('192.168.1.1/32')]]
+    term_one = policy.Term([policy.VarType(46, "FOO")])
+    term_two = policy.Term([])
+    self.assertNotIn(term_two, term_one)
 
   def testPortContains(self):
     # Test "contains" against port field and that it matches
