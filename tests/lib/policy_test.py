@@ -1521,6 +1521,23 @@ class PolicyTest(unittest.TestCase):
     self.assertNotIn(sport_term, port_term)
     self.assertNotIn(dport_term, port_term)
 
+  def testFragmentOffset(self):
+    fo_term = policy.Term([])
+    fo_term.AddObject(policy.VarType(17, "80"))
+    fo_range_term = policy.Term([])
+    fo_range_term.AddObject(policy.VarType(17, "60-90"))
+    fo_smaller_range_term = policy.Term([])
+    fo_smaller_range_term.AddObject(policy.VarType(17, "65-82"))
+    term = policy.Term([])
+
+
+    self.assertIn(fo_term, fo_term)
+    self.assertIn(fo_term, fo_range_term)
+    self.assertNotIn(fo_range_term, fo_term)
+    self.assertIn(fo_smaller_range_term, fo_range_term)
+    self.assertNotIn(fo_range_term, fo_smaller_range_term)
+    self.assertNotIn(term, fo_term)
+
 
 if __name__ == '__main__':
   unittest.main()

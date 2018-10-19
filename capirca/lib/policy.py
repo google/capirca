@@ -623,10 +623,10 @@ class Term(object):
         return False
     if self.fragment_offset:
       # fragment_offset looks like 'integer-integer' or just, 'integer'
-      sfo = [int(x) for x in self.fragment_offset.split('-')]
+      sfo = sorted([int(x) for x in self.fragment_offset.split('-')])
       if other.fragment_offset:
-        ofo = [int(x) for x in other.fragment_offset.split('-')]
-        if sfo[0] < ofo[0] or sorted(sfo[1:]) > sorted(ofo[1:]):
+        ofo = sorted([int(x) for x in other.fragment_offset.split('-')])
+        if ofo[0] < sfo[0] or sfo[1:] < ofo[1:]:
           return False
       else:
         return False
