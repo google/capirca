@@ -24,50 +24,139 @@ class Error(Exception):
   """Generic error class."""
 
 
+class ExceededMaxTermsError(Error):
+  """Raised when the number of terms in a policy exceed _MAX_RULES_PER_POLICY"""
+
+
 class Term(aclgenerator.Term):
   """Generates the Term for CloudArmor"""
+  # Max srcIpRanges within a single term
+  _MAX_IP_RANGES_PER_TERM = 5
+
   ACTION_MAP = {'accept': 'allow',
                 'deny': 'deny(404)'}
-  def __init__(self, term, priority):
+
+  def __init__(self, term):
     super(Term, self).__init__(term)
     self.term = term
-    self.term.priority = priority
 
   def __str__(self):
     return ''
 
-  def ConvertToDict(self):
-    """Convert term to CloudArmor's JSON structure"""
+  def ConvertToDict(self, priority_index):
+    """Converts term to dictionary representation of CloudArmor's JSON format.
+
+    Takes all of the attributes associated with a term (match, action, etc) and
+    converts them into a dictionary which most closely represents
+    the CloudArmor API's JSON rule format. Additionally, splits a single term
+    into multiple terms if the number of srcIpRanges exceed
+    _MAX_IP_RANGES_PER_TERM.
+
+    Args:
+      priority_index: An integer priority value assigned to the term. In case
+      the term is split into i sub-terms, the ith sub-term has
+      priority = priority_index + i
+
+    Returns:
+      A list of dicts where each dict is a term
+
+    Raises:
+      N.A.
+    """
     term_dict = {}
     rules = []
 
     term_dict['description'] = ' '.join(self.term.comment)
-    term_dict['priority'] = int(self.term.priority)
     term_dict['action'] = self.ACTION_MAP[self.term.action[0]]
     term_dict['match'] = {'versionedExpr': 'SRC_IPS_V1', 'config': {}}
     term_dict['preview'] = False
 
     saddrs_ipv4 = self.term.GetAddressOfVersion('source_address', 4)
 
-    rule = copy.deepcopy(term_dict)
-    rule['match']['config']['srcIpRanges'] = [str(saddr) for saddr in saddrs_ipv4]
-    rules.append(rule)
+    # redundant assignment; will be used to make future CLs easy to review
+    saddrs = saddrs_ipv4
+    term_dict['match']['config']['srcIpRanges'] = saddrs
+
+    # If scrIpRanges within a single term exceed _MAX_IP_RANGES_PER_TERM,
+    # split into multiple terms
+    source_addr_chunks = [
+        saddrs[x:x+self._MAX_IP_RANGES_PER_TERM] for x in xrange(
+            0, len(saddrs), self._MAX_IP_RANGES_PER_TERM)]
+
+    split_rule_count = len(source_addr_chunks)
+
+    for i, chunk in enumerate(source_addr_chunks):
+      rule = copy.deepcopy(term_dict)
+      if split_rule_count > 1:
+        rule['description'] = rule['description'] + ' ['+ str(i+1) + '/' + str(split_rule_count) + ']'
+
+      rule['priority'] = priority_index + i
+      rule['match']['config']['srcIpRanges'] = [str(saddr) for saddr in chunk]
+      rules.append(rule)
+
+    # TODO(robankeny@): Review this log entry to make it cleaner/more useful.
+    # Right now, it prints the entire term which might be huge
+    if len(source_addr_chunks) > 1:
+      logging.debug('Current term [%s] was split into %d sub-terms since '
+                    '_MAX_IP_RANGES_PER_TERM was exceeded',
+                    str(term_dict), len(source_addr_chunks))
 
     return rules
 
+
 class CloudArmor(aclgenerator.ACLGenerator):
   """A CloudArmor policy object"""
+
   _PLATFORM = 'cloudarmor'
-  SUFFIX = '.ca'
+  SUFFIX = '.gca'
+
+  # Maximum number of rules that a CloudArmor policy can contain
+  _MAX_RULES_PER_POLICY = 200
+
+  # Warn user when rule count exceeds this number
+  _RULECOUNT_WARN_THRESHOLD = 190
 
   def _BuildTokens(self):
     """Build supported tokens for platform.
+
+    Returns:
+      tuple containing both supported tokens and sub tokens
     """
     supported_tokens, _ = super(CloudArmor, self)._BuildTokens()
+    supported_tokens -= {'destination_address',
+                         'destination_address_exclude',
+                         'destination_port',
+                         'expiration',
+                         'icmp_type',
+                         'stateless_reply',
+                         'option',
+                         'protocol',
+                         'platform',
+                         'platform_exclude',
+                         'source_address_exclude',
+                         'source_port',
+                         'verbatim'}
     supported_sub_tokens = {'action': {'accept', 'deny'}}
     return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):
+    """Translates a Capirca policy into a CloudArmor-specific data structure.
+
+    Takes in a POL file, parses each term and populates the cloudarmor_policies
+    list. Each term in this list is a dictionary formatted according to
+    CloudArmor's rule API specification.
+
+    Args:
+      pol: A Policy() object representing a given POL file.
+      exp_info: An int that specifies number of weeks till policy expiry.
+
+    Returns:
+      N.A.
+
+    Raises:
+      ExceededMaxTermsError: Raised when the number of terms in a policy exceed
+      _MAX_RULES_PER_POLICY.
+    """
     self.cloudarmor_policies = []
     current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
@@ -76,20 +165,34 @@ class CloudArmor(aclgenerator.ACLGenerator):
       if self._PLATFORM not in header.platforms:
         continue
 
-      term_counter = 1
+      counter = 1
+
       for term in terms:
 
-        self.cloudarmor_policies.append(Term(term, priority=term_counter))
-        term_counter = term_counter + 1
+        json_rule_list = Term(term).ConvertToDict(priority_index=counter)
+        # count number of rules generated after split (if any)
+        split_rule_count = len(json_rule_list)
+
+        self.cloudarmor_policies.extend(json_rule_list)
+
+        counter = counter + split_rule_count
+
+        total_rule_count = len(self.cloudarmor_policies)
+
+        if total_rule_count > self._RULECOUNT_WARN_THRESHOLD:
+
+          if total_rule_count > self._MAX_RULES_PER_POLICY:
+            raise ExceededMaxTermsError('Exceeded maximum number of rules in '
+                                        ' a single policy | MAX = %d'
+                                        % self._MAX_RULES_PER_POLICY)
+          else:
+            logging.warn('Current rule count (%d) is almost at maximum limit '
+                         ' of %d', total_rule_count, self._MAX_RULES_PER_POLICY)
 
   def __str__(self):
     """Return the JSON blob for CloudArmor."""
-    target = []
 
-    for term in self.cloudarmor_policies:
-      target.extend(term.ConvertToDict())
-    # Sort by priority of each individual term
-    target = sorted(target, key=lambda term: term['priority'])
     out = '%s\n\n' % (
-        json.dumps(target, indent=2, separators=(',', ': '), sort_keys=True))
+        json.dumps(self.cloudarmor_policies, indent=2, separators=(',', ': '),
+                   sort_keys=True))
     return out
