@@ -28,6 +28,10 @@ class ExceededMaxTermsError(Error):
   """Raised when the number of terms in a policy exceed _MAX_RULES_PER_POLICY"""
 
 
+class UnsupportedFilterTypeError(Error):
+  """Raised when an unsupported filter type (i.e address family) is specified"""
+
+
 class Term(aclgenerator.Term):
   """Generates the Term for CloudArmor"""
   # Max srcIpRanges within a single term
@@ -36,9 +40,10 @@ class Term(aclgenerator.Term):
   ACTION_MAP = {'accept': 'allow',
                 'deny': 'deny(404)'}
 
-  def __init__(self, term):
+  def __init__(self, term, address_family='inet'):
     super(Term, self).__init__(term)
     self.term = term
+    self.address_family = address_family
 
   def __str__(self):
     return ''
@@ -61,7 +66,8 @@ class Term(aclgenerator.Term):
       A list of dicts where each dict is a term
 
     Raises:
-      N.A.
+      UnsupportedFilterTypeError: Raised when an unsupported filter type is
+      specified
     """
     term_dict = {}
     rules = []
@@ -71,10 +77,17 @@ class Term(aclgenerator.Term):
     term_dict['match'] = {'versionedExpr': 'SRC_IPS_V1', 'config': {}}
     term_dict['preview'] = False
 
-    saddrs_ipv4 = self.term.GetAddressOfVersion('source_address', 4)
+    if self.address_family == 'inet':
+      saddrs = self.term.GetAddressOfVersion('source_address', 4)
+    elif self.address_family == 'inet6':
+      saddrs = self.term.GetAddressOfVersion('source_address', 6)
+    elif self.address_family == 'mixed':
+      saddrs = (self.term.GetAddressOfVersion('source_address', 4)
+                + self.term.GetAddressOfVersion('source_address', 6))
+    else:
+      raise UnsupportedFilterTypeError("'%s' is not a valid filter type" %
+                                       self.address_family)
 
-    # redundant assignment; will be used to make future CLs easy to review
-    saddrs = saddrs_ipv4
     term_dict['match']['config']['srcIpRanges'] = saddrs
 
     # If scrIpRanges within a single term exceed _MAX_IP_RANGES_PER_TERM,
@@ -109,12 +122,16 @@ class CloudArmor(aclgenerator.ACLGenerator):
 
   _PLATFORM = 'cloudarmor'
   SUFFIX = '.gca'
+  _SUPPORTED_AF = set(('inet', 'inet6', 'mixed'))
 
   # Maximum number of rules that a CloudArmor policy can contain
   _MAX_RULES_PER_POLICY = 200
 
   # Warn user when rule count exceeds this number
   _RULECOUNT_WARN_THRESHOLD = 190
+
+  # Maps indiviudal filter options to their index positions in the POL header
+  _FILTER_OPTIONS_MAP = {'filter_type': 0}
 
   def _BuildTokens(self):
     """Build supported tokens for platform.
@@ -156,6 +173,9 @@ class CloudArmor(aclgenerator.ACLGenerator):
     Raises:
       ExceededMaxTermsError: Raised when the number of terms in a policy exceed
       _MAX_RULES_PER_POLICY.
+
+      UnsupportedFilterTypeError: Raised when an unsupported filter type is
+      specified
     """
     self.cloudarmor_policies = []
     current_date = datetime.datetime.utcnow().date()
@@ -165,11 +185,23 @@ class CloudArmor(aclgenerator.ACLGenerator):
       if self._PLATFORM not in header.platforms:
         continue
 
+      filter_options = header.FilterOptions(self._PLATFORM)
+
+      if filter_options is None or not filter_options:
+        filter_type = 'inet'
+        logging.debug('No filter_type specified. Defaulting to inet (IPv4)')
+
+      else:
+        filter_type = filter_options[self._FILTER_OPTIONS_MAP['filter_type']]
+        if filter_type not in self._SUPPORTED_AF:
+          raise UnsupportedFilterTypeError("'%s' is not a valid filter type" %
+                                           filter_type)
+
       counter = 1
 
       for term in terms:
 
-        json_rule_list = Term(term).ConvertToDict(priority_index=counter)
+        json_rule_list = Term(term, address_family=filter_type).ConvertToDict(priority_index=counter)
         # count number of rules generated after split (if any)
         split_rule_count = len(json_rule_list)
 

@@ -6,8 +6,8 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import json
-import unittest
 import random
+import unittest
 
 
 from capirca.lib import cloudarmor
@@ -27,10 +27,39 @@ EXP_INFO = 2
 
 GOOD_HEADER = """
 header {
-  comment:: "Test ACL for CloudArmor"
-  target:: cloudarmor ca-test-filter inet
+  comment:: "Test ACL for CloudArmor (IPv4)"
+  target:: cloudarmor inet
 }
 """
+
+GOOD_HEADER_IPv6_ONLY = """
+header {
+  comment:: "Test ACL for CloudArmor (IPv6 only)"
+  target:: cloudarmor inet6
+}
+"""
+
+GOOD_HEADER_MIXED = """
+header {
+  comment:: "Test ACL for CloudArmor (IPv4 + IPv6)"
+  target:: cloudarmor mixed
+}
+"""
+
+GOOD_HEADER_NO_AF = """
+header {
+  comment:: "Test ACL for CloudArmor (Default AF = IPv4)"
+  target:: cloudarmor
+}
+"""
+
+BAD_HEADER_INVALID_AF = """
+header {
+  comment:: "Test ACL for CloudArmor (IPv4 + IPv6)"
+  target:: cloudarmor inet8
+}
+"""
+
 GOOD_TERM_ALLOW = """
 term good-term-allow {
   comment:: "Sample CloudArmor Allow Rule"
@@ -46,7 +75,7 @@ term good-term-deny {
 }
 """
 
-EXPECTED_NOSPLIT_JSON = """
+EXPECTED_IPv4_NOSPLIT_JSON = """
 [
   {
     "action": "allow",
@@ -79,7 +108,77 @@ EXPECTED_NOSPLIT_JSON = """
 ]
 """
 
-EXPECTED_SPLIT_JSON = """
+EXPECTED_IPv6_NOSPLIT_JSON = """
+[
+  {
+    "action": "allow",
+    "description": "Sample CloudArmor Allow Rule",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "2001:4860:8000::5/128"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 1
+  },
+  {
+    "action": "deny(404)",
+    "description": "Sample Deny Rule",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "2001:4860:8000::5/128"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 2
+  }
+]
+
+"""
+
+EXPECTED_MIXED_NOSPLIT_JSON = """
+[
+  {
+    "action": "allow",
+    "description": "Sample CloudArmor Allow Rule",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "10.2.3.4/32",
+          "2001:4860:8000::5/128"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 1
+  },
+  {
+    "action": "deny(404)",
+    "description": "Sample Deny Rule",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "10.2.3.4/32",
+          "2001:4860:8000::5/128"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 2
+  }
+]
+
+"""
+
+EXPECTED_IPv4_SPLIT_JSON = """
 [
   {
     "action": "allow",
@@ -151,6 +250,190 @@ EXPECTED_SPLIT_JSON = """
 
 """
 
+EXPECTED_IPv6_SPLIT_JSON = """
+[
+  {
+    "action": "allow",
+    "description": "Sample CloudArmor Allow Rule [1/2]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "2001:4860:8000::5/128",
+          "24da:3ed8:32a0::7/128",
+          "3051:abd2:5400::9/128",
+          "577e:5400:3051::6/128",
+          "6f5d:abd2:1403::1/128"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 1
+  },
+  {
+    "action": "allow",
+    "description": "Sample CloudArmor Allow Rule [2/2]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "aee2:37ba:3cc0::3/128",
+          "af22:32d2:3f00::2/128"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 2
+  },
+  {
+    "action": "deny(404)",
+    "description": "Sample Deny Rule [1/2]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "2001:4860:8000::5/128",
+          "24da:3ed8:32a0::7/128",
+          "3051:abd2:5400::9/128",
+          "577e:5400:3051::6/128",
+          "6f5d:abd2:1403::1/128"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 3
+  },
+  {
+    "action": "deny(404)",
+    "description": "Sample Deny Rule [2/2]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "aee2:37ba:3cc0::3/128",
+          "af22:32d2:3f00::2/128"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 4
+  }
+]
+
+"""
+
+EXPECTED_MIXED_SPLIT_JSON = """
+[
+  {
+    "action": "allow",
+    "description": "Sample CloudArmor Allow Rule [1/3]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "5.2.3.2/32",
+          "10.2.3.4/32",
+          "23.2.3.3/32",
+          "54.2.3.4/32",
+          "76.2.3.5/32"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 1
+  },
+  {
+    "action": "allow",
+    "description": "Sample CloudArmor Allow Rule [2/3]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "132.2.3.6/32",
+          "197.2.3.7/32",
+          "2001:4860:8000::5/128",
+          "24da:3ed8:32a0::7/128",
+          "3051:abd2:5400::9/128"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 2
+  },
+  {
+    "action": "allow",
+    "description": "Sample CloudArmor Allow Rule [3/3]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "577e:5400:3051::6/128",
+          "6f5d:abd2:1403::1/128",
+          "aee2:37ba:3cc0::3/128",
+          "af22:32d2:3f00::2/128"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 3
+  },
+  {
+    "action": "deny(404)",
+    "description": "Sample Deny Rule [1/3]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "5.2.3.2/32",
+          "10.2.3.4/32",
+          "23.2.3.3/32",
+          "54.2.3.4/32",
+          "76.2.3.5/32"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 4
+  },
+  {
+    "action": "deny(404)",
+    "description": "Sample Deny Rule [2/3]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "132.2.3.6/32",
+          "197.2.3.7/32",
+          "2001:4860:8000::5/128",
+          "24da:3ed8:32a0::7/128",
+          "3051:abd2:5400::9/128"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 5
+  },
+  {
+    "action": "deny(404)",
+    "description": "Sample Deny Rule [3/3]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "577e:5400:3051::6/128",
+          "6f5d:abd2:1403::1/128",
+          "aee2:37ba:3cc0::3/128",
+          "af22:32d2:3f00::2/128"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 6
+  }
+]
+
+"""
+
 TEST_IPS_NOSPLIT = [nacaddr.IP('10.2.3.4/32'),
                     nacaddr.IP('2001:4860:8000::5/128')]
 
@@ -161,7 +444,13 @@ TEST_IPS_SPLIT = [nacaddr.IP('10.2.3.4/32'),
                   nacaddr.IP('76.2.3.5/32'),
                   nacaddr.IP('132.2.3.6/32'),
                   nacaddr.IP('197.2.3.7/32'),
-                  nacaddr.IP('2001:4860:8000::5/128')]
+                  nacaddr.IP('2001:4860:8000::5/128'),
+                  nacaddr.IP('3051:abd2:5400::9/128'),
+                  nacaddr.IP('aee2:37ba:3cc0::3/128'),
+                  nacaddr.IP('6f5d:abd2:1403::1/128'),
+                  nacaddr.IP('577e:5400:3051::6/128'),
+                  nacaddr.IP('af22:32d2:3f00::2/128'),
+                  nacaddr.IP('24da:3ed8:32a0::7/128')]
 
 
 class CloudArmorTest(unittest.TestCase):
@@ -173,23 +462,74 @@ class CloudArmorTest(unittest.TestCase):
     return '\n'.join([line for line in str(acl).split('\n')
                       if not line.lstrip().startswith('#')])
 
-  def testGenericTerm(self):
+  def testGenericIPv4Term(self):
     self.naming.GetNetAddr.return_value = TEST_IPS_NOSPLIT
 
     acl = cloudarmor.CloudArmor(
         policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_ALLOW + GOOD_TERM_DENY, self.naming), EXP_INFO)
-    expected = json.loads(EXPECTED_NOSPLIT_JSON)
+    expected = json.loads(EXPECTED_IPv4_NOSPLIT_JSON)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
-    print(acl)
 
-  def testTermSplitting(self):
+  def testGenericIPv6Term(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS_NOSPLIT
+
+    acl = cloudarmor.CloudArmor(
+        policy.ParsePolicy(GOOD_HEADER_IPv6_ONLY + GOOD_TERM_ALLOW + GOOD_TERM_DENY, self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_IPv6_NOSPLIT_JSON)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testGenericMixedTerm(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS_NOSPLIT
+
+    acl = cloudarmor.CloudArmor(
+        policy.ParsePolicy(GOOD_HEADER_MIXED + GOOD_TERM_ALLOW + GOOD_TERM_DENY, self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_MIXED_NOSPLIT_JSON)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testDefaultAddressFamily(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS_NOSPLIT
+
+    acl = cloudarmor.CloudArmor(
+        policy.ParsePolicy(GOOD_HEADER_NO_AF + GOOD_TERM_ALLOW + GOOD_TERM_DENY, self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_IPv4_NOSPLIT_JSON)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testIPv4TermSplitting(self):
     self.naming.GetNetAddr.return_value = TEST_IPS_SPLIT
 
     acl = cloudarmor.CloudArmor(
         policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_ALLOW + GOOD_TERM_DENY, self.naming), EXP_INFO)
-    expected = json.loads(EXPECTED_SPLIT_JSON)
+    expected = json.loads(EXPECTED_IPv4_SPLIT_JSON)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
-    print(acl)
+
+  def testIPv6TermSplitting(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS_SPLIT
+
+    acl = cloudarmor.CloudArmor(
+        policy.ParsePolicy(GOOD_HEADER_IPv6_ONLY + GOOD_TERM_ALLOW + GOOD_TERM_DENY, self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_IPv6_SPLIT_JSON)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testMixedTermSplitting(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS_SPLIT
+
+    acl = cloudarmor.CloudArmor(
+        policy.ParsePolicy(GOOD_HEADER_MIXED + GOOD_TERM_ALLOW + GOOD_TERM_DENY, self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_MIXED_SPLIT_JSON)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testInvalidAddressFamilyCheck(self):
+
+    self.naming.GetNetAddr.return_value = TEST_IPS_NOSPLIT
+
+    self.assertRaisesRegexp(
+        cloudarmor.UnsupportedFilterTypeError,
+        "'inet8' is not a valid filter type",
+        cloudarmor.CloudArmor,
+        policy.ParsePolicy(
+            BAD_HEADER_INVALID_AF + GOOD_TERM_ALLOW, self.naming),
+        EXP_INFO)
+
 
   def testMaxRuleLimitEnforcement(self):
     TEST_1001_IPs_LIST = []
