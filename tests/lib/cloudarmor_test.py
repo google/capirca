@@ -75,6 +75,29 @@ term good-term-deny {
 }
 """
 
+GOOD_TERM_NO_COMMENT = """
+term good-term-nocomment {
+  source-address:: GOOGLE_PUBLIC_DNS_ANYCAST
+  action:: accept
+}
+"""
+
+GOOD_TERM_LARGE_COMMENT = """
+term good-term-allow {
+  comment:: "This is an unnecessarily long term comment that's going to be truncated"
+  source-address:: GOOGLE_PUBLIC_DNS_ANYCAST
+  action:: accept
+}
+"""
+
+BAD_TERM_NO_ACTION = """
+term bad-term-no-action {
+  comment:: "Sample rule with missing 'action' attribute"
+  source-address:: GOOGLE_PUBLIC_DNS_ANYCAST
+}
+"""
+
+
 EXPECTED_IPv4_NOSPLIT_JSON = """
 [
   {
@@ -434,6 +457,120 @@ EXPECTED_MIXED_SPLIT_JSON = """
 
 """
 
+EXPECTED_NOCOMMENT_SPLIT_JSON = """
+[
+  {
+    "action": "allow",
+    "description": " [1/2]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "5.2.3.2/32",
+          "10.2.3.4/32",
+          "23.2.3.3/32",
+          "54.2.3.4/32",
+          "76.2.3.5/32"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 1
+  },
+  {
+    "action": "allow",
+    "description": " [2/2]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "132.2.3.6/32",
+          "197.2.3.7/32"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 2
+  }
+]
+
+"""
+
+EXPECTED_NOCOMMENT_NOSPLIT_JSON = """
+[
+  {
+    "action": "allow",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "10.2.3.4/32"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 1
+  }
+]
+"""
+
+EXPECTED_LARGECOMMENT_NOSPLIT_JSON = """
+[
+  {
+    "action": "allow",
+    "description": "This is an unnecessarily long term comment that's going to be tr",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "10.2.3.4/32"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 1
+  }
+]
+"""
+
+EXPECTED_LARGECOMMENT_SPLIT_JSON = """
+[
+  {
+    "action": "allow",
+    "description": "This is an unnecessarily long term comment that's going to [1/2]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "5.2.3.2/32",
+          "10.2.3.4/32",
+          "23.2.3.3/32",
+          "54.2.3.4/32",
+          "76.2.3.5/32"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 1
+  },
+  {
+    "action": "allow",
+    "description": "This is an unnecessarily long term comment that's going to [2/2]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "132.2.3.6/32",
+          "197.2.3.7/32"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 2
+  }
+]
+"""
+
 TEST_IPS_NOSPLIT = [nacaddr.IP('10.2.3.4/32'),
                     nacaddr.IP('2001:4860:8000::5/128')]
 
@@ -550,6 +687,38 @@ class CloudArmorTest(unittest.TestCase):
         policy.ParsePolicy(
             GOOD_HEADER + GOOD_TERM_ALLOW, self.naming),
         EXP_INFO)
+
+  def testNoCommentWithSplit(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS_SPLIT
+
+    acl = cloudarmor.CloudArmor(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_NO_COMMENT, self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_NOCOMMENT_SPLIT_JSON)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testNoCommentWithoutSplit(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS_NOSPLIT
+
+    acl = cloudarmor.CloudArmor(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_NO_COMMENT, self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_NOCOMMENT_NOSPLIT_JSON)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testLargeCommentWithSplit(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS_SPLIT
+
+    acl = cloudarmor.CloudArmor(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_LARGE_COMMENT, self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_LARGECOMMENT_SPLIT_JSON)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testLargeCommentWithoutSplit(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS_NOSPLIT
+
+    acl = cloudarmor.CloudArmor(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_LARGE_COMMENT, self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_LARGECOMMENT_NOSPLIT_JSON)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
 if __name__ == '__main__':
   unittest.main()

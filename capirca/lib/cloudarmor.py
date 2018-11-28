@@ -25,20 +25,22 @@ class Error(Exception):
 
 
 class ExceededMaxTermsError(Error):
-  """Raised when the number of terms in a policy exceed _MAX_RULES_PER_POLICY"""
+  """Raised when number of terms in a policy exceed _MAX_RULES_PER_POLICY."""
 
 
 class UnsupportedFilterTypeError(Error):
-  """Raised when an unsupported filter type (i.e address family) is specified"""
+  """Raised when unsupported filter type (i.e address family) is specified."""
 
 
 class Term(aclgenerator.Term):
-  """Generates the Term for CloudArmor"""
+  """Generates the Term for CloudArmor."""
   # Max srcIpRanges within a single term
   _MAX_IP_RANGES_PER_TERM = 5
 
   ACTION_MAP = {'accept': 'allow',
                 'deny': 'deny(404)'}
+
+  _MAX_TERM_COMMENT_LENGTH = 64
 
   def __init__(self, term, address_family='inet'):
     super(Term, self).__init__(term)
@@ -72,7 +74,15 @@ class Term(aclgenerator.Term):
     term_dict = {}
     rules = []
 
-    term_dict['description'] = ' '.join(self.term.comment)
+    if self.term.comment:
+      raw_comment = ' '.join(self.term.comment)
+      if len(raw_comment) > self._MAX_TERM_COMMENT_LENGTH:
+        term_dict['description'] = raw_comment[:self._MAX_TERM_COMMENT_LENGTH]
+        logging.warn('Term comment exceeds maximum length = %d; Truncating '
+                     'comment..', self._MAX_TERM_COMMENT_LENGTH)
+      else:
+        term_dict['description'] = raw_comment
+
     term_dict['action'] = self.ACTION_MAP[self.term.action[0]]
     term_dict['match'] = {'versionedExpr': 'SRC_IPS_V1', 'config': {}}
     term_dict['preview'] = False
@@ -101,7 +111,10 @@ class Term(aclgenerator.Term):
     for i, chunk in enumerate(source_addr_chunks):
       rule = copy.deepcopy(term_dict)
       if split_rule_count > 1:
-        rule['description'] = rule['description'] + ' ['+ str(i+1) + '/' + str(split_rule_count) + ']'
+        term_position_suffix = ' [%d/%d]' % (i+1, split_rule_count)
+        desc_limit = self._MAX_TERM_COMMENT_LENGTH - len(term_position_suffix)
+        rule['description'] = (rule.get('description', '')[:desc_limit]
+                               + term_position_suffix)
 
       rule['priority'] = priority_index + i
       rule['match']['config']['srcIpRanges'] = [str(saddr) for saddr in chunk]
@@ -118,7 +131,7 @@ class Term(aclgenerator.Term):
 
 
 class CloudArmor(aclgenerator.ACLGenerator):
-  """A CloudArmor policy object"""
+  """A CloudArmor policy object."""
 
   _PLATFORM = 'cloudarmor'
   SUFFIX = '.gca'
@@ -201,7 +214,9 @@ class CloudArmor(aclgenerator.ACLGenerator):
 
       for term in terms:
 
-        json_rule_list = Term(term, address_family=filter_type).ConvertToDict(priority_index=counter)
+        json_rule_list = Term(term,
+                              address_family=filter_type).ConvertToDict(
+                                  priority_index=counter)
         # count number of rules generated after split (if any)
         split_rule_count = len(json_rule_list)
 
