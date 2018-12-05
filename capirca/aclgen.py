@@ -449,9 +449,9 @@ def _WriteFile(output_file, file_string):
 
 def main(unused_argv):
   if FLAGS.verbose:
-    logging.basicConfig(level=logging.INFO)
+    logging.set_verbosity(logging.INFO)
   if FLAGS.debug:
-    logging.basicConfig(level=logging.DEBUG)
+    logging.set_verbosity(logging.DEBUG)
   logging.debug('binary: %s\noptimize: %d\nbase_directory: %s\n'
                 'policy_file: %s\nrendered_acl_directory: %s',
                 str(sys.argv[0]),
