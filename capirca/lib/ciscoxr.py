@@ -50,9 +50,9 @@ class CiscoXR(cisco.Cisco):
       target.append('ipv4 access-list %s' % filter_name)
     return target
 
-  def _GetObjectGroupTerm(self, term, filter_name):
+  def _GetObjectGroupTerm(self, term, filter_name, verbose=True):
     """Returns an ObjectGroupTerm object."""
-    return CiscoXRObjectGroupTerm(term, filter_name)
+    return CiscoXRObjectGroupTerm(term, filter_name, verbose=verbose)
 
 
 class CiscoXRObjectGroupTerm(cisco.ObjectGroupTerm):
