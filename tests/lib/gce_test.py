@@ -220,6 +220,18 @@ term good-term-expired {
 }
 """
 
+GOOD_TERM_LOGGING = """
+term good-term-logging {
+  comment:: "DNS access from corp."
+  source-address:: CORP_EXTERNAL
+  destination-tag:: dns-servers
+  destination-port:: DNS
+  protocol:: udp tcp
+  action:: accept
+  logging:: true
+}
+"""
+
 BAD_TERM_NO_SOURCE = """
 term bad-term-no-source {
   comment:: "Management access from corp."
@@ -465,6 +477,17 @@ class GCETest(unittest.TestCase):
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_3, self.naming), EXP_INFO)
     self.failUnless('"priority": "1",' in str(acl), str(acl))
+
+  def testTermWithLogging(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_LOGGING, self.naming),
+        EXP_INFO)
+    rendered_acl = json.loads(str(acl))[0]
+    self.assertIn('logConfig', rendered_acl)
+    self.assertEqual(rendered_acl['logConfig'], {'enable': True})
 
   def testGenericTermWithoutNetwork(self):
     self.naming.GetNetAddr.return_value = TEST_IPS

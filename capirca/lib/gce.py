@@ -196,6 +196,9 @@ class Term(aclgenerator.Term):
 
     proto_dict = copy.deepcopy(term_dict)
 
+    if self.term.logging:
+      proto_dict['logConfig'] = {'enable': True}
+
     for proto in self.term.protocol:
       dest = {
           'IPProtocol': proto
