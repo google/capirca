@@ -220,17 +220,6 @@ term good-term-expired {
 }
 """
 
-BAD_TERM_UNSUPPORTED_ACTION = """
-term bad-term-unsupported-action {
-  comment:: "Management access from corp."
-  source-address:: CORP_EXTERNAL
-  destination-tag:: ssh-servers
-  destination-port:: SSH
-  protocol:: tcp
-  action:: deny
-}
-"""
-
 BAD_TERM_NO_SOURCE = """
 term bad-term-no-source {
   comment:: "Management access from corp."
@@ -363,6 +352,13 @@ GOOD_TERM_EXCLUDE_RANGE = """
     "network": "global/networks/default"
   }
 ]
+"""
+
+DEFAULT_DENY = """
+term default-deny {
+  comment:: "default_deny."
+  action:: deny
+}
 """
 
 GOOD_TERM_DENY = """
@@ -804,6 +800,21 @@ class GCETest(unittest.TestCase):
         policy.ParsePolicy(
             GOOD_HEADER_EGRESS + GOOD_TERM, self.naming),
         EXP_INFO)
+
+  def testDefaultDenyEgressCreation(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(GOOD_HEADER_EGRESS + GOOD_TERM_EGRESS +
+                                     DEFAULT_DENY, self.naming), EXP_INFO)
+    self.assertIn('"priority": 65534', str(acl))
+
+  def testDefaultDenyIngressCreation(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(GOOD_HEADER_INGRESS +
+                                     GOOD_TERM_INGRESS_SOURCETAG +
+                                     DEFAULT_DENY, self.naming), EXP_INFO)
+    self.assertIn('"priority": 65534', str(acl))
 
 if __name__ == '__main__':
   unittest.main()
