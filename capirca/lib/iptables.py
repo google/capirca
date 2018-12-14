@@ -641,6 +641,7 @@ class Iptables(aclgenerator.ACLGenerator):
   _TERM = Term
   _TERM_MAX_LENGTH = 24
   _GOOD_FILTERS = ['INPUT', 'OUTPUT', 'FORWARD']
+  _GOOD_OPTIONS = ['nostate', 'abbreviateterms', 'truncateterms', 'noverbose']
 
   def _BuildTokens(self):
     """Build supported tokens for platform.
@@ -698,7 +699,6 @@ class Iptables(aclgenerator.ACLGenerator):
     default_action = None
     good_default_actions = ['ACCEPT', 'DROP']
     good_afs = ['inet', 'inet6']
-    good_options = ['nostate', 'abbreviateterms', 'truncateterms', 'noverbose']
     all_protocols_stateful = True
     self.verbose = True
 
@@ -707,32 +707,32 @@ class Iptables(aclgenerator.ACLGenerator):
       if self._PLATFORM not in header.platforms:
         continue
 
-      filter_options = header.FilterOptions(self._PLATFORM)[1:]
+      self.filter_options = header.FilterOptions(self._PLATFORM)[1:]
       filter_name = header.FilterName(self._PLATFORM)
 
       self._WarnIfCustomTarget(filter_name)
 
       # ensure all options after the filter name are expected
-      for opt in filter_options:
-        if opt not in good_default_actions + good_afs + good_options:
+      for opt in self.filter_options:
+        if opt not in good_default_actions + good_afs + self._GOOD_OPTIONS:
           raise UnsupportedTargetOption('%s %s %s %s' % (
               '\nUnsupported option found in', self._PLATFORM,
               'target definition:', opt))
 
       # disable stateful?
-      if 'nostate' in filter_options:
+      if 'nostate' in self.filter_options:
         all_protocols_stateful = False
-      if 'noverbose' in filter_options:
+      if 'noverbose' in self.filter_options:
         self.verbose = False
 
       # Check for matching af
       for address_family in good_afs:
-        if address_family in filter_options:
+        if address_family in self.filter_options:
           # should not specify more than one AF in options
           if filter_type is not None:
             raise UnsupportedFilterError('%s %s %s %s' % (
                 '\nMay only specify one of', good_afs, 'in filter options:',
-                filter_options))
+                self.filter_options))
           filter_type = address_family
       if filter_type is None:
         filter_type = 'inet'
@@ -757,8 +757,8 @@ class Iptables(aclgenerator.ACLGenerator):
       term_names = set()
       for term in terms:
         term.name = self.FixTermLength(term.name,
-                                       'abbreviateterms' in filter_options,
-                                       'truncateterms' in filter_options)
+                                       'abbreviateterms' in self.filter_options,
+                                       'truncateterms' in self.filter_options)
         if term.name in term_names:
           raise aclgenerator.DuplicateTermError(
               'You have a duplicate term: %s' % term.name)

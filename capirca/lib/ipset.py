@@ -26,6 +26,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import string
+import logging
 
 from capirca.lib import iptables
 from capirca.lib import nacaddr
@@ -181,6 +182,8 @@ class Ipset(iptables.Iptables):
   _TERM = Term
   _MARKER_BEGIN = '# begin:ipset-rules'
   _MARKER_END = '# end:ipset-rules'
+  _GOOD_OPTIONS = ['nostate', 'abbreviateterms', 'truncateterms', 'noverbose',
+                   'exists']
 
   # TODO(vklimovs): some not trivial processing is happening inside this
   # __str__, replace with explicit method
@@ -208,16 +211,22 @@ class Ipset(iptables.Iptables):
 
     """
     output = []
+    c_str = 'create'
+    a_str = 'add'
+    if 'exists' in self.filter_options:
+      c_str = c_str + ' -exist'
+      a_str = a_str + ' -exist'
     for direction in sorted(term.addr_sets, reverse=True):
       set_name, addr_list = term.addr_sets[direction]
       set_hashsize = 1 << len(addr_list).bit_length()
       set_maxelem = set_hashsize
-      output.append('create %s %s family %s hashsize %i maxelem %i' %
-                    (set_name,
+      output.append('%s %s %s family %s hashsize %i maxelem %i' %
+                    (c_str,
+                     set_name,
                      self._SET_TYPE,
                      term.af,
                      set_hashsize,
                      set_maxelem))
       for address in addr_list:
-        output.append('add %s %s' % (set_name, address))
+        output.append('%s %s %s' % (a_str, set_name, address))
     return output
