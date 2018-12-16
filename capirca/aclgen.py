@@ -58,7 +58,8 @@ flags.DEFINE_string(
     'base_directory',
     './policies',
     'The base directory to look for acls; '
-    'typically where you\'d find ./corp and ./prod')
+    'typically where you\'d find ./corp and ./prod.'
+    'Each one including a /pol folder where policies will be discovered')
 flags.DEFINE_string(
     'definitions_directory',
     './def',
