@@ -124,6 +124,13 @@ header {
 }
 """
 
+GOOD_HEADER_NOVERBOSE = """
+header {
+  comment:: "This is a test acl with a comment"
+  target:: srx from-zone trust to-zone untrust noverbose
+}
+"""
+
 BAD_HEADER = """
 header {
   target:: srx something
@@ -1185,6 +1192,15 @@ class JuniperSRXTest(unittest.TestCase):
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.assertNotIn('udp-established-term', output)
     self.assertNotIn('tcp-established-term', output)
+
+  def testNoVerbose(self):
+    self.naming.GetNetAddr.return_value = _IPSET
+    self.naming.GetServiceByProto.return_value = ['25']
+    pol = policy.ParsePolicy(GOOD_HEADER_NOVERBOSE + GOOD_TERM_1, self.naming)
+    srx = junipersrx.JuniperSRX(pol, EXP_INFO)
+    self.assertNotIn('This is a test acl with a comment', str(srx))
+    self.assertNotIn('very very very', str(srx))
+
 
 if __name__ == '__main__':
   unittest.main()

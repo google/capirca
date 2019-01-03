@@ -100,11 +100,12 @@ class Term(aclgenerator.Term):
              'expresspath': 'services-offload',
              'dscp': 'dscp'}
 
-  def __init__(self, term, from_zone, to_zone, expresspath=False):
+  def __init__(self, term, from_zone, to_zone, expresspath=False, verbose=True):
     super(Term, self).__init__(term)
     self.term = term
     self.from_zone = from_zone
     self.to_zone = to_zone
+    self.verbose = verbose
     if expresspath:
       self.term.action = [
           a.replace('accept', 'expresspath') for a in self.term.action]
@@ -123,10 +124,10 @@ class Term(aclgenerator.Term):
 
     # COMMENTS
     comment_max_width = 68
-    if self.term.owner:
+    if self.term.owner and self.verbose:
       self.term.comment.append('Owner: %s' % self.term.owner)
     comments = aclgenerator.WrapWords(self.term.comment, comment_max_width)
-    if comments and comments[0]:
+    if comments and comments[0] and self.verbose:
       ret_str.IndentAppend(3, '/*')
       for line in comments:
         ret_str.IndentAppend(3, line)
@@ -272,8 +273,9 @@ class JuniperSRX(aclgenerator.ACLGenerator):
   _GLOBAL_ADDR_BOOK = 'address-book-global'
   _ADDRESSBOOK_TYPES = set((_ZONE_ADDR_BOOK, _GLOBAL_ADDR_BOOK))
   _EXPRESSPATH = 'expresspath'
+  _NOVERBOSE = 'noverbose'
   _SUPPORTED_TARGET_OPTIONS = set((_ZONE_ADDR_BOOK, _GLOBAL_ADDR_BOOK,
-                                   _EXPRESSPATH))
+                                   _EXPRESSPATH, _NOVERBOSE))
 
   _AF_MAP = {'inet': (4,),
              'inet6': (6,),
@@ -347,6 +349,10 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         continue
 
       filter_options = header.FilterOptions(self._PLATFORM)
+
+      verbose = True
+      if self._NOVERBOSE in filter_options[4:]:
+        verbose = False
 
       # TODO(robankeny): Clean up option section.
       if (len(filter_options) < 4 or filter_options[0] != 'from-zone' or
@@ -497,7 +503,8 @@ class JuniperSRX(aclgenerator.ACLGenerator):
           if addr.version in self._AF_MAP[filter_type]:
             self._BuildAddressBook(self.to_zone, addr)
 
-        new_term = Term(term, self.from_zone, self.to_zone, self.expresspath)
+        new_term = Term(term, self.from_zone, self.to_zone, self.expresspath,
+                        verbose)
         new_terms.append(new_term)
 
         # Because SRX terms can contain inet and inet6 addresses. We have to
@@ -818,11 +825,12 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     target.IndentAppend(1, 'replace: policies {')
 
     for (header, terms, filter_options) in self.srx_policies:
-      target.IndentAppend(2, '/*')
-      target.extend([self.INDENT * 2 + line for line in
-                     aclgenerator.WrapWords(header.comment,
-                                            self._MAX_HEADER_COMMENT_LENGTH)])
-      target.IndentAppend(2, '*/')
+      if self._NOVERBOSE not in filter_options[4:]:
+        target.IndentAppend(2, '/*')
+        target.extend([self.INDENT * 2 + line for line in
+                       aclgenerator.WrapWords(header.comment,
+                                              self._MAX_HEADER_COMMENT_LENGTH)])
+        target.IndentAppend(2, '*/')
 
       # ZONE DIRECTION
       if filter_options[1] == 'all' and filter_options[3] == 'all':
