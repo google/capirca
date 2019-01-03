@@ -39,6 +39,13 @@ header {
 }
 """
 
+GOOD_HEADER_NOVERBOSE = """
+header {
+  comment:: "Test ACL for CloudArmor (IPv4)"
+  target:: cloudarmor inet noverbose
+}
+"""
+
 GOOD_HEADER_MIXED = """
 header {
   comment:: "Test ACL for CloudArmor (IPv4 + IPv6)"
@@ -719,6 +726,14 @@ class CloudArmorTest(unittest.TestCase):
         policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_LARGE_COMMENT, self.naming), EXP_INFO)
     expected = json.loads(EXPECTED_LARGECOMMENT_NOSPLIT_JSON)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testNoVerbose(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS_NOSPLIT
+
+    acl = cloudarmor.CloudArmor(
+        policy.ParsePolicy(GOOD_HEADER_NOVERBOSE + GOOD_TERM_LARGE_COMMENT,
+                           self.naming), EXP_INFO)
+    self.assertNotIn('description', str(acl))
 
 if __name__ == '__main__':
   unittest.main()

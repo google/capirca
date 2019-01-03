@@ -42,10 +42,11 @@ class Term(aclgenerator.Term):
 
   _MAX_TERM_COMMENT_LENGTH = 64
 
-  def __init__(self, term, address_family='inet'):
+  def __init__(self, term, address_family='inet', verbose=True):
     super(Term, self).__init__(term)
     self.term = term
     self.address_family = address_family
+    self.verbose = verbose
 
   def __str__(self):
     return ''
@@ -74,7 +75,7 @@ class Term(aclgenerator.Term):
     term_dict = {}
     rules = []
 
-    if self.term.comment:
+    if self.term.comment and self.verbose:
       raw_comment = ' '.join(self.term.comment)
       if len(raw_comment) > self._MAX_TERM_COMMENT_LENGTH:
         term_dict['description'] = raw_comment[:self._MAX_TERM_COMMENT_LENGTH]
@@ -197,8 +198,11 @@ class CloudArmor(aclgenerator.ACLGenerator):
     for header, terms in pol.filters:
       if self._PLATFORM not in header.platforms:
         continue
-
       filter_options = header.FilterOptions(self._PLATFORM)
+      verbose = True
+      if 'noverbose' in filter_options:
+        filter_options.remove('noverbose')
+        verbose = False
 
       if filter_options is None or not filter_options:
         filter_type = 'inet'
@@ -215,7 +219,8 @@ class CloudArmor(aclgenerator.ACLGenerator):
       for term in terms:
 
         json_rule_list = Term(term,
-                              address_family=filter_type).ConvertToDict(
+                              address_family=filter_type,
+                              verbose=verbose).ConvertToDict(
                                   priority_index=counter)
         # count number of rules generated after split (if any)
         split_rule_count = len(json_rule_list)

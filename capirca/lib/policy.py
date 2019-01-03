@@ -1629,10 +1629,7 @@ class Target(object):
 
   def __init__(self, target):
     self.platform = target[0]
-    if len(target) > 1:
-      self.options = target[1:]
-    else:
-      self.options = None
+    self.options = target[1:]
 
   def __str__(self):
     return self.platform
