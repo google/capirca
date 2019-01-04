@@ -1417,6 +1417,94 @@ class PolicyTest(unittest.TestCase):
     term_two = policy.Term([policy.VarType(7, (23, 23))])
     self.assertNotIn(term_one, term_two)
 
+
+  def testSourcePrefixContains(self):
+    term_one = policy.Term([policy.VarType(19, "foo")])
+    self.assertIn(term_one, term_one)
+
+  def testSourcePrefixNotInSourcePrefix(self):
+    term_one = policy.Term([policy.VarType(19, "foo")])
+    term_two = policy.Term([policy.VarType(19, "bar")])
+    self.assertNotIn(term_one, term_two)
+
+  def testDestinationPrefixContains(self):
+    term_one = policy.Term([policy.VarType(20, "foo")])
+    term_two = policy.Term([policy.VarType(20, "bar")])
+    self.assertIn(term_one, term_one)
+
+  def testDestinationPrefixNotInDestinationPrefix(self):
+    term_one = policy.Term([policy.VarType(20, "foo")])
+    term_two = policy.Term([policy.VarType(20, "bar")])
+    self.assertNotIn(term_one, term_two)
+
+
+  def testSourcePrefixExceptContains(self):
+    term_one = policy.Term([policy.VarType(50, "foo")])
+    self.assertIn(term_one, term_one)
+
+  def testSourcePrefixExceptNotInSourcePrefixExcept(self):
+    term_one = policy.Term([policy.VarType(50, "foo")])
+    term_two = policy.Term([policy.VarType(50, "bar")])
+    self.assertNotIn(term_one, term_two)
+
+  def testDestinationPrefixExceptContains(self):
+    term_one = policy.Term([policy.VarType(51, "foo")])
+    term_two = policy.Term([policy.VarType(51, "bar")])
+    self.assertIn(term_one, term_one)
+
+  def testDestinationPrefixExceptNotInDestinationPrefixExcept(self):
+    term_one = policy.Term([policy.VarType(51, "foo")])
+    term_two = policy.Term([policy.VarType(51, "bar")])
+    self.assertNotIn(term_one, term_two)
+
+  def testSourceTagContains(self):
+    term_one = policy.Term([policy.VarType(44, "foo")])
+    self.assertIn(term_one, term_one)
+
+  def testSourceTagNotInSourceTag(self):
+    term_one = policy.Term([policy.VarType(44, "foo")])
+    term_two = policy.Term([policy.VarType(44, "bar")])
+    self.assertNotIn(term_one, term_two)
+
+  def testForwardingClassContains(self):
+    term_one = policy.Term([policy.VarType(43, "foo")])
+    term_two = policy.Term([policy.VarType(43, "bar"), policy.VarType(43, "foo")])
+    self.assertIn(term_one, term_one)
+    self.assertIn(term_one, term_two)
+
+  def testForwardingClassNotIn(self):
+    term_one = policy.Term([policy.VarType(43, "foo")])
+    term_two = policy.Term([policy.VarType(43, "bar")])
+    term_three = policy.Term([])
+    self.assertNotIn(term_one, term_two)
+    self.assertNotIn(term_three, term_one)
+
+  def testForwardingClassExceptContains(self):
+    term_one = policy.Term([policy.VarType(52, "foo")])
+    self.assertIn(term_one, term_one)
+
+  def testForwardingClassExceptNotIn(self):
+    term_one = policy.Term([policy.VarType(52, "foo")])
+    term_two = policy.Term([policy.VarType(52, "bar")])
+    term_three = policy.Term([])
+    self.assertNotIn(term_one, term_two)
+    self.assertNotIn(term_three, term_one)
+
+  @mock.patch.object(policy, 'DEFINITIONS')
+  def testNextIPContained(self, mock_naming):
+    mock_naming.GetNetAddr.side_effect = [
+        [nacaddr.IPv4('192.168.1.1/32')]]
+    term_one = policy.Term([policy.VarType(46, "FOO")])
+    self.assertIn(term_one, term_one)
+
+  @mock.patch.object(policy, 'DEFINITIONS')
+  def testNextIPNotIn(self, mock_naming):
+    mock_naming.GetNetAddr.side_effect = [
+        [nacaddr.IPv4('192.168.1.1/32')]]
+    term_one = policy.Term([policy.VarType(46, "FOO")])
+    term_two = policy.Term([])
+    self.assertNotIn(term_two, term_one)
+
   def testPortContains(self):
     # Test "contains" against port field and that it matches
     # source/destination/port fields.
@@ -1432,6 +1520,23 @@ class PolicyTest(unittest.TestCase):
     self.assertNotIn(alt_port_term, port_term)
     self.assertNotIn(sport_term, port_term)
     self.assertNotIn(dport_term, port_term)
+
+  def testFragmentOffset(self):
+    fo_term = policy.Term([])
+    fo_term.AddObject(policy.VarType(17, "80"))
+    fo_range_term = policy.Term([])
+    fo_range_term.AddObject(policy.VarType(17, "60-90"))
+    fo_smaller_range_term = policy.Term([])
+    fo_smaller_range_term.AddObject(policy.VarType(17, "65-82"))
+    term = policy.Term([])
+
+
+    self.assertIn(fo_term, fo_term)
+    self.assertIn(fo_term, fo_range_term)
+    self.assertNotIn(fo_range_term, fo_term)
+    self.assertIn(fo_smaller_range_term, fo_range_term)
+    self.assertNotIn(fo_range_term, fo_smaller_range_term)
+    self.assertNotIn(term, fo_term)
 
 
 if __name__ == '__main__':

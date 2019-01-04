@@ -146,6 +146,7 @@ SUPPORTED_SUB_TOKENS = {
     },
     'option': {'established',
                'first-fragment',
+               'is-fragment',
                '.*',  # not actually a lex token!
                'sample',
                'tcp-established',

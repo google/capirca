@@ -66,6 +66,8 @@ class JuniperNextIpError(Error):
 class JuniperMultipleTerminatingActionError(Error):
   pass
 
+class JuniperFragmentInV6Error(Error):
+  pass
 
 class Config(object):
   """Config allows a configuration to be assembled easily.
@@ -834,6 +836,7 @@ class Juniper(aclgenerator.ACLGenerator):
         'option': {
             'established',
             'first-fragment',
+            'is-fragment',
             # TODO(sneakywombat): add all options to lex.
             '.*',  # make ArbitraryOptions work, yolo.
             'sample',
@@ -891,6 +894,9 @@ class Juniper(aclgenerator.ACLGenerator):
             logging.warn('WARNING: Term %s in policy %s is expired and '
                          'will not be rendered.', term.name, filter_name)
             continue
+        if 'is-fragment' in term.option and filter_type == 'inet6':
+          raise JuniperFragmentInV6Error('The term %s uses "is-fragment" but '
+                                         'is a v6 policy.' % term.name)
 
         new_terms.append(self._TERM(term, filter_type, enable_dsmo, noverbose))
 

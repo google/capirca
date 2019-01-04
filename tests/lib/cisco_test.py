@@ -86,6 +86,31 @@ header {
   target:: cisco 150 extended
 }
 """
+GOOD_NOVERBOSE_HEADER = """
+header {
+  comment:: "should not see me"
+  target:: cisco test-filter noverbose
+}
+"""
+
+GOOD_NOVERBOSE_STANDARD_HEADER = """
+header {
+  comment:: "should not see me"
+  target:: cisco 99 standard noverbose
+}
+"""
+GOOD_NOVERBOSE_OBJGRP_HEADER = """
+header {
+  comment:: "should not see me"
+  target:: cisco objgroupheader object-group noverbose
+}
+"""
+GOOD_NOVERBOSE_INET6_HEADER = """
+header {
+  comment:: "should not see me"
+  target:: cisco inet6_acl inet6 noverbose
+}
+"""
 BAD_STANDARD_HEADER_1 = """
 header {
   comment:: "this is a standard acl"
@@ -793,6 +818,14 @@ class CiscoTest(unittest.TestCase):
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
                                              mock.call('SOME_HOST')])
+
+  def testNoVerbose(self):
+    for i in [GOOD_NOVERBOSE_HEADER, GOOD_NOVERBOSE_STANDARD_HEADER,
+              GOOD_NOVERBOSE_OBJGRP_HEADER, GOOD_NOVERBOSE_INET6_HEADER]:
+      self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/24')]
+      acl = cisco.Cisco(policy.ParsePolicy(i+GOOD_STANDARD_TERM_1, self.naming),
+                        EXP_INFO)
+      self.failUnless('remark' not in str(acl), str(acl))
 
 if __name__ == '__main__':
   unittest.main()

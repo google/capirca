@@ -32,6 +32,7 @@ import logging
 import re
 
 from capirca.lib import aclgenerator
+from capirca.lib import nacaddr
 import ipaddress
 from six.moves import range
 
@@ -42,6 +43,28 @@ class Error(Exception):
 
 class GceFirewallError(Error):
   """Raised with problems in formatting for GCE firewall."""
+
+
+def IsDefaultDeny(term):
+  """Returns true if a term is a default deny without IPs, ports, etc."""
+  skip_attrs = ['flattened', 'flattened_addr', 'flattened_saddr',
+                'flattened_daddr', 'action', 'comment']
+  if 'deny' not in term.action:
+    return False
+  # This lc will look through all methods and attributes of the object.
+  # It returns only the attributes that need to be looked at to determine if
+  # this is a default deny.
+  for i in [a for a in dir(term) if not a.startswith('__') and a.islower() and
+            not callable(getattr(term, a))]:
+    if i in skip_attrs:
+      continue
+    v = getattr(term, i)
+    if isinstance(v, str) and v:
+      return False
+    if isinstance(v, list) and v:
+      return False
+
+  return True
 
 
 class Term(aclgenerator.Term):
@@ -62,7 +85,9 @@ class Term(aclgenerator.Term):
   # Protocols allowed by name from:
   # https://cloud.google.com/vpc/docs/firewalls#protocols_and_ports
   _ALLOW_PROTO_NAME = frozenset(
-      ['tcp', 'udp', 'icmp', 'esp', 'ah', 'ipip', 'sctp'])
+      ['tcp', 'udp', 'icmp', 'esp', 'ah', 'ipip', 'sctp',
+       'all'  # Needed for default deny, do not use in policy file.
+      ])
 
   # Any protocol not in _ALLOW_PROTO_NAME must be passed by number.
   ALWAYS_PROTO_NUM = set(aclgenerator.Term.PROTO_MAP.keys()) - _ALLOW_PROTO_NAME
@@ -170,6 +195,9 @@ class Term(aclgenerator.Term):
           'GCE firewall rule contains no protocol, it must be specified.')
 
     proto_dict = copy.deepcopy(term_dict)
+
+    if self.term.logging:
+      proto_dict['logConfig'] = {'enable': True}
 
     for proto in self.term.protocol:
       dest = {
@@ -287,6 +315,16 @@ class GCE(aclgenerator.ACLGenerator):
         logging.warn('GCE filter does not specify a network.')
 
       term_names = set()
+      if IsDefaultDeny(terms[-1]):
+        terms[-1].protocol = ['all']
+        terms[-1].priority = 65534
+        if direction == 'EGRESS':
+          terms[-1].destination_address = [nacaddr.IP('0.0.0.0/0'),
+                                           nacaddr.IP('::/0')]
+        else:
+          terms[-1].source_address = [nacaddr.IP('0.0.0.0/0'),
+                                       nacaddr.IP('::/0')]
+
       for term in terms:
         if term.stateless_reply:
           logging.warn('WARNING: Term %s in policy %s is a stateless reply '

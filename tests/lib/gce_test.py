@@ -220,14 +220,15 @@ term good-term-expired {
 }
 """
 
-BAD_TERM_UNSUPPORTED_ACTION = """
-term bad-term-unsupported-action {
-  comment:: "Management access from corp."
+GOOD_TERM_LOGGING = """
+term good-term-logging {
+  comment:: "DNS access from corp."
   source-address:: CORP_EXTERNAL
-  destination-tag:: ssh-servers
-  destination-port:: SSH
-  protocol:: tcp
-  action:: deny
+  destination-tag:: dns-servers
+  destination-port:: DNS
+  protocol:: udp tcp
+  action:: accept
+  logging:: true
 }
 """
 
@@ -365,6 +366,13 @@ GOOD_TERM_EXCLUDE_RANGE = """
 ]
 """
 
+DEFAULT_DENY = """
+term default-deny {
+  comment:: "default_deny."
+  action:: deny
+}
+"""
+
 GOOD_TERM_DENY = """
 term good-term-1 {
   comment:: "DNS access from corp."
@@ -469,6 +477,17 @@ class GCETest(unittest.TestCase):
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_3, self.naming), EXP_INFO)
     self.failUnless('"priority": "1",' in str(acl), str(acl))
+
+  def testTermWithLogging(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_LOGGING, self.naming),
+        EXP_INFO)
+    rendered_acl = json.loads(str(acl))[0]
+    self.assertIn('logConfig', rendered_acl)
+    self.assertEqual(rendered_acl['logConfig'], {'enable': True})
 
   def testGenericTermWithoutNetwork(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
@@ -804,6 +823,21 @@ class GCETest(unittest.TestCase):
         policy.ParsePolicy(
             GOOD_HEADER_EGRESS + GOOD_TERM, self.naming),
         EXP_INFO)
+
+  def testDefaultDenyEgressCreation(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(GOOD_HEADER_EGRESS + GOOD_TERM_EGRESS +
+                                     DEFAULT_DENY, self.naming), EXP_INFO)
+    self.assertIn('"priority": 65534', str(acl))
+
+  def testDefaultDenyIngressCreation(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(GOOD_HEADER_INGRESS +
+                                     GOOD_TERM_INGRESS_SOURCETAG +
+                                     DEFAULT_DENY, self.naming), EXP_INFO)
+    self.assertIn('"priority": 65534', str(acl))
 
 if __name__ == '__main__':
   unittest.main()

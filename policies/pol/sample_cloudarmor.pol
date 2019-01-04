@@ -1,0 +1,28 @@
+#
+# This is an sample policy for capirca
+# Note: Address family 'mixed' includes both IPv4 and IPv6; use 'inet' for IPv4
+# and 'inet6' for IPv6
+#
+header {
+  comment:: "This is a sample policy to generate a CloudArmor filter"
+  target:: cloudarmor mixed
+}
+
+term allow-trusted-sources {
+  comment:: "Allow access from company's trusted IP space"
+  source-address:: PUBLIC_NAT
+  action:: accept
+}
+
+term deny-bogon-sources {
+  comment:: "Deny access to sources with bogon IP addresses"
+  source-address:: BOGON
+  action:: deny
+}
+
+term default-deny {
+  comment:: "Default deny rule"
+  source-address:: ANY
+  action:: deny
+}
+

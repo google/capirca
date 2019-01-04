@@ -606,6 +606,7 @@ SUPPORTED_SUB_TOKENS = {
     },
     'option': {'established',
                'first-fragment',
+               'is-fragment',
                '.*',   # not actually a lex token!
                'sample',
                'tcp-established',
@@ -1410,6 +1411,12 @@ class JuniperTest(unittest.TestCase):
     ]
 
     self.assertEquals(all([x in output for x in flexible_match_expected]), True)
+
+  def testFailIsFragmentInV6(self):
+    self.naming.GetServiceByProto.return_value = ['22']
+    pol = policy.ParsePolicy(GOOD_HEADER_V6+OPTION_TERM_1, self.naming)
+
+    self.assertRaises(juniper.JuniperFragmentInV6Error,juniper.Juniper, pol, EXP_INFO)
 
   def testFailFlexibleMatch(self):
 

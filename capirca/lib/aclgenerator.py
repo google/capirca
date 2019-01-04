@@ -105,6 +105,7 @@ class Term(object):
                'l2tp': 115,
                'sctp': 132,
                'udplite': 136,
+               'all': -1,  # Used for GCE default deny, do not use in pol file.
               }
   AF_MAP = {'inet': 4,
             'inet6': 6,
