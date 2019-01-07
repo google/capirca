@@ -20,6 +20,7 @@ from __future__ import unicode_literals
 import unittest
 
 from capirca.lib import policy_simple
+from six.moves import range
 from absl import logging
 
 
@@ -101,7 +102,7 @@ class FieldTest(unittest.TestCase):
     self.assertEqual(set(['RFC1918', 'CORP_INTERNAL']), f.value)
 
   def testNamingFieldStr(self):
-    f = policy_simple.NamingField(' '.join(str(x) for x in xrange(25)))
+    f = policy_simple.NamingField(' '.join(str(x) for x in range(25)))
     expected_str = ('UNKNOWN:: 0 1 10 11 12 13 14 15 16 17 18 19 2 20 21'
                     ' 22 23 24 3 4 5 6 7\n            9')
     self.assertEqual(expected_str, str(f))

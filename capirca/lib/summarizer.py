@@ -22,6 +22,7 @@ from __future__ import unicode_literals
 import collections
 
 from capirca.lib import nacaddr
+from six.moves import range
 
 
 class DSMNet(object):
@@ -172,7 +173,7 @@ def _Int32ToDottedQuad(num):
 
   """
   octets = []
-  for _ in xrange(4):
+  for _ in range(4):
     octet = num & 0xFF
     octets.insert(0, str(octet))
     num >>= 8
@@ -191,7 +192,7 @@ def _NacaddrNetToDSMNet(net):
 
   # left shift number of subnet mask bits, then leftshift until
   # full length of address reached
-  address_as_int = int(net)
+  address_as_int = int(net.network_address)
   netmask_as_int = (((1 << net.prefixlen) - 1) <<
                     (net.max_prefixlen - net.prefixlen))
   return DSMNet(address_as_int, netmask_as_int, net.text)

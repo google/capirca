@@ -28,6 +28,7 @@ import itertools
 
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
+import six
 from absl import logging
 
 
@@ -99,11 +100,12 @@ class Term(aclgenerator.Term):
              'expresspath': 'services-offload',
              'dscp': 'dscp'}
 
-  def __init__(self, term, from_zone, to_zone, expresspath=False):
+  def __init__(self, term, from_zone, to_zone, expresspath=False, verbose=True):
     super(Term, self).__init__(term)
     self.term = term
     self.from_zone = from_zone
     self.to_zone = to_zone
+    self.verbose = verbose
     if expresspath:
       self.term.action = [
           a.replace('accept', 'expresspath') for a in self.term.action]
@@ -122,10 +124,10 @@ class Term(aclgenerator.Term):
 
     # COMMENTS
     comment_max_width = 68
-    if self.term.owner:
+    if self.term.owner and self.verbose:
       self.term.comment.append('Owner: %s' % self.term.owner)
     comments = aclgenerator.WrapWords(self.term.comment, comment_max_width)
-    if comments and comments[0]:
+    if comments and comments[0] and self.verbose:
       ret_str.IndentAppend(3, '/*')
       for line in comments:
         ret_str.IndentAppend(3, line)
@@ -271,8 +273,9 @@ class JuniperSRX(aclgenerator.ACLGenerator):
   _GLOBAL_ADDR_BOOK = 'address-book-global'
   _ADDRESSBOOK_TYPES = set((_ZONE_ADDR_BOOK, _GLOBAL_ADDR_BOOK))
   _EXPRESSPATH = 'expresspath'
+  _NOVERBOSE = 'noverbose'
   _SUPPORTED_TARGET_OPTIONS = set((_ZONE_ADDR_BOOK, _GLOBAL_ADDR_BOOK,
-                                   _EXPRESSPATH))
+                                   _EXPRESSPATH, _NOVERBOSE))
 
   _AF_MAP = {'inet': (4,),
              'inet6': (6,),
@@ -346,6 +349,10 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         continue
 
       filter_options = header.FilterOptions(self._PLATFORM)
+
+      verbose = True
+      if self._NOVERBOSE in filter_options[4:]:
+        verbose = False
 
       # TODO(robankeny): Clean up option section.
       if (len(filter_options) < 4 or filter_options[0] != 'from-zone' or
@@ -422,6 +429,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         filter_type = 'mixed'
 
       term_dup_check = set()
+
       new_terms = []
       self._FixLargePolices(terms, filter_type)
       for term in terms:
@@ -482,7 +490,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         # policy can be at the same time inet and inet6.
         if self._GLOBAL_ADDR_BOOK in self.addr_book_type:
           for zone in self.addressbook:
-            for unused_name, ips in sorted(self.addressbook[zone].iteritems()):
+            for unused_name, ips in sorted(six.iteritems(self.addressbook[zone])):
               ips = [i for i in ips]
               if term.source_address == ips:
                 term.source_address = ips
@@ -495,7 +503,8 @@ class JuniperSRX(aclgenerator.ACLGenerator):
           if addr.version in self._AF_MAP[filter_type]:
             self._BuildAddressBook(self.to_zone, addr)
 
-        new_term = Term(term, self.from_zone, self.to_zone, self.expresspath)
+        new_term = Term(term, self.from_zone, self.to_zone, self.expresspath,
+                        verbose)
         new_terms.append(new_term)
 
         # Because SRX terms can contain inet and inet6 addresses. We have to
@@ -524,7 +533,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                                'timeout': term.timeout}
 
         for application_set in self.applications:
-          if all(item in application_set.items() for item in
+          if all(item in list(application_set.items()) for item in
                  new_application_set.items()):
             new_application_set = ''
             term.replacement_application_name = application_set['name']
@@ -614,9 +623,9 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       self.addressbook[zone] = collections.defaultdict(list)
     name = address.parent_token
     for ip in self.addressbook[zone][name]:
-      if ip.Contains(address):
+      if ip.supernet_of(address):
         return
-      if address.Contains(ip):
+      if address.supernet_of(ip):
         for index, ip_addr in enumerate(self.addressbook[zone][name]):
           if ip_addr == ip:
             self.addressbook[zone][name][index] = address
@@ -816,11 +825,12 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     target.IndentAppend(1, 'replace: policies {')
 
     for (header, terms, filter_options) in self.srx_policies:
-      target.IndentAppend(2, '/*')
-      target.extend([self.INDENT * 2 + line for line in
-                     aclgenerator.WrapWords(header.comment,
-                                            self._MAX_HEADER_COMMENT_LENGTH)])
-      target.IndentAppend(2, '*/')
+      if self._NOVERBOSE not in filter_options[4:]:
+        target.IndentAppend(2, '/*')
+        target.extend([self.INDENT * 2 + line for line in
+                       aclgenerator.WrapWords(header.comment,
+                                              self._MAX_HEADER_COMMENT_LENGTH)])
+        target.IndentAppend(2, '*/')
 
       # ZONE DIRECTION
       if filter_options[1] == 'all' and filter_options[3] == 'all':

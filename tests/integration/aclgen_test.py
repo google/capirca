@@ -55,13 +55,14 @@ class TestAclGenDemo(unittest.TestCase):
   @mock.patch.object(aclgen, '_WriteFile', autospec=True)
   def test_smoke_test_generates_successfully(self, mock_writer):
     aclgen.main([])
-    files = ['sample_cisco_lab.acl', 'sample_gce.gce', 'sample_ipset.ips',
-             'sample_juniper_loopback.jcl', 'sample_multitarget.acl',
-             'sample_multitarget.asa', 'sample_multitarget.bacl',
-             'sample_multitarget.eacl', 'sample_multitarget.ipt',
-             'sample_multitarget.jcl', 'sample_multitarget.xacl',
-             'sample_nsxv.nsx', 'sample_packetfilter.pf',
-             'sample_speedway.ipt', 'sample_srx.srx', 'sample_paloalto.xml']
+    files = ['sample_cisco_lab.acl', 'sample_cloudarmor.gca', 'sample_gce.gce',
+             'sample_ipset.ips', 'sample_juniper_loopback.jcl',
+             'sample_multitarget.acl', 'sample_multitarget.asa',
+             'sample_multitarget.bacl', 'sample_multitarget.eacl',
+             'sample_multitarget.ipt', 'sample_multitarget.jcl',
+             'sample_multitarget.xacl', 'sample_nsxv.nsx',
+             'sample_packetfilter.pf', 'sample_speedway.ipt', 'sample_srx.srx',
+             'sample_paloalto.xml']
     expected = [mock.call(
         os.path.join(self.test_subdirectory, f), mock.ANY) for f in files]
     mock_writer.assert_has_calls(expected, any_order=True)

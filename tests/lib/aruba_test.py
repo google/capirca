@@ -43,6 +43,12 @@ header {
 }
 """
 
+GOOD_HEADER_NOVERBOSE = """
+header {
+  target:: aruba test-filter noverbose
+}
+"""
+
 EXPIRED_TERM = """
 term is-expired {
   expiration:: 2010-01-01
@@ -65,8 +71,8 @@ term good-term-simple {
 
 GOOD_TERM_SHORT_COMMENT = """
 term good-term-short-comment {
-  comment:: "It will be huge."
-  owner:: djtrump
+  comment:: "Some short comment."
+  owner:: someowner
   action:: deny
 }
 """
@@ -287,12 +293,26 @@ class ArubaTest(unittest.TestCase):
     # $Date:$
     # $Revision:$
     ip access-list session test-filter
-      # It will be huge.
-      # Owner: djtrump
+      # Some short comment.
+      # Owner: someowner
       any any any deny
     !
     """
     aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 +
+                                         GOOD_TERM_SHORT_COMMENT,
+                                         self.naming), EXP_INFO)
+    self.assertEqual(textwrap.dedent(expected_result), str(aru))
+
+  def testNoVerbose(self):
+    expected_result = """\
+    # $Id:$
+    # $Date:$
+    # $Revision:$
+    ip access-list session test-filter
+      any any any deny
+    !
+    """
+    aru = aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_NOVERBOSE +
                                          GOOD_TERM_SHORT_COMMENT,
                                          self.naming), EXP_INFO)
     self.assertEqual(textwrap.dedent(expected_result), str(aru))

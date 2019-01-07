@@ -23,6 +23,7 @@ from string import Template
 
 from capirca.lib import aclgenerator
 from capirca.lib import windows
+from six.moves import range
 from absl import logging
 
 
@@ -113,16 +114,20 @@ class Term(windows.Term):
         for proto in protocol:
           for sport in src_port:
             for dport in dst_port:
-              ret_str.append(self._ComposeFilter(
-                  saddr.ip, daddr.ip, proto, saddr.prefixlen,
-                  daddr.prefixlen, sport, dport))
+              ret_str.append(self._ComposeFilter(saddr.network_address,
+                                                 daddr.network_address,
+                                                 proto,
+                                                 saddr.prefixlen,
+                                                 daddr.prefixlen,
+                                                 sport,
+                                                 dport))
 
   def _CollapsePortTuples(self, port_tuples):
     ports = ['']
     for tpl in port_tuples:
       if tpl:
         (port_start, port_end) = tpl
-        ports = range(port_start, port_end+1)
+        ports = list(range(port_start, port_end+1))
     return ports
 
   def _ComposeFilterList(self):

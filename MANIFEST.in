@@ -2,9 +2,3 @@ include AUTHORS
 include LICENSE
 include README.md
 include aclcheck_cmdline.py
-include aclgen.py
-include definate.py
-include tests/README
-recursive-include def *
-recursive-include definate *
-recursive-include policies *

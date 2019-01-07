@@ -25,7 +25,8 @@ import datetime
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from capirca.lib import summarizer
-import ipaddr
+import ipaddress
+from six.moves import range
 from absl import logging
 
 
@@ -61,14 +62,16 @@ class ExtendedACLTermError(Error):
 
 class TermStandard(object):
   """A single standard ACL Term."""
+  COMMENT_MAX_WIDTH = 70
 
-  def __init__(self, term, filter_name, platform='cisco'):
+  def __init__(self, term, filter_name, platform='cisco', verbose=True):
     self.term = term
     self.filter_name = filter_name
     self.platform = platform
     self.options = []
     self.logstring = ''
     self.dscpstring = ''
+    self.verbose = verbose
     # sanity checking for standard acls
     if self.term.protocol:
       raise StandardAclTermError(
@@ -116,19 +119,20 @@ class TermStandard(object):
     # code by returning early.  Warnings provided in policy.py.
     if self.term.verbatim:
       for next_verbatim in self.term.verbatim:
-        if next_verbatim.value[0] == self.platform:
-          ret_str.append(str(next_verbatim.value[1]))
+        if next_verbatim[0] == self.platform:
+          ret_str.append(str(next_verbatim[1]))
         return '\n'.join(ret_str)
 
     v4_addresses = [x for x in self.term.address if
                     not isinstance(x, nacaddr.IPv6)]
     if self.filter_name.isdigit():
-      ret_str.append('access-list %s remark %s' % (self.filter_name,
-                                                   self.term.name))
+      if self.verbose:
+        ret_str.append('access-list %s remark %s' % (self.filter_name,
+                                                     self.term.name))
 
-      comment_max_width = 70
-      comments = aclgenerator.WrapWords(self.term.comment, comment_max_width)
-      if comments and comments[0]:
+        comments = aclgenerator.WrapWords(self.term.comment,
+                                          self.COMMENT_MAX_WIDTH)
+
         for comment in comments:
           ret_str.append('access-list %s remark %s' % (self.filter_name,
                                                        comment))
@@ -139,16 +143,17 @@ class TermStandard(object):
           if addr.prefixlen == 32:
             ret_str.append('access-list %s %s %s%s%s' % (self.filter_name,
                                                          action,
-                                                         addr.ip,
+                                                         addr.network_address,
                                                          self.logstring,
                                                          self.dscpstring))
           else:
-            ret_str.append('access-list %s %s %s %s%s%s' % (self.filter_name,
-                                                            action,
-                                                            addr.network,
-                                                            addr.hostmask,
-                                                            self.logstring,
-                                                            self.dscpstring))
+            ret_str.append('access-list %s %s %s %s%s%s' % (
+                self.filter_name,
+                action,
+                addr.network_address,
+                addr.hostmask,
+                self.logstring,
+                self.dscpstring))
       else:
         ret_str.append('access-list %s %s %s%s%s' % (self.filter_name,
                                                      action,
@@ -156,30 +161,31 @@ class TermStandard(object):
                                                      self.logstring,
                                                      self.dscpstring))
     else:
-      ret_str.append(' remark ' + self.term.name)
-      comment_max_width = 70
-      comments = aclgenerator.WrapWords(self.term.comment, comment_max_width)
-      if comments and comments[0]:
-        for comment in comments:
-          ret_str.append(' remark ' + str(comment))
+      if self.verbose:
+        ret_str.append(' remark ' + self.term.name)
+        comments = aclgenerator.WrapWords(self.term.comment,
+                                          self.COMMENT_MAX_WIDTH)
+        if comments and comments[0]:
+          for comment in comments:
+            ret_str.append(' remark ' + str(comment))
 
       action = _ACTION_TABLE.get(str(self.term.action[0]))
       if v4_addresses:
         for addr in v4_addresses:
           if addr.prefixlen == 32:
             ret_str.append(' %s host %s%s%s' % (action,
-                                                addr.ip,
+                                                addr.network_address,
                                                 self.logstring,
                                                 self.dscpstring))
           elif self.platform == 'arista':
             ret_str.append(' %s %s/%s%s%s' % (action,
-                                              addr.network,
+                                              addr.network_address,
                                               addr.prefixlen,
                                               self.logstring,
                                               self.dscpstring))
           else:
             ret_str.append(' %s %s %s%s%s' % (action,
-                                              addr.network,
+                                              addr.network_address,
                                               addr.hostmask,
                                               self.logstring,
                                               self.dscpstring))
@@ -256,7 +262,8 @@ class ObjectGroup(object):
               ret_str.append('object-group network ipv%d %s' % (
                   family, net_def_name))
               for addr in addrs:
-                ret_str.append(' %s/%s' % (addr.ip, addr.prefixlen))
+                ret_str.append(' %s/%s' % (addr.network_address,
+                                           addr.prefixlen))
               ret_str.append('exit\n')
 
       # Create port object-groups
@@ -281,9 +288,10 @@ class Term(aclgenerator.Term):
   ALLOWED_PROTO_STRINGS = ['eigrp', 'gre', 'icmp', 'igmp', 'igrp', 'ip',
                            'ipinip', 'nos', 'pim', 'tcp', 'udp',
                            'sctp', 'ahp']
+  COMMENT_MAX_WIDTH = 70
 
   def __init__(self, term, af=4, proto_int=True, enable_dsmo=False,
-               term_remark=True, platform='cisco'):
+               term_remark=True, platform='cisco', verbose=True):
     super(Term, self).__init__(term)
     self.term = term
     self.proto_int = proto_int
@@ -291,6 +299,7 @@ class Term(aclgenerator.Term):
     self.enable_dsmo = enable_dsmo
     self.term_remark = term_remark
     self.platform = platform
+    self.verbose = verbose
     # Our caller should have already verified the address family.
     assert af in (4, 6)
     self.af = af
@@ -318,21 +327,21 @@ class Term(aclgenerator.Term):
                                                     proto=self.term.protocol,
                                                     af=self.text_af))
       return ''
-
-    if self.term_remark:
-      ret_str.append(' remark ' + self.term.name)
-    if self.term.owner:
-      self.term.comment.append('Owner: %s' % self.term.owner)
-    for comment in self.term.comment:
-      for line in comment.split('\n'):
-        ret_str.append(' remark ' + str(line)[:100].rstrip())
+    if self.verbose:
+      if self.term_remark:
+        ret_str.append(' remark ' + self.term.name)
+      if self.term.owner:
+        self.term.comment.append('Owner: %s' % self.term.owner)
+      for comment in self.term.comment:
+        for line in comment.split('\n'):
+          ret_str.append(' remark ' + str(line)[:100].rstrip())
 
     # Term verbatim output - this will skip over normal term creation
     # code by returning early.  Warnings provided in policy.py.
     if self.term.verbatim:
       for next_verbatim in self.term.verbatim:
-        if next_verbatim.value[0] == self.platform:
-          ret_str.append(str(next_verbatim.value[1]))
+        if next_verbatim[0] == self.platform:
+          ret_str.append(str(next_verbatim[1]))
         return '\n'.join(ret_str)
 
     # protocol
@@ -398,6 +407,9 @@ class Term(aclgenerator.Term):
         and ('tcp-established' in opts or 'established' in opts)):
       if 'established' not in self.options:
         self.options.append('established')
+    if ('ip' in protocol) and ('fragments' in opts):
+      if 'fragments' not in self.options:
+          self.options.append('fragments')
 
     # ports
     source_port = [()]
@@ -462,16 +474,18 @@ class Term(aclgenerator.Term):
     Returns:
       An address string suitable for the ACL.
     """
-    if isinstance(addr, nacaddr.IPv4) or isinstance(addr, ipaddr.IPv4Network):
-      if addr.numhosts > 1:
+    if isinstance(addr, nacaddr.IPv4) or isinstance(addr,
+                                                    ipaddress.IPv4Network):
+      if addr.num_addresses > 1:
         if self.platform == 'arista':
           return addr.with_prefixlen
-        return '%s %s' % (addr.ip, addr.hostmask)
-      return 'host %s' % (addr.ip)
-    if isinstance(addr, nacaddr.IPv6) or isinstance(addr, ipaddr.IPv6Network):
-      if addr.numhosts > 1:
+        return '%s %s' % (addr.network_address, addr.hostmask)
+      return 'host %s' % (addr.network_address)
+    if isinstance(addr, nacaddr.IPv6) or isinstance(addr,
+                                                    ipaddress.IPv6Network):
+      if addr.num_addresses > 1:
         return addr.with_prefixlen
-      return 'host %s' % (addr.ip)
+      return 'host %s' % (addr.network_address)
     # DSMO enabled
     if isinstance(addr, summarizer.DSMNet):
       return '%s %s' % summarizer.ToDottedQuad(addr, negate=True)
@@ -627,7 +641,9 @@ class Term(aclgenerator.Term):
   def _FixOptions(self, proto, option):
     """Returns a set of options suitable for the given protocol.
 
-    In practice this is only used to filter out 'established' for UDP.
+    Fix done:
+    - Filter out 'established' for UDP.
+    - Filter out 'fragments' for TCP/UDP
 
     Args:
       proto: str or int, protocol
@@ -709,11 +725,12 @@ class ObjectGroupTerm(Term):
   # Protocols should be emitted as integers rather than strings.
   _PROTO_INT = True
 
-  def __init__(self, term, filter_name, platform='cisco'):
+  def __init__(self, term, filter_name, platform='cisco', verbose=True):
     super(ObjectGroupTerm, self).__init__(term)
     self.term = term
     self.filter_name = filter_name
     self.platform = platform
+    self.verbose = verbose
 
   def __str__(self):
     # Verify platform specific terms. Skip whole term if platform does not
@@ -728,19 +745,21 @@ class ObjectGroupTerm(Term):
     source_address_set = set()
     destination_address_set = set()
     ret_str = ['\n']
-    ret_str.append(' remark %s' % self.term.name)
-    comment_max_width = 70
-    comments = aclgenerator.WrapWords(self.term.comment, comment_max_width)
-    if comments and comments[0]:
-      for comment in comments:
-        ret_str.append(' remark %s' % str(comment))
+    if self.verbose:
+      ret_str.append(' remark %s' % self.term.name)
+
+      comments = aclgenerator.WrapWords(self.term.comment,
+                                        self.COMMENT_MAX_WIDTH)
+      if comments and comments[0]:
+        for comment in comments:
+          ret_str.append(' remark %s' % str(comment))
 
     # Term verbatim output - this will skip over normal term creation
     # code by returning early.  Warnings provided in policy.py.
     if self.term.verbatim:
       for next_verbatim in self.term.verbatim:
-        if next_verbatim.value[0] == self._PLATFORM:
-          ret_str.append(str(next_verbatim.value[1]))
+        if next_verbatim[0] == self._PLATFORM:
+          ret_str.append(str(next_verbatim[1]))
         return '\n'.join(ret_str)
 
     # protocol
@@ -769,7 +788,6 @@ class ObjectGroupTerm(Term):
       source_port = self.term.source_port
     if self.term.destination_port:
       destination_port = self.term.destination_port
-
     for saddr in source_address_set:
       for daddr in destination_address_set:
         for sport in source_port:
@@ -827,7 +845,8 @@ class Cisco(aclgenerator.ACLGenerator):
                          'owner'}
 
     supported_sub_tokens.update({'option': {'established',
-                                            'tcp-established'},
+                                            'tcp-established',
+                                            'fragments'},
                                  # Warning, some of these are mapped
                                  # differently. See _ACTION_TABLE
                                  'action': {'accept', 'deny', 'reject', 'next',
@@ -846,11 +865,15 @@ class Cisco(aclgenerator.ACLGenerator):
     for header, terms in pol.filters:
       if self._PLATFORM not in header.platforms:
         continue
-
       obj_target = ObjectGroup()
 
       filter_options = header.FilterOptions(self._PLATFORM)
       filter_name = header.FilterName(self._PLATFORM)
+
+      self.verbose = True
+      if 'noverbose' in filter_options:
+        filter_options.remove('noverbose')
+        self.verbose = False
 
       # extended is the most common filter type.
       filter_type = 'extended'
@@ -872,12 +895,12 @@ class Cisco(aclgenerator.ACLGenerator):
         # Numeric access lists can be extended or standard, but have specific
         # known ranges.
         if next_filter == 'extended' and filter_name.isdigit():
-          if int(filter_name) in range(1, 100) + range(1300, 2000):
+          if int(filter_name) in list(range(1, 100)) + list(range(1300, 2000)):
             raise UnsupportedCiscoAccessListError(
                 'Access lists between 1-99 and 1300-1999 are reserved for '
                 'standard ACLs')
         if next_filter == 'standard' and filter_name.isdigit():
-          if int(filter_name) not in range(1, 100) + range(1300, 2000):
+          if int(filter_name) not in list(range(1, 100)) + list(range(1300, 2000)):
             raise UnsupportedCiscoAccessListError(
                 'Standard access lists must be numeric in the range of 1-99'
                 ' or 1300-1999.')
@@ -910,21 +933,24 @@ class Cisco(aclgenerator.ACLGenerator):
           # render terms based on filter type
           if next_filter == 'standard':
             # keep track of sequence numbers across terms
-            new_terms.append(TermStandard(term, filter_name, self._PLATFORM))
+            new_terms.append(TermStandard(term, filter_name, self._PLATFORM,
+                                          self.verbose))
           elif next_filter == 'extended':
             enable_dsmo = (len(filter_options) > 2 and
                            filter_options[2] == 'enable_dsmo')
             new_terms.append(
                 Term(term, proto_int=self._PROTO_INT, enable_dsmo=enable_dsmo,
-                     term_remark=self._TERM_REMARK, platform=self._PLATFORM))
+                     term_remark=self._TERM_REMARK, platform=self._PLATFORM,
+                     verbose=self.verbose))
           elif next_filter == 'object-group':
             obj_target.AddTerm(term)
-            new_terms.append(self._GetObjectGroupTerm(term, filter_name))
+            new_terms.append(self._GetObjectGroupTerm(term, filter_name,
+                                                      verbose=self.verbose))
           elif next_filter == 'inet6':
             new_terms.append(
                 Term(
                     term, 6, proto_int=self._PROTO_INT,
-                    platform=self._PLATFORM))
+                    platform=self._PLATFORM, verbose=self.verbose))
 
         # cisco requires different name for the v4 and v6 acls
         if filter_type == 'mixed' and next_filter == 'inet6':
@@ -932,9 +958,9 @@ class Cisco(aclgenerator.ACLGenerator):
         self.cisco_policies.append((header, filter_name, [next_filter],
                                     new_terms, obj_target))
 
-  def _GetObjectGroupTerm(self, term, filter_name):
+  def _GetObjectGroupTerm(self, term, filter_name, verbose=True):
     """Returns an ObjectGroupTerm object."""
-    return ObjectGroupTerm(term, filter_name)
+    return ObjectGroupTerm(term, filter_name, verbose=verbose)
 
   def _AppendTargetByFilterType(self, filter_name, filter_type):
     """Takes in the filter name and type and appends headers.
@@ -987,14 +1013,15 @@ class Cisco(aclgenerator.ACLGenerator):
         # Add the Perforce Id/Date tags, these must come after
         # remove/re-create of the filter, otherwise config mode doesn't
         # know where to place these remarks in the configuration.
-        if filter_type == 'standard' and filter_name.isdigit():
-          target.extend(
-              aclgenerator.AddRepositoryTags(
-                  'access-list %s remark ' % filter_name,
-                  date=False, revision=False))
-        else:
-          target.extend(aclgenerator.AddRepositoryTags(
-              ' remark ', date=False, revision=False))
+        if self.verbose:
+          if filter_type == 'standard' and filter_name.isdigit():
+            target.extend(
+                aclgenerator.AddRepositoryTags(
+                    'access-list %s remark ' % filter_name,
+                    date=False, revision=False))
+          else:
+            target.extend(aclgenerator.AddRepositoryTags(
+                ' remark ', date=False, revision=False))
 
         # add a header comment if one exists
         for comment in header.comment:

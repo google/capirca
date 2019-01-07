@@ -135,8 +135,8 @@ class Term(aclgenerator.Term):
     # creation code by returning early. Warnings provided in policy.py
     if self.term.verbatim:
       for next_verbatim in self.term.verbatim:
-        if next_verbatim.value[0] == self._PLATFORM:
-          ret_str.append(str(next_verbatim.value[1]))
+        if next_verbatim[0] == self._PLATFORM:
+          ret_str.append(str(next_verbatim[1]))
       return '\n'.join(ret_str)
 
     # Create a new term
@@ -189,6 +189,9 @@ class Term(aclgenerator.Term):
       protocol = self.term.protocol
     else:
       protocol = ['all']
+    if 'hopopt' in protocol and self.af == 'inet':
+      logging.warn('Term %s is using hopopt in IPv4 context.', self.term_name)
+      return ''
 
     (term_saddr, exclude_saddr,
      term_daddr, exclude_daddr) = self._CalculateAddresses(
@@ -434,6 +437,10 @@ class Term(aclgenerator.Term):
     log_jump = ''
     if log_hits:
       log_jump = self._LOG_FORMAT.substitute(term=self.term.name)
+      if self.term.log_limit:
+        log_jump = '-m --limit {}/{} {}'.format(self.term.log_limit[0],
+                                            self.term.log_limit[1],
+                                            log_jump)
 
     if not options:
       options = []
@@ -551,11 +558,11 @@ class Term(aclgenerator.Term):
     if not saddr or saddr == self._all_ips:
       src = ''
     else:
-      src = '-s %s/%d' % (saddr.ip, saddr.prefixlen)
+      src = '-s %s/%d' % (saddr.network_address, saddr.prefixlen)
     if not daddr or daddr == self._all_ips:
       dst = ''
     else:
-      dst = '-d %s/%d' % (daddr.ip, daddr.prefixlen)
+      dst = '-d %s/%d' % (daddr.network_address, daddr.prefixlen)
     return (src, dst)
 
   def _GeneratePortStatement(self, ports, source=False, dest=False):
@@ -634,6 +641,7 @@ class Iptables(aclgenerator.ACLGenerator):
   _TERM = Term
   _TERM_MAX_LENGTH = 24
   _GOOD_FILTERS = ['INPUT', 'OUTPUT', 'FORWARD']
+  _GOOD_OPTIONS = ['nostate', 'abbreviateterms', 'truncateterms', 'noverbose']
 
   def _BuildTokens(self):
     """Build supported tokens for platform.
@@ -650,6 +658,7 @@ class Iptables(aclgenerator.ACLGenerator):
                          'fragment_offset',
                          'icmp_code',
                          'logging',
+                         'log_limit',
                          'owner',
                          'packet_length',
                          'routing_instance',
@@ -690,7 +699,6 @@ class Iptables(aclgenerator.ACLGenerator):
     default_action = None
     good_default_actions = ['ACCEPT', 'DROP']
     good_afs = ['inet', 'inet6']
-    good_options = ['nostate', 'abbreviateterms', 'truncateterms', 'noverbose']
     all_protocols_stateful = True
     self.verbose = True
 
@@ -699,32 +707,32 @@ class Iptables(aclgenerator.ACLGenerator):
       if self._PLATFORM not in header.platforms:
         continue
 
-      filter_options = header.FilterOptions(self._PLATFORM)[1:]
+      self.filter_options = header.FilterOptions(self._PLATFORM)[1:]
       filter_name = header.FilterName(self._PLATFORM)
 
       self._WarnIfCustomTarget(filter_name)
 
       # ensure all options after the filter name are expected
-      for opt in filter_options:
-        if opt not in good_default_actions + good_afs + good_options:
+      for opt in self.filter_options:
+        if opt not in good_default_actions + good_afs + self._GOOD_OPTIONS:
           raise UnsupportedTargetOption('%s %s %s %s' % (
               '\nUnsupported option found in', self._PLATFORM,
               'target definition:', opt))
 
       # disable stateful?
-      if 'nostate' in filter_options:
+      if 'nostate' in self.filter_options:
         all_protocols_stateful = False
-      if 'noverbose' in filter_options:
+      if 'noverbose' in self.filter_options:
         self.verbose = False
 
       # Check for matching af
       for address_family in good_afs:
-        if address_family in filter_options:
+        if address_family in self.filter_options:
           # should not specify more than one AF in options
           if filter_type is not None:
             raise UnsupportedFilterError('%s %s %s %s' % (
                 '\nMay only specify one of', good_afs, 'in filter options:',
-                filter_options))
+                self.filter_options))
           filter_type = address_family
       if filter_type is None:
         filter_type = 'inet'
@@ -749,12 +757,15 @@ class Iptables(aclgenerator.ACLGenerator):
       term_names = set()
       for term in terms:
         term.name = self.FixTermLength(term.name,
-                                       'abbreviateterms' in filter_options,
-                                       'truncateterms' in filter_options)
+                                       'abbreviateterms' in self.filter_options,
+                                       'truncateterms' in self.filter_options)
         if term.name in term_names:
           raise aclgenerator.DuplicateTermError(
               'You have a duplicate term: %s' % term.name)
         term_names.add(term.name)
+        if not term.logging and term.log_limit:
+          raise LimitButNoLogError(
+              "Term %s: Cannoy use log-limit without logging" % term.name)
 
         term = self.FixHighPorts(term, af=filter_type,
                                  all_protocols_stateful=all_protocols_stateful)
@@ -869,3 +880,6 @@ class UnsupportedDefaultAction(Error):
 
 class UnsupportedTargetOption(Error):
   """Raised when a filter has an impermissible default action specified."""
+
+class LimitButNoLogError(Error):
+  """Raised when log-limit is used by logging is not."""

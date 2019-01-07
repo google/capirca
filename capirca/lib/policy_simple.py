@@ -26,6 +26,9 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import six
+from six.moves import zip
+
 from absl import logging
 
 
@@ -38,7 +41,7 @@ class Field(object):
   def __str__(self):
     t = type(self)
     f = 'UNKNOWN'
-    for k, v in field_map.iteritems():
+    for k, v in six.iteritems(field_map):
       if t == v:
         f = k
         break

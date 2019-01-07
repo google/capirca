@@ -156,7 +156,8 @@ SUPPORTED_SUB_TOKENS = {
         'version-2-multicast-listener-report',
     },
     'option': {'established',
-               'tcp-established'}
+               'tcp-established',
+               'fragments'}
 }
 
 EXP_INFO = 2

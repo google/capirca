@@ -26,6 +26,8 @@ import xml.dom.minidom
 
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
+from six.moves import map
+from six.moves import range
 from absl import logging
 
 
@@ -189,7 +191,7 @@ class Term(aclgenerator.Term):
     protocol = None
 
     if self.term.protocol:
-      protocol = map(self.PROTO_MAP.get, self.term.protocol, self.term.protocol)
+      protocol = list(map(self.PROTO_MAP.get, self.term.protocol, self.term.protocol))
 
       # icmp-types
       icmp_types = ['']
@@ -289,24 +291,25 @@ class Term(aclgenerator.Term):
 
         # inet4
         if isinstance(saddr, nacaddr.IPv4):
-          if saddr.numhosts > 1:
+          if saddr.num_addresses > 1:
             saddr = '%s%s%s' % (_XML_TABLE.get('srcIpv4Start'),
                                 saddr.with_prefixlen,
                                 _XML_TABLE.get('srcIpv4End'),)
           else:
             saddr = '%s%s%s' % (_XML_TABLE.get('srcIpv4Start'),
-                                saddr.ip,
+                                saddr.network_address,
                                 _XML_TABLE.get('srcIpv4End'))
           sources = '%s%s' %(sources, saddr)
         # inet6
         if isinstance(saddr, nacaddr.IPv6):
-          if saddr.numhosts > 1:
+          if saddr.num_addresses > 1:
             saddr = '%s%s%s' % (_XML_TABLE.get('srcIpv6Start'),
                                 saddr.with_prefixlen,
                                 _XML_TABLE.get('srcIpv6End'),)
           else:
-            saddr = '%s%s%s' % (_XML_TABLE.get('srcIpv6Start'),
-                                saddr.ip, _XML_TABLE.get('srcIpv6End'))
+            saddr = '%s%s%s' % (
+                _XML_TABLE.get('srcIpv6Start'),
+                saddr.network_address, _XML_TABLE.get('srcIpv6End'))
           sources = '%s%s' %(sources, saddr)
       sources = '%s%s' %(sources, '</sources>')
 
@@ -316,24 +319,24 @@ class Term(aclgenerator.Term):
       for daddr in destination_addr:
         # inet4
         if isinstance(daddr, nacaddr.IPv4):
-          if daddr.numhosts > 1:
+          if daddr.num_addresses > 1:
             daddr = '%s%s%s' % (_XML_TABLE.get('destIpv4Start'),
                                 daddr.with_prefixlen,
                                 _XML_TABLE.get('destIpv4End'),)
           else:
             daddr = '%s%s%s' % (_XML_TABLE.get('destIpv4Start'),
-                                daddr.ip,
+                                daddr.network_address,
                                 _XML_TABLE.get('destIpv4End'))
           destinations = '%s%s' %(destinations, daddr)
         # inet6
         if isinstance(daddr, nacaddr.IPv6):
-          if daddr.numhosts > 1:
+          if daddr.num_addresses > 1:
             daddr = '%s%s%s' % (_XML_TABLE.get('destIpv6Start'),
                                 daddr.with_prefixlen,
                                 _XML_TABLE.get('destIpv6End'),)
           else:
             daddr = '%s%s%s' % (_XML_TABLE.get('destIpv6Start'),
-                                daddr.ip,
+                                daddr.network_address,
                                 _XML_TABLE.get('destIpv6End'))
           destinations = '%s%s' %(destinations, daddr)
       destinations = '%s%s' %(destinations, '</destinations>')

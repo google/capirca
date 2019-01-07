@@ -29,6 +29,7 @@ from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
 import mock
+from six.moves import range
 
 
 GOOD_HEADER_1 = """
@@ -224,9 +225,32 @@ term good_term_11 {
   action:: accept
 }
 """
+
 GOOD_TERM_12 = """
 term good_term_12 {
   comment:: "FOOO"
+  action:: accept
+}
+"""
+
+GOOD_TERM_13 = """
+term good_term_13 {
+  logging:: syslog
+  log-limit:: 99/day
+  action:: accept
+}
+"""
+
+HOPOPT_TERM = """
+term hopopt-term {
+  protocol:: hopopt
+  action:: accept
+}
+"""
+
+BAD_LOGGING_TERM = """
+term bad_logging_term {
+  log-limit:: 99/day
   action:: accept
 }
 """
@@ -459,6 +483,7 @@ SUPPORTED_TOKENS = {
     'icmp_type',
     'stateless_reply',
     'logging',
+    'log_limit',
     'name',
     'option',
     'owner',
@@ -671,12 +696,12 @@ class AclCheckTest(unittest.TestCase):
     # the excluded range.
     #
     source_range = []
-    for i in xrange(18):
+    for i in range(18):
       address = nacaddr.IPv4(10 * 256 * 256 * 256 + i * 256 * 256)
       source_range.append(address.supernet(15))  # Grow to /17
 
     dest_range = []
-    for i in xrange(40):
+    for i in range(40):
       address = nacaddr.IPv4(10 * 256 * 256 * 256 + i * 256)
       dest_range.append(address.supernet(7))  # Grow to /25
 
@@ -713,12 +738,12 @@ class AclCheckTest(unittest.TestCase):
     # the excluded range.
     #
     source_range = []
-    for i in xrange(40):
+    for i in range(40):
       address = nacaddr.IPv4(10 * 256 * 256 * 256 + i * 256)
       source_range.append(address.supernet(7))  # Grow to /25
 
     dest_range = []
-    for i in xrange(18):
+    for i in range(18):
       address = nacaddr.IPv4(10 * 256 * 256 * 256 + i * 256 * 256)
       dest_range.append(address.supernet(15))  # Grow to /17
 
@@ -991,8 +1016,8 @@ class AclCheckTest(unittest.TestCase):
             'FOURTEEN_PORTS', 'tcp')
 
   def testMultiPortWithRanges(self):
-    ports = [str(x) for x in 1, 3, 5, 7, 9, 11, 13, 15, 17, '19-21', '23-25',
-             '27-29']
+    ports = [str(x) for x in (1, 3, 5, 7, 9, 11, 13, 15, 17, '19-21', '23-25',
+             '27-29')]
     self.naming.GetServiceByProto.return_value = ports
 
     acl = iptables.Iptables(policy.ParsePolicy(
@@ -1206,6 +1231,26 @@ class AclCheckTest(unittest.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER_7 + GOOD_TERM_12, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     self.assertTrue('comment --comment "FOOO"' not in str(acl), acl)
+
+  def testLogLimit(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_13, self.naming)
+    acl = iptables.Iptables(pol, EXP_INFO)
+    self.assertTrue(
+        "-m --limit 99/day -j LOG --log-prefix good_term_13" in str(acl), acl)
+
+  def testLogLimitFailsWithoutLogging(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + BAD_LOGGING_TERM, self.naming)
+    self.assertRaises(iptables.LimitButNoLogError,
+                      iptables.Iptables, pol, EXP_INFO)
+
+  def testSkipHopByHopinV4(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + HOPOPT_TERM + GOOD_TERM_1,
+                             self.naming)
+    acl = iptables.Iptables(pol, EXP_INFO)
+    result = str(acl)
+
+    self.assertNotIn('-m u32 --u32 "0x3&0xff=0x0"', result,
+                     'match for hop-by-hop header is missing')
 
 if __name__ == '__main__':
   unittest.main()

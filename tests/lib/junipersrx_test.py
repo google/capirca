@@ -124,6 +124,13 @@ header {
 }
 """
 
+GOOD_HEADER_NOVERBOSE = """
+header {
+  comment:: "This is a test acl with a comment"
+  target:: srx from-zone trust to-zone untrust noverbose
+}
+"""
+
 BAD_HEADER = """
 header {
   target:: srx something
@@ -488,7 +495,7 @@ EXP_INFO = 2
 
 _IPSET = [nacaddr.IP('10.0.0.0/8'),
           nacaddr.IP('2001:4860:8000::/33')]
-_IPSET2 = [nacaddr.IP('10.23.0.0/22'), nacaddr.IP('10.23.0.6/23')]
+_IPSET2 = [nacaddr.IP('10.23.0.0/22'), nacaddr.IP('10.23.0.6/23', strict=False)]
 _IPSET3 = [nacaddr.IP('10.23.0.0/23')]
 _IPSET4 = [nacaddr.IP('10.0.0.0/20')]
 _IPSET5 = [nacaddr.IP('10.0.0.0/24')]
@@ -951,7 +958,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
   def testLargeTermSplitting(self):
-    ips = list(nacaddr.IP('10.0.8.0/21').iter_subnets(new_prefix=32))
+    ips = list(nacaddr.IP('10.0.8.0/21').subnets(new_prefix=32))
     mo_ips = []
     counter = 0
     for ip in ips:
@@ -959,7 +966,7 @@ class JuniperSRXTest(unittest.TestCase):
         mo_ips.append(nacaddr.IP(ip))
       counter += 1
 
-    ips = list(nacaddr.IP('10.0.0.0/21').iter_subnets(new_prefix=32))
+    ips = list(nacaddr.IP('10.0.0.0/21').subnets(new_prefix=32))
     prodcolos_ips = []
     counter = 0
     for ip in ips:
@@ -981,7 +988,7 @@ class JuniperSRXTest(unittest.TestCase):
 
   def testLargeTermSplittingV6(self):
     ips = list(nacaddr.IP('2620:0:1000:3103:eca0:2c09:6b32:e000/119'
-                         ).iter_subnets(new_prefix=128))
+                         ).subnets(new_prefix=128))
     mo_ips = []
     counter = 0
     for ip in ips:
@@ -990,7 +997,7 @@ class JuniperSRXTest(unittest.TestCase):
       counter += 1
 
     ips = list(nacaddr.IP('2720:0:1000:3103:eca0:2c09:6b32:e000/119'
-                         ).iter_subnets(new_prefix=128))
+                         ).subnets(new_prefix=128))
     prodcolos_ips = []
     counter = 0
     for ip in ips:
@@ -1012,7 +1019,7 @@ class JuniperSRXTest(unittest.TestCase):
 
   def testLargeTermSplitIgnoreV6(self):
     ips = list(nacaddr.IP('2620:0:1000:3103:eca0:2c09:6b32:e000/119'
-                         ).iter_subnets(new_prefix=128))
+                         ).subnets(new_prefix=128))
     mo_ips = []
     counter = 0
     for ip in ips:
@@ -1021,7 +1028,7 @@ class JuniperSRXTest(unittest.TestCase):
       counter += 1
 
     ips = list(nacaddr.IP('2720:0:1000:3103:eca0:2c09:6b32:e000/119'
-                         ).iter_subnets(new_prefix=128))
+                         ).subnets(new_prefix=128))
     ips.append(nacaddr.IPv4('10.0.0.1/32'))
     prodcolos_ips = []
     counter = 0
@@ -1185,6 +1192,15 @@ class JuniperSRXTest(unittest.TestCase):
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.assertNotIn('udp-established-term', output)
     self.assertNotIn('tcp-established-term', output)
+
+  def testNoVerbose(self):
+    self.naming.GetNetAddr.return_value = _IPSET
+    self.naming.GetServiceByProto.return_value = ['25']
+    pol = policy.ParsePolicy(GOOD_HEADER_NOVERBOSE + GOOD_TERM_1, self.naming)
+    srx = junipersrx.JuniperSRX(pol, EXP_INFO)
+    self.assertNotIn('This is a test acl with a comment', str(srx))
+    self.assertNotIn('very very very', str(srx))
+
 
 if __name__ == '__main__':
   unittest.main()

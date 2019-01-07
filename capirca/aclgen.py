@@ -22,7 +22,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import copy
-import dircache
 import multiprocessing
 import os
 import sys
@@ -37,6 +36,7 @@ from capirca.lib import brocade
 from capirca.lib import cisco
 from capirca.lib import ciscoasa
 from capirca.lib import ciscoxr
+from capirca.lib import cloudarmor
 from capirca.lib import gce
 from capirca.lib import ipset
 from capirca.lib import iptables
@@ -159,6 +159,7 @@ def RenderFile(input_file, output_directory, definitions,
   aacl = False
   bacl = False
   eacl = False
+  gca = False
   gcefw = False
   ips = False
   ipt = False
@@ -235,6 +236,8 @@ def RenderFile(input_file, output_directory, definitions,
     gcefw = copy.deepcopy(pol)
   if 'paloalto' in platforms:
     paloalto = copy.deepcopy(pol)
+  if 'cloudarmor' in platforms:
+    gca = copy.deepcopy(pol)
 
   if not output_directory.endswith('/'):
     output_directory += '/'
@@ -320,10 +323,15 @@ def RenderFile(input_file, output_directory, definitions,
       acl_obj = paloaltofw.PaloAltoFW(paloalto, exp_info)
       RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
                 input_file, write_files)
+    if gca:
+      acl_obj = cloudarmor.CloudArmor(gca, exp_info)
+      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
+                input_file, write_files)
   # TODO(robankeny) add additional errors.
   except (juniper.Error, junipersrx.Error, cisco.Error, ipset.Error,
           iptables.Error, speedway.Error, pcap.Error,
-          aclgenerator.Error, aruba.Error, nftables.Error, gce.Error) as e:
+          aclgenerator.Error, aruba.Error, nftables.Error, gce.Error,
+          cloudarmor.Error) as e:
     raise ACLGeneratorError(
         'Error generating target ACL for %s:\n%s' % (input_file, e))
 
@@ -398,11 +406,11 @@ def DescendRecursively(input_dirname, output_dirname, definitions, depth=1):
 
   files = []
   # calling all directories
-  for curdir in [x for x in dircache.listdir(input_dirname) if
+  for curdir in [x for x in os.listdir(input_dirname) if
                  os.path.isdir(input_dirname + '/' + x)]:
     # be on the lookout for a policy directory
     if curdir == 'pol':
-      for input_file in [x for x in dircache.listdir(input_dirname + '/pol')
+      for input_file in [x for x in os.listdir(input_dirname + '/pol')
                          if x.endswith('.pol')]:
         files.append({'in_file': os.path.join(input_dirname, 'pol', input_file),
                       'out_dir': output_dirname,

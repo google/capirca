@@ -311,7 +311,8 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
             logging.warn('WARNING: Term %s in policy %s is expired and '
                          'will not be rendered.', term.name, filter_name)
             continue
-
+        if 'established' in term.option or 'tcp-established' in term.option:
+          continue
         new_terms.append(self._TERM(term, filter_name, default_action,
                                     filter_type))
 

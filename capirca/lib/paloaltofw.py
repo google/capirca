@@ -472,7 +472,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       for group in groups:
         for address, name in self.addressbook[zone][group]:
           if name in address_book_names_dict:
-            if address_book_names_dict[name].Contains(address):
+            if address_book_names_dict[name].supernet_of(address):
               continue
           address_book_names_dict[name] = address
 
@@ -487,7 +487,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       address_book_groups_dict = collections.OrderedDict(
           sorted(address_book_groups_dict.items()))
     address_book_keys = sorted(
-        address_book_names_dict.keys(), key=self._SortAddressBookNumCheck)
+        list(address_book_names_dict.keys()), key=self._SortAddressBookNumCheck)
 
     for name in address_book_keys:
       address_entries.append(self.INDENT * 6 + '<entry name="' + name + '">')

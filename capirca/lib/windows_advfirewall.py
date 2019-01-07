@@ -24,6 +24,7 @@ from string import Template
 # pylint: disable=unused-import
 # logging is used in the test mock
 from capirca.lib import windows
+from six.moves import range
 from absl import logging
 
 
@@ -130,7 +131,7 @@ class Term(windows.Term):
         proto = '112'
       elif proto == 'ah':
         proto = '51'
-      elif proto == 'htopt':
+      elif proto == 'hopopt':
         proto = '0'
       atoms.append(self._PROTO_ATOM.substitute(protocol=proto))
 

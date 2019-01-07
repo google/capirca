@@ -153,13 +153,15 @@ class Term(iptables.Term):
           src_addr_stmt = ('-m set --match-set %s src' %
                            self.addr_sets['src'][0])
       else:
-        src_addr_stmt = '-s %s/%d' % (src_addr.ip, src_addr.prefixlen)
+        src_addr_stmt = '-s %s/%d' % (src_addr.network_address,
+                                      src_addr.prefixlen)
       if dst_addr == self._all_ips:
         if 'dst' in self.addr_sets:
           dst_addr_stmt = ('-m set --match-set %s dst' %
                            self.addr_sets['dst'][0])
       else:
-        dst_addr_stmt = '-d %s/%d' % (dst_addr.ip, dst_addr.prefixlen)
+        dst_addr_stmt = '-d %s/%d' % (dst_addr.network_address,
+                                      dst_addr.prefixlen)
     return (src_addr_stmt, dst_addr_stmt)
 
   def _GenerateSetName(self, term_name, suffix):
@@ -179,6 +181,8 @@ class Ipset(iptables.Iptables):
   _TERM = Term
   _MARKER_BEGIN = '# begin:ipset-rules'
   _MARKER_END = '# end:ipset-rules'
+  _GOOD_OPTIONS = ['nostate', 'abbreviateterms', 'truncateterms', 'noverbose',
+                   'exists']
 
   # TODO(vklimovs): some not trivial processing is happening inside this
   # __str__, replace with explicit method
@@ -206,16 +210,22 @@ class Ipset(iptables.Iptables):
 
     """
     output = []
+    c_str = 'create'
+    a_str = 'add'
+    if 'exists' in self.filter_options:
+      c_str = c_str + ' -exist'
+      a_str = a_str + ' -exist'
     for direction in sorted(term.addr_sets, reverse=True):
       set_name, addr_list = term.addr_sets[direction]
       set_hashsize = 1 << len(addr_list).bit_length()
       set_maxelem = set_hashsize
-      output.append('create %s %s family %s hashsize %i maxelem %i' %
-                    (set_name,
+      output.append('%s %s %s family %s hashsize %i maxelem %i' %
+                    (c_str,
+                     set_name,
                      self._SET_TYPE,
                      term.af,
                      set_hashsize,
                      set_maxelem))
       for address in addr_list:
-        output.append('add %s %s' % (set_name, address))
+        output.append('%s %s %s' % (a_str, set_name, address))
     return output

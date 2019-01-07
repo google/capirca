@@ -35,6 +35,13 @@ header {
 }
 """
 
+GOOD_HEADER_2 = """
+header {
+  comment:: "this is a test acl"
+  target:: ipset OUTPUT DROP exists
+}
+"""
+
 GOOD_TERM_1 = """
 term good-term-1 {
   source-address:: INTERNAL
@@ -81,6 +88,7 @@ SUPPORTED_TOKENS = {
     'icmp_type',
     'stateless_reply',
     'logging',
+    'log_limit',
     'name',
     'option',
     'owner',
@@ -252,6 +260,7 @@ class IpsetTest(unittest.TestCase):
     self.assertIn('add good-term-1-src 10.1.0.0/24', result)
     self.assertIn('-m set --match-set good-term-1-src src', result)
     self.assertNotIn('-s ', result)
+    self.assertNotIn('-exist', result)
 
     self.naming.GetNetAddr.assert_called_once_with('INTERNAL')
 
@@ -268,6 +277,7 @@ class IpsetTest(unittest.TestCase):
     self.assertIn('add good-term-2-dst 172.17.0.0/24', result)
     self.assertIn('-m set --match-set good-term-2-dst dst', result)
     self.assertNotIn('-s ', result)
+    self.assertNotIn('-exist', result)
 
     self.naming.GetNetAddr.assert_called_once_with('EXTERNAL')
 
@@ -310,6 +320,13 @@ class IpsetTest(unittest.TestCase):
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
+  def testAddsExistsOption(self):
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IPv4('10.0.0.0/24'), nacaddr.IPv4('10.1.0.0/24')]
+    acl = ipset.Ipset(policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_1,
+                                          self.naming), EXP_INFO)
+    self.assertIn('create -exist', str(acl))
+    self.assertIn('add -exist', str(acl))
 
 if __name__ == '__main__':
   unittest.main()

@@ -25,6 +25,8 @@ import datetime
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from capirca.lib import summarizer
+import six
+from six.moves import range
 from absl import logging
 
 
@@ -64,6 +66,8 @@ class JuniperNextIpError(Error):
 class JuniperMultipleTerminatingActionError(Error):
   pass
 
+class JuniperFragmentInV6Error(Error):
+  pass
 
 class Config(object):
   """Config allows a configuration to be assembled easily.
@@ -215,8 +219,8 @@ class Term(aclgenerator.Term):
     # code.  Warning generated from policy.py if appropriate.
     if self.term.verbatim:
       for next_term in self.term.verbatim:
-        if next_term.value[0] == self._PLATFORM:
-          config.Append(str(next_term.value[1]), verbatim=True)
+        if next_term[0] == self._PLATFORM:
+          config.Append(str(next_term[1]), verbatim=True)
       return str(config)
 
     # Helper for per-address-family keywords.
@@ -316,6 +320,7 @@ class Term(aclgenerator.Term):
         return ''
 
       # source address
+
       src_addr = self.term.GetAddressOfVersion('source_address', term_af)
       src_addr_ex = self.term.GetAddressOfVersion('source_address_exclude',
                                                   term_af)
@@ -632,7 +637,7 @@ class Term(aclgenerator.Term):
     if len(next_ip) > 1:
       raise JuniperNextIpError('The following term has more '
                                'than one next IP value: %s' % term_name)
-    if next_ip[0].numhosts > 1:
+    if next_ip[0].num_addresses > 1:
       raise JuniperNextIpError('The following term has a subnet '
                                'instead of a host: %s' % term_name)
 
@@ -664,7 +669,7 @@ class Term(aclgenerator.Term):
     exclude_result = []
     for exclude_prefix in exclude:
       for include_prefix in include_result:
-        if exclude_prefix in include_prefix:
+        if exclude_prefix.subnet_of(include_prefix):
           exclude_result.append(exclude_prefix)
           break
 
@@ -753,7 +758,7 @@ class Term(aclgenerator.Term):
         string: either the lower()'ed string or the ports, hyphenated
                 if they're a range, or by itself if it's not.
       """
-      if isinstance(el, str) or isinstance(el, unicode):
+      if isinstance(el, str) or isinstance(el, six.text_type):
         if lc:
           return el
         else:
@@ -831,6 +836,7 @@ class Juniper(aclgenerator.ACLGenerator):
         'option': {
             'established',
             'first-fragment',
+            'is-fragment',
             # TODO(sneakywombat): add all options to lex.
             '.*',  # make ArbitraryOptions work, yolo.
             'sample',
@@ -888,6 +894,9 @@ class Juniper(aclgenerator.ACLGenerator):
             logging.warn('WARNING: Term %s in policy %s is expired and '
                          'will not be rendered.', term.name, filter_name)
             continue
+        if 'is-fragment' in term.option and filter_type == 'inet6':
+          raise JuniperFragmentInV6Error('The term %s uses "is-fragment" but '
+                                         'is a v6 policy.' % term.name)
 
         new_terms.append(self._TERM(term, filter_type, enable_dsmo, noverbose))
 

@@ -29,6 +29,8 @@ from capirca.lib import nacaddr
 from capirca.lib import naming
 from ply import lex
 from ply import yacc
+from six.moves import map
+from six.moves import range
 
 from absl import logging
 
@@ -126,6 +128,10 @@ class ICMPCodeError(Error):
 
 class InvalidTermTTLValue(Error):
   """Error when TTL value is invalid."""
+
+
+class MixedPortandNonPortProtos(Error):
+  """Error when TCP or UDP are used with protocols that do not use ports."""
 
 
 def TranslatePorts(ports, protocols, term_name):
@@ -262,7 +268,7 @@ class Policy(object):
     """
     shading_errors = []
     for index, term in enumerate(terms):
-      for prior_index in xrange(index):
+      for prior_index in range(index):
         # Check each term that came before for shading. Terms with next as an
         # action do not terminate evaluation, so cannot shade.
         if (term in terms[prior_index]
@@ -414,6 +420,7 @@ class Term(object):
     self.forwarding_class = []
     self.forwarding_class_except = []
     self.logging = []
+    self.log_limit = None
     self.log_name = None
     self.loss_priority = None
     self.option = []
@@ -475,7 +482,7 @@ class Term(object):
     """Determine if other term is contained in this term."""
     if self.verbatim or other.verbatim:
       # short circuit these
-      if sorted(self.verbatim) != sorted(other.verbatim):
+      if sorted(list(self.verbatim)) != sorted(other.verbatim):
         return False
 
     # check protocols
@@ -493,7 +500,7 @@ class Term(object):
         return False
     elif self.protocol_except:
       if other.protocol_except:
-        if self.CheckProtocolIsContained(
+        if not self.CheckProtocolIsContained(
             self.protocol_except, other.protocol_except):
           return False
       elif other.protocol:
@@ -546,8 +553,8 @@ class Term(object):
     # be either source or destination.
     if self.port:
       if not (self.CheckPortIsContained(self.port, other.port) or
-              self.CheckPortIsContained(self.port, other.sport) or
-              self.CheckPortIsContained(self.port, other.dport)):
+              self.CheckPortIsContained(self.port, other.source_port) or
+              self.CheckPortIsContained(self.port, other.destination_port)):
         return False
     if not self.CheckPortIsContained(self.source_port, other.source_port):
       return False
@@ -574,9 +581,9 @@ class Term(object):
 
     # check source and destination tags
     if self.source_tag:
-      if sorted(self.source_tag != sorted(other.source_tag)):
+      if sorted(self.source_tag) != sorted(other.source_tag):
         return False
-      if sorted(self.destination_tag != sorted(other.destination_tag)):
+      if sorted(self.destination_tag) != sorted(other.destination_tag):
         return False
 
     # check precedence
@@ -586,6 +593,8 @@ class Term(object):
       for precedence in other.precedence:
         if precedence not in self.precedence:
           return False
+    elif other.precedence:
+      return False
     # check various options
     if self.option:
       if not other.option:
@@ -593,6 +602,8 @@ class Term(object):
       for opt in other.option:
         if opt not in self.option:
           return False
+    elif other.option:
+      return False
     # check forwarding-class
     if self.forwarding_class:
       if not other.forwarding_class:
@@ -612,10 +623,10 @@ class Term(object):
         return False
     if self.fragment_offset:
       # fragment_offset looks like 'integer-integer' or just, 'integer'
-      sfo = [int(x) for x in self.fragment_offset.split('-')]
+      sfo = sorted([int(x) for x in self.fragment_offset.split('-')])
       if other.fragment_offset:
-        ofo = [int(x) for x in other.fragment_offset.split('-')]
-        if sfo[0] < ofo[0] or sorted(sfo[1:]) > sorted(ofo[1:]):
+        ofo = sorted([int(x) for x in other.fragment_offset.split('-')])
+        if ofo[0] < sfo[0] or sfo[1:] < ofo[1:]:
           return False
       else:
         return False
@@ -726,6 +737,9 @@ class Term(object):
       ret_str.append('  pan_application: %s' % self.pan_application)
     if self.logging:
       ret_str.append('  logging: %s' % self.logging)
+    if self.log_limit:
+      ret_str.append('  log_limit: %s/%s' % (self.log_limit[0],
+                                             self.log_limit[1]))
     if self.log_name:
       ret_str.append('  log_name: %s' % self.log_name)
     if self.priority:
@@ -834,6 +848,8 @@ class Term(object):
       return False
 
     if sorted(self.logging) != sorted(other.logging):
+      return False
+    if self.log_limit != other.log_limit:
       return False
     if self.qos != other.qos:
       return False
@@ -960,13 +976,13 @@ class Term(object):
 
     for index, in_addr in enumerate(include):
       for ex_addr in exclude:
-        if ex_addr in in_addr:
-          reduced_list = in_addr.address_exclude(ex_addr)
+        if ex_addr.subnet_of(in_addr):
+          reduced_list = list(in_addr.address_exclude(ex_addr))
           include[index] = None
           for term in Term._FlattenAddresses(reduced_list, exclude[1:]):
             if term not in include:
               include.append(term)
-        elif in_addr in ex_addr:
+        elif in_addr.subnet_of(ex_addr):
           include[index] = None
 
     # Remove items from include outside of the enumerate loop
@@ -990,7 +1006,7 @@ class Term(object):
     if not af:
       return getattr(self, addr_type)
 
-    return filter(lambda x: x.version == af, getattr(self, addr_type))
+    return [x for x in getattr(self, addr_type) if x.version == af]
 
   def AddObject(self, obj):
     """Add an object of unknown type to this term.
@@ -1109,7 +1125,7 @@ class Term(object):
       elif obj.var_type is VarType.NEXT_IP:
         self.next_ip = DEFINITIONS.GetNetAddr(obj.value)
       elif obj.var_type is VarType.VERBATIM:
-        self.verbatim.append(obj)
+        self.verbatim.append(obj.value)
       elif obj.var_type is VarType.ACTION:
         if str(obj) not in ACTIONS:
           raise InvalidTermActionError('%s is not a valid action' % obj)
@@ -1127,6 +1143,8 @@ class Term(object):
           raise InvalidTermLoggingError('%s is not a valid logging option' %
                                         obj)
         self.logging.append(obj)
+      elif obj.var_type is VarType.LOG_LIMIT:
+        self.log_limit = obj.value
       elif obj.var_type is VarType.LOG_NAME:
         self.log_name = obj.value
       # police man, tryin'a take you jail
@@ -1233,6 +1251,13 @@ class Term(object):
             self.ICMP_TYPE[6]):
           raise TermInvalidIcmpType('Term %s contains an invalid icmp-type:'
                                     '%s' % (self.name, icmptype))
+    proto_copy = [p for p in self.protocol if p != 'tcp' and p != 'udp']
+    if ('tcp'in self.protocol or 'udp' in self.protocol) and proto_copy:
+      if self.source_port or self.destination_port or self.port:
+        raise MixedPortandNonPortProtos('Term %s contains mixed uses of '
+           'protocols with and without port numbers.\nProtocols: %s' %
+            (self.name, self.protocol))
+
     if self.ttl:
       if not _MIN_TTL <= self.ttl <= _MAX_TTL:
 
@@ -1396,7 +1421,7 @@ class Term(object):
       sub_contained = False
       for sup_addr in superset:
         # ipaddr ensures that version numbers match for inclusion.
-        if sub_addr in sup_addr:
+        if sub_addr.subnet_of(sup_addr):
           sub_contained = True
           break
       if not sub_contained:
@@ -1464,6 +1489,7 @@ class VarType(object):
   ICMP_CODE = 55
   PRIORITY = 56
   TTL = 57
+  LOG_LIMIT = 58
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1525,7 +1551,7 @@ class Header(object):
   @property
   def platforms(self):
     """The platform targets of this particular header."""
-    return map(lambda x: x.platform, self.target)
+    return [x.platform for x in self.target]
 
   def FilterOptions(self, platform):
     """Given a platform return the options.
@@ -1603,10 +1629,7 @@ class Target(object):
 
   def __init__(self, target):
     self.platform = target[0]
-    if len(target) > 1:
-      self.options = target[1:]
-    else:
-      self.options = None
+    self.options = target[1:]
 
   def __str__(self):
     return self.platform
@@ -1657,6 +1680,7 @@ tokens = (
     'ICMP_CODE',
     'INTEGER',
     'LOGGING',
+    'LOG_LIMIT',
     'LOG_NAME',
     'LOSS_PRIORITY',
     'NEXT_IP',
@@ -1692,7 +1716,7 @@ tokens = (
     'VPN',
 )
 
-literals = r':{},-'
+literals = r':{},-/'
 t_ignore = ' \t'
 
 reserved = {
@@ -1725,6 +1749,7 @@ reserved = {
     'icmp-type': 'ICMP_TYPE',
     'icmp-code': 'ICMP_CODE',
     'logging': 'LOGGING',
+    'log-limit': 'LOG_LIMIT',
     'log_name': 'LOG_NAME',
     'loss-priority': 'LOSS_PRIORITY',
     'next-ip': 'NEXT_IP',
@@ -1898,6 +1923,7 @@ def p_term_spec(p):
                 | term_spec icmp_code_spec
                 | term_spec interface_spec
                 | term_spec logging_spec
+                | term_spec log_limit_spec
                 | term_spec log_name_spec
                 | term_spec losspriority_spec
                 | term_spec next_ip_spec
@@ -1969,15 +1995,15 @@ def p_flex_match_key_values(p):
       raise FlexibleMatchError('%s value is not valid' % p[1])
   # per Juniper, max bit length is 32
   elif p[1] == 'bit-length':
-    if int(p[2]) not in range(33):
+    if int(p[2]) not in list(range(33)):
       raise FlexibleMatchError('%s value is not valid' % p[1])
   # per Juniper, max bit offset is 7
   elif p[1] == 'bit-offset':
-    if int(p[2]) not in range(8):
+    if int(p[2]) not in list(range(8)):
       raise FlexibleMatchError('%s value is not valid' % p[1])
   # per Juniper, offset can be up to 256 bytes
   elif p[1] == 'byte-offset':
-    if int(p[2]) not in range(256):
+    if int(p[2]) not in list(range(256)):
       raise FlexibleMatchError('%s value is not valid' % p[1])
 
   if type(p[0]) == type([]):
@@ -2182,6 +2208,11 @@ def p_policer_spec(p):
 def p_logging_spec(p):
   """ logging_spec : LOGGING ':' ':' STRING """
   p[0] = VarType(VarType.LOGGING, p[4])
+
+
+def p_log_limit_spec(p):
+  """ log_limit_spec : LOG_LIMIT ':' ':' INTEGER '/' STRING"""
+  p[0] = VarType(VarType.LOG_LIMIT, (p[4], p[6]))
 
 
 def p_log_name_spec(p):

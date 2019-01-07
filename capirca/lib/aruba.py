@@ -70,11 +70,12 @@ class Term(aclgenerator.Term):
       'esp': 50,
   }
 
-  def __init__(self, term, filter_type):
+  def __init__(self, term, filter_type, verbose=True):
     super(Term, self).__init__(term)
     self.term = term
     self.filter_type = filter_type
     self.netdestinations = []
+    self.verbose = verbose
 
   def __str__(self):
     netdestinations = []
@@ -83,20 +84,20 @@ class Term(aclgenerator.Term):
 
     if self.term.verbatim:
       for next_verbatim in self.term.verbatim:
-        if next_verbatim.value[0] == _PLATFORM and next_verbatim.value[1]:
-          ret_str.append('%s%s' % (self._IDENT, next_verbatim.value[1]))
+        if next_verbatim[0] == _PLATFORM and next_verbatim[1]:
+          ret_str.append('%s%s' % (self._IDENT, next_verbatim[1]))
 
       return '\n'.join(t for t in ret_str if t)
+    if self.verbose:
+      comments = self.term.comment[:]
 
-    comments = self.term.comment[:]
+      if self.term.owner:
+        comments.append('Owner: %s' % self.term.owner)
 
-    if self.term.owner:
-      comments.append('Owner: %s' % self.term.owner)
-
-    if comments:
-      for line in aclgenerator.WrapWords(comments,
-                                         self._COMMENT_LINE_LENGTH):
-        ret_str.append('%s%s %s' % (self._IDENT, _COMMENT_MARKER, line))
+      if comments:
+        for line in aclgenerator.WrapWords(comments,
+                                           self._COMMENT_LINE_LENGTH):
+          ret_str.append('%s%s %s' % (self._IDENT, _COMMENT_MARKER, line))
 
     src_addr_token = ''
     dst_addr_token = ''
@@ -199,13 +200,17 @@ class Term(aclgenerator.Term):
       A string line using either 'host' or 'network', properly formatted for
       Aruba ACLs.
     """
-    if address.numhosts == 1:
-      return '%s %s' % (self._HOST_STRING, address.ip)
+    if address.num_addresses == 1:
+      return '%s %s' % (self._HOST_STRING, address.network_address)
 
     if address.version == 6:
-      return '%s %s/%s' % (self._NETWORK_STRING, address.ip, address.prefixlen)
+      return '%s %s/%s' % (self._NETWORK_STRING,
+                           address.network_address,
+                           address.prefixlen)
 
-    return '%s %s %s' % (self._NETWORK_STRING, address.ip, address.netmask)
+    return '%s %s %s' % (self._NETWORK_STRING,
+                         address.network_address,
+                         address.netmask)
 
   def _GeneratePortTokens(self, protocols, ports):
     """Generates string tokens for ports.
@@ -286,6 +291,10 @@ class Aruba(aclgenerator.ACLGenerator):
     for header, terms in pol.filters:
       filter_name = header.FilterName(_PLATFORM)
       filter_options = header.FilterOptions(_PLATFORM)
+      verbose = True
+      if 'noverbose' in filter_options:
+        filter_options.remove('noverbose')
+        verbose = False
 
       filter_type = 'inet'
       if 'inet6' in filter_options:
@@ -303,7 +312,7 @@ class Aruba(aclgenerator.ACLGenerator):
                          'will not be rendered.', term.name, filter_name)
             continue
 
-        new_terms.append(Term(term, filter_type))
+        new_terms.append(Term(term, filter_type, verbose))
 
       self.aruba_policies.append((filter_name, new_terms, filter_type))
 

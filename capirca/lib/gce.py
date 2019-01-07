@@ -32,6 +32,9 @@ import logging
 import re
 
 from capirca.lib import aclgenerator
+from capirca.lib import nacaddr
+import ipaddress
+from six.moves import range
 
 
 class Error(Exception):
@@ -40,6 +43,28 @@ class Error(Exception):
 
 class GceFirewallError(Error):
   """Raised with problems in formatting for GCE firewall."""
+
+
+def IsDefaultDeny(term):
+  """Returns true if a term is a default deny without IPs, ports, etc."""
+  skip_attrs = ['flattened', 'flattened_addr', 'flattened_saddr',
+                'flattened_daddr', 'action', 'comment']
+  if 'deny' not in term.action:
+    return False
+  # This lc will look through all methods and attributes of the object.
+  # It returns only the attributes that need to be looked at to determine if
+  # this is a default deny.
+  for i in [a for a in dir(term) if not a.startswith('__') and a.islower() and
+            not callable(getattr(term, a))]:
+    if i in skip_attrs:
+      continue
+    v = getattr(term, i)
+    if isinstance(v, str) and v:
+      return False
+    if isinstance(v, list) and v:
+      return False
+
+  return True
 
 
 class Term(aclgenerator.Term):
@@ -60,7 +85,9 @@ class Term(aclgenerator.Term):
   # Protocols allowed by name from:
   # https://cloud.google.com/vpc/docs/firewalls#protocols_and_ports
   _ALLOW_PROTO_NAME = frozenset(
-      ['tcp', 'udp', 'icmp', 'esp', 'ah', 'ipip', 'sctp'])
+      ['tcp', 'udp', 'icmp', 'esp', 'ah', 'ipip', 'sctp',
+       'all'  # Needed for default deny, do not use in policy file.
+      ])
 
   # Any protocol not in _ALLOW_PROTO_NAME must be passed by number.
   ALWAYS_PROTO_NUM = set(aclgenerator.Term.PROTO_MAP.keys()) - _ALLOW_PROTO_NAME
@@ -74,10 +101,6 @@ class Term(aclgenerator.Term):
       raise GceFirewallError(
           'GCE firewall does not support address exclusions without a source '
           'address list.')
-    if (bool(set(self.term.protocol) - set(['udp', 'tcp']))
-        and self.term.destination_port):
-      raise GceFirewallError(
-          'Only TCP and UDP protocols support destination ports.')
     if (not self.term.source_address and
         not self.term.source_tag) and self.term.direction == 'INGRESS':
       raise GceFirewallError(
@@ -162,14 +185,19 @@ class Term(aclgenerator.Term):
       term_dict['priority'] = self.term.priority
 
     rules = []
-    saddrs = self.term.GetAddressOfVersion('source_address', 4)
-    daddrs = self.term.GetAddressOfVersion('destination_address', 4)
+    saddrs = sorted(self.term.GetAddressOfVersion('source_address', 4),
+                    key=ipaddress.get_mixed_type_key)
+    daddrs = sorted(self.term.GetAddressOfVersion('destination_address', 4),
+                    key=ipaddress.get_mixed_type_key)
 
     if not self.term.protocol:
       raise GceFirewallError(
           'GCE firewall rule contains no protocol, it must be specified.')
 
     proto_dict = copy.deepcopy(term_dict)
+
+    if self.term.logging:
+      proto_dict['logConfig'] = {'enable': True}
 
     for proto in self.term.protocol:
       dest = {
@@ -192,7 +220,7 @@ class Term(aclgenerator.Term):
     # If we're above that limit, we're breaking it down in more terms.
     if saddrs:
       source_addr_chunks = [
-          saddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in xrange(
+          saddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in range(
               0, len(saddrs), self._TERM_ADDRESS_LIMIT)]
       for i, chunk in enumerate(source_addr_chunks):
         rule = copy.deepcopy(proto_dict)
@@ -202,7 +230,7 @@ class Term(aclgenerator.Term):
         rules.append(rule)
     elif daddrs:
       dest_addr_chunks = [
-          daddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in xrange(
+          daddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in range(
               0, len(daddrs), self._TERM_ADDRESS_LIMIT)]
       for i, chunk in enumerate(dest_addr_chunks):
         rule = copy.deepcopy(proto_dict)
@@ -287,6 +315,16 @@ class GCE(aclgenerator.ACLGenerator):
         logging.warn('GCE filter does not specify a network.')
 
       term_names = set()
+      if IsDefaultDeny(terms[-1]):
+        terms[-1].protocol = ['all']
+        terms[-1].priority = 65534
+        if direction == 'EGRESS':
+          terms[-1].destination_address = [nacaddr.IP('0.0.0.0/0'),
+                                           nacaddr.IP('::/0')]
+        else:
+          terms[-1].source_address = [nacaddr.IP('0.0.0.0/0'),
+                                       nacaddr.IP('::/0')]
+
       for term in terms:
         if term.stateless_reply:
           logging.warn('WARNING: Term %s in policy %s is a stateless reply '
