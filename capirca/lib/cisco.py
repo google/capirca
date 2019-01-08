@@ -1023,10 +1023,14 @@ class Cisco(aclgenerator.ACLGenerator):
             target.extend(aclgenerator.AddRepositoryTags(
                 ' remark ', date=False, revision=False))
 
-        # add a header comment if one exists
+          # add a header comment if one exists
           for comment in header.comment:
             for line in comment.split('\n'):
-              target.append(' remark %s' % line)
+              if (self._PLATFORM == 'cisco' and filter_type == 'standard' and
+                  filter_name.isdigit()):
+                target.append('access-list %s remark %s' % (filter_name, line))
+              else:
+                target.append(' remark %s' % line)
 
         # now add the terms
         for term in terms:
