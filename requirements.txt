@@ -2,7 +2,6 @@
 # Usage:
 #   $ pip install -r requirements.txt
 
-PyYAML==3.11
 ipaddress>=1.0.22
 absl-py
 ply
