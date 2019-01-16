@@ -282,6 +282,165 @@ class ObjectGroup(object):
 
     return '\n'.join(ret_str)
 
+class PortMap(object):
+    """Map port numbers to service names"""
+    # Define port mappings common to all protocols
+    _PORTS_TCP = {
+        179: 'bgp',
+        19: 'chargen',
+        514: 'cmd',
+        13: 'daytime',
+        9: 'discard',
+        53: 'domain',
+        7: 'echo',
+        512: 'exec',
+        79: 'finger',
+        21: 'ftp',
+        20: 'ftp-data',
+        70: 'gopher',
+        443: 'https',
+        113: 'ident',
+        194: 'irc',
+        543: 'klogin',
+        544: 'kshell',
+        389: 'ldap',
+        636: 'ldaps',
+        513: 'login',
+        515: 'lpd',
+        2049: 'nfs',
+        119: 'nntp',
+        496: 'pim-auto-rp',
+        109: 'pop2',
+        110: 'pop3',
+        1723: 'pptp',
+        25: 'smtp',
+        22: 'ssh',
+        111: 'sunrpc',
+        49: 'tacacs',
+        517: 'talk',
+        23: 'telnet',
+        540: 'uucp',
+        43: 'whois',
+        80: 'www',
+    }
+    _PORTS_UDP = {
+        512: 'biff',
+        68: 'bootpc',
+        67: 'bootps',
+        9: 'discard',
+        195: 'dnsix',
+        53: 'domain',
+        7: 'echo',
+        500: 'isakmp',
+        434: 'mobile-ip',
+        42: 'nameserver',
+        138: 'netbios-dgm',
+        137: 'netbios-ns',
+        2049: 'nfs',
+        123: 'ntp',
+        496: 'pim-auto-rp',
+        520: 'rip',
+        161: 'snmp',
+        162: 'snmptrap',
+        111: 'sunrpc',
+        514: 'syslog',
+        49: 'tacacs',
+        517: 'talk',
+        69: 'tftp',
+        37: 'time',
+        513: 'who',
+        177: 'xdmcp',
+    }
+    _TYPES_ICMP = {
+        6: 'alternate-address',
+        31: 'conversion-error',
+        8: 'echo',
+        0: 'echo-reply',
+        16: 'information-reply',
+        15: 'information-request',
+        18: 'mask-reply',
+        17: 'mask-request',
+        32: 'mobile-redirect',
+        12: 'parameter-problem',
+        5: 'redirect',
+        9: 'router-advertisement',
+        10: 'router-solicitation',
+        4: 'source-quench',
+        11: 'time-exceeded',
+        14: 'timestamp-reply',
+        13: 'timestamp-request',
+        30: 'traceroute',
+        3: 'unreachable',
+    }
+
+    # Combine cisco-specific port mappings with common ones
+    _CISCO_PORTS_TCP = {
+        5190: 'aol',
+        1494: 'citrix-ica',
+        2748: 'ctiqbe',
+        1720: 'h323',
+        101: 'hostname',
+        143: 'imap4',
+        750: 'kerberos',
+        1352: 'lotusnotes',
+        139: 'netbios-ssn',
+        5631: 'pcanywhere-data',
+        1521: 'sqlnet',
+    }
+    _CISCO_PORTS_TCP.update(_PORTS_TCP)
+    _CISCO_PORTS_UDP = {
+        750: 'kerberos',
+        5632: 'pcanywhere-status',
+        1645: 'radius',
+        1646: 'radius-acct',
+        5510: 'secureid-udp',
+    }
+    _CISCO_PORTS_UDP.update(_PORTS_UDP)
+
+    # Combine arista-specific port mappings with common ones
+    _ARISTA_PORTS_TCP = {
+        143: 'imap',
+        88: 'kerberos',
+    }
+    _ARISTA_PORTS_TCP.update(_PORTS_TCP)
+    _ARISTA_PORTS_UDP = {
+        88: 'kerberos',
+        1812: 'radius',
+        1813: 'radius-acct',
+    }
+    _ARISTA_PORTS_UDP.update(_PORTS_UDP)
+
+    # Full port map data structure
+    _PORT_MAP = {
+      'cisco' : {
+        'tcp' : _CISCO_PORTS_TCP,
+        'udp' : _CISCO_PORTS_UDP,
+        'icmp': _TYPES_ICMP
+      },
+      'arista' : {
+        'tcp' : _ARISTA_PORTS_TCP,
+        'udp' : _ARISTA_PORTS_UDP,
+        'icmp': _TYPES_ICMP
+      }
+    }
+
+    @staticmethod
+    def getProtocol(port_num, proto, platform='cisco'):
+      """Converts a port number to a name or returns the number.
+
+      Args:
+        port_num: integer representing the port number.
+        proto: string representing proto (tcp, udp, etc).
+        platform: string representing platform (cisco, arista)
+
+      Returns:
+        A name of the protocol or the port number that was provided.
+      """
+      try:
+        port_map = PortMap._PORT_MAP[platform][proto]
+        return port_map[port_num]
+      except KeyError:
+        return port_num
 
 class Term(aclgenerator.Term):
   """A single ACL Term."""
@@ -506,137 +665,12 @@ class Term(aclgenerator.Term):
     port0 = port[0]
     port1 = port[1]
     if self.platform == 'arista':
-      port0 = self._TermPortToProtocol(port0, proto)
-      port1 = self._TermPortToProtocol(port1, proto)
+      port0 = PortMap.getProtocol(port0, proto, self.platform)
+      port1 = PortMap.getProtocol(port1, proto, self.platform)
 
     if port[0] != port[1]:
       return 'range %s %s' % (port0, port1)
     return 'eq %s' % (port0)
-
-  def _TermPortToProtocol(self, port_num, proto):
-    """Converts a port number to a name or returns the number.
-
-    Args:
-      port_num: integer representing the port number.
-      proto: string representing proto (tcp, udp, etc).
-
-    Returns:
-      A name of the protocol or the port number that was provided.
-    """
-    ports_tcp = {
-        5190: 'aol',
-        179: 'bgp',
-        19: 'chargen',
-        1494: 'citrix-ica',
-        514: 'cmd',
-        2748: 'ctiqbe',
-        13: 'daytime',
-        9: 'discard',
-        53: 'domain',
-        7: 'echo',
-        512: 'exec',
-        79: 'finger',
-        21: 'ftp',
-        20: 'ftp-data',
-        70: 'gopher',
-        443: 'https',
-        1720: 'h323',
-        101: 'hostname',
-        113: 'ident',
-        143: 'imap4',
-        194: 'irc',
-        750: 'kerberos',
-        543: 'klogin',
-        544: 'kshell',
-        389: 'ldap',
-        636: 'ldaps',
-        515: 'lpd',
-        513: 'login',
-        1352: 'lotusnotes',
-        139: 'netbios-ssn',
-        2049: 'nfs',
-        119: 'nntp',
-        5631: 'pcanywhere-data',
-        496: 'pim-auto-rp',
-        109: 'pop2',
-        110: 'pop3',
-        1723: 'pptp',
-        25: 'smtp',
-        1521: 'sqlnet',
-        22: 'ssh',
-        111: 'sunrpc',
-        49: 'tacacs',
-        517: 'talk',
-        23: 'telnet',
-        540: 'uucp',
-        43: 'whois',
-        80: 'www',
-    }
-    ports_udp = {
-        512: 'biff',
-        68: 'bootpc',
-        67: 'bootps',
-        9: 'discard',
-        53: 'domain',
-        195: 'dnsix',
-        7: 'echo',
-        500: 'isakmp',
-        750: 'kerberos',
-        434: 'mobile-ip',
-        42: 'nameserver',
-        137: 'netbios-ns',
-        138: 'netbios-dgm',
-        2049: 'nfs',
-        123: 'ntp',
-        5632: 'pcanywhere-status',
-        496: 'pim-auto-rp',
-        1645: 'radius',
-        1646: 'radius-acct',
-        520: 'rip',
-        5510: 'secureid-udp',
-        161: 'snmp',
-        162: 'snmptrap',
-        111: 'sunrpc',
-        514: 'syslog',
-        49: 'tacacs',
-        517: 'talk',
-        69: 'tftp',
-        37: 'time',
-        513: 'who',
-        177: 'xdmcp',
-    }
-    types_icmp = {
-        6: 'alternate-address',
-        31: 'conversion-error',
-        8: 'echo',
-        0: 'echo-reply',
-        16: 'information-reply',
-        15: 'information-request',
-        18: 'mask-reply',
-        17: 'mask-request',
-        32: 'mobile-redirect',
-        12: 'parameter-problem',
-        5: 'redirect',
-        9: 'router-advertisement',
-        10: 'router-solicitation',
-        4: 'source-quench',
-        11: 'time-exceeded',
-        14: 'timestamp-reply',
-        13: 'timestamp-request',
-        30: 'traceroute',
-        3: 'unreachable',
-    }
-
-    if proto == 'tcp':
-      if port_num in ports_tcp:
-        return ports_tcp[port_num]
-    elif proto == 'udp':
-      if port_num in ports_udp:
-        return ports_udp[port_num]
-    elif proto == 'icmp':
-      if port_num in types_icmp:
-        return types_icmp[port_num]
-    return port_num
 
   def _FixOptions(self, proto, option):
     """Returns a set of options suitable for the given protocol.
