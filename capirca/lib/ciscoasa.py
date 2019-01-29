@@ -251,18 +251,18 @@ class Term(cisco.Term):
     if not sport:
       sport = ''
     elif sport[0] != sport[1]:
-      sport = ' range %s %s' % (self._TermPortToProtocol(sport[0], proto),
-                                self._TermPortToProtocol(sport[1], proto))
+      sport = ' range %s %s' % (cisco.PortMap.getProtocol(sport[0], proto),
+                                cisco.PortMap.getProtocol(sport[1], proto))
     else:
-      sport = ' eq %s' % (self._TermPortToProtocol(sport[0], proto))
+      sport = ' eq %s' % (cisco.PortMap.getProtocol(sport[0], proto))
 
     if not dport:
       dport = ''
     elif dport[0] != dport[1]:
-      dport = ' range %s %s' % (self._TermPortToProtocol(dport[0], proto),
-                                self._TermPortToProtocol(dport[1], proto))
+      dport = ' range %s %s' % (cisco.PortMap.getProtocol(dport[0], proto),
+                                cisco.PortMap.getProtocol(dport[1], proto))
     else:
-      dport = ' eq %s' % (self._TermPortToProtocol(dport[0], proto))
+      dport = ' eq %s' % (cisco.PortMap.getProtocol(dport[0], proto))
 
     if not option:
       option = ['']
@@ -275,7 +275,7 @@ class Term(cisco.Term):
     ret_lines = []
 
     # str(icmp_type) is needed to ensure 0 maps to '0' instead of FALSE
-    icmp_type = str(self._TermPortToProtocol(icmp_type, 'icmp'))
+    icmp_type = str(cisco.PortMap.getProtocol(icmp_type, 'icmp'))
 
     ret_lines.append('access-list %s extended  %s %s %s %s %s %s %s %s' %
                      (filter_name, action, proto, saddr,
