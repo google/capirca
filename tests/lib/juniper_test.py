@@ -947,7 +947,7 @@ class JuniperTest(unittest.TestCase):
     policy_text = GOOD_HEADER + BAD_TERM_1
     pol_obj = policy.ParsePolicy(policy_text, self.naming)
     jcl = juniper.Juniper(pol_obj, EXP_INFO)
-    self.assertRaises(juniper.TcpEstablishedWithNonTcp, str, jcl)
+    self.assertRaises(juniper.TcpEstablishedWithNonTcpError, str, jcl)
 
     self.naming.GetServiceByProto.assert_has_calls([
         mock.call('DNS', 'tcp'), mock.call('DNS', 'udp')])

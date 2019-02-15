@@ -39,7 +39,7 @@ class JuniperTermPortProtocolError(Error):
   pass
 
 
-class TcpEstablishedWithNonTcp(Error):
+class TcpEstablishedWithNonTcpError(Error):
   pass
 
 
@@ -66,8 +66,10 @@ class JuniperNextIpError(Error):
 class JuniperMultipleTerminatingActionError(Error):
   pass
 
+
 class JuniperFragmentInV6Error(Error):
   pass
+
 
 class Config(object):
   """Config allows a configuration to be assembled easily.
@@ -78,6 +80,7 @@ class Config(object):
   Attributes:
     indent: The number of leading spaces on the current line.
     tabstop: The number of spaces to indent for a new level.
+    lines: the text lines of the configuration.
   """
 
   def __init__(self, indent=0, tabstop=4):
@@ -250,7 +253,7 @@ class Term(aclgenerator.Term):
             if flag not in from_str:
               from_str.append(flag)
           else:
-            raise TcpEstablishedWithNonTcp(
+            raise TcpEstablishedWithNonTcpError(
                 'tcp-established can only be used with tcp protocol in term %s'
                 % self.term.name)
         elif opt.startswith('rst'):

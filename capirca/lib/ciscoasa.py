@@ -101,9 +101,9 @@ class Term(cisco.Term):
     # Term verbatim output - this will skip over normal term creation
     # code by returning early.  Warnings provided in policy.py.
     if self.term.verbatim:
-      for next in self.term.verbatim:
-        if next[0] == 'ciscoasa':
-          ret_str.append(str(next[1]))
+      for line in self.term.verbatim:
+        if line[0] == 'ciscoasa':
+          ret_str.append(str(line[1]))
         return '\n'.join(ret_str)
 
     # protocol
@@ -251,18 +251,18 @@ class Term(cisco.Term):
     if not sport:
       sport = ''
     elif sport[0] != sport[1]:
-      sport = ' range %s %s' % (cisco.PortMap.getProtocol(sport[0], proto),
-                                cisco.PortMap.getProtocol(sport[1], proto))
+      sport = ' range %s %s' % (cisco.PortMap.GetProtocol(sport[0], proto),
+                                cisco.PortMap.GetProtocol(sport[1], proto))
     else:
-      sport = ' eq %s' % (cisco.PortMap.getProtocol(sport[0], proto))
+      sport = ' eq %s' % (cisco.PortMap.GetProtocol(sport[0], proto))
 
     if not dport:
       dport = ''
     elif dport[0] != dport[1]:
-      dport = ' range %s %s' % (cisco.PortMap.getProtocol(dport[0], proto),
-                                cisco.PortMap.getProtocol(dport[1], proto))
+      dport = ' range %s %s' % (cisco.PortMap.GetProtocol(dport[0], proto),
+                                cisco.PortMap.GetProtocol(dport[1], proto))
     else:
-      dport = ' eq %s' % (cisco.PortMap.getProtocol(dport[0], proto))
+      dport = ' eq %s' % (cisco.PortMap.GetProtocol(dport[0], proto))
 
     if not option:
       option = ['']
@@ -275,7 +275,7 @@ class Term(cisco.Term):
     ret_lines = []
 
     # str(icmp_type) is needed to ensure 0 maps to '0' instead of FALSE
-    icmp_type = str(cisco.PortMap.getProtocol(icmp_type, 'icmp'))
+    icmp_type = str(cisco.PortMap.GetProtocol(icmp_type, 'icmp'))
 
     ret_lines.append('access-list %s extended  %s %s %s %s %s %s %s %s' %
                      (filter_name, action, proto, saddr,
@@ -285,7 +285,7 @@ class Term(cisco.Term):
                      ))
 
     # remove any trailing spaces and replace multiple spaces with singles
-    stripped_ret_lines = [re.sub('\s+', ' ', x).rstrip() for x in ret_lines]
+    stripped_ret_lines = [re.sub(r'\s+', ' ', x).rstrip() for x in ret_lines]
     return stripped_ret_lines
 
 
@@ -320,7 +320,6 @@ class CiscoASA(aclgenerator.ACLGenerator):
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     for header, terms in self.policy.filters:
-      filter_options = header.FilterOptions('ciscoasa')
       filter_name = header.FilterName('ciscoasa')
 
       new_terms = []
@@ -340,7 +339,6 @@ class CiscoASA(aclgenerator.ACLGenerator):
       self.ciscoasa_policies.append((header, filter_name, new_terms))
 
   def __str__(self):
-    target_header = []
     target = []
 
     for (header, filter_name, terms) in self.ciscoasa_policies:

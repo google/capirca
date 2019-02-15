@@ -44,7 +44,7 @@ class UnsupportedFilterError(Error):
   pass
 
 
-class UnsupportedHeader(Error):
+class UnsupportedHeaderError(Error):
   pass
 
 
@@ -60,15 +60,15 @@ class SRXOptionError(Error):
   pass
 
 
-class MixedAddrBookTypes(Error):
+class MixedAddrBookTypesError(Error):
   pass
 
 
-class ConflictingTargetOptions(Error):
+class ConflictingTargetOptionsError(Error):
   pass
 
 
-class ConflictingApplicationSets(Error):
+class ConflictingApplicationSetsError(Error):
   pass
 
 
@@ -326,12 +326,14 @@ class JuniperSRX(aclgenerator.ACLGenerator):
 
     Raises:
       UnsupportedFilterError: An unsupported filter was specified
-      UnsupportedHeader: A header option exists that is not understood/usable
+      UnsupportedHeaderError: A header option exists that is not
+                              understood/usable
       SRXDuplicateTermError: Two terms were found with same name in same filter
-      ConflictingTargetOptions: Two target options are conflicting in the header
-      MixedAddrBookTypes: Global and Zone address books in the same policy
-      ConflictingApplicationSets: When two duplicate named terms have
-                                  conflicting application entries
+      ConflictingTargetOptionsError: Two target options are conflicting
+                                     in the header
+      MixedAddrBookTypesError: Global and Zone address books in the same policy
+      ConflictingApplicationSetsError: When two duplicate named terms have
+                                       conflicting application entries
     """
     self.srx_policies = []
     self.addressbook = collections.OrderedDict()
@@ -382,19 +384,20 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       # parse srx target options
       extra_options = filter_options[4:]
       if self._ADDRESSBOOK_TYPES.issubset(extra_options):
-        raise ConflictingTargetOptions('only one address-book-type can '
-                                       'be specified per header "%s"' %
-                                       ' '.join(filter_options))
+        raise ConflictingTargetOptionsError(
+            'only one address-book-type can '
+            'be specified per header "%s"' % ' '.join(filter_options))
       else:
-        address_book_type = set([
-            self._ZONE_ADDR_BOOK,
-            self._GLOBAL_ADDR_BOOK]).intersection(extra_options)
+        address_book_type = set(
+            [self._ZONE_ADDR_BOOK,
+             self._GLOBAL_ADDR_BOOK]).intersection(extra_options)
         if len(address_book_type) is 0:
           address_book_type = {self._GLOBAL_ADDR_BOOK}
         self.addr_book_type.update(address_book_type)
         if len(self.addr_book_type) > 1:
-          raise MixedAddrBookTypes('Global and Zone address-book-types cannot '
-                                   'be used in the same policy')
+          raise MixedAddrBookTypesError(
+              'Global and Zone address-book-types cannot '
+              'be used in the same policy')
         if self.from_zone == 'all' and self.to_zone == 'all':
           if self._ZONE_ADDR_BOOK in self.addr_book_type:
             raise UnsupportedFilterError('Zone address books cannot be used '
@@ -409,20 +412,21 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         self.expresspath = False
 
       for filter_opt in filter_options[4:]:
-          # validate address families
+        # validate address families
         if filter_opt in self._SUPPORTED_AF:
           if not filter_type:
             filter_type = filter_opt
           else:
-            raise ConflictingTargetOptions('only one address family can be '
-                                           'specified per header "%s"' %
-                                           ' '.join(filter_options))
+            raise ConflictingTargetOptionsError(
+                'only one address family can be '
+                'specified per header "%s"' % ' '.join(filter_options))
         elif filter_opt in self._SUPPORTED_TARGET_OPTIONS:
           continue
         else:
-          raise UnsupportedHeader('SRX Generator currently does not support '
-                                  '%s as a header option "%s"' %
-                                  (filter_opt, ' '.join(filter_options)))
+          raise UnsupportedHeaderError(
+              'SRX Generator currently does not support '
+              '%s as a header option "%s"' %
+              (filter_opt, ' '.join(filter_options)))
 
       # if address-family and address-book-type have not been set then default
       if not filter_type:
@@ -468,9 +472,9 @@ class JuniperSRX(aclgenerator.ACLGenerator):
           for i in term.source_address_exclude:
             term.source_address = nacaddr.RemoveAddressFromList(
                 term.source_address, i)
-            for i in term.source_address:
-              i.token = new_src_token
-              i.parent_token = new_src_parent_token
+            for j in term.source_address:
+              j.token = new_src_token
+              j.parent_token = new_src_parent_token
 
         if term.destination_address_exclude:
           if not term.destination_address:
@@ -482,15 +486,16 @@ class JuniperSRX(aclgenerator.ACLGenerator):
           for i in term.destination_address_exclude:
             term.destination_address = nacaddr.RemoveAddressFromList(
                 term.destination_address, i)
-            for i in term.destination_address:
-              i.token = new_dst_token
-              i.parent_token = new_dst_parent_token
+            for j in term.destination_address:
+              j.token = new_dst_token
+              j.parent_token = new_dst_parent_token
 
         # SRX policies are controlled by addresses that are used within, so
         # policy can be at the same time inet and inet6.
         if self._GLOBAL_ADDR_BOOK in self.addr_book_type:
           for zone in self.addressbook:
-            for unused_name, ips in sorted(six.iteritems(self.addressbook[zone])):
+            for unused_name, ips in sorted(
+                six.iteritems(self.addressbook[zone])):
               ips = [i for i in ips]
               if term.source_address == ips:
                 term.source_address = ips
@@ -540,7 +545,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
             break
           if (term.name == application_set['name'] and
               new_application_set != application_set):
-            raise ConflictingApplicationSets(
+            raise ConflictingApplicationSetsError(
                 'Application set %s has a conflicting entry' % term.name)
 
         if new_application_set:

@@ -673,7 +673,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['25']
 
     pol = policy.ParsePolicy(BAD_HEADER_1 + GOOD_TERM_1, self.naming)
-    self.assertRaises(junipersrx.ConflictingTargetOptions,
+    self.assertRaises(junipersrx.ConflictingTargetOptionsError,
                       junipersrx.JuniperSRX,
                       pol, EXP_INFO)
 
@@ -1050,7 +1050,7 @@ class JuniperSRXTest(unittest.TestCase):
 
     pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_2 + GOOD_HEADER_11 +
                              GOOD_TERM_2, self.naming)
-    self.assertRaises(junipersrx.ConflictingApplicationSets,
+    self.assertRaises(junipersrx.ConflictingApplicationSetsError,
                       junipersrx.JuniperSRX, pol, EXP_INFO)
 
     self.naming.GetNetAddr.assert_has_calls(

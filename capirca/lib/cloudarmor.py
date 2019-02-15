@@ -192,8 +192,6 @@ class CloudArmor(aclgenerator.ACLGenerator):
       specified
     """
     self.cloudarmor_policies = []
-    current_date = datetime.datetime.utcnow().date()
-    exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     for header, terms in pol.filters:
       if self._PLATFORM not in header.platforms:

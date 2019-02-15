@@ -597,7 +597,7 @@ class AclCheckTest(unittest.TestCase):
 
   def testUnsupportedTargetOption(self):
     pol = policy.ParsePolicy(BAD_HEADER_3 + GOOD_TERM_1, self.naming)
-    self.assertRaises(iptables.UnsupportedTargetOption,
+    self.assertRaises(iptables.UnsupportedTargetOptionError,
                       iptables.Iptables, pol, EXP_INFO)
 
   def testGoodPolicy(self):

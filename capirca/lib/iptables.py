@@ -438,9 +438,8 @@ class Term(aclgenerator.Term):
     if log_hits:
       log_jump = self._LOG_FORMAT.substitute(term=self.term.name)
       if self.term.log_limit:
-        log_jump = '-m --limit {}/{} {}'.format(self.term.log_limit[0],
-                                            self.term.log_limit[1],
-                                            log_jump)
+        log_jump = '-m --limit {}/{} {}'.format(
+            self.term.log_limit[0], self.term.log_limit[1], log_jump)
 
     if not options:
       options = []
@@ -715,7 +714,7 @@ class Iptables(aclgenerator.ACLGenerator):
       # ensure all options after the filter name are expected
       for opt in self.filter_options:
         if opt not in good_default_actions + good_afs + self._GOOD_OPTIONS:
-          raise UnsupportedTargetOption('%s %s %s %s' % (
+          raise UnsupportedTargetOptionError('%s %s %s %s' % (
               '\nUnsupported option found in', self._PLATFORM,
               'target definition:', opt))
 
@@ -748,7 +747,7 @@ class Iptables(aclgenerator.ACLGenerator):
               if arg in good_default_actions:
                 default_action = arg
       if default_action and default_action not in good_default_actions:
-        raise UnsupportedDefaultAction('%s %s %s %s %s' % (
+        raise UnsupportedDefaultActionError('%s %s %s %s %s' % (
             '\nOnly', ', '.join(good_default_actions),
             'default filter action allowed;', default_action, 'used.'))
 
@@ -765,7 +764,7 @@ class Iptables(aclgenerator.ACLGenerator):
         term_names.add(term.name)
         if not term.logging and term.log_limit:
           raise LimitButNoLogError(
-              "Term %s: Cannoy use log-limit without logging" % term.name)
+              'Term %s: Cannoy use log-limit without logging' % term.name)
 
         term = self.FixHighPorts(term, af=filter_type,
                                  all_protocols_stateful=all_protocols_stateful)
@@ -874,12 +873,13 @@ class EstablishedError(Error):
   """Raised when a term has established option with inappropriate protocol."""
 
 
-class UnsupportedDefaultAction(Error):
+class UnsupportedDefaultActionError(Error):
   """Raised when a filter has an impermissible default action specified."""
 
 
-class UnsupportedTargetOption(Error):
+class UnsupportedTargetOptionError(Error):
   """Raised when a filter has an impermissible default action specified."""
+
 
 class LimitButNoLogError(Error):
   """Raised when log-limit is used by logging is not."""

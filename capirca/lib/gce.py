@@ -322,8 +322,10 @@ class GCE(aclgenerator.ACLGenerator):
           terms[-1].destination_address = [nacaddr.IP('0.0.0.0/0'),
                                            nacaddr.IP('::/0')]
         else:
-          terms[-1].source_address = [nacaddr.IP('0.0.0.0/0'),
-                                       nacaddr.IP('::/0')]
+          terms[-1].source_address = [
+              nacaddr.IP('0.0.0.0/0'),
+              nacaddr.IP('::/0')
+          ]
 
       for term in terms:
         if term.stateless_reply:
