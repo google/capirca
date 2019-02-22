@@ -97,6 +97,24 @@ term good-term-4 {
 }
 """
 
+GOOD_TERM_5 = """
+term good-term-5 {
+  comment:: "Accept ESP from internal sources."
+  address:: SOME_HOST
+  protocol:: esp
+  action:: accept
+}
+"""
+
+GOOD_TERM_6 = """
+term good-term-6 {
+  comment:: "Accept AH from internal sources."
+  address:: SOME_HOST
+  protocol:: ah
+  action:: accept
+}
+"""
+
 SUPPORTED_TOKENS = {
     'action',
     'address',
@@ -205,21 +223,31 @@ class AristaTest(unittest.TestCase):
     # access-list.
     acl = arista.Arista(
         policy.ParsePolicy(GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
-    self.assertTrue('ip access-list test-filter' in str(acl))
+    self.assertIn('ip access-list test-filter', str(acl))
+
+  def testESPIsAnInteger(self):
+    acl = arista.Arista(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_5, self.naming), EXP_INFO)
+    self.assertIn('permit 50', str(acl))
+
+  def testAHIsAnInteger(self):
+    acl = arista.Arista(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_6, self.naming), EXP_INFO)
+    self.assertIn('permit 51', str(acl))
 
   def testBuildTokens(self):
     pol1 = arista.Arista(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM,
                                             self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testBuildWarningTokens(self):
     pol1 = arista.Arista(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
                                             self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testStandardTermHost(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.0/24')]
