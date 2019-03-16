@@ -425,21 +425,22 @@ def AddressListExclude(superset, excludes, collapse_addrs=True):
     a List of nacaddr IPv4 or IPv6 addresses
   """
   if collapse_addrs:
-    superset = CollapseAddrList(superset)
-    excludes = CollapseAddrList(excludes)
+    superset = CollapseAddrList(superset)[::-1]
+    excludes = CollapseAddrList(excludes)[::-1]
   else:
-    superset = sorted(superset)
-    excludes = sorted(excludes)
+    superset = sorted(superset, reverse=True)
+    excludes = sorted(excludes, reverse=True)
 
   ret_array = []
   while superset and excludes:
-    if superset[0].overlaps(excludes[0]):
-      superset = (RemoveAddressFromList([superset[0]], excludes[0]) +
-                  superset[1:])
-    elif superset[0]._get_networks_key() < excludes[0]._get_networks_key():  # pylint: disable=protected-access
-      ret_array.append(superset.pop(0))
+    if superset[-1].overlaps(excludes[-1]):
+      ip = superset.pop()
+      superset.extend(
+          reversed(RemoveAddressFromList([ip], excludes[-1])))
+    elif superset[-1]._get_networks_key() < excludes[-1]._get_networks_key():  # pylint: disable=protected-access
+      ret_array.append(superset.pop())
     else:
-      excludes.pop(0)
+      excludes.pop()
   if collapse_addrs:
     return CollapseAddrList(ret_array + superset)
   else:
