@@ -386,18 +386,23 @@ def RemoveAddressFromList(superset, exclude):
   return sorted(ret_array)
 
 
-def AddressListExclude(superset, excludes):
+def AddressListExclude(superset, excludes, collapse_addrs=True):
   """Remove a list of addresses from another list of addresses.
 
   Args:
     superset: a List of nacaddr IPv4 or IPv6 addresses
     excludes: a List nacaddr IPv4 or IPv6 addresses
+    collapse_addrs: whether or not to collapse contiguous CIDRs togethe
 
   Returns:
     a List of nacaddr IPv4 or IPv6 addresses
   """
-  superset = CollapseAddrList(superset)
-  excludes = CollapseAddrList(excludes)
+  if collapse_addrs:
+    superset = CollapseAddrList(superset)
+    excludes = CollapseAddrList(excludes)
+  else:
+    superset = sorted(superset)
+    excludes = sorted(excludes)
 
   ret_array = []
   while superset and excludes:
@@ -408,7 +413,10 @@ def AddressListExclude(superset, excludes):
       ret_array.append(superset.pop(0))
     else:
       excludes.pop(0)
-  return CollapseAddrList(ret_array + superset)
+  if collapse_addrs:
+    return CollapseAddrList(ret_array + superset)
+  else:
+    return sorted(set(ret_array + superset))
 
 
 ExcludeAddrs = AddressListExclude

@@ -949,47 +949,21 @@ class Term(object):
       return
 
     if self.source_address_exclude:
-      self.flattened_saddr = self._FlattenAddresses(
-          self.source_address, self.source_address_exclude)
+      self.flattened_saddr = nacaddr.AddressListExclude(
+          self.source_address,
+          self.source_address_exclude,
+          collapse_addrs=False)
+      self.source_address = self.flattened_saddr
     if self.destination_address_exclude:
-      self.flattened_daddr = self._FlattenAddresses(
-          self.destination_address, self.destination_address_exclude)
+      self.flattened_daddr = nacaddr.AddressListExclude(
+          self.destination_address,
+          self.destination_address_exclude,
+          collapse_addrs=False)
+      self.destination_address = self.flattened_daddr
     if self.address_exclude:
-      self.flattened_addr = self._FlattenAddresses(
-          self.address, self.address_exclude)
-
-  @staticmethod
-  def _FlattenAddresses(include, exclude):
-    """Reduce an include and exclude list to a single include list.
-
-    Using recursion, whittle away exclude addresses from address include
-    addresses which contain the exclusion.
-
-    Args:
-      include: list of include addresses.
-      exclude: list of exclude addresses.
-    Returns:
-      a single flattened list of nacaddr objects.
-    """
-    if not exclude:
-      return include
-
-    for index, in_addr in enumerate(include):
-      for ex_addr in exclude:
-        if ex_addr.subnet_of(in_addr):
-          reduced_list = list(in_addr.address_exclude(ex_addr))
-          include[index] = None
-          for term in Term._FlattenAddresses(reduced_list, exclude[1:]):
-            if term not in include:
-              include.append(term)
-        elif in_addr.subnet_of(ex_addr):
-          include[index] = None
-
-    # Remove items from include outside of the enumerate loop
-    while None in include:
-      include.remove(None)
-
-    return include
+      self.flattened_addr = nacaddr.AddressListExclude(
+          self.address, self.address_exclude, collapse_addrs=False)
+      self.address = self.flattened_addr
 
   def GetAddressOfVersion(self, addr_type, af=None):
     """Returns addresses of the appropriate Address Family.
