@@ -1309,40 +1309,6 @@ class Term(object):
     if self.destination_port:
       self.destination_port = self.CollapsePortList(self.destination_port)
 
-  def CollapsePortListRecursive(self, ports):
-    """Given a sorted list of ports, collapse to the smallest required list.
-
-    Args:
-      ports: sorted list of port tuples
-
-    Returns:
-      ret_ports: collapsed list of ports
-    """
-    optimized = False
-    ret_ports = []
-    for port in ports:
-      if not ret_ports:
-        ret_ports.append(port)
-      # we should be able to count on ret_ports[-1][0] <= port[0]
-      elif ret_ports[-1][1] >= port[1]:
-        # (10, 20) and (12, 13) -> (10, 20)
-        optimized = True
-      elif port[0] < ret_ports[-1][1] < port[1]:
-        # (10, 20) and (15, 30) -> (10, 30)
-        ret_ports[-1] = (ret_ports[-1][0], port[1])
-        optimized = True
-      elif ret_ports[-1][1] + 1 == port[0]:
-        # (10, 20) and (21, 30) -> (10, 30)
-        ret_ports[-1] = (ret_ports[-1][0], port[1])
-        optimized = True
-      else:
-        # (10, 20) and (22, 30) -> (10, 20), (22, 30)
-        ret_ports.append(port)
-
-    if optimized:
-      return self.CollapsePortListRecursive(ret_ports)
-    return ret_ports
-
   def CollapsePortList(self, ports):
     """Given a list of ports, Collapse to the smallest required.
 
@@ -1354,7 +1320,23 @@ class Term(object):
       ret_array: the collapsed sorted list of ports, eg: [(53,53), (80,80),
                                                           (1024,65535)]
     """
-    return self.CollapsePortListRecursive(sorted(ports))
+    ret_ports = []
+    for port in sorted(ports):
+      if not ret_ports:
+        ret_ports.append(port)
+      elif ret_ports[-1][1] >= port[1]:
+        # (10, 20) and (12, 13) -> (10, 20)
+        pass
+      elif port[0] < ret_ports[-1][1] < port[1]:
+        # (10, 20) and (15, 30) -> (10, 30)
+        ret_ports[-1] = (ret_ports[-1][0], port[1])
+      elif ret_ports[-1][1] + 1 == port[0]:
+        # (10, 20) and (21, 30) -> (10, 30)
+        ret_ports[-1] = (ret_ports[-1][0], port[1])
+      else:
+        # (10, 20) and (22, 30) -> (10, 20), (22, 30)
+        ret_ports.append(port)
+    return ret_ports
 
   def CheckProtocolIsContained(self, superset, subset):
     """Check if the given list of protocols is wholly contained.
