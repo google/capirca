@@ -251,24 +251,6 @@ class NacaddrUnitTest(unittest.TestCase):
     self.assertFalse(nacaddr.IsSuperNet(addrs2, addrs5))
     self.assertTrue(nacaddr.IsSuperNet(addrs5, addrs2))
 
-  def testSafeToMerge(self):
-    test_data = [(nacaddr.IPv4('10.0.0.0/10'),
-                  nacaddr.IPv4('10.0.0.0/8'),
-                  [nacaddr.IPv4('10.0.0.0/9')], False),
-                 (nacaddr.IPv4('192.168.0.0/27'),
-                  nacaddr.IPv4('192.168.0.0/24'),
-                  [nacaddr.IPv4('192.168.1.0/24')], True),
-                 (nacaddr.IPv6('10::/128'),
-                  nacaddr.IPv6('10::/56'),
-                  [nacaddr.IPv6('10::/64')], False),
-                 (nacaddr.IPv6('10::/128'),
-                  nacaddr.IPv6('10::/56'),
-                  [nacaddr.IPv6('8::/64')], True)]
-    for address, merge_target, check_addresses, expected in test_data:
-      self.assertEqual(nacaddr.SafeToMerge(address,
-                                           merge_target,
-                                           check_addresses), expected)
-
   def testSafeCollapsing(self):
     test_data = [([nacaddr.IPv4('10.0.0.0/8'),
                    nacaddr.IPv4('10.0.0.0/10')],

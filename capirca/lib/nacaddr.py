@@ -20,6 +20,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import collections
 import itertools
 import ipaddress
 
@@ -234,7 +235,7 @@ def CollapseAddrListPreserveTokens(addresses):
   return [i for sublist in dedup_array for i in sublist]
 
 
-def SafeToMerge(address, merge_target, check_addresses):
+def _SafeToMerge(address, merge_target, check_addresses):
   """Determine if it's safe to merge address into merge target.
 
   Checks given address against merge target and a list of check_addresses
@@ -245,22 +246,41 @@ def SafeToMerge(address, merge_target, check_addresses):
   Args:
     address: Address that is being merged.
     merge_target: Merge candidate address.
-    check_addresses: A list of address to compare specificity with.
+    check_addresses: A dict networks_address->addrs to compare specificity with.
 
   Returns:
     True if safe to merge, False otherwise.
   """
-  for check_address in check_addresses:
-    if (address.network_address == check_address.network_address and
-        address.netmask > check_address.netmask and
-        merge_target.netmask <= check_address.netmask):
+  for check_address in check_addresses.get(address.network_address, []):
+    if merge_target.netmask <= check_address.netmask < address.netmask:
       return False
   return True
 
 
-def CollapseAddrListRecursive(addresses, complement_addresses=None,
-                              merge_risk=False):
-  """Recursively loops through the addresses, collapsing concurent netblocks.
+class _LinkedList(object):
+  """A trivial doubly linked list."""
+
+  def __init__(self, val):
+    self.next = None
+    self.prev = None
+    self.val = val
+
+  def Add(self, val):
+    self.next = _LinkedList(val)
+    self.next.prev = self
+    return self.next
+
+  def RemoveNext(self):
+    new_next = self.next.next
+    self.next.next = None
+    self.next.prev = None
+    self.next = new_next
+    if new_next is not None:
+      new_next.prev = self
+
+
+def _CollapseAddrListInternal(addresses, complements_by_network):
+  """Collapses consecutive netblocks until reaching a fixed point.
 
    Example:
 
@@ -271,7 +291,7 @@ def CollapseAddrListRecursive(addresses, complement_addresses=None,
    ip5 = ipaddress.IPv4Network('1.1.4.0/24')
    ip6 = ipaddress.IPv4Network('1.1.0.1/22')
 
-   CollapseAddrListRecursive([ip1, ip2, ip3, ip4, ip5, ip6]) ->
+   _CollapseAddrListInternal([ip1, ip2, ip3, ip4, ip5, ip6]) ->
    [IPv4Network('1.1.0.0/22'), IPv4Network('1.1.4.0/24')]
 
    Note, this shouldn't be called directly, but is called via
@@ -279,43 +299,54 @@ def CollapseAddrListRecursive(addresses, complement_addresses=None,
 
   Args:
     addresses: List of IPv4 or IPv6 objects
-    complement_addresses: List of IPv4 or IPv6 objects that, if present,
-      will be considered to avoid harmful optimizations.
-    merge_risk: boolean that specifies if complement address list should be
-      considered. If False, allows to shortcut the checks.
+    complements_by_network: Dict of IPv4 or IPv6 objects indexed by
+      network_address, that if present will be considered to avoid harmful
+      optimizations.
 
   Returns:
     List of IPv4 or IPv6 objects (depending on what we were passed)
   """
-  ret_array = []
-  optimized = False
+  # Copy the addresses into a linked list so we can efficiently sparsify them.
+  if not addresses:
+    return addresses
+  addrs = _LinkedList(addresses[0])
+  fringe = collections.deque([addrs])
+  node = addrs
+  for addr in addresses[1:]:
+    node = node.Add(addr)
+    fringe.append(node)
 
-  for cur_addr in addresses:
-    if not ret_array:
-      ret_array.append(cur_addr)
+  # Actually collapse the IPs.
+  while fringe:
+    cur = fringe.popleft()
+    if cur.next is None:
       continue
-    safe_to_merge = True
-    ip = ret_array[-1]
-    if merge_risk:
-      safe_to_merge = SafeToMerge(cur_addr, ip, complement_addresses)
-    if ip.supernet_of(cur_addr) and safe_to_merge:
-      # save the comment from the subsumed address
-      ip.AddComment(cur_addr.text)
-      optimized = True
-    elif ((ip.version == cur_addr.version and
-           ip.prefixlen == cur_addr.prefixlen and
-           ip.broadcast_address + 1 == cur_addr.network_address and
-           ip.Supernet().network_address == ip.network_address) and
-          safe_to_merge):
-      ret_array.append(ret_array.pop().Supernet())
-      # save the text from the subsumed address
-      ret_array[-1].AddComment(cur_addr.text)
-      optimized = True
-    else:
-      ret_array.append(cur_addr)
+    cur_ip = cur.val
+    next_ip = cur.next.val
+    if not _SafeToMerge(next_ip, cur_ip, complements_by_network):
+      continue
+    if cur_ip.supernet_of(next_ip):
+      # Preserve next_ip's comment, then subsume it.
+      cur_ip.AddComment(next_ip.text)
+      cur.RemoveNext()
+      fringe.appendleft(cur)
+    elif (cur_ip.version == next_ip.version and
+          cur_ip.prefixlen == next_ip.prefixlen and
+          cur_ip.broadcast_address + 1 == next_ip.network_address and
+          cur_ip.Supernet().network_address == cur_ip.network_address):
+      # Preserve next_ip's comment, then merge with it.
+      cur.val.AddComment(next_ip.text)
+      cur.RemoveNext()
+      cur.val = cur_ip.Supernet()
+      fringe.appendleft(cur)
+      if cur.prev is not None:
+        fringe.append(cur.prev)
 
-  if optimized:
-    return CollapseAddrListRecursive(ret_array)
+  # Package the final results into an array.
+  ret_array = []
+  while addrs:
+    ret_array.append(addrs.val)
+    addrs = addrs.next
   return ret_array
 
 
@@ -345,17 +376,13 @@ def CollapseAddrList(addresses, complement_addresses=None):
   Returns:
     list of ipaddress.IPNetwork objects
   """
-  merge_risk = False
-  if complement_addresses:
-    address_set = set([a.network_address for a in addresses])
-    ca_address_set = set([ca.network_address for ca in complement_addresses])
-    merge_risk = not address_set.isdisjoint(ca_address_set)
-  return CollapseAddrListRecursive(
-      # pylint: disable=protected-access
-
-      sorted(addresses, key=ipaddress.get_mixed_type_key),
-      complement_addresses, merge_risk)
-      # pylint: enable=protected-access
+  complements_dict = collections.defaultdict(list)
+  address_set = set([a.network_address for a in addresses])
+  for ca in complement_addresses or []:
+    if ca.network_address in address_set:
+      complements_dict[ca.network_address].append(ca)
+  return _CollapseAddrListInternal(
+      sorted(addresses, key=ipaddress.get_mixed_type_key), complements_dict)
 
 
 def SortAddrList(addresses):
