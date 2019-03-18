@@ -257,28 +257,6 @@ def _SafeToMerge(address, merge_target, check_addresses):
   return True
 
 
-class _LinkedList(object):
-  """A trivial doubly linked list."""
-
-  def __init__(self, val):
-    self.next = None
-    self.prev = None
-    self.val = val
-
-  def Add(self, val):
-    self.next = _LinkedList(val)
-    self.next.prev = self
-    return self.next
-
-  def RemoveNext(self):
-    new_next = self.next.next
-    self.next.next = None
-    self.next.prev = None
-    self.next = new_next
-    if new_next is not None:
-      new_next.prev = self
-
-
 def _CollapseAddrListInternal(addresses, complements_by_network):
   """Collapses consecutive netblocks until reaching a fixed point.
 
@@ -306,47 +284,32 @@ def _CollapseAddrListInternal(addresses, complements_by_network):
   Returns:
     List of IPv4 or IPv6 objects (depending on what we were passed)
   """
-  # Copy the addresses into a linked list so we can efficiently sparsify them.
-  if not addresses:
-    return addresses
-  addrs = _LinkedList(addresses[0])
-  fringe = collections.deque([addrs])
-  node = addrs
-  for addr in addresses[1:]:
-    node = node.Add(addr)
-    fringe.append(node)
-
-  # Actually collapse the IPs.
-  while fringe:
-    cur = fringe.popleft()
-    if cur.next is None:
-      continue
-    cur_ip = cur.val
-    next_ip = cur.next.val
-    if not _SafeToMerge(next_ip, cur_ip, complements_by_network):
-      continue
-    if cur_ip.supernet_of(next_ip):
-      # Preserve next_ip's comment, then subsume it.
-      cur_ip.AddComment(next_ip.text)
-      cur.RemoveNext()
-      fringe.appendleft(cur)
-    elif (cur_ip.version == next_ip.version and
-          cur_ip.prefixlen == next_ip.prefixlen and
-          cur_ip.broadcast_address + 1 == next_ip.network_address and
-          cur_ip.Supernet().network_address == cur_ip.network_address):
-      # Preserve next_ip's comment, then merge with it.
-      cur.val.AddComment(next_ip.text)
-      cur.RemoveNext()
-      cur.val = cur_ip.Supernet()
-      fringe.appendleft(cur)
-      if cur.prev is not None:
-        fringe.append(cur.prev)
-
-  # Package the final results into an array.
   ret_array = []
-  while addrs:
-    ret_array.append(addrs.val)
-    addrs = addrs.next
+  for addr in addresses:
+    addr_is_fresh = True
+    while addr_is_fresh:
+      addr_is_fresh = False
+      if not ret_array:
+        ret_array.append(addr)
+        continue
+
+      prev_addr = ret_array[-1]
+      if not _SafeToMerge(addr, prev_addr, complements_by_network):
+        ret_array.append(addr)
+      elif prev_addr.supernet_of(addr):
+        # Preserve addr's comment, then subsume it.
+        prev_addr.AddComment(addr.text)
+      elif (prev_addr.version == addr.version and
+            prev_addr.prefixlen == addr.prefixlen and
+            prev_addr.broadcast_address + 1 == addr.network_address and
+            prev_addr.Supernet().network_address == prev_addr.network_address):
+        # Preserve addr's comment, then merge with it.
+        prev_addr.AddComment(addr.text)
+        addr = ret_array.pop().Supernet()
+        addr_is_fresh = True
+      else:
+        ret_array.append(addr)
+
   return ret_array
 
 
