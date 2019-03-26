@@ -66,6 +66,29 @@ term good-term-icmp {
 }
 """
 
+GOOD_TERM_ANYPROTO = """
+term good-term-anyproto {
+  source-address:: FOO
+  destination-address:: FOO
+  action:: accept
+}
+"""
+
+GOOD_TERM_MISCPROTO = """
+term good-term-miscproto {
+  protocol:: vrrp
+  action:: accept
+}
+"""
+
+# Edge case: protocol value for hopopt is 0
+GOOD_TERM_HOPOPT = """
+term good-term-hopopt {
+  protocol:: hopopt
+  action:: accept
+}
+"""
+
 GOOD_TERM_ICMP_TYPES = """
 term good-term-icmp-types {
   protocol:: icmp
@@ -250,7 +273,7 @@ class WindowsAdvFirewallTest(unittest.TestCase):
       fullstring = 'netsh advfirewall firewall add rule %s' % (string)
       super(WindowsAdvFirewallTest, self).failUnless(
           fullstring in result,
-          'did not find "%s" for %s' % (fullstring, term))
+          'did not find "%s" for %s\nGot:\n%s' % (fullstring, term, result))
 
   def testTcp(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
@@ -333,6 +356,30 @@ class WindowsAdvFirewallTest(unittest.TestCase):
          ' remoteip=any protocol=icmpv4 action=allow'],
         result,
         'did not find actual term for multi-proto')
+
+  def testAnyProtocol(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
+        GOOD_HEADER_OUT + GOOD_TERM_ANYPROTO, self.naming), EXP_INFO)
+    result = str(acl)
+    self.FailUnless(
+        ['name=o_good-term-anyproto enable=yes interfacetype=any dir=out'
+         ' localip=10.0.0.0/8 remoteip=10.0.0.0/8 protocol=any action=allow'],
+        result,
+        '"any" proto')
+
+  def testMiscProtocol(self):
+    acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
+        GOOD_HEADER_OUT + GOOD_TERM_MISCPROTO + GOOD_TERM_HOPOPT, self.naming),
+                                                 EXP_INFO)
+    result = str(acl)
+    self.FailUnless(
+        ['name=o_good-term-miscproto enable=yes interfacetype=any dir=out'
+         ' localip=any remoteip=any protocol=112 action=allow',
+         'name=o_good-term-hopopt enable=yes interfacetype=any dir=out'
+         ' localip=any remoteip=any protocol=0 action=allow',],
+        result,
+        'explicit miscellaneous proto')
 
   def testBuildTokens(self):
     pol1 = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
