@@ -907,9 +907,9 @@ class PolicyTest(unittest.TestCase):
   def testICMPTypesSorting(self):
     pol = HEADER + TERM_UNSORTED_ICMP_TYPE
     ret = policy.ParsePolicy(pol, self.naming)
-    self.assertTrue(
-        'icmp_type: [u\'echo-reply\', u\'echo-request\', u\'unreachable\']' in
-        str(ret))
+    icmp_types = ['echo-reply', 'echo-request', 'unreachable']
+    expected = 'icmp_type: %s' % icmp_types
+    self.assertIn(expected, str(ret))
 
   def testICMPCodesSorting(self):
     pol = HEADER + TERM_UNSORTED_ICMP_CODE

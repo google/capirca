@@ -47,6 +47,20 @@ def IP(ip, comment='', token='', strict=True):
     return IPv6(ip, comment, token, strict=strict)
 
 
+# TODO(robankeny) remove once at 3.7
+@staticmethod
+def _is_subnet_of(a, b):  # pylint: disable=invalid-name
+  try:
+    # Always false if one is v4 and the other is v6.
+    if a._version != b._version:  # pylint: disable=protected-access
+      raise TypeError('%s and %s are not of the same version' % (a, b))
+    return (b.network_address <= a.network_address and
+            b.broadcast_address >= a.broadcast_address)
+  except AttributeError:
+    raise TypeError(
+        'Unable to test subnet containment between %s and %s' % (a, b))
+
+
 class IPv4(ipaddress.IPv4Network):
   """This subclass allows us to keep text comments related to each object."""
 
@@ -69,7 +83,7 @@ class IPv4(ipaddress.IPv4Network):
     return self._is_subnet_of(other, self)
 
   def __deepcopy__(self, memo):
-    result = self.__class__(unicode(self.with_prefixlen))
+    result = self.__class__(self.with_prefixlen)
     result.text = self.text
     result.token = self.token
     result.parent_token = self.parent_token
@@ -116,6 +130,7 @@ class IPv4(ipaddress.IPv4Network):
 
   # Backwards compatibility name from v1.
   Supernet = supernet
+  _is_subnet_of = _is_subnet_of
 
 
 class IPv6(ipaddress.IPv6Network):
@@ -140,7 +155,7 @@ class IPv6(ipaddress.IPv6Network):
     return self._is_subnet_of(other, self)
 
   def __deepcopy__(self, memo):
-    result = self.__class__(unicode(self.with_prefixlen))
+    result = self.__class__(self.with_prefixlen)
     result.text = self.text
     result.token = self.token
     result.parent_token = self.parent_token
@@ -172,6 +187,7 @@ class IPv6(ipaddress.IPv6Network):
 
   # Backwards compatibility name from v1.
   Supernet = supernet
+  _is_subnet_of = _is_subnet_of
 
   def AddComment(self, comment=''):
     """Append comment to self.text, comma separated.

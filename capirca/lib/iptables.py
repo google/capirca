@@ -126,9 +126,10 @@ class Term(aclgenerator.Term):
     # Don't render icmpv6 protocol terms under inet, or icmp under inet6
     if ((self.af == 'inet6' and 'icmp' in self.term.protocol) or
         (self.af == 'inet' and 'icmpv6' in self.term.protocol)):
-      logging.debug(self.NO_AF_LOG_PROTO.substitute(term=self.term.name,
-                                                    proto=self.term.protocol,
-                                                    af=self.af))
+      logging.debug(self.NO_AF_LOG_PROTO.substitute(
+          term=self.term.name,
+          proto=', '.join(self.term.protocol),
+          af=self.af))
       return ''
 
     # Term verbatim output - this will skip over most normal term

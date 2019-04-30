@@ -48,14 +48,14 @@ class GceFirewallError(Error):
 def IsDefaultDeny(term):
   """Returns true if a term is a default deny without IPs, ports, etc."""
   skip_attrs = ['flattened', 'flattened_addr', 'flattened_saddr',
-                'flattened_daddr', 'action', 'comment']
+                'flattened_daddr', 'action', 'comment', 'name']
   if 'deny' not in term.action:
     return False
   # This lc will look through all methods and attributes of the object.
   # It returns only the attributes that need to be looked at to determine if
   # this is a default deny.
-  for i in [a for a in dir(term) if not a.startswith('__') and a.islower() and
-            not callable(getattr(term, a))]:
+  for i in [a for a in dir(term) if not a.startswith('__') and
+            a.islower() and not callable(getattr(term, a))]:
     if i in skip_attrs:
       continue
     v = getattr(term, i)

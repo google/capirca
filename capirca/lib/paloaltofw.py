@@ -144,7 +144,7 @@ class Service(object):
             "You have a duplicate service. A service named %s already exists." %
             str(final_service_name))
 
-    if len(final_service_name.decode("utf-8")) > 63:
+    if len(final_service_name) > 63:
       raise PaloAltoFWTooLongName("Service name must be 63 characters max: %s" %
                                   str(final_service_name))
     self.service_map[(ports, protocol)] = {"name": final_service_name}

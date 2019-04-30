@@ -1099,7 +1099,7 @@ class JuniperTest(unittest.TestCase):
 
     mock_debug.assert_called_once_with(
         'Term icmptype-mismatch will not be rendered,'
-        ' as it has [u\'icmpv6\'] match specified but '
+        ' as it has icmpv6 match specified but '
         'the ACL is of inet address family.')
 
   @mock.patch.object(juniper.logging, 'debug')
@@ -1112,7 +1112,7 @@ class JuniperTest(unittest.TestCase):
 
     mock_debug.assert_called_once_with(
             'Term icmptype-mismatch will not be rendered,'
-            ' as it has [u\'icmp\'] match specified but '
+            ' as it has icmp match specified but '
             'the ACL is of inet6 address family.')
 
   @mock.patch.object(juniper.logging, 'warn')

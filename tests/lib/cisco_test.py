@@ -732,7 +732,7 @@ class CiscoTest(unittest.TestCase):
 
     mock_debug.assert_called_once_with(
         'Term good-term-11 will not be rendered,'
-        ' as it has [u\'icmpv6\'] match specified but '
+        ' as it has icmpv6 match specified but '
         'the ACL is of inet address family.')
 
   @mock.patch.object(cisco.logging, 'debug')
@@ -744,7 +744,7 @@ class CiscoTest(unittest.TestCase):
 
     mock_debug.assert_called_once_with(
         'Term good-term-1 will not be rendered,'
-        ' as it has [u\'icmp\'] match specified but '
+        ' as it has icmp match specified but '
         'the ACL is of inet6 address family.')
 
   def testIPv6Standard(self):

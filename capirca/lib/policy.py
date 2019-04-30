@@ -1471,6 +1471,9 @@ class VarType(object):
   def __eq__(self, other):
     return self.var_type == other.var_type and self.value == other.value
 
+  def __hash__(self):
+    return id(self)
+
 
 class Header(object):
   """The header of the policy file contains the targets and a global comment."""
@@ -1963,9 +1966,9 @@ def p_flex_match_key_values(p):
       raise FlexibleMatchError('%s value is not valid' % p[1])
 
   if type(p[0]) == type([]):
-    p[0].append(p[1:])
+    p[0].append([p.slice[1:]])
   else:
-    p[0] = [p[1:]]
+    p[0] = [[i.value for i in p.slice[1:]]]
 
 
 def p_forwarding_class_spec(p):

@@ -178,24 +178,24 @@ class ACLGeneratorTest(unittest.TestCase):
                                                         protoConvert,
                                                         protoMap)
 
-    self.assertItemsEqual(expectedProtocolList, retProtocolList)
+    self.assertListEqual(expectedProtocolList, retProtocolList)
 
   def testAddRepositoryTags(self):
     # Format print the '$' into the RCS tags in order prevent the tags from
     # being interpolated here.
 
     # Include all tags.
-    self.assertItemsEqual(
+    self.assertListEqual(
         ['%sId:%s' % ('$', '$'),
          '%sDate:%s' % ('$', '$'),
          '%sRevision:%s' % ('$', '$')], aclgenerator.AddRepositoryTags())
     # Remove the revision tag.
-    self.assertItemsEqual(
+    self.assertListEqual(
         ['%sId:%s' % ('$', '$'),
          '%sDate:%s' % ('$', '$')],
         aclgenerator.AddRepositoryTags(revision=False))
     # Only include the Id: tag.
-    self.assertItemsEqual(
+    self.assertListEqual(
         ['%sId:%s' % ('$', '$')],
         aclgenerator.AddRepositoryTags(date=False, revision=False))
 

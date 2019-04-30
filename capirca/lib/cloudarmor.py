@@ -104,7 +104,7 @@ class Term(aclgenerator.Term):
     # If scrIpRanges within a single term exceed _MAX_IP_RANGES_PER_TERM,
     # split into multiple terms
     source_addr_chunks = [
-        saddrs[x:x+self._MAX_IP_RANGES_PER_TERM] for x in xrange(
+        saddrs[x:x+self._MAX_IP_RANGES_PER_TERM] for x in range(
             0, len(saddrs), self._MAX_IP_RANGES_PER_TERM)]
 
     split_rule_count = len(source_addr_chunks)

@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import io
 import unittest
 
 from capirca.lib import nacaddr
@@ -140,9 +139,10 @@ class NamingUnitTest(unittest.TestCase):
 
   def testNetParents(self):
     """BIN & NET2 contain NET1, BING & BAZ contain FOO_V6."""
-    self.assertItemsEqual(self.defs.GetNetParents('NET1'),
-                          ['BING', 'NET2'])
-    self.assertItemsEqual(self.defs.GetNetParents('FOO_V6'), ['BING', 'BAZ'])
+    self.assertListEqual(sorted(self.defs.GetNetParents('NET1')),
+                         ['BING', 'NET2'])
+    self.assertListEqual(sorted(self.defs.GetNetParents('FOO_V6')),
+                         ['BAZ', 'BING'])
 
   def testGetIpParents(self):
     """Ensure GetIpParents returns proper results."""
@@ -162,13 +162,13 @@ class NamingUnitTest(unittest.TestCase):
 
   def testParseNetFile(self):
     filedefs = naming.Naming(None)
-    data = io.BytesIO('FOO = 127.0.0.1 # some network\n'.encode('utf8'))
+    data = ['FOO = 127.0.0.1 # some network\n']
     filedefs._ParseFile(data, 'networks')
     self.assertEqual(filedefs.GetNetAddr('FOO'), [nacaddr.IPv4('127.0.0.1')])
 
   def testParseServiceFile(self):
     filedefs = naming.Naming(None)
-    data = io.BytesIO('HTTP = 80/tcp\n'.encode('utf8'))
+    data = ['HTTP = 80/tcp\n']
     filedefs._ParseFile(data, 'services')
     self.assertEqual(filedefs.GetService('HTTP'), ['80/tcp'])
 

@@ -374,7 +374,7 @@ class NftablesTest(unittest.TestCase):
                                              self.mock_naming), EXP_INFO))
     mock_logging_debug.assert_called_once_with('Term inet6-icmp will not be '
                                                'rendered, as it has '
-                                               '[u\'icmpv6\'] match specified '
+                                               'icmpv6 match specified '
                                                'but the ACL is of inet address '
                                                'family.')
 
