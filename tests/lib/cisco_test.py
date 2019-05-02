@@ -68,12 +68,6 @@ header {
   target:: cisco inet6_acl inet6
 }
 """
-GOOD_INET6_STANDARD_HEADER = """
-header {
-  comment:: "inet6 header test"
-  target:: cisco inet6_acl standard inet6
-}
-"""
 GOOD_MIXED_HEADER = """
 header {
   comment:: "mixed inet/inet6 header test"
@@ -746,14 +740,6 @@ class CiscoTest(unittest.TestCase):
         'Term good-term-1 will not be rendered,'
         ' as it has icmp match specified but '
         'the ACL is of inet6 address family.')
-
-  def testIPv6Standard(self):
-    self.naming.GetNetAddr.return_value = [nacaddr.IP('192.168.1.0/24'),
-                                           nacaddr.IP('2001:db8::2:1')]
-    acl = cisco.Cisco(policy.ParsePolicy(GOOD_INET6_STANDARD_HEADER +
-                                         GOOD_STANDARD_TERM_1,
-                                         self.naming), EXP_INFO)
-    self.assertIn('permit 2001:db8::2:1/128', str(acl))
 
   def testUnsupportedKeywordsError(self):
     pol1 = policy.ParsePolicy(GOOD_HEADER + UNSUPPORTED_TERM_1, self.naming)

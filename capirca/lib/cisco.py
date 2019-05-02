@@ -64,16 +64,10 @@ class TermStandard(object):
   """A single standard ACL Term."""
   COMMENT_MAX_WIDTH = 70
 
-  def __init__(self, term, filter_name, af='inet', platform='cisco',
-               verbose=True):
+  def __init__(self, term, filter_name, platform='cisco', verbose=True):
     self.term = term
     self.filter_name = filter_name
     self.platform = platform
-    # TODO(robankeny) Lets disambiguate af, inet, 4 and 6.
-    # These are mixed up a lot in the project.
-    self.af = 4
-    if af == 'inet6':
-      self.af = 6
     self.options = []
     self.logstring = ''
     self.dscpstring = ''
@@ -128,7 +122,9 @@ class TermStandard(object):
         if next_verbatim[0] == self.platform:
           ret_str.append(str(next_verbatim[1]))
         return '\n'.join(ret_str)
-    addresses = [x for x in self.term.address if x.version == self.af]
+
+    v4_addresses = [x for x in self.term.address if
+                    not isinstance(x, nacaddr.IPv6)]
     if self.filter_name.isdigit():
       if self.verbose:
         ret_str.append('access-list %s remark %s' % (self.filter_name,
@@ -142,8 +138,8 @@ class TermStandard(object):
                                                        comment))
 
       action = _ACTION_TABLE.get(str(self.term.action[0]))
-      if addresses:
-        for addr in addresses:
+      if v4_addresses:
+        for addr in v4_addresses:
           if addr.prefixlen == 32:
             ret_str.append('access-list %s %s %s%s%s' % (self.filter_name,
                                                          action,
@@ -174,8 +170,8 @@ class TermStandard(object):
             ret_str.append(' remark ' + str(comment))
 
       action = _ACTION_TABLE.get(str(self.term.action[0]))
-      if addresses:
-        for addr in addresses:
+      if v4_addresses:
+        for addr in v4_addresses:
           if addr.prefixlen == 32:
             ret_str.append(' %s host %s%s%s' % (action,
                                                 addr.network_address,
@@ -187,11 +183,6 @@ class TermStandard(object):
                                               addr.prefixlen,
                                               self.logstring,
                                               self.dscpstring))
-          elif self.af == 6:
-            ret_str.append(' %s %s %s%s' % (action,
-                                            addr.with_prefixlen,
-                                            self.logstring,
-                                            self.dscpstring))
           else:
             ret_str.append(' %s %s %s%s%s' % (action,
                                               addr.network_address,
@@ -1126,7 +1117,7 @@ class Cisco(aclgenerator.ACLGenerator):
 
           term.name = self.FixTermLength(term.name)
           af = 'inet'
-          if 'inet6' in filter_options:
+          if next_filter == 'inet6':
             af = 'inet6'
           term = self.FixHighPorts(term, af=af)
           if not term:
@@ -1144,8 +1135,8 @@ class Cisco(aclgenerator.ACLGenerator):
           # render terms based on filter type
           if next_filter == 'standard':
             # keep track of sequence numbers across terms
-            new_terms.append(TermStandard(term, filter_name, af, self._PLATFORM,
-                                          self.verbose, ))
+            new_terms.append(TermStandard(term, filter_name, self._PLATFORM,
+                                          self.verbose))
           elif next_filter == 'extended':
             enable_dsmo = (len(filter_options) > 2 and
                            filter_options[2] == 'enable_dsmo')
