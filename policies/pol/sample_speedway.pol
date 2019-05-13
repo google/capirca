@@ -32,11 +32,11 @@ header {
 }
 term base-allow-lo0-out {
   comment:: "Allow all loopback communications"
-  verbatim::  iptables "-A OUTPUT -o lo -j ACCEPT"
+  verbatim::  speedway "-A OUTPUT -o lo -j ACCEPT"
 }
 term base-allow-est-out {
   option:: established
-  action:: accept 
+  action:: accept
 }
 term base-allow-dns-query-out {
   protocol:: udp
