@@ -52,7 +52,7 @@ from capirca.lib import policy
 from capirca.lib import speedway
 from capirca.lib import srxlo
 from capirca.lib import windows_advfirewall
-
+from capirca.lib import fortigate
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string(
@@ -174,6 +174,7 @@ def RenderFile(input_file, output_directory, definitions,
   win_afw = False
   xacl = False
   paloalto = False
+  fcl = False
 
   try:
     conf = open(input_file).read()
@@ -238,6 +239,8 @@ def RenderFile(input_file, output_directory, definitions,
     paloalto = copy.deepcopy(pol)
   if 'cloudarmor' in platforms:
     gca = copy.deepcopy(pol)
+  if 'fortigate' in platforms:
+    fcl = copy.deepcopy(pol)
 
   if not output_directory.endswith('/'):
     output_directory += '/'
@@ -325,6 +328,10 @@ def RenderFile(input_file, output_directory, definitions,
                 input_file, write_files)
     if gca:
       acl_obj = cloudarmor.CloudArmor(gca, exp_info)
+      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
+                input_file, write_files)
+    if fcl:
+      acl_obj = fortigate.Fortigate(fcl, exp_info)
       RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
                 input_file, write_files)
   # TODO(robankeny) add additional errors.
