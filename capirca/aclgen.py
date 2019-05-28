@@ -54,6 +54,7 @@ from capirca.lib import srxlo
 from capirca.lib import windows_advfirewall
 from capirca.lib import fortigate
 
+
 FLAGS = flags.FLAGS
 flags.DEFINE_string(
     'base_directory',
