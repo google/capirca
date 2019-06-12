@@ -27,6 +27,7 @@ from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from absl import logging
 
+
 _ACTION_TABLE = {
   'accept': 'accept',
   'deny': 'deny',
@@ -62,56 +63,56 @@ class FortiGatePortDoesNotExist(Error):
 class FortigatePortMap(object):
   """Map port numbers to service names"""
   _PORTS_TCP = {
-    179: 'BGP',
-    53: 'DNS',
-    7: 'PING',
-    79: 'FINGER',
-    21: 'FTP',
-    70: 'GOPHER',
-    443: 'HTTPS',
-    194: 'IRC',
-    2049: 'NFS',
-    119: 'NNTP',
-    110: 'POP3',
-    1723: 'PPTP',
-    25: 'SMTP',
-    22: 'SSH',
-    517: 'TALK',
-    23: 'TELNET',
-    540: 'UUCP',
-    80: 'HTTP',
-    993: 'IMAPS',
-    3389: 'RDP',
-    3306: 'MYSQL',
-    1433: 'MS-SQL',
-    1812: 'RADIUS',
-    995: 'POP3S',
-    465: 'SMTPS',
-    389: 'LDAP',
-    69: 'TFTP'
+      179: 'BGP',
+      53: 'DNS',
+      7: 'PING',
+      79: 'FINGER',
+      21: 'FTP',
+      70: 'GOPHER',
+      443: 'HTTPS',
+      194: 'IRC',
+      2049: 'NFS',
+      119: 'NNTP',
+      110: 'POP3',
+      1723: 'PPTP',
+      25: 'SMTP',
+      22: 'SSH',
+      517: 'TALK',
+      23: 'TELNET',
+      540: 'UUCP',
+      80: 'HTTP',
+      993: 'IMAPS',
+      3389: 'RDP',
+      3306: 'MYSQL',
+      1433: 'MS-SQL',
+      1812: 'RADIUS',
+      995: 'POP3S',
+      465: 'SMTPS',
+      389: 'LDAP',
+      69: 'TFTP'
   }
   _PORTS_UDP = {
-    53: 'DNS',
-    7: 'PING',
-    500: 'IKE',
-    2049: 'NFS',
-    123: 'NTP',
-    520: 'RIP',
-    161: 'SNMP',
-    162: 'snmptrap',
-    514: 'SYSLOG',
-    517: 'TALK',
-    69: 'TFTP',
-    37: 'TIMESTAMP',
-    1812: 'RADIUS',
-    67: 'DHCP'
+      53: 'DNS',
+      7: 'PING',
+      500: 'IKE',
+      2049: 'NFS',
+      123: 'NTP',
+      520: 'RIP',
+      161: 'SNMP',
+      162: 'snmptrap',
+      514: 'SYSLOG',
+      517: 'TALK',
+      69: 'TFTP',
+      37: 'TIMESTAMP',
+      1812: 'RADIUS',
+      67: 'DHCP'
   }
   _PROTO_MAP = {
-    'icmp': 'ALL_ICMP',
-    'gre': 'GRE',
-    'ip': 'ALL',
-    'tcp': _PORTS_TCP,
-    'udp': _PORTS_UDP
+      'icmp': 'ALL_ICMP',
+      'gre': 'GRE',
+      'ip': 'ALL',
+      'tcp': _PORTS_TCP,
+      'udp': _PORTS_UDP
   }
 
   @staticmethod

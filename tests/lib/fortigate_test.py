@@ -22,13 +22,13 @@ from __future__ import unicode_literals
 import string
 import re
 import unittest
-import six
 
 from capirca.lib import fortigate
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
 import mock
+
 
 GOOD_HEADER = """
 header {
@@ -61,15 +61,15 @@ term good-term-2 {{
 
 class CustomFormatter(string.Formatter):
   DEFAULT_VALUES = {
-    'src_interface': 'wan1',
-    'dest_interface': 'wan2',
-    'protocol': 'tcp',
-    'src_addr': 'SOME_HOST',
-    'dest_addr': 'SOME_HOST',
-    'src_port': 'HTTP',
-    'dest_port': 'HTTP',
-    'action': 'accept',
-    'logging': 'true'
+      'src_interface': 'wan1',
+      'dest_interface': 'wan2',
+      'protocol': 'tcp',
+      'src_addr': 'SOME_HOST',
+      'dest_addr': 'SOME_HOST',
+      'src_port': 'HTTP',
+      'dest_port': 'HTTP',
+      'action': 'accept',
+      'logging': 'true'
   }
 
   def format(*args, **kwargs):
@@ -98,17 +98,17 @@ class FortigateTest(unittest.TestCase):
 
     def get_addr_side_eff(host):
       HOSTS = {
-        'SOME_HOST': [nacaddr.IP('10.0.0.0/8')],
-        'SOME_HOST2': [nacaddr.IP('20.0.0.0/8')]
+          'SOME_HOST': [nacaddr.IP('10.0.0.0/8')],
+          'SOME_HOST2': [nacaddr.IP('20.0.0.0/8')]
       }
       return HOSTS[host]
 
     def get_port_side_eff(port, protocol):
       HOSTS = {
-        'HTTP': ['80'],
-        'HTTPS': ['443'],
-        'SSH': ['22'],
-        'WHOIS': ['43']
+          'HTTP': ['80'],
+          'HTTPS': ['443'],
+          'SSH': ['22'],
+          'WHOIS': ['43']
       }
       return HOSTS[port]
 
