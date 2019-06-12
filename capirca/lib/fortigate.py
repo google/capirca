@@ -1,4 +1,4 @@
-# Copyright 2011 Google Inc. All Rights Reserved.
+# Copyright 2019 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,10 +21,11 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import datetime
+import six
 
+from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from absl import logging
-from capirca.lib import aclgenerator
 
 _ACTION_TABLE = {
   'accept': 'accept',
@@ -34,23 +35,32 @@ _ACTION_TABLE = {
 }
 
 
-class UnsupportedFilterError(Exception):
+class Error(Exception):
   pass
 
 
-class FortiGateValueError(Exception):
+class FilterError(Error):
   pass
 
 
-class FortiGateFindServiceError(Exception):
+class FortiGateValueError(Error):
   pass
 
 
-class FortiGateDuplicateTermError(Exception):
+class FortiGateFindServiceError(Error):
+  pass
+
+
+class FortiGateDuplicateTermError(Error):
+  pass
+
+
+class FortiGatePortDoesNotExist(Error):
   pass
 
 
 class FortigatePortMap(object):
+  """Map port numbers to service names"""
   _PORTS_TCP = {
     179: 'BGP',
     53: 'DNS',
@@ -79,9 +89,7 @@ class FortigatePortMap(object):
     465: 'SMTPS',
     389: 'LDAP',
     69: 'TFTP'
-
   }
-
   _PORTS_UDP = {
     53: 'DNS',
     7: 'PING',
@@ -97,9 +105,7 @@ class FortigatePortMap(object):
     37: 'TIMESTAMP',
     1812: 'RADIUS',
     67: 'DHCP'
-
   }
-
   _PROTO_MAP = {
     'icmp': 'ALL_ICMP',
     'gre': 'GRE',
@@ -110,47 +116,86 @@ class FortigatePortMap(object):
 
   @staticmethod
   def GetProtocol(protocol, port=None):
+    """
+    Converts a port number to a service name.
+    :param protocol: string representing protocol (tcp, udp, etc).
+    :param port: integer representing the port number.
+    :return: the service name of provided port-protocol
+    """
     f_proto = FortigatePortMap._PROTO_MAP.get(protocol, None)
     if f_proto is None:
-      raise FortiGateValueError('%r protocol is not supported by Fortigate, supported protocols = %r' % (
-        protocol, FortigatePortMap._PROTO_MAP.keys()))
+      raise FortiGateValueError(
+        '%r protocol is not supported by Fortigate, supported protocols = %r' % (
+          protocol, FortigatePortMap._PROTO_MAP.keys()
+        )
+      )
 
-    if isinstance(f_proto, str):
+    if isinstance(f_proto, six.string_types):
       return f_proto
     elif port:
-      return f_proto[port]
-
+      try:
+        return f_proto[port]
+      except KeyError:
+        raise FortiGatePortDoesNotExist
     else:
-      raise FortiGateFindServiceError('failed to get service from %r protocol and %r port' % (protocol, port))
+      raise FortiGateFindServiceError(
+        'failed to get service from %r protocol and %r port' % (protocol, port)
+      )
+
+
+class ObjectsContainer:
+  """a Container that holds service and network objects"""
+
+  def __init__(self):
+    self._FW_ADDRESSES = []
+    self._FW_SERVICES = []
+
+    self._FW_DUP_CHECK = set()
+
+  def get_fw_addresses(self):
+    self._FW_ADDRESSES.extend([' ', 'end', ' '])
+    return self._FW_ADDRESSES
+
+  def get_fw_services(self):
+    self._FW_SERVICES.extend([' ', 'end', ' '])
+    return self._FW_SERVICES
+
+  def _add_address_to_fw_addresses(self, addr):
+    if addr in self._FW_DUP_CHECK:
+      return
+    self._FW_ADDRESSES.extend(['\tedit %s' % addr,
+                               '\t\tset subnet %s' % addr,
+                               '\tnext'])
+    self._FW_DUP_CHECK.add(addr)
+
+  def _add_service_to_fw_services(self, protocol, service):
+    if service in self._FW_DUP_CHECK:
+      return
+
+    self._FW_SERVICES.extend(
+      ['\tedit %s' % service,
+       '\t\tset protocol TCP/UDP',
+       '\t\tset %s-portrange %s' % (protocol.lower(), service),
+       '\tnext']
+    )
+
+    self._FW_DUP_CHECK.add(service)
 
 
 class Term(aclgenerator.Term):
+  """Single Firewall Policy"""
   ALLOWED_PROTO_STRINGS = ['gre', 'icmp', 'ip', 'tcp', 'udp']
   COMMENT_MAX_WIDTH = 70
 
-  FW_ADDRESSES = []
-  FW_SERVICES = []
-
-  _FW_DUP_CHECK = set()
-
   CURRENT_ID = 0
 
-  def __init__(self, term):
+  def __init__(self, term, object_container):
     super(Term, self).__init__(term)
     self._term = term
+    self._obj_container = object_container
 
     self.id = type(self).CURRENT_ID
     type(self).CURRENT_ID += 1
-
-  @staticmethod
-  def get_fw_addresses():
-    Term.FW_ADDRESSES.extend([' ', 'end', ' '])
-    return Term.FW_ADDRESSES
-
-  @staticmethod
-  def get_fw_services():
-    Term.FW_SERVICES.extend([' ', 'end', ' '])
-    return Term.FW_SERVICES
 
   @staticmethod
   def _get_addresses_name(addresses):
@@ -159,7 +204,22 @@ class Term(aclgenerator.Term):
     addresses = ' '.join(v4_addresses)
     return addresses or 'all'
 
+  @staticmethod
+  def clean_ports(src_ports, dest_ports):
+    all_ports = []
+    if src_ports:
+      all_ports += src_ports
+    if dest_ports:
+      all_ports += dest_ports
+    return set(all_ports)
+
   def _get_services_string(self, protocol, ports):
+    """
+    get the service name if exist, if not create a service object and return the name
+    :param protocol: list of protocols
+    :param ports: list of ports
+    :return:
+    """
 
     services = []
     if protocol and not ports:
@@ -167,47 +227,32 @@ class Term(aclgenerator.Term):
     for port in ports:
       try:
         service = FortigatePortMap.GetProtocol(protocol[0], port[0])
-      except KeyError:
-        self._add_service_to_fw_services(protocol[0], port[0])
+      except FortiGatePortDoesNotExist:
+        self._obj_container._add_service_to_fw_services(protocol[0], port[0])
         service = str(port[0])
       services.append(service)
 
     return ' '.join(services) or 'ALL'
 
-  def _add_address_to_fw_addresses(self, addr):
-    if addr in type(self)._FW_DUP_CHECK:
-      return
-    type(self).FW_ADDRESSES.extend(['\tedit %s' % addr,
-                                    '\t\tset subnet %s' % addr,
-                                    '\tnext'])
-    type(self)._FW_DUP_CHECK.add(addr)
-
-  def _add_service_to_fw_services(self, protocol, service):
-    if service in type(self)._FW_DUP_CHECK:
-      return
-
-    type(self).FW_SERVICES.extend(['\tedit %s' % service,
-                                   '\t\tset protocol TCP/UDP',
-                                   '\t\tset %s-portrange %s' % (protocol.lower(), service),
-                                   '\tnext'])
-
-    type(self)._FW_DUP_CHECK.add(service)
-
   def _generate_address_names(self, *addresses):
     for group in addresses:
       for addr in group:
         if addr and not isinstance(addr, nacaddr.IPv6):
-          self._add_address_to_fw_addresses(addr.with_prefixlen)
+          self._obj_container._add_address_to_fw_addresses(addr.with_prefixlen)
 
   def __str__(self):
     lines = []
 
-    self._generate_address_names(self._term.destination_address, self._term.source_address)
+    self._generate_address_names(self._term.destination_address,
+                                 self._term.source_address)
     # lines.extend(self.firewall_addresses)
 
     dest_addresses = self._get_addresses_name(self._term.destination_address)
     src_addresses = self._get_addresses_name(self._term.source_address)
-    services = self._get_services_string(self._term.protocol, self._term.destination_port)
+    all_ports = self.clean_ports(self._term.source_port, self._term.destination_port)
+
+    services = self._get_services_string(self._term.protocol,
+                                         all_ports)
 
     lines.append('\t\tset comments %s' % self._term.name)
     lines.append('\t\tset srcintf %s' % (self._term.source_interface or 'any'))
@@ -232,6 +277,11 @@ class Fortigate(aclgenerator.ACLGenerator):
   # Protocols should be emitted as numbers.
   _PROTO_INT = True
   _TERM_REMARK = True
+  _TERM_MAX_LENGTH = 1023
+
+  def __init__(self, *args, **kwargs):
+    self._obj_container = ObjectsContainer()
+    super(Fortigate, self).__init__(*args, **kwargs)
 
   def _BuildTokens(self):
     """Build supported tokens for platform.
@@ -239,7 +289,8 @@ class Fortigate(aclgenerator.ACLGenerator):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(Fortigate, self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super(Fortigate,
+                                                   self)._BuildTokens()
 
     supported_tokens |= {'source_interface',
                          'destination_interface',
@@ -253,6 +304,7 @@ class Fortigate(aclgenerator.ACLGenerator):
     return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):
+    """Translate Capirca pol to fortigate pol"""
     self.fortigate_policies = []
     current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
@@ -265,17 +317,12 @@ class Fortigate(aclgenerator.ACLGenerator):
 
       filter_options = header.FilterOptions(self._PLATFORM)
 
-      if (len(filter_options) < 2 or filter_options[0] != "from-id"):
-        raise UnsupportedFilterError(
-          "Fortigate Firewall filter arguments must specify from_id")
+      if (len(filter_options) < 2 or filter_options[0] != 'from-id'):
+        raise FilterError(
+          'Fortigate Firewall filter arguments must specify from_id')
 
       from_id = filter_options[1]
       Term.CURRENT_ID = int(from_id)
-
-      self.verbose = True
-      if 'noverbose' in filter_options:
-        filter_options.remove('noverbose')
-        self.verbose = False
 
       term_dup_check = set()
 
@@ -294,13 +341,12 @@ class Fortigate(aclgenerator.ACLGenerator):
                                             term.name)
         term_dup_check.add(term.name)
 
-        term.name = self.FixTermLength(term.name)
-        new_term = Term(term)
+        new_term = Term(term, self._obj_container)
 
         self.fortigate_policies.append((header, term.name, new_term))
 
-  def _GetTargetByPolicyID(self, id):
-    return '\tedit %s' % id
+  def _GetTargetByPolicyID(self, id_):
+    return '\tedit %s' % id_
 
   def __str__(self):
     start_addresses = ['config firewall address']
@@ -311,7 +357,7 @@ class Fortigate(aclgenerator.ACLGenerator):
     target_services = []
     target_policies = []
 
-    for (header, filter_name, term) in self.fortigate_policies:
+    for (_, filter_name, term) in self.fortigate_policies:
       target_policies.append(self._GetTargetByPolicyID(term.id))
 
       term_str = str(term)
@@ -319,8 +365,8 @@ class Fortigate(aclgenerator.ACLGenerator):
       target_policies.append(term_str)
 
       target_policies += ['\tnext', '']
-    target_addresses.extend(Term.get_fw_addresses())
-    target_services.extend(Term.get_fw_services())
+    target_addresses.extend(self._obj_container.get_fw_addresses())
+    target_services.extend(self._obj_container.get_fw_services())
 
     fw_addresses = start_addresses + target_addresses
     fw_services = start_services + target_services

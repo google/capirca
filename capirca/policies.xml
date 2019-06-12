@@ -1,0 +1,210 @@
+<?xml version="1.0"?>
+<config version="7.0.0" urldb="paloaltonetworks">
+  <devices>
+    <entry name="localhost.localdomain">
+      <vsys>
+        <entry name="vsys1">
+          <application/>
+          <application-group/>
+
+          <!-- Services -->
+          <service>
+            <entry name="service-allow-https-web-tcp">
+              <protocol>
+                <tcp>
+                  <port>80, 443</port>
+                </tcp>
+              </protocol>
+            </entry>
+            <entry name="service-accept-any-any-udp">
+              <protocol>
+                <udp>
+                  <port>43</port>
+                </udp>
+              </protocol>
+            </entry>
+          </service>
+
+          <!-- Rules -->
+          <rulebase>
+            <security>
+              <rules>
+                <entry name="allow-https-web">
+                  <to>
+                    <member>external</member>
+                  </to>
+                  <from>
+                    <member>internal</member>
+                  </from>
+                  <source>
+                    <member>any</member>
+                  </source>
+                  <destination>
+                    <member>WEB_SERVERS</member>
+                  </destination>
+                  <service>
+                    <member>service-allow-https-web-tcp</member>
+                  </service>
+                  <action>allow</action>
+                  <application>
+                    <member>any</member>
+                  </application>
+                </entry>
+                <entry name="customers-policy">
+                  <to>
+                    <member>external</member>
+                  </to>
+                  <from>
+                    <member>internal</member>
+                  </from>
+                  <source>
+                    <member>CUSTOMERS</member>
+                  </source>
+                  <destination>
+                    <member>CUSTOMERS</member>
+                  </destination>
+                  <service>
+                    <member>service-allow-https-web-tcp</member>
+                  </service>
+                  <action>deny</action>
+                  <application>
+                    <member>any</member>
+                  </application>
+                </entry>
+                <entry name="good-term-2">
+                  <to>
+                    <member>external</member>
+                  </to>
+                  <from>
+                    <member>internal</member>
+                  </from>
+                  <source>
+                    <member>any</member>
+                  </source>
+                  <destination>
+                    <member>ALI_HOME</member>
+                  </destination>
+                  <service>
+                    <member>any</member>
+                  </service>
+                  <action>allow</action>
+                  <application>
+                    <member>any</member>
+                  </application>
+                </entry>
+                <entry name="customers-policy2">
+                  <to>
+                    <member>external</member>
+                  </to>
+                  <from>
+                    <member>internal</member>
+                  </from>
+                  <source>
+                    <member>ALI_HOME</member>
+                  </source>
+                  <destination>
+                    <member>CRM</member>
+                  </destination>
+                  <service>
+                    <member>service-allow-https-web-tcp</member>
+                  </service>
+                  <action>deny</action>
+                  <application>
+                    <member>any</member>
+                  </application>
+                </entry>
+                <entry name="deny-any-any">
+                  <to>
+                    <member>external</member>
+                  </to>
+                  <from>
+                    <member>internal</member>
+                  </from>
+                  <source>
+                    <member>any</member>
+                  </source>
+                  <destination>
+                    <member>any</member>
+                  </destination>
+                  <service>
+                    <member>application-default</member>
+                  </service>
+                  <action>deny</action>
+                  <application>
+                    <member>ping</member>
+                  </application>
+                </entry>
+                <entry name="accept-any-any">
+                  <to>
+                    <member>external</member>
+                  </to>
+                  <from>
+                    <member>internal</member>
+                  </from>
+                  <source>
+                    <member>any</member>
+                  </source>
+                  <destination>
+                    <member>any</member>
+                  </destination>
+                  <service>
+                    <member>service-accept-any-any-udp</member>
+                  </service>
+                  <action>allow</action>
+                  <application>
+                    <member>any</member>
+                  </application>
+                </entry>
+              </rules>
+            </security>
+          </rulebase>          <!-- Address groups-->
+          <address-group>
+            <entry name="ALI_HOME">
+              <static>
+                <member>ALI_HOME_0</member>
+              </static>
+              </entry>
+            <entry name="CRM">
+              <static>
+                <member>CRM_0</member>
+              </static>
+              </entry>
+            <entry name="CUSTOMERS">
+              <static>
+                <member>CUSTOMERS_0</member>
+              </static>
+              </entry>
+            <entry name="WEB_SERVERS">
+              <static>
+                <member>WEB_SERVERS_0</member>
+                <member>WEB_SERVERS_1</member>
+              </static>
+              </entry>
+          </address-group>          <!-- Addresses -->
+          <address>
+            <entry name="ALI_HOME_0">
+              <description>ALI_HOME_0</description>
+              <ip-netmask>9.9.9.9/32</ip-netmask>
+            </entry>
+            <entry name="CRM_0">
+              <description>CRM_0</description>
+              <ip-netmask>192.168.1.0/24</ip-netmask>
+            </entry>
+            <entry name="CUSTOMERS_0">
+              <description>CUSTOMERS_0</description>
+              <ip-netmask>4.71.113.2/32</ip-netmask>
+            </entry>
+            <entry name="WEB_SERVERS_0">
+              <description>WEB_SERVERS_0</description>
+              <ip-netmask>200.1.1.1/32</ip-netmask>
+            </entry>
+            <entry name="WEB_SERVERS_1">
+              <description>WEB_SERVERS_1</description>
+              <ip-netmask>200.1.1.2/32</ip-netmask>
+            </entry>
+          </address>
+        </entry>
+      </vsys>
+    </entry>
+  </devices>
+</config>

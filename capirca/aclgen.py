@@ -339,7 +339,7 @@ def RenderFile(input_file, output_directory, definitions,
   except (juniper.Error, junipersrx.Error, cisco.Error, ipset.Error,
           iptables.Error, speedway.Error, pcap.Error,
           aclgenerator.Error, aruba.Error, nftables.Error, gce.Error,
-          cloudarmor.Error) as e:
+          cloudarmor.Error, fortigate.Error) as e:
     raise ACLGeneratorError(
         'Error generating target ACL for %s:\n%s' % (input_file, e))
 

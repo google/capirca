@@ -1,0 +1,96 @@
+config firewall address
+	edit 200.1.1.1/32
+		set subnet 200.1.1.1/32
+	next
+	edit 200.1.1.2/32
+		set subnet 200.1.1.2/32
+	next
+	edit 4.71.113.2/32
+		set subnet 4.71.113.2/32
+	next
+	edit 9.9.9.9/32
+		set subnet 9.9.9.9/32
+	next
+	edit 192.168.1.0/24
+		set subnet 192.168.1.0/24
+	next
+ 
+end
+ 
+config firewall service custom
+	edit 43
+		set protocol TCP/UDP
+		set udp-portrange 43
+	next
+ 
+end
+ 
+config firewall policy
+	edit 2
+		set comments allow-https-web
+		set srcintf any
+		set dstintf any
+		set dstaddr 200.1.1.1/32 200.1.1.2/32
+		set srcaddr all
+		set action accept
+		set service HTTP HTTPS
+		set schedule always
+	next
+
+	edit 3
+		set comments customers-policy
+		set srcintf any
+		set dstintf any
+		set dstaddr 4.71.113.2/32
+		set srcaddr 4.71.113.2/32
+		set action deny
+		set service HTTP HTTPS
+		set schedule always
+	next
+
+	edit 4
+		set comments good-term-2
+		set srcintf any
+		set dstintf any
+		set dstaddr 9.9.9.9/32
+		set srcaddr all
+		set action accept
+		set service IMAPS
+		set schedule always
+	next
+
+	edit 5
+		set comments customers-policy2
+		set srcintf any
+		set dstintf any
+		set dstaddr 192.168.1.0/24
+		set srcaddr 9.9.9.9/32
+		set action deny
+		set service HTTP HTTPS
+		set schedule always
+		set logtraffic all
+	next
+
+	edit 6
+		set comments deny-any-any
+		set srcintf any
+		set dstintf any
+		set dstaddr all
+		set srcaddr all
+		set action deny
+		set service ALL_ICMP
+		set schedule always
+	next
+
+	edit 7
+		set comments accept-any-any
+		set srcintf any
+		set dstintf any
+		set dstaddr all
+		set srcaddr all
+		set action accept
+		set service 43
+		set schedule always
+	next
+
+end
