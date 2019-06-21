@@ -23,9 +23,9 @@ from __future__ import unicode_literals
 import datetime
 import six
 
+from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
-from absl import logging
 
 
 _ACTION_TABLE = {
@@ -154,14 +154,17 @@ class ObjectsContainer:
     self._FW_DUP_CHECK = set()
 
   def get_fw_addresses(self):
+    """return the collected addresses"""
     self._FW_ADDRESSES.extend([' ', 'end', ' '])
     return self._FW_ADDRESSES
 
   def get_fw_services(self):
+    """return the collected services"""
     self._FW_SERVICES.extend([' ', 'end', ' '])
     return self._FW_SERVICES
 
   def _add_address_to_fw_addresses(self, addr):
+    """add address to address store"""
     if addr in self._FW_DUP_CHECK:
       return
     self._FW_ADDRESSES.extend(['\tedit %s' % addr,
@@ -170,6 +173,7 @@ class ObjectsContainer:
     self._FW_DUP_CHECK.add(addr)
 
   def _add_service_to_fw_services(self, protocol, service):
+    """add service to services store"""
     if service in self._FW_DUP_CHECK:
       return
 
@@ -195,11 +199,12 @@ class Term(aclgenerator.Term):
     self._term = term
     self._obj_container = object_container
 
-    self.id = type(self).CURRENT_ID
+    self.id_ = type(self).CURRENT_ID
     type(self).CURRENT_ID += 1
 
   @staticmethod
   def _get_addresses_name(addresses):
+    """return the addresses or 'all' if no addresses specified"""
     v4_addresses = [x.with_prefixlen for x in addresses if
                     not isinstance(x, nacaddr.IPv6)]
     addresses = ' '.join(v4_addresses)
@@ -207,6 +212,7 @@ class Term(aclgenerator.Term):
 
   @staticmethod
   def clean_ports(src_ports, dest_ports):
+    """return a set() of src and dest ports"""
     all_ports = []
     if src_ports:
       all_ports += src_ports
@@ -236,6 +242,7 @@ class Term(aclgenerator.Term):
     return ' '.join(services) or 'ALL'
 
   def _generate_address_names(self, *addresses):
+    """this will generate the addresses names (object-network names)"""
     for group in addresses:
       for addr in group:
         if addr and not isinstance(addr, nacaddr.IPv6):
@@ -246,7 +253,6 @@ class Term(aclgenerator.Term):
 
     self._generate_address_names(self._term.destination_address,
                                  self._term.source_address)
-    # lines.extend(self.firewall_addresses)
 
     dest_addresses = self._get_addresses_name(self._term.destination_address)
     src_addresses = self._get_addresses_name(self._term.source_address)
@@ -358,8 +364,8 @@ class Fortigate(aclgenerator.ACLGenerator):
     target_services = []
     target_policies = []
 
-    for (_, filter_name, term) in self.fortigate_policies:
-      target_policies.append(self._GetTargetByPolicyID(term.id))
+    for (_, _, term) in self.fortigate_policies:
+      target_policies.append(self._GetTargetByPolicyID(term.id_))
 
       term_str = str(term)
 

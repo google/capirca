@@ -37,6 +37,7 @@ from capirca.lib import cisco
 from capirca.lib import ciscoasa
 from capirca.lib import ciscoxr
 from capirca.lib import cloudarmor
+from capirca.lib import fortigate
 from capirca.lib import gce
 from capirca.lib import ipset
 from capirca.lib import iptables
@@ -52,7 +53,6 @@ from capirca.lib import policy
 from capirca.lib import speedway
 from capirca.lib import srxlo
 from capirca.lib import windows_advfirewall
-from capirca.lib import fortigate
 
 
 FLAGS = flags.FLAGS
