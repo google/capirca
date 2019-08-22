@@ -387,13 +387,13 @@ class Naming(object):
     return sorted(services_set)
 
   def GetNetAddr(self, token):
-    """Given a network token, return a list of netaddr.IPv4 objects.
+    """Given a network token, return a list of nacaddr.IPv4 or nacaddr.IPv6 objects.
 
     Args:
       token: A name of a network definition, such as 'INTERNAL'
 
     Returns:
-      A list of netaddr.IPv4 objects.
+      A list of nacaddr.IPv4 or nacaddr.IPv6 objects.
 
     Raises:
       UndefinedAddressError: if the network name isn't defined.
@@ -401,7 +401,7 @@ class Naming(object):
     return self.GetNet(token)
 
   def GetNet(self, query):
-    """Expand a network token into a list of nacaddr.IPv4 objects.
+    """Expand a network token into a list of nacaddr.IPv4 or nacaddr.IPv6 objects.
 
     Args:
       query: Network definition token which may include comment text
@@ -411,7 +411,7 @@ class Naming(object):
       specified.  Acceptable values are 'cidr', 'netmask', and 'hostmask'.
 
     Returns:
-      List of nacaddr.IPv4 objects
+      List of nacaddr.IPv4 or nacaddr.IPv6 objects
 
     Raises:
       UndefinedAddressError: for an undefined token value
