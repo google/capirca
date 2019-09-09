@@ -195,10 +195,29 @@ term good-term-4 {
 }
 """
 
-GOOD_TERM_5 = """
+GOOD_TERM_LOG_1 = """
 term good-term-5 {
   action:: accept
   logging:: log-both
+}
+"""
+GOOD_TERM_LOG_2 = """
+term good-term-5 {
+  action:: deny
+  logging:: log-both
+}
+"""
+
+GOOD_TERM_LOG_3 = """
+term good-term-5 {
+  action:: accept
+  logging:: true
+}
+"""
+GOOD_TERM_LOG_4 = """
+term good-term-5 {
+  action:: deny
+  logging:: true
 }
 """
 
@@ -599,12 +618,37 @@ class JuniperSRXTest(unittest.TestCase):
     self.failUnless('term t2 protocol icmp icmp-type 8 inactivity-timeout 60'
                     in output, output)
 
-  def testLoggingBoth(self):
-    srx = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_5,
+  def testLoggingBothAccept(self):
+    srx = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER
+                                                   + GOOD_TERM_LOG_1,
                                                    self.naming), EXP_INFO)
     output = str(srx)
-    self.failUnless('session-init;' in output, output)
-    self.failUnless('session-close;' in output, output)
+    self.assertIn('session-init;', output)
+    self.assertIn('session-close;', output)
+
+  def testLoggingBothDeny(self):
+    srx = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER
+                                                   + GOOD_TERM_LOG_2,
+                                                   self.naming), EXP_INFO)
+    output = str(srx)
+    self.assertIn('session-init;', output)
+    self.assertIn('session-close;', output)
+
+  def testLoggingTrueAccept(self):
+    srx = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER
+                                                   + GOOD_TERM_LOG_3,
+                                                   self.naming), EXP_INFO)
+    output = str(srx)
+    self.assertIn('session-close;', output)
+    self.assertNotIn('session-init;', output)
+
+  def testLoggingTrueDeny(self):
+    srx = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER
+                                                   + GOOD_TERM_LOG_4,
+                                                   self.naming), EXP_INFO)
+    output = str(srx)
+    self.assertIn('session-init;', output)
+    self.assertNotIn('session-close;', output)
 
   def testOwnerTerm(self):
     pol = policy.ParsePolicy(GOOD_HEADER + OWNER_TERM, self.naming)

@@ -205,10 +205,15 @@ class Term(aclgenerator.Term):
       # LOGGING
       if self.term.logging:
         ret_str.IndentAppend(5, 'log {')
-        ret_str.IndentAppend(6, 'session-init;')
         for log_target in self.term.logging:
           if str(log_target) == 'log-both':
+            ret_str.IndentAppend(6, 'session-init;')
             ret_str.IndentAppend(6, 'session-close;')
+          else:
+            if str(action) == 'accept':
+              ret_str.IndentAppend(6, 'session-close;')
+            else:
+              ret_str.IndentAppend(6, 'session-init;')
         ret_str.IndentAppend(5, '}')
 
       ret_str.IndentAppend(4, '}')

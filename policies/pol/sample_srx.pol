@@ -7,7 +7,7 @@ header {
 term test-tcp {
   destination-address:: RFC1918
   protocol:: tcp udp
-  logging:: true
+  logging:: log-both
   action:: accept
 }
 
@@ -16,8 +16,10 @@ term test-icmp {
   protocol:: icmp
   icmp-type:: echo-request echo-reply
   action:: accept
+  logging:: true
 }
 
 term default-deny {
   action:: deny
+  logging:: true
 }
