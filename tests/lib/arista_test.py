@@ -115,6 +115,15 @@ term good-term-6 {
 }
 """
 
+GOOD_TERM_7 = """
+term good-term-6 {
+  comment:: "Accept AH from internal sources."
+  address:: SOME_HOST
+  protocol:: ah esp tcp
+  action:: accept
+}
+"""
+
 SUPPORTED_TOKENS = {
     'action',
     'address',
@@ -233,6 +242,12 @@ class AristaTest(unittest.TestCase):
   def testAHIsAnInteger(self):
     acl = arista.Arista(
         policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_6, self.naming), EXP_INFO)
+    self.assertIn('permit 51', str(acl))
+
+  def testAHAndESPAreIntegers(self):
+    acl = arista.Arista(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_7, self.naming), EXP_INFO)
+    self.assertIn('permit 50', str(acl))
     self.assertIn('permit 51', str(acl))
 
   def testBuildTokens(self):

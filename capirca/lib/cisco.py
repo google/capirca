@@ -679,13 +679,15 @@ class Term(aclgenerator.Term):
       protocol = [proto if proto in self.ALLOWED_PROTO_STRINGS
                   else self.PROTO_MAP.get(proto)
                   for proto in self.term.protocol]
-    # Arista can not process acls with esp/ah, these must appear as integers.
-    elif self.platform == 'arista' and self.term.protocol == ['esp']:
-      protocol = ['50']
-    elif self.platform == 'arista' and self.term.protocol == ['ah']:
-      protocol = ['51']
     else:
       protocol = self.term.protocol
+    # Arista can not process acls with esp/ah, these must appear as integers.
+    if self.platform == 'arista':
+      if 'esp' in protocol:
+        protocol = [x if x != 'esp' else '50' for x in protocol]
+      if 'ah' in protocol:
+        protocol = [x if x != 'ah' else '51' for x in protocol]
+
     # source address
     if self.term.source_address:
       source_address = self.term.GetAddressOfVersion('source_address', self.af)
