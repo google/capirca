@@ -101,6 +101,10 @@ class Term(aclgenerator.Term):
       raise GceFirewallError(
           'GCE firewall does not support address exclusions without a source '
           'address list.')
+    # The reason for the error below isn't because of a GCE restriction, but
+    # because we don't want to use a bad default of GCE that allows talking
+    # to anything when there's no source address, source tag, or source service
+    # account.
     if (not self.term.source_address and
         not self.term.source_tag) and self.term.direction == 'INGRESS':
       raise GceFirewallError(
@@ -116,6 +120,9 @@ class Term(aclgenerator.Term):
         raise GceFirewallError(
             'GCE firewall rule no longer contains any source addresses after '
             'the prefixes in source_address_exclude were removed.')
+      # Similarly to the comment above, the reason for this error is also
+      # because we do not want to use the bad default of GCE that allows for
+      # talking to anything when there is no IP address provided for this field.
       if not self.term.destination_address and self.term.direction == 'EGRESS':
         raise GceFirewallError(
             'GCE firewall rule no longer contains any destination addresses '
