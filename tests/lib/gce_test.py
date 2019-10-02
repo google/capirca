@@ -719,6 +719,7 @@ class GCETest(unittest.TestCase):
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER_EGRESS + GOOD_TERM_EGRESS, self.naming), EXP_INFO)
     self.failUnless('EGRESS' in str(acl), str(acl))
+    self.assertIn('good-term-1-E', str(acl))
     self.failUnless('INGRESS' not in str(acl), str(acl))
 
   def testRaisesWithEgressDestinationTag(self):

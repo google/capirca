@@ -343,6 +343,8 @@ class GCE(aclgenerator.ACLGenerator):
         term.network = network
         if not term.comment:
           term.comment = header.comment
+        if direction == 'EGRESS':
+          term.name += '-E'
         term.name = self.FixTermLength(term.name)
         if term.name in term_names:
           raise GceFirewallError('Duplicate term name')
