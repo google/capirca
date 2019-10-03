@@ -344,7 +344,7 @@ class GCE(aclgenerator.ACLGenerator):
         if not term.comment:
           term.comment = header.comment
         if direction == 'EGRESS':
-          term.name += '-E'
+          term.name += '-e'
         term.name = self.FixTermLength(term.name)
         if term.name in term_names:
           raise GceFirewallError('Duplicate term name')
