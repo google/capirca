@@ -176,8 +176,9 @@ def RenderFile(input_file, output_directory, definitions,
   paloalto = False
 
   try:
-    conf = open(input_file).read()
-    logging.debug('opened and read %s', input_file)
+    with open(input_file) as f:
+      conf = f.read()
+      logging.debug('opened and read %s', input_file)
   except IOError as e:
     logging.warn('bad file: \n%s', e)
     raise
@@ -370,9 +371,11 @@ def FilesUpdated(file_name, new_text, binary):
   """
   try:
     if binary:
-      conf = open(file_name, 'rb').read()
+      with open(file_name, 'rb') as f:
+        conf = f.read()
     else:
-      conf = open(file_name).read()
+      with open(file_name) as f:
+        conf = f.read()
   except IOError:
     return True
   if not binary:
