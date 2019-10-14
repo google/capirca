@@ -22,7 +22,7 @@ from __future__ import unicode_literals
 
 import datetime
 import re
-import xml.dom.minidom
+import xml
 
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
