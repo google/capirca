@@ -610,7 +610,8 @@ SUPPORTED_SUB_TOKENS = {
                '.*',   # not actually a lex token!
                'sample',
                'tcp-established',
-               'tcp-initial'}
+               'tcp-initial',
+               'inactive'}
 }
 
 # Print a info message when a term is set to expire in that many weeks.
