@@ -233,10 +233,7 @@ class Term(aclgenerator.Term):
     # option
     # this is going to be a little ugly b/c there are a few little messed
     # up options we can deal with.
-    # handle the inactive option in compliance with
-    # https://www.juniper.net/documentation/en_US/junos/topics/reference/command-summary/deactivate.html
 
-    inactive_prefix=''
     if self.term.option:
       for opt in [str(x) for x in self.term.option]:
         # there should be a better way to search the array of protocols
@@ -267,18 +264,20 @@ class Term(aclgenerator.Term):
           from_str.append('tcp-initial;')
         elif opt.startswith('first-fragment'):
           from_str.append('first-fragment;')
-        # inactive flag can be anywhere in the option, and we want to render the inactive rule preserving the remaining options
-        elif 'inactive' in opt:
-          inactive_prefix = 'inactive:'
 
         # we don't have a special way of dealing with this, so we output it and
         # hope the user knows what they're doing.
         else:
           from_str.append('%s;' % opt)
 
-    # term name
+    # if the term is inactive we have to set the prefix
+    if self.term.inactive:
+      term_prefix = 'inactive:'
+    else:
+      term_prefix = ''
 
-    config.Append('%s term %s {' %(inactive_prefix, self.term.name) )
+    # term name
+    config.Append('%s term %s {' %(term_prefix, self.term.name))
     # a default action term doesn't have any from { clause
     has_match_criteria = (self.term.address or
                           self.term.dscp_except or
@@ -875,6 +874,7 @@ class Juniper(aclgenerator.ACLGenerator):
       enable_dsmo = 'enable_dsmo' in filter_options[1:]
       noverbose = 'noverbose' in filter_options[1:]
 
+
       if not interface_specific:
         filter_options.remove('not-interface-specific')
       if enable_dsmo:
@@ -888,7 +888,14 @@ class Juniper(aclgenerator.ACLGenerator):
       term_names = set()
       new_terms = []
       for term in terms:
+
+        # if the inactive option is set, we should deactivate the term and remove the option
+        if 'inactive' in term.option:
+          term.inactive = True
+          term.option.remove('inactive')
+
         term.name = self.FixTermLength(term.name)
+
         if term.name in term_names:
           raise JuniperDuplicateTermError('You have multiple terms named: %s' %
                                           term.name)
