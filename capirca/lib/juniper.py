@@ -233,7 +233,6 @@ class Term(aclgenerator.Term):
     # option
     # this is going to be a little ugly b/c there are a few little messed
     # up options we can deal with.
-
     if self.term.option:
       for opt in [str(x) for x in self.term.option]:
         # there should be a better way to search the array of protocols
