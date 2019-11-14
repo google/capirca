@@ -66,23 +66,21 @@ def IsDefaultDeny(term):
 
   return True
 
-# Firewall rule name has to match specific RE:
-# The first character must be a lowercase letter, and all following characters
-# must be a dash, lowercase letter, or digit, except the last character, which
-# cannot be a dash.
-# Details: https://cloud.google.com/compute/docs/reference/latest/firewalls
-_TERM_NAME_RE = re.compile(r'^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')
 
 class Term(aclgenerator.Term):
   """Creates the term for the GCE firewall."""
 
   ACTION_MAP = {'accept': 'allowed',
                 'deny': 'denied'}
-
-  _TERM_NAME_MAX_LENGTH = 63
-
   # Restrict the number of terms to 256. Proto supports up to 256
   _TERM_ADDRESS_LIMIT = 256
+
+  # Firewall rule name has to match specific RE:
+  # The first character must be a lowercase letter, and all following characters
+  # must be a dash, lowercase letter, or digit, except the last character, which
+  # cannot be a dash.
+  # Details: https://cloud.google.com/compute/docs/reference/latest/firewalls
+  _TERM_NAME_RE = re.compile(r'^[a-z]([-a-z0-9]*[a-z0-9])?$')
 
   # Protocols allowed by name from:
   # https://cloud.google.com/vpc/docs/firewalls#protocols_and_ports
@@ -170,7 +168,6 @@ class Term(aclgenerator.Term):
 
     Raises:
       GceFirewallError: The term name is too long.
-      GceFirewallError: The term name ended up being invalid.
     """
     if self.term.owner:
       self.term.comment.append('Owner: %s' % self.term.owner)
@@ -251,22 +248,11 @@ class Term(aclgenerator.Term):
     else:
       rules.append(proto_dict)
 
-    # Sanity checking term name lengths and invalid chars.
-    long_rules = []
-    # TODO(maddychan): Add in checks for term name regex w/ unit tests.
-    # invalid_rules = []
-    for rule in rules:
-      if len(rule['name']) > self._TERM_NAME_MAX_LENGTH:
-        long_rules.append(rule['name'])
-      # if not _TERM_NAME_RE.match(rule['name']):
-      #   invalid_rules.append(rule['name'])
+    # Sanity checking term name lengths.
+    long_rules = [rule['name'] for rule in rules if len(rule['name']) > 63]
     if long_rules:
       raise GceFirewallError(
           'GCE firewall name ended up being too long: %s' % long_rules)
-    # if invalid_rules:
-    #   raise GceFirewallError(
-    #       'GCE firewall name ended up being invalid: %s' % invalid_rules)
-
     return rules
 
 
@@ -362,8 +348,6 @@ class GCE(aclgenerator.ACLGenerator):
         term.name = self.FixTermLength(term.name)
         if term.name in term_names:
           raise GceFirewallError('Duplicate term name')
-        if not _TERM_NAME_RE.match(term.name):
-          raise GceFirewallError('Invalid term name: '+ term.name)
         term_names.add(term.name)
 
         term.direction = direction

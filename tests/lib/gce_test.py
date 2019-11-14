@@ -232,16 +232,6 @@ term good-term-logging {
 }
 """
 
-BAD_TERM_NAME_INVALID_CHAR = """
-term BAD-TERM-NAME {
-  comment:: "Management access from corp."
-  source-address:: CORP_EXTERNAL
-  destination-port:: SSH
-  protocol:: tcp
-  action:: accept
-}
-"""
-
 BAD_TERM_NO_SOURCE = """
 term bad-term-no-source {
   comment:: "Management access from corp."
@@ -668,21 +658,6 @@ class GCETest(unittest.TestCase):
         gce.GCE,
         policy.ParsePolicy(
             GOOD_HEADER + BAD_TERM_NAME_TOO_LONG, self.naming),
-        EXP_INFO)
-
-    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
-    self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
-
-  def testRaisesWithInvalidTermName(self):
-    self.naming.GetNetAddr.return_value = TEST_IPS
-    self.naming.GetServiceByProto.return_value = ['22']
-
-    self.assertRaisesRegexp(
-        gce.GceFirewallError,
-        'Invalid term name: BAD-TERM-NAME',
-        gce.GCE,
-        policy.ParsePolicy(
-            GOOD_HEADER + BAD_TERM_NAME_INVALID_CHAR, self.naming),
         EXP_INFO)
 
     self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
