@@ -961,7 +961,7 @@ class ObjectGroupTerm(Term):
     # code by returning early.  Warnings provided in policy.py.
     if self.term.verbatim:
       for next_verbatim in self.term.verbatim:
-        if next_verbatim[0] == self._PLATFORM:
+        if next_verbatim[0] == self.platform:
           ret_str.append(str(next_verbatim[1]))
         return '\n'.join(ret_str)
 
