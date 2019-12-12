@@ -72,7 +72,7 @@ class Term(windows.Term):
       if types:
         protocols = []
         for typ in types:
-          protocols.append('%s:%d' % (icmp_prefix, typ))
+          protocols.append('%s:%d,any' % (icmp_prefix, typ))
         types = ['']
 
     # fixup for icmp v4

@@ -307,11 +307,11 @@ class WindowsAdvFirewallTest(unittest.TestCase):
     result = str(acl)
     self.FailUnless(
         ['name=o_good-term-icmp-types enable=yes interfacetype=any dir=out'
-         ' localip=any remoteip=any protocol=icmpv4:0 action=block',
+         ' localip=any remoteip=any protocol=icmpv4:0,any action=block',
          'name=o_good-term-icmp-types enable=yes interfacetype=any dir=out'
-         ' localip=any remoteip=any protocol=icmpv4:3 action=block',
+         ' localip=any remoteip=any protocol=icmpv4:3,any action=block',
          'name=o_good-term-icmp-types enable=yes interfacetype=any dir=out'
-         ' localip=any remoteip=any protocol=icmpv4:11 action=block'],
+         ' localip=any remoteip=any protocol=icmpv4:11,any action=block'],
         result,
         'did not find actual term for good-term-icmp-types')
 
