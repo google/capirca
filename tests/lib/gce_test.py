@@ -232,6 +232,17 @@ term good-term-logging {
 }
 """
 
+GOOD_TERM_CUSTOM_NAME = """
+term %s {
+  comment:: "DNS access from corp."
+  source-address:: CORP_EXTERNAL
+  destination-tag:: dns-servers
+  destination-port:: DNS
+  protocol:: udp tcp
+  action:: accept
+}
+"""
+
 BAD_TERM_NO_SOURCE = """
 term bad-term-no-source {
   comment:: "Management access from corp."
@@ -406,6 +417,27 @@ GOOD_TERM_DENY_EXPECTED = """[
   }
 ]
 """
+
+VALID_TERM_NAMES = [
+    'icmp',
+    'gcp-to-gcp',
+    'accept-ssh-from-google',
+    'ndc-rampart',
+    'lab-syslog',
+    'windows-windows',
+    'shell-wmn-inbound',
+    'shell-internal-smtp',
+    'accept-internal-traffic',
+    'deepfield-lab-management',
+    'deepfield-lab-reverse-proxy',
+    'cr-proxy-replication',
+    'ciena-one-control-tcp',
+    'fms-prod-to-fms-prod',
+    'ast',
+    'default-deny',
+    'google-web',
+    'zo6hmxkfibardh6tgbiy7ua6'
+]
 
 SUPPORTED_TOKENS = {
     'action',
@@ -839,6 +871,15 @@ class GCETest(unittest.TestCase):
                                      GOOD_TERM_INGRESS_SOURCETAG +
                                      DEFAULT_DENY, self.naming), EXP_INFO)
     self.assertIn('"priority": 65534', str(acl))
+
+  def testValidTermNames(self):
+    for name in VALID_TERM_NAMES:
+      self.naming.GetNetAddr.return_value = TEST_IPS
+      self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+      pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_CUSTOM_NAME % name,
+                               self.naming)
+      acl = gce.GCE(pol, EXP_INFO)
+      self.assertIsNotNone(str(acl))
 
 if __name__ == '__main__':
   unittest.main()
