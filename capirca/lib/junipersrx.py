@@ -295,6 +295,16 @@ class JuniperSRX(aclgenerator.ACLGenerator):
   # IPv6 are 32 bytes compared to IPv4, this is used as a multiplier.
   _IPV6_SIZE = 4
 
+  def __init__(self, pol, exp_info):
+    self.srx_policies = []
+    self.addressbook = collections.OrderedDict()
+    self.applications = []
+    self.ports = []
+    self.from_zone = ''
+    self.to_zone = ''
+    self.addr_book_type = set()
+    super(JuniperSRX, self).__init__(pol, exp_info)
+
   def _BuildTokens(self):
     """Build supported tokens for platform.
 
@@ -340,14 +350,6 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       ConflictingApplicationSetsError: When two duplicate named terms have
                                        conflicting application entries
     """
-    self.srx_policies = []
-    self.addressbook = collections.OrderedDict()
-    self.applications = []
-    self.ports = []
-    self.from_zone = ''
-    self.to_zone = ''
-    self.addr_book_type = set()
-
     current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 

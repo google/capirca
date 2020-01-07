@@ -23,7 +23,7 @@ from __future__ import unicode_literals
 import copy
 import logging
 import re
-from string import Template
+import string
 
 from capirca.lib import policy
 import six
@@ -119,14 +119,14 @@ class Term(object):
   PROTO_MAP_BY_NUMBER = dict([(v, k) for (k, v) in six.iteritems(PROTO_MAP)])
   AF_MAP_BY_NUMBER = dict([(v, k) for (k, v) in six.iteritems(AF_MAP)])
 
-  NO_AF_LOG_ADDR = Template('Term $term will not be rendered, as it has'
-                            ' $direction address match specified but no'
-                            ' $direction addresses of $af address family'
-                            ' are present.')
+  NO_AF_LOG_ADDR = string.Template('Term $term will not be rendered, as it has'
+                                   ' $direction address match specified but no'
+                                   ' $direction addresses of $af address family'
+                                   ' are present.')
 
-  NO_AF_LOG_PROTO = Template('Term $term will not be rendered, as it has'
-                             ' $proto match specified but the ACL is of $af'
-                             ' address family.')
+  NO_AF_LOG_PROTO = string.Template('Term $term will not be rendered, as it has'
+                                    ' $proto match specified but the ACL is of'
+                                    ' $af address family.')
 
   def __init__(self, term):
     if term.protocol:
@@ -139,6 +139,7 @@ class Term(object):
       term.protocol = ProtocolNameToNumber(term.protocol,
                                            self.ALWAYS_PROTO_NUM,
                                            self.PROTO_MAP)
+    self.term = term
 
   def NormalizeAddressFamily(self, af):
     """Convert (if necessary) address family name to numeric value.
@@ -379,7 +380,8 @@ class ACLGenerator(object):
             'reject',
             'reject-with-tcp-rst',
         },
-        'icmp_type': set(list(Term.ICMP_TYPE[4].keys()) + list(Term.ICMP_TYPE[6].keys()))
+        'icmp_type': set(list(Term.ICMP_TYPE[4].keys())
+                         + list(Term.ICMP_TYPE[6].keys()))
     }
     return supported_tokens, supported_sub_tokens
 

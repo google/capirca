@@ -12,11 +12,12 @@ from __future__ import unicode_literals
 
 
 import copy
-import datetime
 import json
 import logging
 
 from capirca.lib import aclgenerator
+
+import six
 
 
 # Generic error class
@@ -85,7 +86,6 @@ class Term(aclgenerator.Term):
         term_dict['description'] = raw_comment
 
     term_dict['action'] = self.ACTION_MAP[self.term.action[0]]
-    term_dict['match'] = {'versionedExpr': 'SRC_IPS_V1', 'config': {}}
     term_dict['preview'] = False
 
     if self.address_family == 'inet':
@@ -99,7 +99,12 @@ class Term(aclgenerator.Term):
       raise UnsupportedFilterTypeError("'%s' is not a valid filter type" %
                                        self.address_family)
 
-    term_dict['match']['config']['srcIpRanges'] = saddrs
+    term_dict['match'] = {
+        'versionedExpr': 'SRC_IPS_V1',
+        'config': {
+            'srcIpRanges': saddrs,
+        }
+    }
 
     # If scrIpRanges within a single term exceed _MAX_IP_RANGES_PER_TERM,
     # split into multiple terms
@@ -118,7 +123,12 @@ class Term(aclgenerator.Term):
                                + term_position_suffix)
 
       rule['priority'] = priority_index + i
-      rule['match']['config']['srcIpRanges'] = [str(saddr) for saddr in chunk]
+      rule['match'] = {
+          'versionedExpr': 'SRC_IPS_V1',
+          'config': {
+              'srcIpRanges': [str(saddr) for saddr in chunk],
+          }
+      }
       rules.append(rule)
 
     # TODO(robankeny@): Review this log entry to make it cleaner/more useful.
@@ -243,6 +253,7 @@ class CloudArmor(aclgenerator.ACLGenerator):
     """Return the JSON blob for CloudArmor."""
 
     out = '%s\n\n' % (
-        json.dumps(self.cloudarmor_policies, indent=2, separators=(',', ': '),
+        json.dumps(self.cloudarmor_policies, indent=2,
+                   separators=(six.ensure_str(','), six.ensure_str(': ')),
                    sort_keys=True))
     return out

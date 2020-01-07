@@ -34,6 +34,7 @@ import re
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 import ipaddress
+import six
 from six.moves import range
 
 
@@ -130,7 +131,8 @@ class Term(aclgenerator.Term):
 
   def __str__(self):
     """Convert term to a string."""
-    json.dumps(self.ConvertToDict(), indent=2, separators=(',', ': '))
+    json.dumps(self.ConvertToDict(), indent=2,
+               separators=(six.ensure_str(','), six.ensure_str(': ')))
 
   def _validateDirection(self):
     if self.term.direction == 'INGRESS':
@@ -219,9 +221,13 @@ class Term(aclgenerator.Term):
           else:
             ports.append('%d-%d' % (start, end))
       action = self.ACTION_MAP[self.term.action[0]]
-      if action not in proto_dict:
-        proto_dict[action] = []
-      proto_dict[self.ACTION_MAP[self.term.action[0]]].append(dest)
+      dict_val = []
+      if action in proto_dict:
+        dict_val = proto_dict[action]
+        if not isinstance(dict_val, list):
+          dict_val = [dict_val]
+      dict_val.append(dest)
+      proto_dict[action] = dict_val
 
     # There's a limit of 256 addresses each term can contain.
     # If we're above that limit, we're breaking it down in more terms.
@@ -371,7 +377,9 @@ class GCE(aclgenerator.ACLGenerator):
     for term in self.gce_policies:
       target.extend(term.ConvertToDict())
 
-    out = '%s\n\n' % (
-        json.dumps(target, indent=2, separators=(',', ': '), sort_keys=True))
+    out = '%s\n\n' % (json.dumps(target, indent=2,
+                                 separators=(six.ensure_str(','),
+                                             six.ensure_str(': ')),
+                                 sort_keys=True))
 
     return out

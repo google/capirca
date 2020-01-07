@@ -25,7 +25,10 @@ import copy
 import datetime
 
 from capirca.lib import aclgenerator
+from capirca.lib import nacaddr
 from absl import logging
+
+from typing import cast
 
 
 class Error(Exception):
@@ -345,6 +348,7 @@ class Term(aclgenerator.Term):
     if addrs != ['any']:
       parent_token_set = set()
       for addr in addrs:
+        addr = cast(nacaddr.IPType, addr)
         parent_token_set.add(addr.parent_token)
       for token in parent_token_set:
         addresses.add('<%s>' % token[:31])
@@ -353,6 +357,7 @@ class Term(aclgenerator.Term):
     if exclude_addrs != ['any']:
       parent_token_set = set()
       for addr in exclude_addrs:
+        addr = cast(nacaddr.IPType, addr)
         parent_token_set.add(addr.parent_token)
       for token in parent_token_set:
         addresses.add('!<%s>' % token[:31])

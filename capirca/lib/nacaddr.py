@@ -23,6 +23,7 @@ from __future__ import unicode_literals
 import collections
 import itertools
 import ipaddress
+from typing import Union
 
 
 def IP(ip, comment='', token='', strict=True):
@@ -45,6 +46,8 @@ def IP(ip, comment='', token='', strict=True):
     return IPv4(ip, comment, token, strict=strict)
   elif imprecise_ip.version == 6:
     return IPv6(ip, comment, token, strict=strict)
+  raise ValueError('Provided IP string "%s" is not a valid v4 or v6 address'
+                   % ip)
 
 
 # TODO(robankeny) remove once at 3.7
@@ -52,7 +55,7 @@ def IP(ip, comment='', token='', strict=True):
 def _is_subnet_of(a, b):  # pylint: disable=invalid-name
   try:
     # Always false if one is v4 and the other is v6.
-    if a._version != b._version:  # pylint: disable=protected-access
+    if a.version != b.version:
       raise TypeError('%s and %s are not of the same version' % (a, b))
     return (b.network_address <= a.network_address and
             b.broadcast_address >= a.broadcast_address)
@@ -202,6 +205,9 @@ class IPv6(ipaddress.IPv6Network):
         self.text += ', ' + comment
     else:
       self.text = comment
+
+
+IPType = Union[IPv4, IPv6]
 
 
 def _InNetList(adders, ip):

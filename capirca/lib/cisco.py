@@ -25,8 +25,11 @@ import datetime
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from capirca.lib import summarizer
+
 import ipaddress
 from six.moves import range
+from typing import cast, Union
+
 from absl import logging
 
 
@@ -37,6 +40,7 @@ _ACTION_TABLE = {
     'next': '! next',
     'reject-with-tcp-rst': 'deny',  # tcp rst not supported
 }
+
 
 
 # generic error class
@@ -100,8 +104,8 @@ class TermStandard(object):
     if self.term.dscp_match:
       logging.warn(
           'WARNING: dscp-match is set in filter %s, term %s and may not be '
-          'implemented on all IOS version', self.filter_name, self.term_name)
-      self.dscpstring = ' dscp' + self.term_dscp_match
+          'implemented on all IOS version', self.filter_name, self.term.name)
+      self.dscpstring = ' dscp' + self.term.dscp_match
 
   def __str__(self):
     # Verify platform specific terms. Skip whole term if platform does not
@@ -282,165 +286,167 @@ class ObjectGroup(object):
 
     return '\n'.join(ret_str)
 
+
 class PortMap(object):
-    """Map port numbers to service names"""
-    # Define port mappings common to all protocols
-    _PORTS_TCP = {
-        179: 'bgp',
-        19: 'chargen',
-        514: 'cmd',
-        13: 'daytime',
-        9: 'discard',
-        53: 'domain',
-        7: 'echo',
-        512: 'exec',
-        79: 'finger',
-        21: 'ftp',
-        20: 'ftp-data',
-        70: 'gopher',
-        443: 'https',
-        113: 'ident',
-        194: 'irc',
-        543: 'klogin',
-        544: 'kshell',
-        389: 'ldap',
-        636: 'ldaps',
-        513: 'login',
-        515: 'lpd',
-        2049: 'nfs',
-        119: 'nntp',
-        496: 'pim-auto-rp',
-        109: 'pop2',
-        110: 'pop3',
-        1723: 'pptp',
-        25: 'smtp',
-        22: 'ssh',
-        111: 'sunrpc',
-        49: 'tacacs',
-        517: 'talk',
-        23: 'telnet',
-        540: 'uucp',
-        43: 'whois',
-        80: 'www',
-    }
-    _PORTS_UDP = {
-        512: 'biff',
-        68: 'bootpc',
-        67: 'bootps',
-        9: 'discard',
-        195: 'dnsix',
-        53: 'domain',
-        7: 'echo',
-        500: 'isakmp',
-        434: 'mobile-ip',
-        42: 'nameserver',
-        138: 'netbios-dgm',
-        137: 'netbios-ns',
-        2049: 'nfs',
-        123: 'ntp',
-        496: 'pim-auto-rp',
-        520: 'rip',
-        161: 'snmp',
-        162: 'snmptrap',
-        111: 'sunrpc',
-        514: 'syslog',
-        49: 'tacacs',
-        517: 'talk',
-        69: 'tftp',
-        37: 'time',
-        513: 'who',
-        177: 'xdmcp',
-    }
-    _TYPES_ICMP = {
-        6: 'alternate-address',
-        31: 'conversion-error',
-        8: 'echo',
-        0: 'echo-reply',
-        16: 'information-reply',
-        15: 'information-request',
-        18: 'mask-reply',
-        17: 'mask-request',
-        32: 'mobile-redirect',
-        12: 'parameter-problem',
-        5: 'redirect',
-        9: 'router-advertisement',
-        10: 'router-solicitation',
-        4: 'source-quench',
-        11: 'time-exceeded',
-        14: 'timestamp-reply',
-        13: 'timestamp-request',
-        30: 'traceroute',
-        3: 'unreachable',
-    }
+  """Map port numbers to service names."""
+  # Define port mappings common to all protocols
+  _PORTS_TCP = {
+      179: 'bgp',
+      19: 'chargen',
+      514: 'cmd',
+      13: 'daytime',
+      9: 'discard',
+      53: 'domain',
+      7: 'echo',
+      512: 'exec',
+      79: 'finger',
+      21: 'ftp',
+      20: 'ftp-data',
+      70: 'gopher',
+      443: 'https',
+      113: 'ident',
+      194: 'irc',
+      543: 'klogin',
+      544: 'kshell',
+      389: 'ldap',
+      636: 'ldaps',
+      513: 'login',
+      515: 'lpd',
+      2049: 'nfs',
+      119: 'nntp',
+      496: 'pim-auto-rp',
+      109: 'pop2',
+      110: 'pop3',
+      1723: 'pptp',
+      25: 'smtp',
+      22: 'ssh',
+      111: 'sunrpc',
+      49: 'tacacs',
+      517: 'talk',
+      23: 'telnet',
+      540: 'uucp',
+      43: 'whois',
+      80: 'www',
+  }
+  _PORTS_UDP = {
+      512: 'biff',
+      68: 'bootpc',
+      67: 'bootps',
+      9: 'discard',
+      195: 'dnsix',
+      53: 'domain',
+      7: 'echo',
+      500: 'isakmp',
+      434: 'mobile-ip',
+      42: 'nameserver',
+      138: 'netbios-dgm',
+      137: 'netbios-ns',
+      2049: 'nfs',
+      123: 'ntp',
+      496: 'pim-auto-rp',
+      520: 'rip',
+      161: 'snmp',
+      162: 'snmptrap',
+      111: 'sunrpc',
+      514: 'syslog',
+      49: 'tacacs',
+      517: 'talk',
+      69: 'tftp',
+      37: 'time',
+      513: 'who',
+      177: 'xdmcp',
+  }
+  _TYPES_ICMP = {
+      6: 'alternate-address',
+      31: 'conversion-error',
+      8: 'echo',
+      0: 'echo-reply',
+      16: 'information-reply',
+      15: 'information-request',
+      18: 'mask-reply',
+      17: 'mask-request',
+      32: 'mobile-redirect',
+      12: 'parameter-problem',
+      5: 'redirect',
+      9: 'router-advertisement',
+      10: 'router-solicitation',
+      4: 'source-quench',
+      11: 'time-exceeded',
+      14: 'timestamp-reply',
+      13: 'timestamp-request',
+      30: 'traceroute',
+      3: 'unreachable',
+  }
 
-    # Combine cisco-specific port mappings with common ones
-    _CISCO_PORTS_TCP = {
-        5190: 'aol',
-        1494: 'citrix-ica',
-        2748: 'ctiqbe',
-        1720: 'h323',
-        101: 'hostname',
-        143: 'imap4',
-        750: 'kerberos',
-        1352: 'lotusnotes',
-        139: 'netbios-ssn',
-        5631: 'pcanywhere-data',
-        1521: 'sqlnet',
-    }
-    _CISCO_PORTS_TCP.update(_PORTS_TCP)
-    _CISCO_PORTS_UDP = {
-        750: 'kerberos',
-        5632: 'pcanywhere-status',
-        1645: 'radius',
-        1646: 'radius-acct',
-        5510: 'secureid-udp',
-    }
-    _CISCO_PORTS_UDP.update(_PORTS_UDP)
+  # Combine cisco-specific port mappings with common ones
+  _CISCO_PORTS_TCP = {
+      5190: 'aol',
+      1494: 'citrix-ica',
+      2748: 'ctiqbe',
+      1720: 'h323',
+      101: 'hostname',
+      143: 'imap4',
+      750: 'kerberos',
+      1352: 'lotusnotes',
+      139: 'netbios-ssn',
+      5631: 'pcanywhere-data',
+      1521: 'sqlnet',
+  }
+  _CISCO_PORTS_TCP.update(_PORTS_TCP)
+  _CISCO_PORTS_UDP = {
+      750: 'kerberos',
+      5632: 'pcanywhere-status',
+      1645: 'radius',
+      1646: 'radius-acct',
+      5510: 'secureid-udp',
+  }
+  _CISCO_PORTS_UDP.update(_PORTS_UDP)
 
-    # Combine arista-specific port mappings with common ones
-    _ARISTA_PORTS_TCP = {
-        143: 'imap',
-        88: 'kerberos',
-    }
-    _ARISTA_PORTS_TCP.update(_PORTS_TCP)
-    _ARISTA_PORTS_UDP = {
-        88: 'kerberos',
-        1812: 'radius',
-        1813: 'radius-acct',
-    }
-    _ARISTA_PORTS_UDP.update(_PORTS_UDP)
+  # Combine arista-specific port mappings with common ones
+  _ARISTA_PORTS_TCP = {
+      143: 'imap',
+      88: 'kerberos',
+  }
+  _ARISTA_PORTS_TCP.update(_PORTS_TCP)
+  _ARISTA_PORTS_UDP = {
+      88: 'kerberos',
+      1812: 'radius',
+      1813: 'radius-acct',
+  }
+  _ARISTA_PORTS_UDP.update(_PORTS_UDP)
 
-    # Full port map data structure
-    _PORT_MAP = {
-      'cisco' : {
-        'tcp' : _CISCO_PORTS_TCP,
-        'udp' : _CISCO_PORTS_UDP,
-        'icmp': _TYPES_ICMP
+  # Full port map data structure
+  _PORT_MAP = {
+      'cisco': {
+          'tcp': _CISCO_PORTS_TCP,
+          'udp': _CISCO_PORTS_UDP,
+          'icmp': _TYPES_ICMP
       },
-      'arista' : {
-        'tcp' : _ARISTA_PORTS_TCP,
-        'udp' : _ARISTA_PORTS_UDP,
-        'icmp': _TYPES_ICMP
+      'arista': {
+          'tcp': _ARISTA_PORTS_TCP,
+          'udp': _ARISTA_PORTS_UDP,
+          'icmp': _TYPES_ICMP
       }
-    }
+  }
 
-    @staticmethod
-    def getProtocol(port_num, proto, platform='cisco'):
-      """Converts a port number to a name or returns the number.
+  @staticmethod
+  def getProtocol(port_num, proto, platform='cisco'):
+    """Converts a port number to a name or returns the number.
 
-      Args:
-        port_num: integer representing the port number.
-        proto: string representing proto (tcp, udp, etc).
-        platform: string representing platform (cisco, arista)
+    Args:
+      port_num: integer representing the port number.
+      proto: string representing proto (tcp, udp, etc).
+      platform: string representing platform (cisco, arista)
 
-      Returns:
-        A name of the protocol or the port number that was provided.
-      """
-      try:
-        port_map = PortMap._PORT_MAP[platform][proto]
-        return port_map[port_num]
-      except KeyError:
-        return port_num
+    Returns:
+      A name of the protocol or the port number that was provided.
+    """
+    try:
+      port_map = PortMap._PORT_MAP[platform][proto]
+      return port_map[port_num]
+    except KeyError:
+      return port_num
+
 
 class PortMap(object):
   """Map port numbers to service names."""
@@ -609,6 +615,9 @@ class Term(aclgenerator.Term):
                            'ipinip', 'nos', 'pim', 'tcp', 'udp',
                            'sctp', 'ahp']
   COMMENT_MAX_WIDTH = 70
+
+  IPV4_ADDRESS = Union[nacaddr.IPv4, ipaddress.IPv4Network]
+  IPV6_ADDRESS = Union[nacaddr.IPv6, ipaddress.IPv6Network]
 
   def __init__(self, term, af=4, proto_int=True, enable_dsmo=False,
                term_remark=True, platform='cisco', verbose=True):
@@ -804,6 +813,7 @@ class Term(aclgenerator.Term):
     """
     if isinstance(addr, nacaddr.IPv4) or isinstance(addr,
                                                     ipaddress.IPv4Network):
+      addr = cast(self.IPV4_ADDRESS, addr)
       if addr.num_addresses > 1:
         if self.platform == 'arista':
           return addr.with_prefixlen
@@ -811,6 +821,7 @@ class Term(aclgenerator.Term):
       return 'host %s' % (addr.network_address)
     if isinstance(addr, nacaddr.IPv6) or isinstance(addr,
                                                     ipaddress.IPv6Network):
+      addr = cast(self.IPV6_ADDRESS, addr)
       if addr.num_addresses > 1:
         return addr.with_prefixlen
       return 'host %s' % (addr.network_address)
@@ -927,6 +938,7 @@ class ObjectGroupTerm(Term):
   """
   # Protocols should be emitted as integers rather than strings.
   _PROTO_INT = True
+  _PLATFORM = 'cisco'
 
   def __init__(self, term, filter_name, platform='cisco', verbose=True):
     super(ObjectGroupTerm, self).__init__(term)

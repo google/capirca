@@ -1450,16 +1450,11 @@ class VarType(object):
 
   def __init__(self, var_type, value):
     self.var_type = var_type
-    if self.var_type == self.COMMENT:
+    if self.var_type == self.COMMENT or self.var_type == self.LOG_NAME:
       # remove the double quotes
-      comment = value.strip('"')
+      val = str(value).strip('"')
       # make all of the lines start w/o leading whitespace.
-      self.value = '\n'.join([x.lstrip() for x in comment.splitlines()])
-    elif self.var_type == self.LOG_NAME:
-      # remove the double quotes
-      log_name = value.strip('"')
-      # make all of the lines start w/o leading whitespace.
-      self.value = '\n'.join([x.lstrip() for x in log_name.splitlines()])
+      self.value = '\n'.join([x.lstrip() for x in val.splitlines()])
     else:
       self.value = value
 

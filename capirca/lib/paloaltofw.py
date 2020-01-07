@@ -246,6 +246,17 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
 
   INDENT = "  "
 
+  def __init__(self, pol, exp_info):
+    self.pafw_policies = []
+    self.addressbook = collections.OrderedDict()
+    self.applications = []
+    self.pan_applications = []
+    self.ports = []
+    self.from_zone = ""
+    self.to_zone = ""
+    self.policy_name = ""
+    super(PaloAltoFW, self).__init__(pol, exp_info)
+
   def _BuildTokens(self):
     """Build supported tokens for platform.
 
@@ -295,15 +306,6 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       PaloAltoFWDuplicateTermError: Two terms were found with same name in
       same filter
     """
-    self.pafw_policies = []
-    self.addressbook = collections.OrderedDict()
-    self.applications = []
-    self.pan_applications = []
-    self.ports = []
-    self.from_zone = ""
-    self.to_zone = ""
-    self.policy_name = ""
-
     current_date = datetime.date.today()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
     for header, terms in pol.filters:

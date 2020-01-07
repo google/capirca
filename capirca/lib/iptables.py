@@ -643,6 +643,10 @@ class Iptables(aclgenerator.ACLGenerator):
   _GOOD_FILTERS = ['INPUT', 'OUTPUT', 'FORWARD']
   _GOOD_OPTIONS = ['nostate', 'abbreviateterms', 'truncateterms', 'noverbose']
 
+  def __init__(self, pol, exp_info):
+    self.iptables_policies = []
+    super(Iptables, self).__init__(pol, exp_info)
+
   def _BuildTokens(self):
     """Build supported tokens for platform.
 
@@ -692,7 +696,6 @@ class Iptables(aclgenerator.ACLGenerator):
 
   def _TranslatePolicy(self, pol, exp_info):
     """Translate a policy from objects into strings."""
-    self.iptables_policies = []
     current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 

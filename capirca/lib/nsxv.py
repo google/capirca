@@ -26,6 +26,7 @@ import xml
 
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
+import six
 from six.moves import map
 from six.moves import range
 from absl import logging
@@ -191,7 +192,8 @@ class Term(aclgenerator.Term):
     protocol = None
 
     if self.term.protocol:
-      protocol = list(map(self.PROTO_MAP.get, self.term.protocol, self.term.protocol))
+      protocol = list(map(self.PROTO_MAP.get, self.term.protocol,
+                          self.term.protocol))
 
       # icmp-types
       icmp_types = ['']
@@ -626,7 +628,7 @@ class Nsxv(aclgenerator.ACLGenerator):
     target.append('-->')
 
     for (_, _, _, terms) in self.nsxv_policies:
-      section_name = self._FILTER_OPTIONS_DICT['section_name']
+      section_name = six.ensure_str(self._FILTER_OPTIONS_DICT['section_name'])
       # check section id value
       section_id = self._FILTER_OPTIONS_DICT['section_id']
       if not section_id or section_id == 0:
