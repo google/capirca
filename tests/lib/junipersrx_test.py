@@ -21,6 +21,7 @@ from __future__ import unicode_literals
 
 import copy
 import datetime
+import re
 import unittest
 
 
@@ -380,6 +381,62 @@ term test-icmp {
 }
 """
 
+# For testing when the number of terms is at the 8 term application limit
+LONG_IPV6_ICMP_TERM = """
+term accept-icmpv6-types {
+  protocol:: icmpv6
+  icmp-type:: echo-request echo-reply neighbor-solicit
+  icmp-type:: neighbor-advertisement router-advertisement packet-too-big
+  icmp-type:: parameter-problem time-exceeded
+  action:: accept
+}
+"""
+
+# For testing when the number of terms goes over the 8 term application limit
+LONG_IPV6_ICMP_TERM2 = """
+term accept-icmpv6-types {
+  protocol:: icmpv6
+  icmp-type:: echo-request echo-reply neighbor-solicit
+  icmp-type:: neighbor-advertisement router-advertisement packet-too-big
+  icmp-type:: parameter-problem time-exceeded destination-unreachable
+  action:: accept
+}
+"""
+
+ICMP_ALL_TERM = """
+term accept-icmp-types {
+  protocol:: icmp
+  icmp-type:: echo-reply unreachable source-quench redirect alternate-address
+  icmp-type:: echo-request router-advertisement router-solicitation
+  icmp-type:: time-exceeded parameter-problem timestamp-request
+  icmp-type:: timestamp-reply information-request information-reply
+  icmp-type:: mask-request mask-reply conversion-error mobile-redirect
+  action:: accept
+}
+"""
+
+ICMP6_ALL_TERM = """
+term accept-icmpv6-types {
+  protocol:: icmpv6
+  icmp-type:: destination-unreachable packet-too-big time-exceeded
+  icmp-type:: parameter-problem echo-request echo-reply
+  icmp-type:: multicast-listener-query multicast-listener-report
+  icmp-type:: multicast-listener-done router-solicit router-advertisement
+  icmp-type:: neighbor-solicit neighbor-advertisement redirect-message
+  icmp-type:: router-renumbering icmp-node-information-query
+  icmp-type:: icmp-node-information-response
+  icmp-type:: inverse-neighbor-discovery-solicitation
+  icmp-type:: inverse-neighbor-discovery-advertisement
+  icmp-type:: version-2-multicast-listener-report
+  icmp-type:: home-agent-address-discovery-request
+  icmp-type:: home-agent-address-discovery-reply mobile-prefix-solicitation
+  icmp-type:: mobile-prefix-advertisement certification-path-solicitation
+  icmp-type:: certification-path-advertisement multicast-router-advertisement
+  icmp-type:: multicast-router-solicitation multicast-router-termination
+  action:: accept
+}
+"""
+
 IPV6_ICMP_TERM = """
 term test-ipv6_icmp {
   protocol:: icmpv6
@@ -423,6 +480,7 @@ term default-term-1 {
   action:: deny
 }
 """
+
 TIMEOUT_TERM = """
 term timeout-term {
   protocol:: icmp
@@ -617,6 +675,69 @@ class JuniperSRXTest(unittest.TestCase):
                     in output, output)
     self.failUnless('term t2 protocol icmp icmp-type 8 inactivity-timeout 60'
                     in output, output)
+
+  def testLongIcmpTypes(self):
+    pol = policy.ParsePolicy(GOOD_HEADER + LONG_IPV6_ICMP_TERM, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+
+    # Make sure that the application isn't split into an application set
+    # due to ICMP term usage up to 8 terms.
+    self.assertNotIn('application-set accept-icmpv6-types-app', output)
+    self.assertIn('application accept-icmpv6-types-app;', output)
+
+    # Use regex to check for there being a single application with exactly 8
+    # terms in it.
+    pattern = re.compile(
+        r'application accept-icmpv6-types-app \{\s+(term t\d protocol icmp6 icmp6-type \d{1,3} inactivity-timeout 60;\s+){8}\}'
+    )
+    self.assertTrue(pattern.search(output), output)
+
+  def testLongSplitIcmpTypes(self):
+    pol = policy.ParsePolicy(GOOD_HEADER + LONG_IPV6_ICMP_TERM2, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+
+    # Check the application was split into a set of many applications; 9 terms.
+    pattern = re.compile(
+        r'application-set accept-icmpv6-types-app \{\s+(application accept-icmpv6-types-app\d;\s+){9}\}'
+    )
+    self.assertTrue(pattern.search(output), output)
+
+    # Check that each of the 9 applications with 1 term each.
+    pattern = re.compile(
+        r'(application accept-icmpv6-types-app\d \{\s+(term t1 protocol icmp6 icmp6-type \d{1,3} inactivity-timeout 60;\s+)\}\s+){9}'
+    )
+    self.assertTrue(pattern.search(output), output)
+
+  def testAllIcmpTypes(self):
+    pol = policy.ParsePolicy(GOOD_HEADER + ICMP_ALL_TERM, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+
+    # Check for split into application set of many applications; 18 terms.
+    pattern = re.compile(
+        r'application-set accept-icmp-types-app \{\s+(application accept-icmp-types-app\d{1,2};\s+){18}\}'
+    )
+    self.assertTrue(pattern.search(output), output)
+
+    # Check that each of the 18 applications have 1 term each.
+    pattern = re.compile(
+        r'(application accept-icmp-types-app\d{1,2} \{\s+(term t1 protocol icmp icmp-type \d{1,3} inactivity-timeout 60;\s+)\}\s+){18}'
+    )
+    self.assertTrue(pattern.search(output), output)
+
+  def testAllIcmp6Types(self):
+    pol = policy.ParsePolicy(GOOD_HEADER + ICMP6_ALL_TERM, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    # Check for 29 applications.
+    pattern = re.compile(
+        r'application-set accept-icmpv6-types-app \{\s+(application accept-icmpv6-types-app\d{1,2};\s+){29}\}'
+    )
+    self.assertTrue(pattern.search(output), output)
+
+    # Check that each of the 4 applications have between 1 and 8 terms.
+    pattern = re.compile(
+        r'(application accept-icmpv6-types-app\d{1,2} \{\s+(term t1 protocol icmp6 icmp6-type \d{1,3} inactivity-timeout 60;\s+)\}\s+){29}'
+    )
+    self.assertTrue(pattern.search(output), output)
 
   def testLoggingBothAccept(self):
     srx = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER

@@ -31,6 +31,8 @@ from capirca.lib import nacaddr
 import six
 from absl import logging
 
+ICMP_TERM_LIMIT = 8
+
 
 def JunipersrxList(name, data):
   return '%s [ %s ];' % (name, ' '.join(data))
@@ -763,21 +765,44 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       if app['protocol'] or app['sport'] or app['dport'] or app['icmp-type']:
         # generate ICMP statements
         if app['icmp-type']:
-          target.IndentAppend(1, 'application ' + app['name'] + '-app {')
-
           if app['timeout']:
             timeout = app['timeout']
           else:
             timeout = 60
+          # SRX has a limit of 8 terms per application. To get around this,
+          # we use application sets with applications that contain the terms
+          # we need.
+          num_terms = len(app['protocol']) * len(app['icmp-type'])
+          if num_terms > ICMP_TERM_LIMIT:
+            target.IndentAppend(1, 'application-set ' + app['name'] + '-app {')
+            for i in range(num_terms):
+              target.IndentAppend(
+                  2, 'application ' + app['name'] + '-app%d' % (i + 1) + ';')
+            target.IndentAppend(1, '}')
+          else:
+            target.IndentAppend(1, 'application ' + app['name'] + '-app {')
+
+          term_counter = 0
           for i, code in enumerate(app['icmp-type']):
             for proto in app['protocol']:
-              target.IndentAppend(
-                  2,
-                  'term t%d protocol %s %s-type %s inactivity-timeout %d;' %
-                  (i + 1, proto, proto, str(code), int(timeout))
-              )
-          target.IndentAppend(1, '}')
-
+              # if we have more than 8 (ICMP_TERM_LIMIT) terms, we use an app
+              # for each term.
+              if num_terms > ICMP_TERM_LIMIT:
+                target.IndentAppend(
+                    1, 'application ' + app['name'] + '-app%d' %
+                    (term_counter + 1) + ' {')
+                target.IndentAppend(
+                    2, 'term t1 protocol %s %s-type %s inactivity-timeout %d;' %
+                    (proto, proto, str(code), int(timeout)))
+                target.IndentAppend(1, '}')
+              else:
+                target.IndentAppend(
+                    2,
+                    'term t%d protocol %s %s-type %s inactivity-timeout %d;' %
+                    (i + 1, proto, proto, str(code), int(timeout)))
+              term_counter += 1
+          if num_terms < ICMP_TERM_LIMIT:
+            target.IndentAppend(1, '}')
         # generate non-ICMP statements
         else:
           i = 1
