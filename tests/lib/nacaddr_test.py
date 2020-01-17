@@ -32,6 +32,7 @@ class NacaddrUnitTest(unittest.TestCase):
   """
 
   def setUp(self):
+    super(NacaddrUnitTest, self).setUp()
     self.addr1 = nacaddr.IPv4(u'10.0.0.0/8', 'The 10 block')
     self.addr2 = nacaddr.IPv6('DEAD:BEEF:BABE:FACE:DEAF:FEED:C0DE:F001/64',
                               'An IPv6 Address', strict=False)

@@ -152,6 +152,7 @@ EXP_INFO = 2
 class WindowsGeneratorTest(unittest.TestCase):
 
   def setUp(self):
+    super(WindowsGeneratorTest, self).setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testBuildTokens(self):
@@ -159,15 +160,15 @@ class WindowsGeneratorTest(unittest.TestCase):
         policy.ParsePolicy(GOOD_HEADER + MULTIPLE_PROTOCOLS_TERM, self.naming),
         EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testBuildWarningTokens(self):
     pol1 = windows.WindowsGenerator(policy.ParsePolicy(
         GOOD_HEADER + GOOD_WARNING_TERM, self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testSkipEstablished(self):
     # self.naming.GetNetAddr.return_value = _IPSET

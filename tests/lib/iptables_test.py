@@ -576,6 +576,7 @@ class FakeTerm(object):
 class AclCheckTest(unittest.TestCase):
 
   def setUp(self):
+    super(AclCheckTest, self).setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   @mock.patch.object(iptables.logging, 'warn')
@@ -585,9 +586,9 @@ class AclCheckTest(unittest.TestCase):
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
     # is the chain right?
-    self.failUnless('-A foobar_chain -j f_good-term-1' in result)
+    self.assertIn('-A foobar_chain -j f_good-term-1', result)
     # is the term named appropriately?
-    self.failUnless('-N f_good-term-1' in result)
+    self.assertIn('-N f_good-term-1', result)
 
     mock_warn.assert_called_once_with(
         'Filter is generating a non-standard chain that will '
@@ -604,43 +605,43 @@ class AclCheckTest(unittest.TestCase):
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_1,
                                                self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('-P OUTPUT DROP' in result,
-                    'output default policy of drop not set.')
-    self.failUnless('-N O_good-term-1' in result,
-                    'did not find new chain for good-term-1.')
-    self.failUnless('-A O_good-term-1 -p icmp -m state '
-                    '--state NEW,ESTABLISHED,RELATED -j ACCEPT' in result,
-                    'did not find append for good-term-1.')
+    self.assertIn('-P OUTPUT DROP', result,
+                  'output default policy of drop not set.')
+    self.assertIn('-N O_good-term-1', result,
+                  'did not find new chain for good-term-1.')
+    self.assertIn('-A O_good-term-1 -p icmp -m state '
+                  '--state NEW,ESTABLISHED,RELATED -j ACCEPT', result,
+                  'did not find append for good-term-1.')
 
   def testCustomChain(self):
     acl = iptables.Iptables(policy.ParsePolicy(NON_STANDARD_CHAIN + GOOD_TERM_1,
                                                self.naming), EXP_INFO)
     result = str(acl).split('\n')
-    self.failUnless('-N foo' in result, 'did not find new chain for foo.')
-    self.failIf('-P foo' in result, 'chain foo may not have a policy set.')
+    self.assertIn('-N foo', result, 'did not find new chain for foo.')
+    self.assertNotIn('-P foo', result, 'chain foo may not have a policy set.')
 
   def testChainNoTarget(self):
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_5 + GOOD_TERM_1,
                                                self.naming), EXP_INFO)
     result = str(acl).split('\n')
     for line in result:
-      self.failIf(line.startswith(':INPUT'),
-                  'chain may not have a policy set.')
-      self.failIf(line.startswith('-P INPUT'),
-                  'chain may not have a policy set.')
-      self.failIf(line.startswith('-N INPUT'),
-                  'attempting to create a built-in chain.')
+      self.assertFalse(line.startswith(':INPUT'),
+                       'chain may not have a policy set.')
+      self.assertFalse(line.startswith('-P INPUT'),
+                       'chain may not have a policy set.')
+      self.assertFalse(line.startswith('-N INPUT'),
+                       'attempting to create a built-in chain.')
 
   def testCustomChainNoTarget(self):
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_6 + GOOD_TERM_1,
                                                self.naming), EXP_INFO)
     result = str(acl).split('\n')
-    self.failUnless('-N foo' in result, 'did not find a new chain for foo.')
+    self.assertIn('-N foo', result, 'did not find a new chain for foo.')
     for line in result:
-      self.failIf(line.startswith(':foo'),
-                  'chain may not have a policy set.')
-      self.failIf(line.startswith('-P foo'),
-                  'chain may not have a policy set.')
+      self.assertFalse(line.startswith(':foo'),
+                       'chain may not have a policy set.')
+      self.assertFalse(line.startswith('-P foo'),
+                       'chain may not have a policy set.')
 
   def testExcludeReturnsPolicy(self):
     #
@@ -655,13 +656,13 @@ class AclCheckTest(unittest.TestCase):
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
                                                self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('-P INPUT ACCEPT' in result, 'no default policy found.')
-    self.failUnless('-p tcp' in result, 'no protocol specification found.')
-    self.failUnless('-s ' in result, 'no source address found.')
-    self.failUnless('-s 10.0.0.0/24 -j RETURN' in result,
-                    'expected address 10.0.0.0/24 not jumping to RETURN.')
-    self.failUnless('--sport 80 -s 10.0.0.0/8' in result,
-                    'expected source address 10.0.0.0/8 not accepted.')
+    self.assertIn('-P INPUT ACCEPT', result, 'no default policy found.')
+    self.assertIn('-p tcp', result, 'no protocol specification found.')
+    self.assertIn('-s ', result, 'no source address found.')
+    self.assertIn('-s 10.0.0.0/24 -j RETURN', result,
+                  'expected address 10.0.0.0/24 not jumping to RETURN.')
+    self.assertIn('--sport 80 -s 10.0.0.0/8', result,
+                  'expected source address 10.0.0.0/8 not accepted.')
 
     self.naming.GetNetAddr.assert_has_calls([
         mock.call('INTERNAL'),
@@ -681,8 +682,8 @@ class AclCheckTest(unittest.TestCase):
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
                                                self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('--sport 80 -s 10.0.0.0/10' in result,
-                    'expected source address 10.0.0.0/10 not accepted.')
+    self.assertIn('--sport 80 -s 10.0.0.0/10', result,
+                  'expected source address 10.0.0.0/10 not accepted.')
 
     self.naming.GetNetAddr.assert_has_calls([
         mock.call('INTERNAL'),
@@ -711,18 +712,18 @@ class AclCheckTest(unittest.TestCase):
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_9,
                                                self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('-P INPUT ACCEPT' in result, 'no default policy found.')
-    self.failUnless('-p tcp' in result, 'no protocol specification found.')
-    self.assertTrue(result.count('\n') < len(source_range) * len(dest_range),
+    self.assertIn('-P INPUT ACCEPT', result, 'no default policy found.')
+    self.assertIn('-p tcp', result, 'no protocol specification found.')
+    self.assertLess(result.count('\n'), len(source_range) * len(dest_range),
                     'expected less than %d rows, got %d' %
                     (len(source_range) * len(dest_range), result.count('\n')))
-    self.failUnless(
-        '-s 0.0.0.0/5 -j RETURN' in result,
+    self.assertIn(
+        '-s 0.0.0.0/5 -j RETURN', result,
         'expected address 0.0.0.0/5 to RETURN:\n' + result)
-    self.failUnless(
-        '-s 10.0.128.0/17 -j RETURN' in result,
+    self.assertIn(
+        '-s 10.0.128.0/17 -j RETURN', result,
         'expected address 10.0.128.0/17 not jumping to RETURN:\n' + result)
-    self.failUnless(
+    self.assertTrue(
         re.search('--sport 80 -d 10.0.1.0/25 [^\n]* -j ACCEPT', result),
         'expected destination addresss 10.0.1.0/25 accepted:\n' + result)
 
@@ -753,18 +754,18 @@ class AclCheckTest(unittest.TestCase):
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_9,
                                                self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('-P INPUT ACCEPT' in result, 'no default policy found.')
-    self.failUnless('-p tcp' in result, 'no protocol specification found.')
-    self.assertTrue(result.count('\n') < len(source_range) * len(dest_range),
+    self.assertIn('-P INPUT ACCEPT', result, 'no default policy found.')
+    self.assertIn('-p tcp', result, 'no protocol specification found.')
+    self.assertLess(result.count('\n'), len(source_range) * len(dest_range),
                     'expected less than %d rows, got %d' %
                     (len(source_range) * len(dest_range), result.count('\n')))
-    self.failUnless(
-        '-d 0.0.0.0/5 -j RETURN' in result,
+    self.assertIn(
+        '-d 0.0.0.0/5 -j RETURN', result,
         'expected address 0.0.0.0/5 to RETURN:\n' + result)
-    self.failUnless(
-        '-d 10.0.128.0/17 -j RETURN' in result,
+    self.assertIn(
+        '-d 10.0.128.0/17 -j RETURN', result,
         'expected address 10.0.128.0/17 not jumping to RETURN:\n' + result)
-    self.failUnless(
+    self.assertTrue(
         re.search('--sport 80 -s 10.0.1.0/25 [^\n]* -j ACCEPT', result),
         'expected destination addresss 10.0.1.0/25 accepted:\n' + result)
 
@@ -779,12 +780,12 @@ class AclCheckTest(unittest.TestCase):
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_3,
                                                self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('--tcp-flags FIN,RST FIN,RST' in result,
-                    'tcp flags missing or incorrect.')
+    self.assertIn('--tcp-flags FIN,RST FIN,RST', result,
+                  'tcp flags missing or incorrect.')
     self.assertNotIn('-dport 1024:65535', result,
                      'destination port present.')
-    self.failUnless(
-        '-m state --state ESTABLISHED,RELATED' in result,
+    self.assertIn(
+        '-m state --state ESTABLISHED,RELATED', result,
         'missing or incorrect state information.')
 
     self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
@@ -793,83 +794,82 @@ class AclCheckTest(unittest.TestCase):
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + REJECT_TERM1,
                                                self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('-j REJECT --reject-with tcp-reset' in result,
-                    'missing or incorrect reject specification.')
+    self.assertIn('-j REJECT --reject-with tcp-reset', result,
+                  'missing or incorrect reject specification.')
 
   def testReject(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + REJECT_TERM2, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
-    self.failUnless('-j REJECT --reject-with icmp-host-prohibited' in result,
-                    'missing or incorrect reject specification.')
+    self.assertIn('-j REJECT --reject-with icmp-host-prohibited', result,
+                  'missing or incorrect reject specification.')
 
   def testRejectIpv6(self):
     pol = policy.ParsePolicy(IPV6_HEADER_1 + REJECT_TERM2, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
-    self.failIf('-p all' in result, 'protocol spec present')
-    self.failUnless('-j REJECT --reject-with icmp6-adm-prohibited' in result,
-                    'missing or incorrect reject specification.')
+    self.assertNotIn('-p all', result, 'protocol spec present')
+    self.assertIn('-j REJECT --reject-with icmp6-adm-prohibited', result,
+                  'missing or incorrect reject specification.')
 
   def testIPv6Headers(self):
     pol = policy.ParsePolicy(IPV6_HEADER_1 + IPV6_HEADERS, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
-    self.failUnless('-m u32 --u32 "0x3&0xff=0x0"' in result,
-                    'match for hop-by-hop header is missing')
-    self.failUnless('-m u32 --u32 "0x3&0xff=0x2c"' in result,
-                    'match for fragment header is missing')
+    self.assertIn('-m u32 --u32 "0x3&0xff=0x0"', result,
+                  'match for hop-by-hop header is missing')
+    self.assertIn('-m u32 --u32 "0x3&0xff=0x2c"', result,
+                  'match for fragment header is missing')
 
   def testNextTerm(self):
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + NEXT_TERM1,
                                                self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('-j RETURN' in result,
-                    'jump to RETURN not found.')
+    self.assertIn('-j RETURN', result,
+                  'jump to RETURN not found.')
 
   def testProtocols(self):
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_4,
                                                self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('-p tcp' in result, 'protocol tcp not found.')
-    self.failUnless('-p udp' in result, 'protocol udp not found.')
-    self.failUnless('-p esp' in result, 'protocol esp not found.')
-    self.failUnless('-p ah' in result, 'protocol ah not found.')
-    self.failUnless('-p gre' in result, 'protocol gre not found.')
-    self.failUnless('-p icmp' in result, 'protocol icmp not found.')
-    self.failUnless('-p 50' in result, 'protocol 50 not found.')
+    self.assertIn('-p tcp', result, 'protocol tcp not found.')
+    self.assertIn('-p udp', result, 'protocol udp not found.')
+    self.assertIn('-p esp', result, 'protocol esp not found.')
+    self.assertIn('-p ah', result, 'protocol ah not found.')
+    self.assertIn('-p gre', result, 'protocol gre not found.')
+    self.assertIn('-p icmp', result, 'protocol icmp not found.')
+    self.assertIn('-p 50', result, 'protocol 50 not found.')
 
   def testVerbatimTerm(self):
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_5,
                                                self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('mary had a little lamb' in result,
-                    'first verbatim output is missing or incorrect.')
+    self.assertIn('mary had a little lamb', result,
+                  'first verbatim output is missing or incorrect.')
     # check if another platforms verbatim shows up
-    self.failIf('mary had a second lamb' in result,
-                'second vebatim output is missing or incorrect.')
-    self.failIf('mary had a third lamb' in result,
-                'third verbatim output is missing or incorrect.')
+    self.assertNotIn('mary had a second lamb', result,
+                     'second vebatim output is missing or incorrect.')
+    self.assertNotIn('mary had a third lamb', result,
+                     'third verbatim output is missing or incorrect.')
 
   def testCommentReflowing(self):
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_6,
                                                self.naming), EXP_INFO)
     result = str(acl)
-    self.failIf('--comments ""' in result,
-                'Iptables cannot handle empty comments')
-    self.failIf(re.search('--comments "[^"]{256,}"', result),
-                'Iptables comments must be under 255 characters.')
-    self.failIf(re.search('--comments "[^"]*\n', result),
-                'Iptables comments may not contain newline characters.')
+    self.assertNotIn('--comments ""', result,
+                     'Iptables cannot handle empty comments')
+    self.assertFalse(re.search('--comments "[^"]{256,}"', result),
+                     'Iptables comments must be under 255 characters.')
+    self.assertFalse(re.search('--comments "[^"]*\n', result),
+                     'Iptables comments may not contain newline characters.')
 
   def testCommentQuoteStripping(self):
 
-    parsedPolicy = policy.ParsePolicy(GOOD_HEADER_1 + BAD_QUOTE_TERM_1,
-                                      self.naming)
-    parsedPolicy.filters[0][1][0].comment=['Text "describing" "with" quotes']
+    parsed_policy = policy.ParsePolicy(GOOD_HEADER_1 + BAD_QUOTE_TERM_1,
+                                       self.naming)
+    parsed_policy.filters[0][1][0].comment = ['Text "describing" "with" quotes']
 
-
-    acl = iptables.Iptables(parsedPolicy, EXP_INFO)
+    acl = iptables.Iptables(parsed_policy, EXP_INFO)
     result = str(acl)
 
     self.assertTrue(re.search(
@@ -885,81 +885,79 @@ class AclCheckTest(unittest.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_LONG_TERM_NAME, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
-    self.failUnless('-abbreviations' in result,
-                    'Our strings disappeared during abbreviation.')
+    self.assertIn('-abbreviations', result,
+                  'Our strings disappeared during abbreviation.')
 
   def testLongTermTruncation(self):
     pol = policy.ParsePolicy(GOOD_HEADER_4 + GOOD_LONG_TERM_NAME, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
-    self.failUnless('google-experiment-abbrev' in result,
-                    'Our strings disappeared during truncation.')
-    self.failIf('google-experiment-abbreviations' in result,
-                'Term name was not truncated as expected.')
+    self.assertIn('google-experiment-abbrev', result,
+                  'Our strings disappeared during truncation.')
+    self.assertNotIn('google-experiment-abbreviations', result,
+                  'Term name was not truncated as expected.')
 
   def testFragmentOptions(self):
     pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_7, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
-    self.failUnless('--u32 4&0x3FFF=0x2000' in result,
-                    'first-fragment rule is missing')
-    self.failUnless('--length 1:119' in result,
-                    'length match is missing')
-    self.failUnless('--u32 4&0x1FFF=1:119' in result,
-                    'fragment-offset rule is missing')
+    self.assertIn('--u32 4&0x3FFF=0x2000', result,
+                  'first-fragment rule is missing')
+    self.assertIn('--length 1:119', result,
+                  'length match is missing')
+    self.assertIn('--u32 4&0x1FFF=1:119', result,
+                  'fragment-offset rule is missing')
 
   def testIcmpMatching(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_8, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
-    self.failUnless('--icmp-type 0' in result,
-                    'icmp-type 0 (echo-reply) is missing')
-    self.failUnless('--icmp-type 3' in result,
-                    'icmp-type 3 (destination-unreachable) is missing')
-    self.failUnless('--icmp-type 10' in result,
-                    'icmp-type 10 (router-solicit) is missing')
-    self.failUnless('--icmp-type 15' in result,
-                    'icmp-type 15 (info-request) is missing')
+    self.assertIn('--icmp-type 0', result,
+                  'icmp-type 0 (echo-reply) is missing')
+    self.assertIn('--icmp-type 3', result,
+                  'icmp-type 3 (destination-unreachable) is missing')
+    self.assertIn('--icmp-type 10', result,
+                  'icmp-type 10 (router-solicit) is missing')
+    self.assertIn('--icmp-type 15', result,
+                  'icmp-type 15 (info-request) is missing')
 
   def testIcmpCode(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_11, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
-    self.failUnless('--icmp-type 3/3' in result, result)
-    self.failUnless('--icmp-type 3/4' in result, result)
+    self.assertIn('--icmp-type 3/3', result, result)
+    self.assertIn('--icmp-type 3/4', result, result)
 
   def testConntrackUDP(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + UDP_STATE_TERM, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
-    self.failUnless('-m state --state ESTABLISHED,RELATED' in result,
-                    'udp connection tracking is missing state module')
+    self.assertIn('-m state --state ESTABLISHED,RELATED', result,
+                  'udp connection tracking is missing state module')
     self.assertNotIn('-dport 1024:65535', result,
                      'udp connection tracking contains destination high-ports')
-    self.failUnless('-p udp' in result,
-                    'udp connection tracking is missing protocol specification')
+    self.assertIn('-p udp', result,
+                  'udp connection tracking is missing protocol specification')
 
   def testConntrackAll(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + STATEFUL_ONLY_TERM, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
-    self.failUnless('-m state --state ESTABLISHED,RELATED' in result,
-                    'connection tracking is missing state module arguments')
-    self.failIf('-dport 1024:65535' in result,
-                'High-ports should not appear for non-TCP/UDP protocols')
+    self.assertIn('-m state --state ESTABLISHED,RELATED', result,
+                  'connection tracking is missing state module arguments')
+    self.assertNotIn('-dport 1024:65535', result,
+                     'High-ports should not appear for non-TCP/UDP protocols')
 
   def testTcpEstablishedNostate(self):
     pol = policy.ParsePolicy(NOSTATE_HEADER + TCP_STATE_TERM, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
     self.assertIn(
-        '-p tcp --tcp-flags ACK ACK --dport 1024:65535 -j ACCEPT', result,
-        'No rule matching TCP packets with ACK bit.\n' + result)
-    self.failUnless('%s %s' % ('--tcp-flags ACK,FIN,RST,SYN RST',
-                               '--dport 1024:65535 -j ACCEPT') in result,
-                    'No rule matching packets with RST bit only.\n' + result)
-    self.failIf('--state' in result,
-                'Nostate header should not use nf_conntrack --state flag')
+        '%s %s' %
+        ('--tcp-flags ACK,FIN,RST,SYN RST', '--dport 1024:65535 -j ACCEPT'),
+        result, 'No rule matching packets with RST bit only.\n' + result)
+    self.assertNotIn('--state', result,
+                     'Nostate header should not use nf_conntrack --state flag')
 
   def testUdpEstablishedNostate(self):
     pol = policy.ParsePolicy(NOSTATE_HEADER + UDP_STATE_TERM, self.naming)
@@ -967,8 +965,8 @@ class AclCheckTest(unittest.TestCase):
     result = str(acl)
     self.assertIn('-p udp --dport 1024:65535 -j ACCEPT', result,
                   'No rule matching TCP packets with ACK bit.\n' + result)
-    self.failIf('--state' in result,
-                'Nostate header should not use nf_conntrack --state flag')
+    self.assertNotIn('--state', result,
+                     'Nostate header should not use nf_conntrack --state flag')
 
   def testEstablishedNostate(self):
     # when using "nostate" filter and a term with "option:: established"
@@ -1006,28 +1004,28 @@ class AclCheckTest(unittest.TestCase):
 
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_MULTIPORT,
                                                self.naming), EXP_INFO)
-    self.failUnless('-m multiport --sports %s' % ','.join(ports) in str(acl),
-                    'multiport module not used as expected.')
+    self.assertIn('-m multiport --sports %s' % ','.join(ports), str(acl),
+                  'multiport module not used as expected.')
     # b/10626420
-    self.failIf('-m multiport --dports  -d' in str(acl),
-                'invalid multiport syntax produced.')
+    self.assertNotIn('-m multiport --dports  -d', str(acl),
+                     'invalid multiport syntax produced.')
 
     self.naming.GetServiceByProto.assert_called_once_with(
-            'FOURTEEN_PORTS', 'tcp')
+        'FOURTEEN_PORTS', 'tcp')
 
   def testMultiPortWithRanges(self):
     ports = [str(x) for x in (1, 3, 5, 7, 9, 11, 13, 15, 17, '19-21', '23-25',
-             '27-29')]
+                              '27-29')]
     self.naming.GetServiceByProto.return_value = ports
 
     acl = iptables.Iptables(policy.ParsePolicy(
         GOOD_HEADER_1 + GOOD_MULTIPORT_RANGE, self.naming), EXP_INFO)
     expected = '-m multiport --dports %s' % ','.join(ports).replace('-', ':')
-    self.failUnless(expected in str(acl),
-                    'multiport module not used as expected.')
+    self.assertIn(expected, str(acl),
+                  'multiport module not used as expected.')
 
     self.naming.GetServiceByProto.assert_called_once_with(
-            'FIFTEEN_PORTS_WITH_RANGES', 'tcp')
+        'FIFTEEN_PORTS_WITH_RANGES', 'tcp')
 
   def testMultiportSwap(self):
     self.naming.GetServiceByProto.side_effect = [['80'], ['443'], ['22']]
@@ -1035,8 +1033,8 @@ class AclCheckTest(unittest.TestCase):
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + MULTIPORT_SWAP,
                                                self.naming), EXP_INFO)
     expected = '--dport 22 -m multiport --sports 80,443'
-    self.failUnless(expected in str(acl),
-                    'failing to move single port before multiport values.')
+    self.assertIn(expected, str(acl),
+                  'failing to move single port before multiport values.')
 
     self.naming.GetServiceByProto.assert_has_calls([
         mock.call('HTTP', 'tcp'),
@@ -1049,9 +1047,9 @@ class AclCheckTest(unittest.TestCase):
 
     acl = iptables.Iptables(policy.ParsePolicy(
         GOOD_HEADER_1 + LARGE_MULTIPORT, self.naming), EXP_INFO)
-    self.failUnless('-m multiport --dports 1,3,5,7,9' in str(acl))
-    self.failUnless('-m multiport --dports 29,31,33,35,37' in str(acl))
-    self.failUnless('-m multiport --dports 57,59,61,63,65,67,69' in str(acl))
+    self.assertIn('-m multiport --dports 1,3,5,7,9', str(acl))
+    self.assertIn('-m multiport --dports 29,31,33,35,37', str(acl))
+    self.assertIn('-m multiport --dports 57,59,61,63,65,67,69', str(acl))
 
     self.naming.GetServiceByProto.assert_called_once_with(
         'LOTS_OF_PORTS', 'tcp')
@@ -1062,18 +1060,18 @@ class AclCheckTest(unittest.TestCase):
 
     acl = iptables.Iptables(policy.ParsePolicy(
         GOOD_HEADER_1 + DUAL_LARGE_MULTIPORT, self.naming), EXP_INFO)
-    self.failUnless('-m multiport --sports 1,3,5' in str(acl))
-    self.failUnless('-m multiport --sports 29,31,33' in str(acl))
-    self.failUnless('-m multiport --sports 57,59,61' in str(acl))
-    self.failUnless('23,25,27 -m multiport --dports 1,3,5' in str(acl))
-    self.failUnless('23,25,27 -m multiport --dports 29,31,33' in str(acl))
-    self.failUnless('23,25,27 -m multiport --dports 57,59,61' in str(acl))
-    self.failUnless('51,53,55 -m multiport --dports 1,3,5' in str(acl))
-    self.failUnless('51,53,55 -m multiport --dports 29,31,33' in str(acl))
-    self.failUnless('51,53,55 -m multiport --dports 57,59,61' in str(acl))
-    self.failUnless('65,67,69 -m multiport --dports 1,3,5' in str(acl))
-    self.failUnless('65,67,69 -m multiport --dports 29,31,33' in str(acl))
-    self.failUnless('65,67,69 -m multiport --dports 57,59,61' in str(acl))
+    self.assertIn('-m multiport --sports 1,3,5', str(acl))
+    self.assertIn('-m multiport --sports 29,31,33', str(acl))
+    self.assertIn('-m multiport --sports 57,59,61', str(acl))
+    self.assertIn('23,25,27 -m multiport --dports 1,3,5', str(acl))
+    self.assertIn('23,25,27 -m multiport --dports 29,31,33', str(acl))
+    self.assertIn('23,25,27 -m multiport --dports 57,59,61', str(acl))
+    self.assertIn('51,53,55 -m multiport --dports 1,3,5', str(acl))
+    self.assertIn('51,53,55 -m multiport --dports 29,31,33', str(acl))
+    self.assertIn('51,53,55 -m multiport --dports 57,59,61', str(acl))
+    self.assertIn('65,67,69 -m multiport --dports 1,3,5', str(acl))
+    self.assertIn('65,67,69 -m multiport --dports 29,31,33', str(acl))
+    self.assertIn('65,67,69 -m multiport --dports 57,59,61', str(acl))
 
     self.naming.GetServiceByProto.assert_has_calls([
         mock.call('LOTS_OF_SPORTS', 'tcp'),
@@ -1097,25 +1095,25 @@ class AclCheckTest(unittest.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + LOGGING_TERM_1, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
-    self.failUnless('-j LOG --log-prefix foo' in result,
-                    'logging jump does not appear in output.')
-    self.failUnless('-j ACCEPT' in result,
-                    'action jump does not appear in output.')
+    self.assertIn('-j LOG --log-prefix foo', result,
+                  'logging jump does not appear in output.')
+    self.assertIn('-j ACCEPT', result,
+                  'action jump does not appear in output.')
 
   def testSourceInterface(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + SOURCE_INTERFACE_TERM, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
-    self.failUnless('-i eth0' in result,
-                    'source interface specification not in output.')
+    self.assertIn('-i eth0', result,
+                  'source interface specification not in output.')
 
   def testDestinationInterface(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + DESTINATION_INTERFACE_TERM,
                              self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
-    self.failUnless('-o eth0' in result,
-                    'destination interface specification not in output.')
+    self.assertIn('-o eth0', result,
+                  'destination interface specification not in output.')
 
   @mock.patch.object(iptables.logging, 'warn')
   def testExpired(self, mock_warn):
@@ -1141,12 +1139,12 @@ class AclCheckTest(unittest.TestCase):
     pol = policy.ParsePolicy(IPV6_HEADER_1 + IPV6_TERM_1, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
-    self.failUnless('--icmpv6-type 1' in result,
-                    'icmpv6-type 1 (echo-reply) is missing')
-    self.failUnless('--icmpv6-type 3' in result,
-                    'icmpv6-type 3 (destination-unreachable) is missing')
-    self.failUnless('--icmpv6-type 129' in result,
-                    'icmpv6-type 129 (router-solicit) is missing')
+    self.assertIn('--icmpv6-type 1', result,
+                  'icmpv6-type 1 (echo-reply) is missing')
+    self.assertIn('--icmpv6-type 3', result,
+                  'icmpv6-type 3 (destination-unreachable) is missing')
+    self.assertIn('--icmpv6-type 129', result,
+                  'icmpv6-type 129 (router-solicit) is missing')
 
   def testIPv6IcmpOrder(self):
     self.naming.GetNetAddr.return_value = [
@@ -1155,9 +1153,9 @@ class AclCheckTest(unittest.TestCase):
     pol = policy.ParsePolicy(IPV6_HEADER_1 + ICMPV6_TERM_1, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl)
-    self.failUnless('-s fd87:6044:ac54:3558::/64 -p ipv6-icmp -m icmp6'
-                    ' --icmpv6-type 1' in result,
-                    'incorrect order of ICMPv6 match elements')
+    self.assertIn('-s fd87:6044:ac54:3558::/64 -p ipv6-icmp -m icmp6'
+                  ' --icmpv6-type 1', result,
+                  'incorrect order of ICMPv6 match elements')
 
     self.naming.GetNetAddr.assert_called_once_with('IPV6_INTERNAL')
 
@@ -1190,32 +1188,32 @@ class AclCheckTest(unittest.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_10, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     result = str(acl).split('\n')
-    self.failUnless('-A I_good-term-10 -m comment --comment "Owner: '
-                    'foo@google.com"' in result,
-                    'missing or incorrect comment specification.')
+    self.assertIn('-A I_good-term-10 -m comment --comment "Owner: '
+                  'foo@google.com"', result,
+                  'missing or incorrect comment specification.')
 
   def testSetTarget(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     acl.SetTarget('OUTPUT', 'DROP')
     result = str(acl).split('\n')
-    self.failUnless('-P OUTPUT DROP' in result,
-                    'output default policy of drop not set.')
+    self.assertIn('-P OUTPUT DROP', result,
+                  'output default policy of drop not set.')
 
   def testSetCustomTarget(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
     acl.SetTarget('foobar')
     result = str(acl).split('\n')
-    self.failUnless('-N foobar' in result,
-                    'did not find a new chain for foobar.')
+    self.assertIn('-N foobar', result,
+                  'did not find a new chain for foobar.')
 
   def testBuildTokens(self):
     pol1 = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_5,
                                                 self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testBuildWarningTokens(self):
     self.naming.GetServiceByProto.return_value = ['80']
@@ -1224,19 +1222,19 @@ class AclCheckTest(unittest.TestCase):
         policy.ParsePolicy(GOOD_HEADER_1 + GOOD_WARNING_TERM,
                            self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testNoVerbose(self):
     pol = policy.ParsePolicy(GOOD_HEADER_7 + GOOD_TERM_12, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
-    self.assertTrue('comment --comment "FOOO"' not in str(acl), acl)
+    self.assertNotIn('comment --comment "FOOO"', str(acl), acl)
 
   def testLogLimit(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_13, self.naming)
     acl = iptables.Iptables(pol, EXP_INFO)
-    self.assertTrue(
-        "-m --limit 99/day -j LOG --log-prefix good_term_13" in str(acl), acl)
+    self.assertIn(
+        '-m --limit 99/day -j LOG --log-prefix good_term_13', str(acl), acl)
 
   def testLogLimitFailsWithoutLogging(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + BAD_LOGGING_TERM, self.naming)

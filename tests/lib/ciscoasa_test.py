@@ -127,21 +127,22 @@ EXP_INFO = 2
 class CiscoASATest(unittest.TestCase):
 
   def setUp(self):
+    super(CiscoASATest, self).setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testBuildTokens(self):
     pol1 = ciscoasa.CiscoASA(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
                                                 self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testBuildWarningTokens(self):
     pol1 = ciscoasa.CiscoASA(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_2,
                                                 self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
 
 if __name__ == '__main__':

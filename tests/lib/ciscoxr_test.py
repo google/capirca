@@ -166,6 +166,7 @@ EXP_INFO = 2
 class CiscoXRTest(unittest.TestCase):
 
   def setUp(self):
+    super(CiscoXRTest, self).setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testRemark(self):
@@ -175,11 +176,11 @@ class CiscoXRTest(unittest.TestCase):
                              self.naming)
     acl = ciscoxr.CiscoXR(pol, EXP_INFO)
     expected = 'remark this is a test acl'
-    self.failUnless(expected in str(acl), '[%s]' % str(acl))
+    self.assertIn(expected, str(acl), '[%s]' % str(acl))
     expected = 'remark good-term-1'
-    self.failUnless(expected in str(acl), str(acl))
+    self.assertIn(expected, str(acl), str(acl))
     expected = 'test-filter remark'
-    self.failIf(expected in str(acl), str(acl))
+    self.assertNotIn(expected, str(acl), str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
@@ -190,11 +191,11 @@ class CiscoXRTest(unittest.TestCase):
                              self.naming)
     acl = ciscoxr.CiscoXR(pol, EXP_INFO)
     expected = 'ipv4 access-list test-filter'
-    self.failUnless(expected in str(acl), '[%s]' % str(acl))
+    self.assertIn(expected, str(acl), '[%s]' % str(acl))
     expected = ' permit icmp host 10.1.1.1 any'
-    self.failUnless(expected in str(acl), str(acl))
+    self.assertIn(expected, str(acl), str(acl))
     expected = ' permit ipv4 host 10.1.1.1 any'
-    self.failUnless(expected in str(acl), str(acl))
+    self.assertIn(expected, str(acl), str(acl))
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
                                              mock.call('SOME_HOST2')])
@@ -207,11 +208,11 @@ class CiscoXRTest(unittest.TestCase):
                              self.naming)
     acl = ciscoxr.CiscoXR(pol, EXP_INFO)
     expected = 'ipv6 access-list ipv6-test-filter'
-    self.failUnless(expected in str(acl), '[%s]' % str(acl))
+    self.assertIn(expected, str(acl), '[%s]' % str(acl))
     expected = ' permit tcp any eq 80 host 2001::3'
-    self.failUnless(expected in str(acl), str(acl))
+    self.assertIn(expected, str(acl), str(acl))
     expected = ' permit ipv6 host 2001::3 any'
-    self.failUnless(expected in str(acl), str(acl))
+    self.assertIn(expected, str(acl), str(acl))
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST2'),
                                              mock.call('SOME_HOST2')])
@@ -221,8 +222,8 @@ class CiscoXRTest(unittest.TestCase):
     pol1 = ciscoxr.CiscoXR(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                                               self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testBuildWarningTokens(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('2001::3/128')]
@@ -231,8 +232,8 @@ class CiscoXRTest(unittest.TestCase):
     pol1 = ciscoxr.CiscoXR(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_3,
                                               self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
 
 if __name__ == '__main__':

@@ -213,6 +213,7 @@ class Namespace(object):
 class CgrepTest(unittest.TestCase):
 
   def setUp(self):
+    super(CgrepTest, self).setUp()
     self.db = naming.Naming(None)
     self.db.ParseServiceList(_SERVICE.split('\n'))
     self.db.ParseNetworkList(_NETWORK.split('\n'))
@@ -225,28 +226,28 @@ class CgrepTest(unittest.TestCase):
     expected_results = [('ANY', ['0.0.0.0/0'])]
     ip = '1.1.1.1'
     results = cgrep.get_ip_parents(ip, self.db)
-    self.assertEquals(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   # 2001:db8::1 should only be in 'BOGON'
   def test_one_ipv6(self):
     expected_results = [('BOGON', ['2001:db8::/32'])]
     ip = '2001:db8::1'
     results = cgrep.get_ip_parents(ip, self.db)
-    self.assertEquals(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   # 1.1.1.1 should not be in CLASS-E
   def test_one_ip_fail(self):
     expected_results = [('CLASS-E', ['240.0.0.0/4'])]
     ip = nacaddr.IP('1.1.1.1/32')
     results = cgrep.get_ip_parents(ip, self.db)
-    self.assertNotEquals(results, expected_results)
+    self.assertNotEqual(results, expected_results)
 
   # 2001:db8::1 should not be in LINKLOCAL
   def test_one_ipv6_fail(self):
     expected_results = [('LINKLOCAL', ['FE80::/10'])]
     ip = '2001:db8::1'
     results = cgrep.get_ip_parents(ip, self.db)
-    self.assertNotEquals(results, expected_results)
+    self.assertNotEqual(results, expected_results)
 
   # 8.8.8.8 is in GOOGLE_PUBLIC_DNS_ANYCAST which is inside GOOGLE_DNS
   def test_one_ip_nested(self):
@@ -256,7 +257,7 @@ class CgrepTest(unittest.TestCase):
                                ('ANY', ['0.0.0.0/0'])))
     ip = '8.8.8.8'
     results = sorted(cgrep.get_ip_parents(ip, self.db))
-    self.assertEquals(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   # 2001:4860:4860::8844/128 is in GOOGLE_PUBLIC_DNS_ANYCAST which is
   # inside GOOGLE_DNS
@@ -266,7 +267,7 @@ class CgrepTest(unittest.TestCase):
                                 ['2001:4860:4860::8844/128'])))
     ip = '2001:4860:4860::8844/128'
     results = sorted(cgrep.get_ip_parents(ip, self.db))
-    self.assertEquals(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   # 1.0.0.1 is inside INTERNAL_SERVER, which is inside INTERNAL_SERVERS, which
   # is inside SERVERS
@@ -279,7 +280,7 @@ class CgrepTest(unittest.TestCase):
                                ('ANY', ['0.0.0.0/0'])))
     ip = '1.0.0.1'
     results = sorted(cgrep.get_ip_parents(ip, self.db))
-    self.assertEquals(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   #
   # test 'ip in token' (-i -t)
@@ -291,7 +292,7 @@ class CgrepTest(unittest.TestCase):
     options.ip = ('8.8.8.8',)
     options.token = ('GOOGLE_DNS')
     results = cgrep.compare_ip_token(options, self.db)
-    self.assertEquals(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   # 2001:4860:4860::8844 is inside GOOGLE_DNS
   def test_ipv6_in_token(self):
@@ -300,7 +301,7 @@ class CgrepTest(unittest.TestCase):
     options.ip = ('2001:4860:4860::8844',)
     options.token = ('GOOGLE_DNS')
     results = cgrep.compare_ip_token(options, self.db)
-    self.assertEquals(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   # 69.171.239.12 is not in GOOGLE_DNS
   def test_ip_in_token_fail(self):
@@ -309,7 +310,7 @@ class CgrepTest(unittest.TestCase):
     options.ip = ('69.171.239.12',)
     options.token = ('GOOGLE_DNS')
     results = cgrep.compare_ip_token(options, self.db)
-    self.assertEquals(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   # 2a03:2880:fffe:c:face:b00c:0:35 is not in GOOGLE_DNS
   def test_ipv6_in_token_fail(self):
@@ -318,7 +319,7 @@ class CgrepTest(unittest.TestCase):
     options.ip = ('2a03:2880:fffe:c:face:b00c:0:35',)
     options.token = ('GOOGLE_DNS')
     results = cgrep.compare_ip_token(options, self.db)
-    self.assertEquals(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   #
   # test network token compare (-c)
@@ -340,7 +341,7 @@ class CgrepTest(unittest.TestCase):
     options = Namespace()
     options.cmp = ('PUBLIC_NAT', 'PUBLIC_NAT')
     results = cgrep.compare_tokens(options, self.db)
-    self.assertEquals(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   #
   # test network token encapsulations
@@ -349,25 +350,25 @@ class CgrepTest(unittest.TestCase):
     expected_results = True
     results = cgrep.check_encapsulated('network', 'RFC1918', 'RESERVED',
                                        self.db)
-    self.assertEquals(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   def test_ip_not_contained(self):
     expected_results = False
     results = cgrep.check_encapsulated('network', 'RESERVED', 'RFC1918',
                                        self.db)
-    self.assertEquals(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   def test_ipv6_contained(self):
     expected_results = True
     results = cgrep.check_encapsulated('network', 'LINKLOCAL', 'RESERVED',
                                        self.db)
-    self.assertEquals(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   def test_ipv6_not_contained(self):
     expected_results = False
     results = cgrep.check_encapsulated('network', 'RESERVED', 'LINKLOCAL',
                                        self.db)
-    self.assertEquals(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   #
   # test ip->object comparisons (-g)
@@ -384,7 +385,7 @@ class CgrepTest(unittest.TestCase):
     options = Namespace()
     options.gmp = ['8.8.8.8', '127.0.0.1']
     results = sorted(cgrep.group_diff(options, self.db))
-    self.assertEquals(sorted(results[2]), sorted(expected_results[2]))
+    self.assertEqual(sorted(results[2]), sorted(expected_results[2]))
 
   # test to make sure two IPs share the same groups
   def test_group_diff_identical(self):
@@ -397,7 +398,7 @@ class CgrepTest(unittest.TestCase):
     options = Namespace()
     options.gmp = ['172.16.0.1', '192.168.0.1']
     results = sorted(cgrep.group_diff(options, self.db))
-    self.assertEquals(sorted(results[2]), sorted(expected_results[2]))
+    self.assertEqual(sorted(results[2]), sorted(expected_results[2]))
 
   #
   # test token->ip(s) resolution (-o)
@@ -419,8 +420,8 @@ class CgrepTest(unittest.TestCase):
     options.obj = ('GOOGLE_DNS',)
 
     results = cgrep.get_nets(options.obj, self.db)
-    self.assertEquals(results[0][0], expected_results[0][0])
-    self.assertEquals(set(results[0][1]), set(expected_results[0][1]))
+    self.assertEqual(results[0][0], expected_results[0][0])
+    self.assertEqual(set(results[0][1]), set(expected_results[0][1]))
 
   # GOOGLE_DNS does not resole to the given IP
   def test_token_to_ip_fail(self):
@@ -437,8 +438,8 @@ class CgrepTest(unittest.TestCase):
     options.obj = ('GOOGLE_DNS',)
     results = cgrep.get_nets(options.obj, self.db)
     # the network object name should match, but not the IPs contained within
-    self.assertEquals(results[0][0], expected_results[0][0])
-    self.assertNotEquals(set(results[0][1]), set(expected_results[0][1]))
+    self.assertEqual(results[0][0], expected_results[0][0])
+    self.assertNotEqual(set(results[0][1]), set(expected_results[0][1]))
 
   #
   # test service->port resolution (-s)
@@ -456,7 +457,7 @@ class CgrepTest(unittest.TestCase):
     options = Namespace()
     options.service = ('SSH',)
     results = cgrep.get_ports(options.service, self.db)
-    self.assertEquals(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   # "SSH" does not contain '23/tcp'
   def test_svc_to_port_fail(self):
@@ -471,7 +472,7 @@ class CgrepTest(unittest.TestCase):
     options = Namespace()
     options.svc = ('SSH',)
     results = cgrep.get_ports(options.svc, self.db)
-    self.assertNotEquals(results, expected_results)
+    self.assertNotEqual(results, expected_results)
 
   #
   # test port->service object resolution (-p)
@@ -482,7 +483,7 @@ class CgrepTest(unittest.TestCase):
     options = Namespace()
     options.port = ('22', 'tcp')
     results = cgrep.get_services(options, self.db)
-    self.assertEquals(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   # 22/tcp does not belong to TELNET
   def test_get_port_parents_fail(self):
@@ -490,7 +491,7 @@ class CgrepTest(unittest.TestCase):
     options = Namespace()
     options.port = ('22', 'tcp')
     results = cgrep.get_services(options, self.db)
-    self.assertNotEquals(results, expected_results)
+    self.assertNotEqual(results, expected_results)
 
   # 33434/tcp should only be in HIGH_PORTS (not also TRACEROUTE)
   def test_get_port_parents_range_tcp(self):
@@ -498,7 +499,7 @@ class CgrepTest(unittest.TestCase):
     options = Namespace()
     options.port = ('33434', 'tcp')
     results = cgrep.get_services(options, self.db)
-    self.assertEquals(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   # 33434/udp should be in HIGH_PORTS and TRACEROUTE
   def test_get_port_parents_range_udp(self):
@@ -506,7 +507,7 @@ class CgrepTest(unittest.TestCase):
     options = Namespace()
     options.port = ('33434', 'udp')
     results = cgrep.get_services(options, self.db)
-    self.assertEquals(results, expected_results)
+    self.assertEqual(results, expected_results)
 
   #
   # test IP validity
@@ -522,12 +523,12 @@ class CgrepTest(unittest.TestCase):
   def test_valid_ips(self):
     arg = '8.8.8.8'
     results = cgrep.is_valid_ip(arg)
-    self.assertEquals(results, arg)
+    self.assertEqual(results, arg)
 
   def test_valid_ips_v6(self):
     arg = '2001:4860:4860::8844'
     results = cgrep.is_valid_ip(arg)
-    self.assertEquals(results, arg)
+    self.assertEqual(results, arg)
 
 
 if __name__ == '__main__':

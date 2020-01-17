@@ -66,6 +66,7 @@ term term-5 {
 class AclCheckTest(unittest.TestCase):
 
   def setUp(self):
+    super(AclCheckTest, self).setUp()
     self.defs = naming.Naming(None)
     servicedata = []
     servicedata.append('SSH = 22/tcp')
@@ -112,8 +113,8 @@ class AclCheckTest(unittest.TestCase):
     self.assertEqual(matches[1].term, 'term-2')
     self.assertEqual(matches[2].term, 'term-3')
     # term-4 should never match
-    self.failIf('term-4' in str(matches))
-    self.failIf('term-5' in str(matches))
+    self.assertNotIn('term-4', str(matches))
+    self.assertNotIn('term-5', str(matches))
 
   def testExceptions(self):
     srcip = '172.16.1.1'

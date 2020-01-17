@@ -153,6 +153,7 @@ EXP_INFO = 2
 class SpeedwayTest(unittest.TestCase):
 
   def setUp(self):
+    super(SpeedwayTest, self).setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testSpeedwayOutputFormat(self):
@@ -160,32 +161,32 @@ class SpeedwayTest(unittest.TestCase):
                                                self.naming), EXP_INFO)
     result = []
     result.extend(str(acl).split('\n'))
-    self.failUnless('*filter' == result[0],
-                    '*filter designation does not appear at top of generated '
-                    'policy.')
-    self.failUnless(':INPUT ACCEPT' in result,
-                    'input default policy of accept not set.')
-    self.failUnless('-N I_good-term-1' in result,
-                    'did not find new chain for good-term-1.')
-    self.failUnless(
+    self.assertEqual('*filter', result[0],
+                     '*filter designation does not appear at top of generated '
+                     'policy.')
+    self.assertIn(':INPUT ACCEPT', result,
+                  'input default policy of accept not set.')
+    self.assertIn('-N I_good-term-1', result,
+                  'did not find new chain for good-term-1.')
+    self.assertIn(
         '-A I_good-term-1 -p icmp -m state --state NEW,ESTABLISHED,RELATED'
-        ' -j ACCEPT' in result, 'did not find append for good-term-1.')
-    self.failUnless('COMMIT' == result[len(result)-2],
-                    'COMMIT does not appear at end of output policy.')
+        ' -j ACCEPT', result, 'did not find append for good-term-1.')
+    self.assertEqual('COMMIT', result[len(result)-2],
+                     'COMMIT does not appear at end of output policy.')
 
   def testBuildTokens(self):
     pol1 = speedway.Speedway(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                                                 self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testBuildWarningTokens(self):
     pol1 = speedway.Speedway(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
                                                 self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
 
 if __name__ == '__main__':

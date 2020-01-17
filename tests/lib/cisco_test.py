@@ -417,6 +417,7 @@ EXP_INFO = 2
 class CiscoTest(unittest.TestCase):
 
   def setUp(self):
+    super(CiscoTest, self).setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testIPVersion(self):
@@ -426,7 +427,7 @@ class CiscoTest(unittest.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_6, self.naming)
     acl = cisco.Cisco(pol, EXP_INFO)
     # check if we've got a v6 address in there.
-    self.failIf('::' in str(acl), str(acl))
+    self.assertNotIn('::', str(acl), str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('ANY')
 
@@ -439,7 +440,7 @@ class CiscoTest(unittest.TestCase):
     # this is a hacky sort of way to test that 'established' maps to HIGH_PORTS
     # in the destination port section.
     range_test = 'permit tcp any eq 80 10.0.0.0 0.255.255.255 range 1024 65535'
-    self.failUnless(range_test in str(acl), '[%s]' % str(acl))
+    self.assertIn(range_test, str(acl), '[%s]' % str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
     self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
@@ -452,25 +453,25 @@ class CiscoTest(unittest.TestCase):
                                          self.naming), EXP_INFO)
     first_string = 'permit tcp any 10.0.0.0 0.255.255.255 eq 80'
     second_string = 'permit tcp any 10.0.0.0 0.255.255.255 eq 81'
-    self.failUnless(first_string in str(acl), '[%s]' % str(acl))
-    self.failUnless(second_string in str(acl), '[%s]' % str(acl))
+    self.assertIn(first_string, str(acl), '[%s]' % str(acl))
+    self.assertIn(second_string, str(acl), '[%s]' % str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
     self.naming.GetServiceByProto.assert_called_once_with(
-            'CONSECUTIVE_PORTS', 'tcp')
+        'CONSECUTIVE_PORTS', 'tcp')
 
   def testDSCP(self):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_16,
                                          self.naming), EXP_INFO)
-    self.failUnless(re.search('permit tcp any any dscp 42', str(acl)),
+    self.assertTrue(re.search('permit tcp any any dscp 42', str(acl)),
                     str(acl))
 
   def testTermAndFilterName(self):
     acl = cisco.Cisco(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_1 + GOOD_TERM_6, self.naming), EXP_INFO)
-    self.failUnless('ip access-list extended test-filter' in str(acl), str(acl))
-    self.failUnless(' remark good-term-1' in str(acl), str(acl))
-    self.failUnless(' permit ip any any' in str(acl), str(acl))
+    self.assertIn('ip access-list extended test-filter', str(acl), str(acl))
+    self.assertIn(' remark good-term-1', str(acl), str(acl))
+    self.assertIn(' permit ip any any', str(acl), str(acl))
 
   def testRemark(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
@@ -478,39 +479,39 @@ class CiscoTest(unittest.TestCase):
     # Extended ACLs should have extended remark style.
     acl = cisco.Cisco(policy.ParsePolicy(
         GOOD_EXTENDED_NUMBERED_HEADER + GOOD_TERM_1, self.naming), EXP_INFO)
-    self.failUnless('ip access-list extended 150' in str(acl), str(acl))
-    self.failUnless(' remark numbered extended' in str(acl), str(acl))
-    self.failIf('150 remark' in str(acl), str(acl))
+    self.assertIn('ip access-list extended 150', str(acl), str(acl))
+    self.assertIn(' remark numbered extended', str(acl), str(acl))
+    self.assertNotIn('150 remark', str(acl), str(acl))
     # Standard ACLs should have standard remark style.
     acl = cisco.Cisco(policy.ParsePolicy(
         GOOD_STANDARD_NUMBERED_HEADER + GOOD_STANDARD_TERM_1, self.naming),
                       EXP_INFO)
-    self.failUnless('access-list 50 remark numbered standard' in str(acl),
-                    str(acl))
-    self.failUnless('access-list 50 remark standard-term-1' in str(acl),
-                    str(acl))
+    self.assertIn('access-list 50 remark numbered standard', str(acl),
+                  str(acl))
+    self.assertIn('access-list 50 remark standard-term-1', str(acl),
+                  str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
   def testTcpEstablished(self):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_3,
                                          self.naming), EXP_INFO)
-    self.failUnless(re.search('permit tcp any any established\n',
+    self.assertTrue(re.search('permit tcp any any established\n',
                               str(acl)), str(acl))
 
   def testLogging(self):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_4,
                                          self.naming), EXP_INFO)
-    self.failUnless(re.search('permit tcp any any log\n',
+    self.assertTrue(re.search('permit tcp any any log\n',
                               str(acl)), str(acl))
 
   def testVerbatimTerm(self):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_5,
                                          self.naming), EXP_INFO)
-    self.failUnless('mary had a little lamb' in str(acl), str(acl))
+    self.assertIn('mary had a little lamb', str(acl), str(acl))
     # check if other platforms verbatim shows up in ouput
-    self.failIf('mary had a second lamb' in str(acl), str(acl))
-    self.failIf('mary had a third lamb' in str(acl), str(acl))
+    self.assertNotIn('mary had a second lamb', str(acl), str(acl))
+    self.assertNotIn('mary had a third lamb', str(acl), str(acl))
 
   def testDuplicateTermNames(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/24')]
@@ -534,7 +535,7 @@ class CiscoTest(unittest.TestCase):
                              self.naming)
     acl = cisco.Cisco(pol, EXP_INFO)
     expected = 'access-list 99 permit 10.1.1.1'
-    self.failUnless(expected in str(acl), '[%s]' % str(acl))
+    self.assertIn(expected, str(acl), '[%s]' % str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
@@ -545,7 +546,7 @@ class CiscoTest(unittest.TestCase):
                              self.naming)
     acl = cisco.Cisco(pol, EXP_INFO)
     expected = 'access-list 99 permit 10.0.0.0 0.255.255.255'
-    self.failUnless(expected in str(acl), '[%s]' % str(acl))
+    self.assertIn(expected, str(acl), '[%s]' % str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
@@ -556,9 +557,9 @@ class CiscoTest(unittest.TestCase):
                              self.naming)
     acl = cisco.Cisco(pol, EXP_INFO)
     expected = 'ip access-list standard FOO'
-    self.failUnless(expected in str(acl), '[%s]' % str(acl))
+    self.assertIn(expected, str(acl), '[%s]' % str(acl))
     expected = ' permit 10.0.0.0 0.255.255.255\n'
-    self.failUnless(expected in str(acl), '[%s]' % str(acl))
+    self.assertIn(expected, str(acl), '[%s]' % str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
@@ -568,7 +569,7 @@ class CiscoTest(unittest.TestCase):
     pol = policy.ParsePolicy(GOOD_STANDARD_HEADER_1 + GOOD_STANDARD_TERM_2,
                              self.naming)
     acl = cisco.Cisco(pol, EXP_INFO)
-    self.failIf('::' in str(acl), '[%s]' % str(acl))
+    self.assertNotIn('::', str(acl), '[%s]' % str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
@@ -611,19 +612,19 @@ class CiscoTest(unittest.TestCase):
         GOOD_OBJGRP_HEADER + GOOD_TERM_2 + GOOD_TERM_18, self.naming)
     acl = cisco.Cisco(pol, EXP_INFO)
 
-    self.failUnless('\n'.join(ip_grp) in str(acl), '%s %s' % (
+    self.assertIn('\n'.join(ip_grp), str(acl), '%s %s' % (
         '\n'.join(ip_grp), str(acl)))
-    self.failUnless('\n'.join(port_grp1) in str(acl), '%s %s' % (
+    self.assertIn('\n'.join(port_grp1), str(acl), '%s %s' % (
         '\n'.join(port_grp1), str(acl)))
-    self.failUnless('\n'.join(port_grp2) in str(acl), '%s %s' % (
+    self.assertIn('\n'.join(port_grp2), str(acl), '%s %s' % (
         '\n'.join(port_grp2), str(acl)))
 
     # Object-group terms should use the object groups created.
-    self.failUnless(
+    self.assertIn(
         ' permit tcp any port-group 80-80 net-group SOME_HOST port-group'
-        ' 1024-65535' in str(acl), str(acl))
-    self.failUnless(
-        ' permit ip net-group SOME_HOST net-group SOME_HOST' in str(acl),
+        ' 1024-65535', str(acl), str(acl))
+    self.assertIn(
+        ' permit ip net-group SOME_HOST net-group SOME_HOST', str(acl),
         str(acl))
 
     # There should be no addrgroups that look like IP addresses.
@@ -643,10 +644,10 @@ class CiscoTest(unittest.TestCase):
     inet6_test1 = 'no ipv6 access-list inet6_acl'
     inet6_test2 = 'ipv6 access-list inet6_acl'
     inet6_test3 = 'permit tcp any 2001:4860:8000::/33'
-    self.failUnless(inet6_test1 in str(acl), '[%s]' % str(acl))
-    self.failUnless(inet6_test2 in str(acl), '[%s]' % str(acl))
-    self.failUnless(re.search(inet6_test3, str(acl)), str(acl))
-    self.failIf('10.0.0.0' in str(acl), str(acl))
+    self.assertIn(inet6_test1, str(acl), '[%s]' % str(acl))
+    self.assertIn(inet6_test2, str(acl), '[%s]' % str(acl))
+    self.assertTrue(re.search(inet6_test3, str(acl)), str(acl))
+    self.assertNotIn('10.0.0.0', str(acl), str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
@@ -663,12 +664,12 @@ class CiscoTest(unittest.TestCase):
     inet6_test5 = 'ipv6 access-list ipv6-mixed_acl'
     inet6_test6 = 'permit tcp any 2001:4860:8000::/33'
     aclout = str(acl)
-    self.failUnless(inet6_test1 in aclout, '[%s]' % aclout)
-    self.failUnless(inet6_test2 in aclout, '[%s]' % aclout)
-    self.failUnless(re.search(inet6_test3, aclout), aclout)
-    self.failUnless(inet6_test4 in aclout, '[%s]' % aclout)
-    self.failUnless(inet6_test5 in aclout, '[%s]' % aclout)
-    self.failUnless(re.search(inet6_test6, aclout), aclout)
+    self.assertIn(inet6_test1, aclout, '[%s]' % aclout)
+    self.assertIn(inet6_test2, aclout, '[%s]' % aclout)
+    self.assertTrue(re.search(inet6_test3, aclout), aclout)
+    self.assertIn(inet6_test4, aclout, '[%s]' % aclout)
+    self.assertIn(inet6_test5, aclout, '[%s]' % aclout)
+    self.assertTrue(re.search(inet6_test6, aclout), aclout)
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
@@ -688,40 +689,40 @@ class CiscoTest(unittest.TestCase):
   def testUdpEstablished(self):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_9,
                                          self.naming), EXP_INFO)
-    self.failIf(re.search('permit 17 any any established',
-                          str(acl)), str(acl))
+    self.assertFalse(re.search('permit 17 any any established',
+                               str(acl)), str(acl))
 
   def testIcmpTypes(self):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_10,
                                          self.naming), EXP_INFO)
     # echo-reply = 0
-    self.failUnless(re.search('permit icmp any any 0',
+    self.assertTrue(re.search('permit icmp any any 0',
                               str(acl)), str(acl))
     # unreachable = 3
-    self.failUnless(re.search('permit icmp any any 3',
+    self.assertTrue(re.search('permit icmp any any 3',
                               str(acl)), str(acl))
     # time-exceeded = 11
-    self.failUnless(re.search('permit icmp any any 11',
+    self.assertTrue(re.search('permit icmp any any 11',
                               str(acl)), str(acl))
 
   def testIcmpCode(self):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_19,
                                          self.naming), EXP_INFO)
     output = str(acl)
-    self.failUnless(' permit icmp any any 3 3' in output, output)
-    self.failUnless(' permit icmp any any 3 4' in output, output)
+    self.assertIn(' permit icmp any any 3 3', output, output)
+    self.assertIn(' permit icmp any any 3 4', output, output)
 
   def testIpv6IcmpTypes(self):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_INET6_HEADER + GOOD_TERM_11,
                                          self.naming), EXP_INFO)
     # echo-reply = icmp-type code 129
-    self.failUnless(re.search('permit 58 any any 129',
+    self.assertTrue(re.search('permit 58 any any 129',
                               str(acl)), str(acl))
     # destination-unreachable = icmp-type code 1
-    self.failUnless(re.search('permit 58 any any 1',
+    self.assertTrue(re.search('permit 58 any any 1',
                               str(acl)), str(acl))
     # time-exceeded = icmp-type code 3
-    self.failUnless(re.search('permit 58 any any 3',
+    self.assertTrue(re.search('permit 58 any any 3',
                               str(acl)), str(acl))
 
   @mock.patch.object(cisco.logging, 'debug')
@@ -761,7 +762,7 @@ class CiscoTest(unittest.TestCase):
   def testDefaultInet6Protocol(self):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_INET6_HEADER + GOOD_TERM_12,
                                          self.naming), EXP_INFO)
-    self.failUnless(re.search('permit ipv6 any any', str(acl)), str(acl))
+    self.assertTrue(re.search('permit ipv6 any any', str(acl)), str(acl))
 
   @mock.patch.object(cisco.logging, 'warn')
   def testExpiredTerm(self, mock_warn):
@@ -786,45 +787,45 @@ class CiscoTest(unittest.TestCase):
   def testTermHopByHop(self):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_15,
                                          self.naming), EXP_INFO)
-    self.failUnless('permit hbh any any' in str(acl), str(acl))
+    self.assertIn('permit hbh any any', str(acl), str(acl))
 
   def testOwnerTerm(self):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER +
                                          GOOD_TERM_13, self.naming), EXP_INFO)
-    self.failUnless(re.search(' remark Owner: foo@google.com',
+    self.assertTrue(re.search(' remark Owner: foo@google.com',
                               str(acl)), str(acl))
 
   def testBuildTokens(self):
     pol1 = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_5,
                                           self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testBuildWarningTokens(self):
     pol1 = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_17,
                                           self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testProtoInts(self):
     pol = policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_7 + GOOD_TERM_9,
         self.naming)
     acl = cisco.Cisco(pol, EXP_INFO)
-    self.failUnless('permit 112 any any' in str(acl), str(acl))
-    self.failUnless('permit tcp any any range 1024 65535 '
-                    'established' in str(acl), str(acl))
-    self.failUnless('permit udp any any range 1024 65535' in str(acl),
-                    str(acl))
+    self.assertIn('permit 112 any any', str(acl), str(acl))
+    self.assertIn('permit tcp any any range 1024 65535 '
+                  'established', str(acl), str(acl))
+    self.assertIn('permit udp any any range 1024 65535', str(acl),
+                  str(acl))
 
   def testFragments(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/24')]
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_20,
                                          self.naming), EXP_INFO)
     expected = 'permit ip 10.0.0.0 0.0.0.255 10.0.0.0 0.0.0.255 fragments'
-    self.failUnless(expected in str(acl), str(acl))
+    self.assertIn(expected, str(acl), str(acl))
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
                                              mock.call('SOME_HOST')])
@@ -844,7 +845,7 @@ class CiscoTest(unittest.TestCase):
       self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/24')]
       acl = cisco.Cisco(policy.ParsePolicy(i+GOOD_STANDARD_TERM_1, self.naming),
                         EXP_INFO)
-      self.failUnless('remark' not in str(acl), str(acl))
+      self.assertNotIn('remark', str(acl), str(acl))
 
 if __name__ == '__main__':
   unittest.main()

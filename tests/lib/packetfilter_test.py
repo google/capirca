@@ -389,6 +389,7 @@ EXP_INFO = 2
 class PacketFilterTest(unittest.TestCase):
 
   def setUp(self):
+    super(PacketFilterTest, self).setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testTcp(self):
@@ -400,11 +401,11 @@ class PacketFilterTest(unittest.TestCase):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('# term good-term-tcp' in result,
-                    'did not find comment for good-term-tcp')
-    self.failUnless(
+    self.assertIn('# term good-term-tcp', result,
+                  'did not find comment for good-term-tcp')
+    self.assertIn(
         'pass quick proto { tcp } from { any } to { <PROD_NETWORK> } port '
-        '{ 25 }' in result,
+        '{ 25 }', result,
         'did not find actual term for good-term-tcp')
 
     self.naming.GetNetAddr.assert_called_once_with('PROD_NETWORK')
@@ -414,45 +415,45 @@ class PacketFilterTest(unittest.TestCase):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_LOG, self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('# term good-term-log' in result,
-                    'did not find comment for good-term-log')
-    self.failUnless(
+    self.assertIn('# term good-term-log', result,
+                  'did not find comment for good-term-log')
+    self.assertIn(
         'pass quick log proto { tcp } from { any } to { any } flags S/SA '
         'keep state\n'
-        in result,
+        , result,
         'did not find actual term for good-term-log')
 
   def testIcmp(self):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_ICMP, self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('# term good-term-icmp' in result,
-                    'did not find comment for good-term-icmp')
-    self.failUnless(
+    self.assertIn('# term good-term-icmp', result,
+                  'did not find comment for good-term-icmp')
+    self.assertIn(
         'pass quick proto { icmp } from { any } to { any } keep state\n'
-        in result,
+        , result,
         'did not find actual term for good-term-icmp')
 
   def testIcmpTypes(self):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_ICMP_TYPES, self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('# term good-term-icmp-types' in result,
-                    'did not find comment for good-term-icmp-types')
-    self.failUnless(
+    self.assertIn('# term good-term-icmp-types', result,
+                  'did not find comment for good-term-icmp-types')
+    self.assertIn(
         'block drop quick proto { icmp } from { any } to { any } '
-        'icmp-type { 0, 3, 11 }' in result,
+        'icmp-type { 0, 3, 11 }', result,
         'did not find actual term for good-term-icmp-types')
 
   def testIcmpv6(self):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_ICMPV6, self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('# term good-term-icmpv6' in result,
-                    'did not find comment for good-term-icmpv6')
-    self.failUnless(
+    self.assertIn('# term good-term-icmpv6', result,
+                  'did not find comment for good-term-icmpv6')
+    self.assertIn(
         'pass quick proto { ipv6-icmp } from { any } to { any } keep state\n'
-        in result,
+        , result,
         'did not find actual term for good-term-icmpv6')
 
   def testBadIcmp(self):
@@ -496,31 +497,31 @@ class PacketFilterTest(unittest.TestCase):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + MULTIPLE_PROTOCOLS_TERM, self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('# term multi-proto' in result,
-                    'did not find comment for multi-proto')
-    self.failUnless(
+    self.assertIn('# term multi-proto', result,
+                  'did not find comment for multi-proto')
+    self.assertIn(
         'pass quick proto { tcp udp icmp } from { any } to { any } keep state\n'
-        in result,
+        , result,
         'did not find actual term for multi-proto')
 
   def testNextTerm(self):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + NEXT_TERM, self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('# term next' in result,
-                    'did not find comment for next')
-    self.failUnless(
-        'pass from { any } to { any } flags S/SA keep state\n' in result,
+    self.assertIn('# term next', result,
+                  'did not find comment for next')
+    self.assertIn(
+        'pass from { any } to { any } flags S/SA keep state\n', result,
         'did not find actual term for next-term')
 
   def testNextLogTerm(self):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + NEXT_LOG_TERM, self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('# term next-log' in result,
-                    'did not find comment for next-log')
-    self.failUnless(
-        'pass log from { any } to { any } flags S/SA keep state\n' in result,
+    self.assertIn('# term next-log', result,
+                  'did not find comment for next-log')
+    self.assertIn(
+        'pass log from { any } to { any } flags S/SA keep state\n', result,
         'did not find actual term for next-log-term')
 
   def testPortRange(self):
@@ -529,11 +530,11 @@ class PacketFilterTest(unittest.TestCase):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + PORTRANGE_TERM, self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('# term portrange' in result,
-                    'did not find comment for portrange')
-    self.failUnless(
+    self.assertIn('# term portrange', result,
+                  'did not find comment for portrange')
+    self.assertIn(
         'pass quick proto { tcp } from { any } to { any } '
-        'port { 12345:12354 }' in result,
+        'port { 12345:12354 }', result,
         'did not find actual term for portrange')
 
     self.naming.GetServiceByProto.assert_called_once_with(
@@ -543,11 +544,11 @@ class PacketFilterTest(unittest.TestCase):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + FLAGS_TERM, self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('# term flags' in result,
-                    'did not find comment for flags')
-    self.failUnless(
+    self.assertIn('# term flags', result,
+                  'did not find comment for flags')
+    self.assertIn(
         'pass quick proto { tcp } from { any } to { any } '
-        'flags SF/SF' in result,
+        'flags SF/SF', result,
         'did not find actual term for flags')
 
   def testInvalidFlags(self):
@@ -559,10 +560,10 @@ class PacketFilterTest(unittest.TestCase):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + MULTILINE_COMMENT, self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('# term multiline-comment' in result,
-                    'did not find comment for multiline-comment')
-    self.failUnless('# This is a\n# multiline comment' in result,
-                    'did not find multiline comment for multiline-comment')
+    self.assertIn('# term multiline-comment', result,
+                  'did not find comment for multiline-comment')
+    self.assertIn('# This is a\n# multiline comment', result,
+                  'did not find multiline comment for multiline-comment')
 
   def testStateless(self):
     ip = nacaddr.IP('10.0.0.0/8')
@@ -573,11 +574,11 @@ class PacketFilterTest(unittest.TestCase):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER_STATELESS + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('# term good-term-tcp' in result,
-                    'did not find comment for good-term-tcp')
-    self.failUnless(
+    self.assertIn('# term good-term-tcp', result,
+                  'did not find comment for good-term-tcp')
+    self.assertIn(
         'pass quick proto { tcp } from { any } to { <PROD_NETWORK> } port '
-        '{ 25 } no state' in result,
+        '{ 25 } no state', result,
         'did not find actual term for good-term-tcp')
 
     self.naming.GetNetAddr.assert_called_once_with('PROD_NETWORK')
@@ -587,24 +588,24 @@ class PacketFilterTest(unittest.TestCase):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER_INET4 + GOOD_TERM_LOG, self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('# term good-term-log' in result,
-                    'did not find comment for good-term-log')
-    self.failUnless(
+    self.assertIn('# term good-term-log', result,
+                  'did not find comment for good-term-log')
+    self.assertIn(
         'pass quick log inet proto { tcp } from { any } to { any } flags S/SA '
         'keep state\n'
-        in result,
+        , result,
         'did not find actual term for good-term-log')
 
   def testInet6(self):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER_INET6 + GOOD_TERM_LOG, self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('# term good-term-log' in result,
-                    'did not find comment for good-term-log')
-    self.failUnless(
+    self.assertIn('# term good-term-log', result,
+                  'did not find comment for good-term-log')
+    self.assertIn(
         'pass quick log inet6 proto { tcp } from { any } to { any } flags S/SA '
         'keep state\n'
-        in result,
+        , result,
         'did not find actual term for good-term-log')
 
   def testDirectional(self):
@@ -616,11 +617,11 @@ class PacketFilterTest(unittest.TestCase):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER_DIRECTIONAL + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('# term good-term-tcp' in result,
-                    'did not find comment for good-term-tcp')
-    self.failUnless(
+    self.assertIn('# term good-term-tcp', result,
+                  'did not find comment for good-term-tcp')
+    self.assertIn(
         'pass out quick proto { tcp } from { any } to { <PROD_NETWORK> } port '
-        '{ 25 }' in result,
+        '{ 25 }', result,
         'did not find actual term for good-term-tcp')
 
     self.naming.GetNetAddr.assert_called_once_with('PROD_NETWORK')
@@ -632,13 +633,13 @@ class PacketFilterTest(unittest.TestCase):
         + GOOD_TERM_ICMP,
         self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless(
-        'pass quick log proto { tcp } from { any } to { any } no state'
-        in result,
+    self.assertIn(
+        'pass quick log proto { tcp } from { any } to { any } no state',
+        result,
         'did not find actual term for good-term-log')
-    self.failUnless(
-        'pass quick inet6 proto { icmp } from { any } to { any } no state'
-        in result,
+    self.assertIn(
+        'pass quick inet6 proto { icmp } from { any } to { any } no state',
+        result,
         'did not find actual term for good-term-icmp')
 
   def testDirectionalStateless(self):
@@ -651,11 +652,11 @@ class PacketFilterTest(unittest.TestCase):
         GOOD_HEADER_DIRECTIONAL_STATELESS + GOOD_TERM_TCP, self.naming),
                                     EXP_INFO)
     result = str(acl)
-    self.failUnless('# term good-term-tcp' in result,
-                    'did not find comment for good-term-tcp')
-    self.failUnless(
+    self.assertIn('# term good-term-tcp', result,
+                  'did not find comment for good-term-tcp')
+    self.assertIn(
         'pass out quick proto { tcp } from { any } to { <PROD_NETWORK> } port '
-        '{ 25 } no state' in result,
+        '{ 25 } no state', result,
         'did not find actual term for good-term-tcp')
 
     self.naming.GetNetAddr.assert_called_once_with('PROD_NETWORK')
@@ -666,11 +667,11 @@ class PacketFilterTest(unittest.TestCase):
         GOOD_HEADER_STATELESS + TCP_STATE_TERM, self.naming),
                                     EXP_INFO)
     result = str(acl)
-    self.failUnless('# term tcp-established-only' in result,
-                    'did not find comment for tcp-established-only')
-    self.failUnless(
-        'pass quick proto { tcp } from { any } to { any } flags A/A no state'
-        in result,
+    self.assertIn('# term tcp-established-only', result,
+                  'did not find comment for tcp-established-only')
+    self.assertIn(
+        'pass quick proto { tcp } from { any } to { any } flags A/A no state',
+        result,
         'did not find actual term for tcp-established-only')
 
   def testBadFlags(self):
@@ -695,22 +696,22 @@ class PacketFilterTest(unittest.TestCase):
         GOOD_HEADER_STATELESS + UDP_ESTABLISHED_TERM, self.naming),
                                     EXP_INFO)
     result = str(acl)
-    self.failUnless('# term udp-established' in result,
-                    'did not find comment for udp-established')
-    self.failUnless(
-        'pass quick proto { udp } from { any } to { any } no state'
-        in result,
+    self.assertIn('# term udp-established', result,
+                  'did not find comment for udp-established')
+    self.assertIn(
+        'pass quick proto { udp } from { any } to { any } no state',
+        result,
         'did not find actual term for udp-established')
 
   def testStatefulBlock(self):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + DENY_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless('# term deny-term-tcp' in result,
-                    'did not find comment for udp-established')
-    self.failUnless(
-        'block drop quick proto { tcp } from { any } to { any } flags S/SA'
-        in result,
+    self.assertIn('# term deny-term-tcp', result,
+                  'did not find comment for udp-established')
+    self.assertIn(
+        'block drop quick proto { tcp } from { any } to { any } flags S/SA',
+        result,
         'did not find actual term for deny-term-tcp')
 
   def testTcpEstablished(self):
@@ -718,11 +719,11 @@ class PacketFilterTest(unittest.TestCase):
         GOOD_HEADER + TCP_GOOD_ESTABLISHED_TERM, self.naming),
                                     EXP_INFO)
     result = str(acl)
-    self.failUnless('# term tcp-established-good' in result,
-                    'did not find comment for tcp-established-good')
-    self.failUnless(
-        'pass quick proto { tcp } from { any } to { any } flags A/A keep state'
-        in result,
+    self.assertIn('# term tcp-established-good', result,
+                  'did not find comment for tcp-established-good')
+    self.assertIn(
+        'pass quick proto { tcp } from { any } to { any } flags A/A keep state',
+        result,
         'did not find actual term for udp-established')
 
   def testTableCreation(self):
@@ -741,17 +742,17 @@ class PacketFilterTest(unittest.TestCase):
         GOOD_HEADER + MULTIPLE_NAME_TERM, self.naming),
                                     EXP_INFO)
     result = str(acl)
-    self.failUnless(
-        'table <PROD_NETWORK> {10.0.0.0/8}' in result,
+    self.assertIn(
+        'table <PROD_NETWORK> {10.0.0.0/8}', result,
         'did not find PROD_NETWORKtable in header')
-    self.failUnless(
+    self.assertIn(
         'table <CORP_INTERNAL> {100.96.0.0/11,\\\n'
-        '172.16.0.0/16}' in result,
+        '172.16.0.0/16}', result,
         'did not find CORP_INTERNAL table in header')
-    self.failUnless(
+    self.assertIn(
         'pass quick proto { tcp } from { <CORP_INTERNAL> } to '
         '{ <PROD_NETWORK> } port { 25 } flags S/SA keep state'
-        in result,
+        , result,
         'did not find actual term for multiple-name')
 
     self.naming.GetNetAddr.assert_has_calls([
@@ -765,17 +766,18 @@ class PacketFilterTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [prod_network]
     self.naming.GetServiceByProto.return_value = ['53']
 
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
-        GOOD_HEADER_DIRECTIONAL + LONG_NAME_TERM_DNS_TCP, self.naming), EXP_INFO)
+    acl = packetfilter.PacketFilter(
+        policy.ParsePolicy(GOOD_HEADER_DIRECTIONAL + LONG_NAME_TERM_DNS_TCP,
+                           self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless(
-        'table <PROD_NETWORK_EXTREAMLY_LONG_VER> {10.0.0.0/8}' in result,
+    self.assertIn(
+        'table <PROD_NETWORK_EXTREAMLY_LONG_VER> {10.0.0.0/8}', result,
         'did not find shortened name in header.')
-    self.failUnless(
+    self.assertIn(
         'pass out quick proto { tcp } from { any } to '
         '{ <PROD_NETWORK_EXTREAMLY_LONG_VER> } '
         'port { 53 } flags S/SA keep state'
-        in result,
+        , result,
         'did not find actual term for multiple-name')
 
     self.naming.GetNetAddr.assert_called_once_with(
@@ -810,24 +812,25 @@ class PacketFilterTest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = [prod_network]
     self.naming.GetServiceByProto.return_value = ['53']
 
-    acl = packetfilter.PacketFilter(policy.ParsePolicy(
-        GOOD_HEADER_DIRECTIONAL + LONG_NAME_TERM_DNS_TCP + LONG_NAME_TERM_DNS_UDP,
-        self.naming), EXP_INFO)
+    acl = packetfilter.PacketFilter(
+        policy.ParsePolicy(
+            GOOD_HEADER_DIRECTIONAL + LONG_NAME_TERM_DNS_TCP +
+            LONG_NAME_TERM_DNS_UDP, self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless(
-        'table <PROD_NETWORK_EXTREAMLY_LONG_VER> {10.0.0.0/8}' in result,
+    self.assertIn(
+        'table <PROD_NETWORK_EXTREAMLY_LONG_VER> {10.0.0.0/8}', result,
         'did not find shortened name in header.')
-    self.failUnless(
+    self.assertIn(
         'pass out quick proto { tcp } from { any } to '
         '{ <PROD_NETWORK_EXTREAMLY_LONG_VER> } '
         'port { 53 } flags S/SA keep state'
-        in result,
+        , result,
         'did not find actual TCP term for multiple-name')
-    self.failUnless(
+    self.assertIn(
         'pass out quick proto { udp } from { any } to '
         '{ <PROD_NETWORK_EXTREAMLY_LONG_VER> } '
         'port { 53 } keep state'
-        in result,
+        , result,
         'did not find actual UDP for multiple-name')
 
     self.naming.GetNetAddr.assert_has_calls([
@@ -848,20 +851,20 @@ class PacketFilterTest(unittest.TestCase):
         GOOD_HEADER_DIRECTIONAL + LONG_NAME_TERM_DNS_UDP,
         self.naming), EXP_INFO)
     result = str(acl)
-    self.failUnless(
-        'table <PROD_NETWORK_EXTREAMLY_LONG_VER> {10.0.0.0/8}' in result,
+    self.assertIn(
+        'table <PROD_NETWORK_EXTREAMLY_LONG_VER> {10.0.0.0/8}', result,
         'did not find shortened name in header.')
-    self.failUnless(
+    self.assertIn(
         'pass out quick proto { tcp } from { any } to '
         '{ <PROD_NETWORK_EXTREAMLY_LONG_VER> } '
         'port { 53 } flags S/SA keep state'
-        in result,
+        , result,
         'did not find actual TCP term for multiple-name')
-    self.failUnless(
+    self.assertIn(
         'pass out quick proto { udp } from { any } to '
         '{ <PROD_NETWORK_EXTREAMLY_LONG_VER> } '
         'port { 53 } keep state'
-        in result,
+        , result,
         'did not find actual UDP for multiple-name')
 
     self.naming.GetNetAddr.assert_has_calls([
@@ -945,16 +948,16 @@ class PacketFilterTest(unittest.TestCase):
     pol1 = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_TCP, self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testBuildWarningTokens(self):
     pol1 = packetfilter.PacketFilter(
         policy.ParsePolicy(GOOD_HEADER + GOOD_WARNING_TERM,
                            self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
 
 if __name__ == '__main__':

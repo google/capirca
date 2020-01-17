@@ -266,13 +266,14 @@ EXP_INFO = 2
 class WindowsAdvFirewallTest(unittest.TestCase):
 
   def setUp(self):
+    super(WindowsAdvFirewallTest, self).setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def FailUnless(self, strings, result, term):
     for string in strings:
       fullstring = 'netsh advfirewall firewall add rule %s' % (string)
-      super(WindowsAdvFirewallTest, self).failUnless(
-          fullstring in result,
+      super(WindowsAdvFirewallTest, self).assertIn(
+          fullstring, result,
           'did not find "%s" for %s\nGot:\n%s' % (fullstring, term, result))
 
   def testTcp(self):
@@ -385,15 +386,15 @@ class WindowsAdvFirewallTest(unittest.TestCase):
     pol1 = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
         GOOD_HEADER_IN + GOOD_SIMPLE, self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testBuildWarningTokens(self):
     pol1 = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
         GOOD_HEADER_IN + GOOD_SIMPLE_WARNING, self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
 
 if __name__ == '__main__':

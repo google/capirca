@@ -95,6 +95,7 @@ class ACLMock(aclgenerator.ACLGenerator):
 class ACLGeneratorTest(unittest.TestCase):
 
   def setUp(self):
+    super(ACLGeneratorTest, self).setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testEstablishedNostate(self):
@@ -124,13 +125,13 @@ class ACLGeneratorTest(unittest.TestCase):
     for _, terms in pol.filters:
       for term in terms:
         result = acl.FixTermLength(term.name, True, True)
-        self.assertEquals(term.name, result)
+        self.assertEqual(term.name, result)
         result = acl.FixTermLength(term.name, True, False)
-        self.assertEquals(term.name, result)
+        self.assertEqual(term.name, result)
         result = acl.FixTermLength(term.name, False, True)
-        self.assertEquals(term.name, result)
+        self.assertEqual(term.name, result)
         result = acl.FixTermLength(term.name, False, False)
-        self.assertEquals(term.name, result)
+        self.assertEqual(term.name, result)
 
   def testLongTermAbbreviation(self):
     # Term name that is above specified limit should come out abbreviated
@@ -140,8 +141,8 @@ class ACLGeneratorTest(unittest.TestCase):
     for _, terms in pol.filters:
       for term in terms:
         result = acl.FixTermLength(term.name, True, False)
-        self.failUnless('-abbreviations' in result,
-                        'Our strings disappeared during abbreviation.')
+        self.assertIn('-abbreviations', result,
+                      'Our strings disappeared during abbreviation.')
 
   def testTermNameTruncation(self):
     # Term name that is above specified limit should come out truncated
@@ -151,7 +152,7 @@ class ACLGeneratorTest(unittest.TestCase):
     for _, terms in pol.filters:
       for term in terms:
         result = acl.FixTermLength(term.name, False, True)
-        self.assertEquals('google-experiment-abbrev', result)
+        self.assertEqual('google-experiment-abbrev', result)
 
   def testLongTermName(self):
     # Term name that is above specified limit and is impossible to abbreviate
@@ -164,21 +165,21 @@ class ACLGeneratorTest(unittest.TestCase):
                           acl.FixTermLength, term.name, True, False)
 
   def testProtocolNameToNumber(self):
-    protoMap = {'icmp': 1,
-                'ipip': 4,
-                'tcp': 6,
-                'gre': 47,
-               }
-    protoConvert = ['gre', 'tcp']
+    proto_map = {'icmp': 1,
+                 'ipip': 4,
+                 'tcp': 6,
+                 'gre': 47,
+                }
+    proto_convert = ['gre', 'tcp']
 
-    protocolList = ['icmp', 'gre', 'tcp', 'ipip']
-    expectedProtocolList = ['icmp', 47, 6, 'ipip']
+    protocol_list = ['icmp', 'gre', 'tcp', 'ipip']
+    expected_protocol_list = ['icmp', 47, 6, 'ipip']
 
-    retProtocolList = aclgenerator.ProtocolNameToNumber(protocolList,
-                                                        protoConvert,
-                                                        protoMap)
+    retprotocol_list = aclgenerator.ProtocolNameToNumber(protocol_list,
+                                                         proto_convert,
+                                                         proto_map)
 
-    self.assertListEqual(expectedProtocolList, retProtocolList)
+    self.assertListEqual(expected_protocol_list, retprotocol_list)
 
   def testAddRepositoryTags(self):
     # Format print the '$' into the RCS tags in order prevent the tags from

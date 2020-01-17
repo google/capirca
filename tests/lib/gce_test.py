@@ -482,6 +482,7 @@ TEST_EXCLUDE_RANGE = [nacaddr.IP('10.240.0.0/16')]
 class GCETest(unittest.TestCase):
 
   def setUp(self):
+    super(GCETest, self).setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def _StripAclHeaders(self, acl):
@@ -508,7 +509,7 @@ class GCETest(unittest.TestCase):
 
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_3, self.naming), EXP_INFO)
-    self.failUnless('"priority": "1",' in str(acl), str(acl))
+    self.assertIn('"priority": "1",', str(acl), str(acl))
 
   def testTermWithLogging(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
@@ -574,7 +575,7 @@ class GCETest(unittest.TestCase):
 
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_EXPIRED, self.naming), EXP_INFO)
-    self.assertEquals(self._StripAclHeaders(str(acl)), '[]\n\n')
+    self.assertEqual(self._StripAclHeaders(str(acl)), '[]\n\n')
 
     self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
     self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
@@ -592,7 +593,7 @@ class GCETest(unittest.TestCase):
       term.stateless_reply = True
 
     acl = gce.GCE(ret, EXP_INFO)
-    self.assertEquals(self._StripAclHeaders(str(acl)), '[]\n\n')
+    self.assertEqual(self._StripAclHeaders(str(acl)), '[]\n\n')
 
     self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
     self.naming.GetServiceByProto.assert_has_calls([
@@ -609,8 +610,8 @@ class GCETest(unittest.TestCase):
 
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
-    self.assertTrue('default-good-term-1-1' in str(acl))
-    self.assertTrue('default-good-term-1-2' in str(acl))
+    self.assertIn('default-good-term-1-1', str(acl))
+    self.assertIn('default-good-term-1-2', str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
     self.naming.GetServiceByProto.assert_has_calls([
@@ -716,8 +717,8 @@ class GCETest(unittest.TestCase):
     pol1 = gce.GCE(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM,
                                       self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testBuildWarningTokens(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
@@ -726,8 +727,8 @@ class GCETest(unittest.TestCase):
     pol1 = gce.GCE(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_2,
                                       self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testDenyAction(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
@@ -742,17 +743,17 @@ class GCETest(unittest.TestCase):
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER_INGRESS + GOOD_TERM, self.naming), EXP_INFO)
-    self.failUnless('INGRESS' in str(acl), str(acl))
-    self.failUnless('EGRESS' not in str(acl), str(acl))
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
 
   def testEgress(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER_EGRESS + GOOD_TERM_EGRESS, self.naming), EXP_INFO)
-    self.failUnless('EGRESS' in str(acl), str(acl))
+    self.assertIn('EGRESS', str(acl))
     self.assertIn('good-term-1-e', str(acl))
-    self.failUnless('INGRESS' not in str(acl), str(acl))
+    self.assertNotIn('INGRESS', str(acl))
 
   def testRaisesWithEgressDestinationTag(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
@@ -825,9 +826,9 @@ class GCETest(unittest.TestCase):
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER_EGRESS + GOOD_TERM_EGRESS, self.naming), EXP_INFO)
-    self.failUnless('destinationRanges' in str(acl), str(acl))
-    self.failUnless('sourceRanges' not in str(acl), str(acl))
-    self.failUnless('10.2.3.4/32' in str(acl), str(acl))
+    self.assertIn('destinationRanges', str(acl), str(acl))
+    self.assertNotIn('sourceRanges', str(acl), str(acl))
+    self.assertIn('10.2.3.4/32', str(acl), str(acl))
 
   def testP4TagsNotPresent(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
@@ -835,12 +836,11 @@ class GCETest(unittest.TestCase):
 
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
-    self.assertTrue('$Id:' not in str(acl))
+    self.assertNotIn('$Id:', str(acl))
 
   def testRaisesConflictingDirectionAddress(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.return_value = ['22']
-
 
     self.assertRaisesRegexp(
         gce.GceFirewallError,

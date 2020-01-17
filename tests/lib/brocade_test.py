@@ -134,32 +134,33 @@ EXP_INFO = 2
 class BrocadeTest(unittest.TestCase):
 
   def setUp(self):
+    super(BrocadeTest, self).setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testTcpEstablished(self):
     acl = brocade.Brocade(
         policy.ParsePolicy(GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
-    self.failUnless(re.search('permit tcp any any established\n',
+    self.assertTrue(re.search('permit tcp any any established\n',
                               str(acl)), str(acl))
 
   def testNoTermRemark(self):
     acl = brocade.Brocade(
         policy.ParsePolicy(GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
-    self.failIf('remark good-term-3' in str(acl))
+    self.assertNotIn('remark good-term-3', str(acl))
 
   def testBuildTokens(self):
     pol1 = brocade.Brocade(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM,
                                               self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testBuildWarningTokens(self):
     pol1 = brocade.Brocade(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
                                               self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
 
 if __name__ == '__main__':

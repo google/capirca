@@ -299,6 +299,7 @@ EXP_INFO = 2
 class NftablesTest(unittest.TestCase):
 
   def setUp(self):
+    super(NftablesTest, self).setUp()
     self.mock_naming = mock.MagicMock()
 
   def testBadHeader(self):
@@ -548,15 +549,15 @@ class NftablesTest(unittest.TestCase):
     pol1 = nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                                                 self.mock_naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testBuildWarningTokens(self):
     pol1 = nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_12,
                                                 self.mock_naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
 
 if __name__ == '__main__':

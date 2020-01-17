@@ -169,37 +169,38 @@ EXP_INFO = 2
 class SRXloTest(unittest.TestCase):
 
   def setUp(self):
+    super(SRXloTest, self).setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testIcmpv6(self):
     output = str(srxlo.SRXlo(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                                                 self.naming), EXP_INFO))
-    self.failUnless('next-header icmp6;' in output,
-                    'missing or incorrect ICMPv6 specification')
+    self.assertIn('next-header icmp6;', output,
+                  'missing or incorrect ICMPv6 specification')
 
   def testIcmpv6Type(self):
     output = str(srxlo.SRXlo(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
                                                 self.naming), EXP_INFO))
-    self.failUnless('next-header icmp6;' in output,
-                    'missing or incorrect ICMPv6 specification')
-    self.failUnless('icmp-type 1;' in output,
-                    'missing or incorrect ICMPv6 type specification')
+    self.assertIn('next-header icmp6;', output,
+                  'missing or incorrect ICMPv6 specification')
+    self.assertIn('icmp-type 1;', output,
+                  'missing or incorrect ICMPv6 type specification')
 
   def testBuildTokens(self):
     # self.naming.GetServiceByProto.side_effect = [['25'], ['26']]
     pol1 = srxlo.SRXlo(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                                           self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.maxDiff = None
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.max_diff = None
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testBuildWarningTokens(self):
     pol1 = srxlo.SRXlo(policy.ParsePolicy(
         GOOD_HEADER_1 + GOOD_TERM_1, self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testInactiveTerm(self):
       output = str(srxlo.SRXlo(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_3,

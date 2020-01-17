@@ -32,8 +32,8 @@ from absl import logging
 
 class SummarizerTest(unittest.TestCase):
 
-  @classmethod
-  def setUpClass(cls):
+  def setUp(self):
+    super(SummarizerTest, self).setUp()
     random_seed = int(time.time())
     value = os.environ.get('TEST_RANDOM_SEED', '')
     try:

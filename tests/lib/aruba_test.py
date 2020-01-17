@@ -245,6 +245,7 @@ EXP_INFO = 2
 class ArubaTest(unittest.TestCase):
 
   def setUp(self):
+    super(ArubaTest, self).setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testBuildTokens(self):

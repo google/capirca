@@ -35,6 +35,7 @@ class NamingUnitTest(unittest.TestCase):
   """
 
   def setUp(self):
+    super(NamingUnitTest, self).setUp()
     self.defs = naming.Naming(None)
     servicedata = []
     servicedata.append('SVC1 = 80/tcp 81/udp 82/tcp')

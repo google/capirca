@@ -176,6 +176,7 @@ EXP_INFO = 2
 class IpsetTest(unittest.TestCase):
 
   def setUp(self):
+    super(IpsetTest, self).setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testMarkers(self):
@@ -310,21 +311,21 @@ class IpsetTest(unittest.TestCase):
     pol1 = ipset.Ipset(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_3,
                                           self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testBuildWarningTokens(self):
     pol1 = ipset.Ipset(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_4,
                                           self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
-    self.assertEquals(st, SUPPORTED_TOKENS)
-    self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testAddsExistsOption(self):
     self.naming.GetNetAddr.return_value = [
         nacaddr.IPv4('10.0.0.0/24'), nacaddr.IPv4('10.1.0.0/24')]
     acl = ipset.Ipset(policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_1,
-                                          self.naming), EXP_INFO)
+                                         self.naming), EXP_INFO)
     self.assertIn('create -exist', str(acl))
     self.assertIn('add -exist', str(acl))
 

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Nsxv Mock Test terms for nsxv.py"""
+"""Nsxv Mock Test terms for nsxv module."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -20,7 +20,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 
-INET_TERM="""\
+INET_TERM = """\
   term permit-mail-services {
     destination-address:: MAIL_SERVERS
     protocol:: tcp
@@ -29,7 +29,7 @@ INET_TERM="""\
   }
   """
 
-INET6_TERM="""\
+INET6_TERM = """\
   term test-icmpv6 {
     protocol:: icmpv6
     icmp-type:: echo-request echo-reply
@@ -37,7 +37,7 @@ INET6_TERM="""\
   }
   """
 
-INET_FILTER= """\
+INET_FILTER = """\
   header {
     comment:: "Sample inet NSXV filter"
     target:: nsxv INET_FILTER_NAME inet
@@ -54,7 +54,7 @@ INET_FILTER= """\
   }
   """
 
-INET6_FILTER= """\
+INET6_FILTER = """\
   header {
     comment:: "Sample inet6 NSXV filter"
     target:: nsxv INET6_FILTER_NAME inet6
@@ -68,7 +68,7 @@ INET6_FILTER= """\
   }
   """
 
-MIXED_FILTER= """\
+MIXED_FILTER = """\
   header {
     comment:: "Sample mixed NSXV filter"
     target:: nsxv MIXED_FILTER_NAME mixed 1009
@@ -83,7 +83,7 @@ MIXED_FILTER= """\
   }
   """
 
-POLICY= """\
+POLICY = """\
   header {
     comment:: "Sample NSXV filter"
     target:: nsxv POLICY_NAME inet 1007
@@ -97,7 +97,7 @@ POLICY= """\
   }
   """
 
-POLICY_NO_SECTION_ID= """\
+POLICY_NO_SECTION_ID = """\
   header {
     comment:: "NSXV filter without section id"
     target:: nsxv POLICY_NO_SECTION_ID_NAME inet
@@ -108,7 +108,7 @@ POLICY_NO_SECTION_ID= """\
   }
   """
 
-POLICY_NO_FILTERTYPE= """\
+POLICY_NO_FILTERTYPE = """\
   header {
     comment:: "Sample NSXV filter"
     target:: nsxv POLICY_NO_FILTERTYPE_NAME
@@ -119,7 +119,7 @@ POLICY_NO_FILTERTYPE= """\
   }
   """
 
-POLICY_INCORRECT_FILTERTYPE= """\
+POLICY_INCORRECT_FILTERTYPE = """\
   header {
     comment:: "Sample NSXV filter"
     target:: nsxv POLICY_INCORRECT_FILTERTYPE_NAME inet1
@@ -130,7 +130,7 @@ POLICY_INCORRECT_FILTERTYPE= """\
   }
   """
 
-POLICY_OPTION_KYWD= """\
+POLICY_OPTION_KYWD = """\
   header {
     comment:: "Sample NSXV filter"
     target:: nsxv POLICY_OPTION_KYWD_NAME inet 1009

@@ -210,6 +210,7 @@ EXP_INFO = 2
 class AristaTest(unittest.TestCase):
 
   def setUp(self):
+    super(AristaTest, self).setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testRemark(self):
@@ -219,11 +220,11 @@ class AristaTest(unittest.TestCase):
                              self.naming)
     acl = arista.Arista(pol, EXP_INFO)
     expected = 'remark this is a test standard acl'
-    self.failUnless(expected in str(acl), '[%s]' % str(acl))
+    self.assertIn(expected, str(acl), '[%s]' % str(acl))
     expected = 'remark good-term-4'
-    self.failUnless(expected in str(acl), str(acl))
+    self.assertIn(expected, str(acl), str(acl))
     expected = 'test-filter remark'
-    self.failIf(expected in str(acl), str(acl))
+    self.assertNotIn(expected, str(acl), str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
@@ -272,11 +273,11 @@ class AristaTest(unittest.TestCase):
                              self.naming)
     acl = arista.Arista(pol, EXP_INFO)
     expected = 'ip access-list test-filter'
-    self.failUnless(expected in str(acl), '[%s]' % str(acl))
+    self.assertIn(expected, str(acl), '[%s]' % str(acl))
     expected = ' permit tcp 10.1.1.0/24 any eq ssh'
-    self.failUnless(expected in str(acl), str(acl))
+    self.assertIn(expected, str(acl), str(acl))
     expected = ' permit tcp 10.1.1.0/24 any eq 6537'
-    self.failUnless(expected in str(acl), str(acl))
+    self.assertIn(expected, str(acl), str(acl))
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
                                              mock.call('SOME_HOST2')])
@@ -290,9 +291,9 @@ class AristaTest(unittest.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER_IPV6 + GOOD_TERM_2, self.naming)
     acl = arista.Arista(pol, EXP_INFO)
     expected = 'ipv6 access-list test-filter'
-    self.failUnless(expected in str(acl), '[%s]' % str(acl))
+    self.assertIn(expected, str(acl), '[%s]' % str(acl))
     expected = ' permit tcp 2620:1::/64 any eq ssh'
-    self.failUnless(expected in str(acl), str(acl))
+    self.assertIn(expected, str(acl), str(acl))
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST')])
     self.naming.GetServiceByProto.assert_has_calls([mock.call('SSH', 'tcp')])
@@ -303,9 +304,9 @@ class AristaTest(unittest.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_4, self.naming)
     acl = arista.Arista(pol, EXP_INFO)
     expected = 'ip access-list standard test-filter'
-    self.failUnless(expected in str(acl), '[%s]' % str(acl))
+    self.assertIn(expected, str(acl), '[%s]' % str(acl))
     expected = ' permit 10.1.1.0/24\n'
-    self.failUnless(expected in str(acl), str(acl))
+    self.assertIn(expected, str(acl), str(acl))
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST')])
 
