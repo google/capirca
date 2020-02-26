@@ -37,13 +37,8 @@ from absl import logging
 
 DEFINITIONS = None
 DEFAULT_DEFINITIONS = './def'
-ACTIONS = frozenset((
-    'accept',
-    'count',
-    'deny',
-    'next',
-    'reject',
-    'reject-with-tcp-rst'))
+ACTIONS = set(('accept', 'count', 'deny', 'reject', 'next',
+               'reject-with-tcp-rst'))
 _FLEXIBLE_MATCH_RANGE_ATTRIBUTES = {'byte-offset',
                                     'bit-offset',
                                     'bit-length',
