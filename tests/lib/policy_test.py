@@ -88,6 +88,13 @@ header {
   target:: cisco foo
 }
 """
+HEADER_HF_1 = """
+header {
+  comment:: "This is a test of HF INGRESS Policy."
+  target:: gcp_hf INGRESS
+}
+"""
+
 INCLUDE_STATEMENT = """
 #include "/tmp/y.inc"
 """
@@ -1534,6 +1541,112 @@ class PolicyTest(unittest.TestCase):
     self.assertNotIn(fo_range_term, fo_smaller_range_term)
     self.assertNotIn(term, fo_term)
 
+  def testTermTargetResources(self):
+    target_resources = [('p1', 'v1'), ('p2', 'v2')]
+    target_resource_2 = [('p3', 'v3')]
+    term_one = policy.Term(
+        [policy.VarType(policy.VarType.TARGET_RESOURCES, target_resources)])
+    term_one.AddObject(policy.VarType(59, target_resource_2))
+
+    self.assertIn(target_resources, term_one.target_resources)
+    self.assertIn(target_resource_2, term_one.target_resources)
+
+  def testParsePolicySingleTargetResources(self):
+    good_term_target_resources = """
+    term target-resource-term {
+      action:: deny
+      target-resources:: (proj1,vpc1)
+    }"""
+    pol = HEADER_HF_1 + good_term_target_resources
+    p = policy.ParsePolicy(pol, self.naming)
+    self.assertIsInstance(p, policy.Policy)
+
+    _, terms = p.filters[0]
+    self.assertIn('deny', terms[0].action)
+    self.assertIn(('proj1', 'vpc1'), terms[0].target_resources)
+
+  def testParsePolicyMultipleTargetResources(self):
+    good_term_target_resources = """
+    term target-resource-term {
+      action:: deny
+      target-resources:: (proj1,vpc1)
+      target-resources:: (proj2,vpc2)
+      target-resources:: (proj3,vpc3)
+      target-resources:: (proj4,vpc4)
+    }"""
+    pol = HEADER_HF_1 + good_term_target_resources
+    p = policy.ParsePolicy(pol, self.naming)
+    self.assertIsInstance(p, policy.Policy)
+
+    _, terms = p.filters[0]
+    self.assertIn('deny', terms[0].action)
+    expected_target_resources = [('proj1', 'vpc1'), ('proj2', 'vpc2'),
+                                 ('proj3', 'vpc3'), ('proj4', 'vpc4')]
+    self.assertListEqual(expected_target_resources, terms[0].target_resources)
+
+  def testParsePolicyMultipleCommaSepTargetResources(self):
+    good_term_target_resources = """
+    term target-resource-term {
+      action:: deny
+      target-resources:: (proj1,vpc1),(proj2,vpc2),(proj3,vpc3),(proj4,vpc4)
+    }"""
+    pol = HEADER_HF_1 + good_term_target_resources
+    p = policy.ParsePolicy(pol, self.naming)
+    self.assertIsInstance(p, policy.Policy)
+
+    _, terms = p.filters[0]
+    self.assertIn('deny', terms[0].action)
+    expected_target_resources = [('proj1', 'vpc1'), ('proj2', 'vpc2'),
+                                 ('proj3', 'vpc3'), ('proj4', 'vpc4')]
+    self.assertListEqual(expected_target_resources, terms[0].target_resources)
+
+  def testParsePolicyMultipleSpaceSepTargetResources(self):
+    good_term_target_resources = """
+    term target-resource-term {
+      action:: deny
+      target-resources:: (proj1,vpc1) (proj2,vpc2) (proj3,vpc3) (proj4,vpc4)
+    }"""
+    pol = HEADER_HF_1 + good_term_target_resources
+    p = policy.ParsePolicy(pol, self.naming)
+    self.assertIsInstance(p, policy.Policy)
+
+    _, terms = p.filters[0]
+    self.assertIn('deny', terms[0].action)
+    expected_target_resources = [('proj1', 'vpc1'), ('proj2', 'vpc2'),
+                                 ('proj3', 'vpc3'), ('proj4', 'vpc4')]
+    self.assertListEqual(expected_target_resources, terms[0].target_resources)
+
+  def testParsePolicyMultipleArrayCommaTargetResources(self):
+    good_term_target_resources = """
+    term target-resource-term {
+      action:: deny
+      target-resources:: [(proj1,vpc1),(proj2,vpc2),(proj3,vpc3),(proj4,vpc4)]
+    }"""
+    pol = HEADER_HF_1 + good_term_target_resources
+    p = policy.ParsePolicy(pol, self.naming)
+    self.assertIsInstance(p, policy.Policy)
+
+    _, terms = p.filters[0]
+    self.assertIn('deny', terms[0].action)
+    expected_target_resources = [('proj1', 'vpc1'), ('proj2', 'vpc2'),
+                                 ('proj3', 'vpc3'), ('proj4', 'vpc4')]
+    self.assertListEqual(expected_target_resources, terms[0].target_resources)
+
+  def testParsePolicyMultipleArraySpaceTargetResources(self):
+    good_term_target_resources = """
+    term target-resource-term {
+      action:: deny
+      target-resources:: [(proj1,vpc1) (proj2,vpc2) (proj3,vpc3) (proj4,vpc4)]
+    }"""
+    pol = HEADER_HF_1 + good_term_target_resources
+    p = policy.ParsePolicy(pol, self.naming)
+    self.assertIsInstance(p, policy.Policy)
+
+    _, terms = p.filters[0]
+    self.assertIn('deny', terms[0].action)
+    expected_target_resources = [('proj1', 'vpc1'), ('proj2', 'vpc2'),
+                                 ('proj3', 'vpc3'), ('proj4', 'vpc4')]
+    self.assertListEqual(expected_target_resources, terms[0].target_resources)
 
 if __name__ == '__main__':
   unittest.main()

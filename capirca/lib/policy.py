@@ -468,6 +468,7 @@ class Term(object):
     self.destination_interface = None
     self.platform = []
     self.platform_exclude = []
+    self.target_resources = []
     self.timeout = None
     self.flattened = False
     self.flattened_addr = None
@@ -694,6 +695,8 @@ class Term(object):
                      sorted(self.destination_address_exclude))
     if self.destination_tag:
       ret_str.append('  destination_tag: %s' % self.destination_tag)
+    if self.target_resources:
+      ret_str.append('  target_resources: %s' % self.target_resources)
     if self.source_prefix:
       ret_str.append('  source_prefix: %s' % self.source_prefix)
     if self.source_prefix_except:
@@ -1073,6 +1076,8 @@ class Term(object):
           self.destination_tag.append(x.value)
         elif x.var_type is VarType.FLEXIBLE_MATCH_RANGE:
           self.flexible_match_range.append(x.value)
+        elif x.var_type is VarType.TARGET_RESOURCES:
+          self.target_resources.append(x.value)
         else:
           raise TermObjectTypeError(
               '%s isn\'t a type I know how to deal with (contains \'%s\')' % (
@@ -1148,6 +1153,8 @@ class Term(object):
         self.vpn = (obj.value[0], obj.value[1])
       elif obj.var_type is VarType.TTL:
         self.ttl = int(obj.value)
+      elif obj.var_type is VarType.TARGET_RESOURCES:
+        self.target_resources.append(obj.value)
       else:
         raise TermObjectTypeError(
             '%s isn\'t a type I know how to deal with' % (type(obj)))
@@ -1447,6 +1454,7 @@ class VarType(object):
   PRIORITY = 56
   TTL = 57
   LOG_LIMIT = 58
+  TARGET_RESOURCES = 59
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1638,6 +1646,8 @@ tokens = (
     'LOG_LIMIT',
     'LOG_NAME',
     'LOSS_PRIORITY',
+    'LPAREN',
+    'LSQUARE',
     'NEXT_IP',
     'OPTION',
     'OWNER',
@@ -1651,6 +1661,8 @@ tokens = (
     'PROTOCOL',
     'PROTOCOL_EXCEPT',
     'QOS',
+    'RPAREN',
+    'RSQUARE',
     'PAN_APPLICATION',
     'ROUTING_INSTANCE',
     'SADDR',
@@ -1662,6 +1674,7 @@ tokens = (
     'STAG',
     'STRING',
     'TARGET',
+    'TARGET_RESOURCES',
     'TERM',
     'TIMEOUT',
     'TRAFFIC_CLASS_COUNT',
@@ -1673,6 +1686,10 @@ tokens = (
 
 literals = r':{},-/'
 t_ignore = ' \t'
+t_LSQUARE = r'\['
+t_RSQUARE = r'\]'
+t_LPAREN = r'\('
+t_RPAREN = r'\)'
 
 reserved = {
     'action': 'ACTION',
@@ -1730,6 +1747,7 @@ reserved = {
     'source-port': 'SPORT',
     'source-tag': 'STAG',
     'target': 'TARGET',
+    'target-resources': 'TARGET_RESOURCES',
     'term': 'TERM',
     'timeout': 'TIMEOUT',
     'traffic-class-count': 'TRAFFIC_CLASS_COUNT',
@@ -1897,6 +1915,7 @@ def p_term_spec(p):
                 | term_spec pan_application_spec
                 | term_spec routinginstance_spec
                 | term_spec tag_list_spec
+                | term_spec target_resources_spec
                 | term_spec timeout_spec
                 | term_spec ttl_spec
                 | term_spec traffic_type_spec
@@ -2142,6 +2161,14 @@ def p_tag_list_spec(p):
       p[0].append(VarType(VarType.DTAG, tag))
 
 
+def p_target_resources_spec(p):
+  """ target_resources_spec : TARGET_RESOURCES ':' ':' one_or_more_tuples
+  """
+  p[0] = []
+  for target_resource in p[4]:
+    p[0].append(VarType(VarType.TARGET_RESOURCES, target_resource))
+
+
 def p_ether_type_spec(p):
   """ ether_type_spec : ETHER_TYPE ':' ':' one_or_more_strings """
   p[0] = []
@@ -2297,6 +2324,31 @@ def p_one_or_more_strings(p):
       p[0] = p[1]
     else:
       p[0] = [p[1]]
+
+def p_one_or_more_tuples(p):
+  """ one_or_more_tuples : LSQUARE one_or_more_tuples RSQUARE
+                         | one_or_more_tuples ',' one_tuple
+                         | one_or_more_tuples one_tuple
+                         | one_tuple
+                         | """
+
+  if len(p) > 1:
+    if p[1] == '[':
+      p[0] = p[2]
+    elif type(p[1]) == type([]):
+      if p[2] == ',':
+        p[1].append(p[3])
+      else:
+        p[1].append(p[2])
+      p[0] = p[1]
+    else:
+      p[0] = [p[1]]
+
+
+def p_one_tuple(p):
+  """ one_tuple : LPAREN STRING ',' STRING RPAREN
+                | """
+  p[0] = (p[2],p[4])
 
 def p_one_or_more_ints(p):
   """ one_or_more_ints : one_or_more_ints INTEGER
