@@ -45,12 +45,13 @@ class Term(aclgenerator.Term):
 class GCP(aclgenerator.ACLGenerator):
   """A GCP object."""
 
+  policies = []
   _GOOD_DIRECTION = ['INGRESS', 'EGRESS']
 
   def __str__(self):
     """Return the JSON blob for a GCP object."""
     out = '%s\n\n' % (
-        json.dumps(self.hf_policies, indent=2,
+        json.dumps(self.policies, indent=2,
                    separators=(six.ensure_str(','), six.ensure_str(': ')),
                    sort_keys=True))
     return out
