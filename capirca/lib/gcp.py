@@ -27,6 +27,10 @@ class HeaderError(Error):
   """Raised when a header is not valid."""
 
 
+class UnsupportedFilterTypeError(Error):
+  """Raised when an unsupported filter type is specified."""
+
+
 class Term(aclgenerator.Term):
   """A Term object."""
 
