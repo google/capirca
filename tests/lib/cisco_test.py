@@ -319,8 +319,8 @@ term good_term_20 {
 """
 GOOD_TERM_21 = """
 term good_term_21 {
-  source-address:: cs4-app_main
-  destination-address:: cs4-app_main
+  source-address:: cs4-valid_network_name
+  destination-address:: cs4-valid_network_name
   action:: accept
 }
 """
@@ -836,8 +836,8 @@ class CiscoTest(unittest.TestCase):
     expected = 'permit ip 10.0.0.0 0.0.0.255 10.0.0.0 0.0.0.255'
     self.failUnless(expected in str(acl), str(acl))
 
-    self.naming.GetNetAddr.assert_has_calls([mock.call('cs4-app_main'),
-                                             mock.call('cs4-app_main')])
+    self.naming.GetNetAddr.assert_has_calls([mock.call('cs4-valid_network_name'),
+                                             mock.call('cs4-valid_network_name')])
   def testNoVerbose(self):
     for i in [GOOD_NOVERBOSE_HEADER, GOOD_NOVERBOSE_STANDARD_HEADER,
               GOOD_NOVERBOSE_OBJGRP_HEADER, GOOD_NOVERBOSE_INET6_HEADER]:
