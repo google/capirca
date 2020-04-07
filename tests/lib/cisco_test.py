@@ -146,12 +146,6 @@ term standard-term-2 {
   action:: accept
 }
 """
-GOOD_STANDARD_TERM_3 = """
-term standard-term-2 {
-  address:: SOME_HOST
-  action:: accept
-}
-"""
 BAD_STANDARD_TERM_1 = """
 term bad-standard-term-1 {
   destination-address:: SOME_HOST
