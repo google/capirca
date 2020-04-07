@@ -1786,9 +1786,10 @@ def t_DSCP_RANGE(t):
 
 
 def t_DSCP(t):
-  r'\b((b[0-1]{6})|(af[1-4]{1}[1-3]{1})|(be)|(ef)|(cs[0-7]{1}))\b'
-  t.type = reserved.get(t.value, 'DSCP')
-  return t
+    # we need to handle the '-' as part of the word, not as a boundary
+    r'\b((b[0-1]{6})|(af[1-4]{1}[1-3]{1})|(be)|(ef)|(cs[0-7]{1}))(?![\w-])\b'
+    t.type = reserved.get(t.value, 'DSCP')
+    return t
 
 
 def t_HEX(t):
