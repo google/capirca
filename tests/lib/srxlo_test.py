@@ -47,6 +47,13 @@ term good-term-2 {
   action:: accept
 }
 """
+GOOD_TERM_3 = """
+term good-term-3 {
+  protocol:: icmpv6
+  action:: accept
+  option:: inactive
+}
+"""
 
 SUPPORTED_TOKENS = {
     'action',
@@ -189,11 +196,15 @@ class SRXloTest(unittest.TestCase):
 
   def testBuildWarningTokens(self):
     pol1 = srxlo.SRXlo(policy.ParsePolicy(
-        GOOD_HEADER_1 + GOOD_TERM_1, self.naming), EXP_INFO)
+        GOOD_HEADER_1 + GOOD_TERM_3, self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
 
+  def testInactiveTerm(self):
+      output = str(srxlo.SRXlo(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_3,
+                                                  self.naming), EXP_INFO))
+      self.failUnless('inactive: term good-term-3 {' in output, output)
 
 if __name__ == '__main__':
   unittest.main()
