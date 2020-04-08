@@ -196,7 +196,7 @@ class SRXloTest(unittest.TestCase):
 
   def testBuildWarningTokens(self):
     pol1 = srxlo.SRXlo(policy.ParsePolicy(
-        GOOD_HEADER_1 + GOOD_TERM_3, self.naming), EXP_INFO)
+        GOOD_HEADER_1 + GOOD_TERM_1, self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
     self.assertEquals(st, SUPPORTED_TOKENS)
     self.assertEquals(sst, SUPPORTED_SUB_TOKENS)
