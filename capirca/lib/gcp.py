@@ -10,6 +10,8 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import json
+import re
+
 from capirca.lib import aclgenerator
 
 import six
@@ -94,3 +96,42 @@ def IsDefaultDeny(term):
       return False
 
   return True
+
+
+def IsProjectIDValid(project):
+  """Return true if a project ID is valid.
+
+  https://cloud.google.com/resource-manager/reference/rest/v1/projects
+
+  "It must be 6 to 30 lowercase letters, digits, or hyphens. It must start with
+  a letter. Trailing hyphens are prohibited."
+
+  Args:
+    project: A string.
+
+  Returns:
+    bool: True if a project ID matches the pattern and length requirements.
+  """
+  if len(project) < 6 or len(project) > 30:
+    return False
+  return bool(re.match('^[a-z][a-z0-9\\-]*[a-z0-9]$', project))
+
+
+def IsVPCNameValid(vpc):
+  """Return true if a VPC name is valid.
+
+  https://cloud.google.com/compute/docs/reference/rest/v1/networks
+
+  "The first character must be a lowercase letter, and all following characters
+  (except for the last character) must be a dash, lowercase letter, or digit.
+  The last character must be a lowercase letter or digit."
+
+  Args:
+    vpc: A string.
+
+  Returns:
+    bool: True if a VPC name matches the pattern and length requirements.
+  """
+  if len(vpc) < 1 or len(vpc) > 63:
+    return False
+  return bool(re.match('^[a-z]$|^[a-z][a-z0-9-]*[a-z0-9]$', vpc))
