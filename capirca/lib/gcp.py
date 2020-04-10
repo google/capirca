@@ -56,7 +56,7 @@ class Term(aclgenerator.Term):
   def _GetLoggingSetting(self):
     """Return true if a term indicates that logging is desired."""
     # Supported values in GCP are '', 'true', and 'True'.
-    if self.term.logging in ['true', 'True']:
+    if any(value in self.term.logging for value in ['true', 'True']):
       return True
     return False
 
