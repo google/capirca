@@ -41,6 +41,16 @@ class Term(aclgenerator.Term):
       return raw_comment[:max_length]
     return raw_comment
 
+  def _GetPorts(self):
+    """Return a port or port range in string format."""
+    ports = []
+    for start, end in self.term.destination_port:
+      if start == end:
+        ports.append(str(start))
+      else:
+        ports.append('%d-%d' % (start, end))
+    return ports
+
 
 class GCP(aclgenerator.ACLGenerator):
   """A GCP object."""
