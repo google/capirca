@@ -51,6 +51,13 @@ class Term(aclgenerator.Term):
         ports.append('%d-%d' % (start, end))
     return ports
 
+  def _GetLoggingSetting(self):
+    """Return true if a term indicates that logging is desired."""
+    # Supported values in GCP are '', 'true', and 'True'.
+    if self.term.logging in ['true', 'True']:
+      return True
+    return False
+
 
 class GCP(aclgenerator.ACLGenerator):
   """A GCP object."""
