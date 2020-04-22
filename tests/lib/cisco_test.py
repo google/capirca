@@ -317,6 +317,13 @@ term good_term_20 {
   action:: accept
 }
 """
+GOOD_TERM_21 = """
+term good_term_21 {
+  source-address:: cs4-valid_network_name
+  destination-address:: cs4-valid_network_name
+  action:: accept
+}
+"""
 LONG_COMMENT_TERM = """
 term long-comment-term {
   comment:: "%s "
@@ -822,6 +829,15 @@ class CiscoTest(unittest.TestCase):
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
                                              mock.call('SOME_HOST')])
 
+  def testTermDSCPMarker(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/24')]
+    acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_21,
+                                         self.naming), EXP_INFO)
+    expected = 'permit ip 10.0.0.0 0.0.0.255 10.0.0.0 0.0.0.255'
+    self.failUnless(expected in str(acl), str(acl))
+
+    self.naming.GetNetAddr.assert_has_calls([mock.call('cs4-valid_network_name'),
+                                             mock.call('cs4-valid_network_name')])
   def testNoVerbose(self):
     for i in [GOOD_NOVERBOSE_HEADER, GOOD_NOVERBOSE_STANDARD_HEADER,
               GOOD_NOVERBOSE_OBJGRP_HEADER, GOOD_NOVERBOSE_INET6_HEADER]:
