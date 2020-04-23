@@ -681,18 +681,19 @@ class Term(object):
     if self.address_exclude:
       ret_str.append('  address_exclude: %s' % sorted(self.address_exclude))
     if self.source_address:
-      ret_str.append('  source_address: %s' % sorted(self.source_address))
+      ret_str.append('  source_address: %s' %
+                     self._SortAddressesByFamily('source_address'))
     if self.source_address_exclude:
       ret_str.append('  source_address_exclude: %s' %
-                     sorted(self.source_address_exclude))
+                     self._SortAddressesByFamily('source_address_exclude'))
     if self.source_tag:
       ret_str.append('  source_tag: %s' % self.source_tag)
     if self.destination_address:
-      ret_str.append('  destination_address: %s'
-                     % sorted(self.destination_address))
+      ret_str.append('  destination_address: %s' %
+                     self._SortAddressesByFamily('destination_address'))
     if self.destination_address_exclude:
       ret_str.append('  destination_address_exclude: %s' %
-                     sorted(self.destination_address_exclude))
+                     self._SortAddressesByFamily('destination_address_exclude'))
     if self.destination_tag:
       ret_str.append('  destination_tag: %s' % self.destination_tag)
     if self.target_resources:
@@ -913,6 +914,27 @@ class Term(object):
   def __ne__(self, other):
     return not self.__eq__(other)
 
+  def _SortAddressesByFamily(self, addr_type):
+    """Provide the term address field to sort.
+
+    Method will sort v4 and then concatenate sorted v6 addresses. This will
+    support Term.__str__ function which outputs a string of
+    sorted IP addresses.
+
+    Args:
+      addr_type: string, this will be either 'source_address',
+        'source_address_exclude', 'destination_address' or
+        'destination_address_exclude'
+    Returns:
+      List of IP addresses sourted v4 then v6
+    """
+    # Sort v4 and v6
+    sort_v4 = sorted(self.GetAddressOfVersion(addr_type, 4))
+    sort_v6 = sorted(self.GetAddressOfVersion(addr_type, 6))
+
+    # Concatenate
+    return sort_v4 + sort_v6
+
   def AddressesByteLength(self, address_family=(4, 6)):
     """Returns the byte length of all IP addresses in the term.
 
@@ -976,7 +998,7 @@ class Term(object):
       addr_type: string, this will be either
         'source_address', 'source_address_exclude',
         'destination_address' or 'destination_address_exclude'
-      af: int or None, either Term.INET4 or Term.INET6
+      af: int or None, either 4 for IPv4 or 6 for IPv6
 
     Returns:
       list of addresses of the correct family.
