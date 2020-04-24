@@ -375,6 +375,15 @@ term good_term_35 {
   action:: accept
 }
 """
+GOOD_TERM_36 = """
+term good-term-36 {
+  protocol:: tcp
+  destination-address:: SOME_HOST
+  destination-address:: SOME_HOST
+  option:: inactive
+  action:: accept
+}
+"""
 GOOD_TERM_COMMENT = """
 term good-term-comment {
   comment:: "This is a COMMENT"
@@ -606,6 +615,7 @@ SUPPORTED_SUB_TOKENS = {
     },
     'option': {'established',
                'first-fragment',
+               'inactive',
                'is-fragment',
                '.*',   # not actually a lex token!
                'sample',
@@ -718,6 +728,14 @@ class JuniperTest(unittest.TestCase):
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.failUnless('icmp-code [ 3 4 ];' in output, output)
+
+  def testInactiveTerm(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_36,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.failUnless('inactive: term good-term-36 {' in output, output)
+
 
   def testInet6(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('2001::/33')]

@@ -456,6 +456,7 @@ class Term(object):
     self.flexible_match_range = []
     self.source_prefix_except = []
     self.destination_prefix_except = []
+    self.inactive = False
     # srx specific
     self.vpn = None
     # gce specific

@@ -269,9 +269,14 @@ class Term(aclgenerator.Term):
         else:
           from_str.append('%s;' % opt)
 
-    # term name
-    config.Append('term %s {' % self.term.name)
+    # if the term is inactive we have to set the prefix
+    if self.term.inactive:
+      term_prefix = 'inactive:'
+    else:
+      term_prefix = ''
 
+    # term name
+    config.Append('%s term %s {' %(term_prefix, self.term.name))
     # a default action term doesn't have any from { clause
     has_match_criteria = (self.term.address or
                           self.term.dscp_except or
@@ -845,7 +850,8 @@ class Juniper(aclgenerator.ACLGenerator):
             '.*',  # make ArbitraryOptions work, yolo.
             'sample',
             'tcp-established',
-            'tcp-initial'}
+            'tcp-initial',
+            'inactive'}
         })
     return supported_tokens, supported_sub_tokens
 
@@ -867,6 +873,7 @@ class Juniper(aclgenerator.ACLGenerator):
       enable_dsmo = 'enable_dsmo' in filter_options[1:]
       noverbose = 'noverbose' in filter_options[1:]
 
+
       if not interface_specific:
         filter_options.remove('not-interface-specific')
       if enable_dsmo:
@@ -880,7 +887,14 @@ class Juniper(aclgenerator.ACLGenerator):
       term_names = set()
       new_terms = []
       for term in terms:
+
+        # if the inactive option is set, we should deactivate the term and remove the option
+        if 'inactive' in term.option:
+          term.inactive = True
+          term.option.remove('inactive')
+
         term.name = self.FixTermLength(term.name)
+
         if term.name in term_names:
           raise JuniperDuplicateTermError('You have multiple terms named: %s' %
                                           term.name)
