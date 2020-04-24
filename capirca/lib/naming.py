@@ -260,6 +260,57 @@ class Naming(object):
         recursive_parents.append(bp)
     return recursive_parents
 
+  def GetNetChildren(self, query):
+    """Given a query token, return list of network definitions tokens within provided token.
+
+    This will only return children, not descendants of provided token.
+
+    Args:
+      query: a network token name.
+
+    Returns:
+      A list of network definitions tokens within this token.
+    """
+    return self._GetChildren(query, self.networks)
+
+  def _GetChildren(self, query, query_group):
+    """Given a naming item dict, return tokens (not IPs) contained within this value.
+
+    Args:
+      query: a token name
+      query_group: networks dict
+
+    Returns:
+      Returns a list of definitions tokens within (children) target token.
+    """
+
+    children = []
+    if query in query_group:
+      for item in query_group[query].items:
+        child = item.split('#')[0].strip()
+
+        # Determine if item a token, then it's a child
+        if not self._IsIpFormat(child):
+          children.append(child)
+
+    return children
+
+  def _IsIpFormat(self, item):
+    """Helper function for _GetChildren to detect if string is IP format.
+
+    Args:
+      item: string either a IP or token.
+    Returns:
+      True if string is a IP
+      False if string is not a IP
+    """
+    try:
+      item = item.strip()
+      nacaddr.IP(item, strict=False)
+      return True
+    except ValueError:
+      return False
+
   def GetServiceNames(self):
     """Returns the list of all known service names."""
     return list(self.services.keys())
