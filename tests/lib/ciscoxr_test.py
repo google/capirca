@@ -75,6 +75,20 @@ term good-term-4 {
 }
 """
 
+GOOD_TERM_5 = """
+term good-term-5 {
+  action:: accept
+  next-ip:: TEST_NEXT
+}
+"""
+
+BAD_TERM_ABF = """
+term bad-term-abf {
+  action:: deny
+  next-ip:: TEST_NEXT
+}
+"""
+
 EXPIRED_TERM = """
 term is_expired {
   expiration:: 2001-01-01
@@ -93,6 +107,7 @@ SUPPORTED_TOKENS = {
     'expiration',
     'icmp_code',
     'icmp_type',
+    'next_ip',
     'stateless_reply',
     'logging',
     'name',
@@ -217,6 +232,69 @@ class CiscoXRTest(unittest.TestCase):
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST2'),
                                              mock.call('SOME_HOST2')])
     self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
+
+  def testAclBasedForwardingIPv4(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
+
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_5, self.naming)
+    acl = ciscoxr.CiscoXR(pol, EXP_INFO)
+    expected = 'ipv4 access-list test-filter'
+    self.assertIn(expected, str(acl), '[%s]' % str(acl))
+    expected = ' permit ipv4 any any nexthop1 ipv4 10.1.1.1'
+    self.assertIn(expected, str(acl), str(acl))
+
+    self.naming.GetNetAddr.assert_has_calls([mock.call('TEST_NEXT')])
+
+  def testAclBasedForwardingIPv6(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('2001::3/128')]
+
+    pol = policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_5, self.naming)
+    acl = ciscoxr.CiscoXR(pol, EXP_INFO)
+    expected = 'ipv6 access-list ipv6-test-filter'
+    self.assertIn(expected, str(acl), '[%s]' % str(acl))
+    expected = ' permit ipv6 any any nexthop1 ipv6 2001::3'
+    self.assertIn(expected, str(acl), str(acl))
+
+    self.naming.GetNetAddr.assert_has_calls([mock.call('TEST_NEXT')])
+
+  def testAclBasedForwardingMultipleIP(self):
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IP('10.1.1.0/32'),
+        nacaddr.IP('10.1.1.1/32')
+    ]
+
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_5, self.naming)
+    acl = ciscoxr.CiscoXR(pol, EXP_INFO)
+    self.assertRaises(ciscoxr.cisco.CiscoNextIpError, str, acl)
+
+    self.naming.GetNetAddr.assert_has_calls([mock.call('TEST_NEXT')])
+
+  def testAclBasedForwardingNetworkIP(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.0/31')]
+
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_5, self.naming)
+    acl = ciscoxr.CiscoXR(pol, EXP_INFO)
+    self.assertRaises(ciscoxr.cisco.CiscoNextIpError, str, acl)
+
+    self.naming.GetNetAddr.assert_has_calls([mock.call('TEST_NEXT')])
+
+  def testAclBasedForwardingNotIP(self):
+    self.naming.GetNetAddr.return_value = ['not_ip_address']
+
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_5, self.naming)
+    acl = ciscoxr.CiscoXR(pol, EXP_INFO)
+    self.assertRaises(ciscoxr.cisco.CiscoNextIpError, str, acl)
+
+    self.naming.GetNetAddr.assert_has_calls([mock.call('TEST_NEXT')])
+
+  def testAclBasedForwardingNotAccept(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
+
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + BAD_TERM_ABF, self.naming)
+    acl = ciscoxr.CiscoXR(pol, EXP_INFO)
+    self.assertRaises(ciscoxr.cisco.CiscoNextIpError, str, acl)
+
+    self.naming.GetNetAddr.assert_has_calls([mock.call('TEST_NEXT')])
 
   def testBuildTokens(self):
     pol1 = ciscoxr.CiscoXR(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,

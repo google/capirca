@@ -50,6 +50,18 @@ class CiscoXR(cisco.Cisco):
       target.append('ipv4 access-list %s' % filter_name)
     return target
 
+  def _BuildTokens(self):
+    """Build supported tokens for platform.
+
+    Returns:
+      tuple containing both supported tokens and sub tokens
+    """
+    supported_tokens, supported_sub_tokens = super(CiscoXR, self)._BuildTokens()
+
+    supported_tokens |= {'next_ip'}
+
+    return supported_tokens, supported_sub_tokens
+
   def _GetObjectGroupTerm(self, term, filter_name, verbose=True):
     """Returns an ObjectGroupTerm object."""
     return CiscoXRObjectGroupTerm(term, filter_name, verbose=verbose)

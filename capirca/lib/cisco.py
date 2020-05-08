@@ -52,6 +52,10 @@ class CiscoDuplicateTermError(Error):
   """Raised on duplicate term names."""
 
 
+class CiscoNextIpError(Error):
+  """Raised when next-ip is misconfigured."""
+
+
 class UnsupportedCiscoAccessListError(Error):
   """Raised when we're give a non named access list."""
 
@@ -747,6 +751,25 @@ class Term(aclgenerator.Term):
     if ('ip' in protocol) and ('fragments' in opts):
       if 'fragments' not in self.options:
         self.options.append('fragments')
+    # ACL-based Forwarding
+    if (self.platform == 'ciscoxr') and self.term.next_ip and (
+        'nexthop1' not in opts):
+      if self.term.action[0] != 'accept':
+        raise CiscoNextIpError('Next IP value is only valid for accept action. '
+                               'Invaild term: %s' % self.term.name)
+      if len(self.term.next_ip) > 1:
+        raise CiscoNextIpError('The following term has more than one next IP '
+                               'value: %s' % self.term.name)
+      if (not isinstance(self.term.next_ip[0], nacaddr.IPv4) and
+          not isinstance(self.term.next_ip[0], nacaddr.IPv6)):
+        raise CiscoNextIpError('Next IP value must be an IP address. '
+                               'Invalid term: %s' % self.term.name)
+      if self.term.next_ip[0].num_addresses > 1:
+        raise CiscoNextIpError('The following term has a subnet instead of a '
+                               'host: %s' % self.term.name)
+      nexthop = self.term.next_ip[0].network_address
+      nexthop_protocol = 'ipv4' if nexthop.version == 4 else 'ipv6'
+      self.options.append('nexthop1 %s %s' % (nexthop_protocol, nexthop))
 
     # ports
     source_port = [()]
