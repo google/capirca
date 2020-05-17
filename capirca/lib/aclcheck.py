@@ -120,7 +120,7 @@ class AclCheck(object):
     for header, terms in self.pol_obj.filters:
       check_target = str(header.target[0])
       if check_target == 'srx':
-        delim = "_"
+        delim = " "
         filtername = delim.join(header.target[0].options)
       else:
         filtername = header.target[0].options[0]
