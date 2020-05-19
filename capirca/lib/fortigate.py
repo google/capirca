@@ -21,47 +21,53 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import datetime
-import six
 
-from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
+import six
+from absl import logging
 
 
 _ACTION_TABLE = {
-  'accept': 'accept',
-  'deny': 'deny',
-  'reject': 'deny',
-  'reject-with-tcp-rst': 'deny',  # tcp rst not supported
+    'accept': 'accept',
+    'deny': 'deny',
+    'reject': 'deny',
+    'reject-with-tcp-rst': 'deny',  # tcp rst not supported
 }
 
 
 class Error(Exception):
+  """Generic error class."""
   pass
 
 
 class FilterError(Error):
+  """Generic pol Filter class."""
   pass
 
 
 class FortiGateValueError(Error):
+  """Raised when invalid values provided."""
   pass
 
 
 class FortiGateFindServiceError(Error):
+  """Raised when unable to get the service name."""
   pass
 
 
 class FortiGateDuplicateTermError(Error):
+  """Raised when duplicate term found."""
   pass
 
 
-class FortiGatePortDoesNotExist(Error):
+class FortiGatePortDoesNotExistError(Error):
+  """Raised when port is not found in ports list."""
   pass
 
 
 class FortigatePortMap(object):
-  """Map port numbers to service names"""
+  """Map port numbers to service names."""
   _PORTS_TCP = {
       179: 'BGP',
       53: 'DNS',
@@ -117,19 +123,23 @@ class FortigatePortMap(object):
 
   @staticmethod
   def GetProtocol(protocol, port=None):
-    """
-    Converts a port number to a service name.
-    :param protocol: string representing protocol (tcp, udp, etc).
-    :param port: integer representing the port number.
-    :return: the service name of provided port-protocol
+    """Converts a port number to a service name.
+
+    Args:
+      protocol: string representing protocol (tcp, udp, etc)
+      port: integer representing the port number
+
+    Returns:
+      string
+
+    Raises:
+      FortiGateValueError: When unsupported protocol is used.
     """
     f_proto = FortigatePortMap._PROTO_MAP.get(protocol, None)
     if f_proto is None:
       raise FortiGateValueError(
-        '%r protocol is not supported by Fortigate, supported protocols = %r' % (
-          protocol, FortigatePortMap._PROTO_MAP.keys()
-        )
-      )
+          '%r protocol is unsupported, supported protocols = %r' % (
+              protocol, FortigatePortMap._PROTO_MAP.keys()))
 
     if isinstance(f_proto, six.string_types):
       return f_proto
@@ -137,15 +147,13 @@ class FortigatePortMap(object):
       try:
         return f_proto[port]
       except KeyError:
-        raise FortiGatePortDoesNotExist
+        raise FortiGatePortDoesNotExistError
     else:
       raise FortiGateFindServiceError(
-        'failed to get service from %r protocol and %r port' % (protocol, port)
-      )
-
+          'service not found from %r protocol and %r port' % (protocol, port))
 
 class ObjectsContainer:
-  """a Container that holds service and network objects"""
+  """A Container that holds service and network objects."""
 
   def __init__(self):
     self._FW_ADDRESSES = []
@@ -154,17 +162,17 @@ class ObjectsContainer:
     self._FW_DUP_CHECK = set()
 
   def get_fw_addresses(self):
-    """return the collected addresses"""
+    """Returns the collected addresses."""
     self._FW_ADDRESSES.extend([' ', 'end', ' '])
     return self._FW_ADDRESSES
 
   def get_fw_services(self):
-    """return the collected services"""
+    """Returns the collected services."""
     self._FW_SERVICES.extend([' ', 'end', ' '])
     return self._FW_SERVICES
 
   def _add_address_to_fw_addresses(self, addr):
-    """add address to address store"""
+    """Add address to address store."""
     if addr in self._FW_DUP_CHECK:
       return
     self._FW_ADDRESSES.extend(['\tedit %s' % addr,
@@ -173,22 +181,21 @@ class ObjectsContainer:
     self._FW_DUP_CHECK.add(addr)
 
   def _add_service_to_fw_services(self, protocol, service):
-    """add service to services store"""
+    """Add service to services store."""
     if service in self._FW_DUP_CHECK:
       return
 
     self._FW_SERVICES.extend(
-      ['\tedit %s' % service,
-       '\t\tset protocol TCP/UDP',
-       '\t\tset %s-portrange %s' % (protocol.lower(), service),
-       '\tnext']
-    )
+        ['\tedit %s' % service,
+         '\t\tset protocol TCP/UDP',
+         '\t\tset %s-portrange %s' % (protocol.lower(), service),
+         '\tnext'])
 
     self._FW_DUP_CHECK.add(service)
 
 
 class Term(aclgenerator.Term):
-  """Single Firewall Policy"""
+  """Single Firewall Policy."""
   ALLOWED_PROTO_STRINGS = ['gre', 'icmp', 'ip', 'tcp', 'udp']
   COMMENT_MAX_WIDTH = 70
 
@@ -204,7 +211,7 @@ class Term(aclgenerator.Term):
 
   @staticmethod
   def _get_addresses_name(addresses):
-    """return the addresses or 'all' if no addresses specified"""
+    """Returns the addresses or 'all' if no addresses specified."""
     v4_addresses = [x.with_prefixlen for x in addresses if
                     not isinstance(x, nacaddr.IPv6)]
     addresses = ' '.join(v4_addresses)
@@ -212,7 +219,7 @@ class Term(aclgenerator.Term):
 
   @staticmethod
   def clean_ports(src_ports, dest_ports):
-    """return a set() of src and dest ports"""
+    """Returns a set() of src and dest ports."""
     all_ports = []
     if src_ports:
       all_ports += src_ports
@@ -220,29 +227,31 @@ class Term(aclgenerator.Term):
       all_ports += dest_ports
     return set(all_ports)
 
-  def _get_services_string(self, protocol, ports):
-    """
-    get the service name if exist, if not create a service object and return the name
-    :param protocol: list of protocols
-    :param ports: list of ports
-    :return:
-    """
+  def _get_services_string(self, protocols, ports):
+    """Get the service name, if not exist create it.
 
+    Args:
+      protocol: list of protocols
+      port: list of ports
+
+    Returns:
+      string (all services separated by spaces.
+    """
     services = []
-    if protocol and not ports:
-      services.append(FortigatePortMap.GetProtocol(protocol[0]))
+    if protocols and not ports:
+      services.append(FortigatePortMap.GetProtocol(protocols[0]))
     for port in ports:
       try:
-        service = FortigatePortMap.GetProtocol(protocol[0], port[0])
-      except FortiGatePortDoesNotExist:
-        self._obj_container._add_service_to_fw_services(protocol[0], port[0])
+        service = FortigatePortMap.GetProtocol(protocols[0], port[0])
+      except FortiGatePortDoesNotExistError:
+        self._obj_container._add_service_to_fw_services(protocols[0], port[0])
         service = str(port[0])
       services.append(service)
 
     return ' '.join(services) or 'ALL'
 
   def _generate_address_names(self, *addresses):
-    """this will generate the addresses names (object-network names)"""
+    """Generate the addresses names (object-network names)."""
     for group in addresses:
       for addr in group:
         if addr and not isinstance(addr, nacaddr.IPv6):
@@ -256,14 +265,16 @@ class Term(aclgenerator.Term):
 
     dest_addresses = self._get_addresses_name(self._term.destination_address)
     src_addresses = self._get_addresses_name(self._term.source_address)
-    all_ports = self.clean_ports(self._term.source_port, self._term.destination_port)
+    all_ports = self.clean_ports(self._term.source_port,
+                                 self._term.destination_port)
 
     services = self._get_services_string(self._term.protocol,
                                          all_ports)
 
     lines.append('\t\tset comments %s' % self._term.name)
     lines.append('\t\tset srcintf %s' % (self._term.source_interface or 'any'))
-    lines.append('\t\tset dstintf %s' % (self._term.destination_interface or 'any'))
+    lines.append(
+        '\t\tset dstintf %s' % (self._term.destination_interface or 'any'))
     lines.append('\t\tset dstaddr %s' % dest_addresses)
     lines.append('\t\tset srcaddr %s' % src_addresses)
     lines.append('\t\tset action %s' % _ACTION_TABLE.get(self._term.action[0]))
@@ -276,7 +287,7 @@ class Term(aclgenerator.Term):
 
 
 class Fortigate(aclgenerator.ACLGenerator):
-  """A cisco policy object."""
+  """A Fortigate policy object."""
 
   _PLATFORM = 'fortigate'
   _DEFAULT_PROTOCOL = 'ALL'
@@ -294,7 +305,7 @@ class Fortigate(aclgenerator.ACLGenerator):
     """Build supported tokens for platform.
 
     Returns:
-      tuple containing both supported tokens and sub tokens
+      tuple containing both supported tokens and sub tokens.
     """
     supported_tokens, supported_sub_tokens = super(Fortigate,
                                                    self)._BuildTokens()
@@ -311,7 +322,7 @@ class Fortigate(aclgenerator.ACLGenerator):
     return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):
-    """Translate Capirca pol to fortigate pol"""
+    """Translate Capirca pol to fortigate pol."""
     self.fortigate_policies = []
     current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
@@ -326,7 +337,7 @@ class Fortigate(aclgenerator.ACLGenerator):
 
       if (len(filter_options) < 2 or filter_options[0] != 'from-id'):
         raise FilterError(
-          'Fortigate Firewall filter arguments must specify from_id')
+            'Fortigate Firewall filter arguments must specify from_id')
 
       from_id = filter_options[1]
       Term.CURRENT_ID = int(from_id)
