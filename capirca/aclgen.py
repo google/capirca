@@ -138,11 +138,12 @@ def SkipLines(text, skip_line_func=False):
   return [x for x in text if not skip_line_func(x)]
 
 
-def RenderFile(input_file, output_directory, definitions,
+def RenderFile(base_directory, input_file, output_directory, definitions,
                exp_info, write_files):
   """Render a single file.
 
   Args:
+    base_directory: The base directory to look for acls.
     input_file: the name of the input policy file.
     output_directory: the directory in which we place the rendered file.
     definitions: the definitions from naming.Naming().
@@ -186,7 +187,7 @@ def RenderFile(input_file, output_directory, definitions,
   try:
     pol = policy.ParsePolicy(
         conf, definitions, optimize=FLAGS.optimize,
-        base_dir=FLAGS.base_directory, shade_check=FLAGS.shade_check)
+        base_dir=base_directory, shade_check=FLAGS.shade_check)
   except policy.ShadingError as e:
     logging.warn('shading errors for %s:\n%s', input_file, e)
     return
@@ -459,48 +460,38 @@ def _WriteFile(output_file, file_string):
     raise
 
 
-def main(unused_argv):
-  if FLAGS.verbose:
-    logging.set_verbosity(logging.INFO)
-  if FLAGS.debug:
-    logging.set_verbosity(logging.DEBUG)
-  logging.debug('binary: %s\noptimize: %d\nbase_directory: %s\n'
-                'policy_file: %s\nrendered_acl_directory: %s',
-                str(sys.argv[0]),
-                int(FLAGS.optimize),
-                str(FLAGS.base_directory),
-                str(FLAGS.policy_file),
-                str(FLAGS.output_directory))
-
+def Run(base_directory, definitions_directory, policy_file, output_directory,
+        context):
   definitions = None
   try:
-    definitions = naming.Naming(FLAGS.definitions_directory)
+    definitions = naming.Naming(definitions_directory)
   except naming.NoDefinitionsError:
-    err_msg = 'bad definitions directory: %s' % FLAGS.definitions_directory
+    err_msg = 'bad definitions directory: %s' % definitions_directory
     logging.fatal(err_msg)
 
   # thead-safe list for storing files to write
-  manager = multiprocessing.Manager()
+  manager = context.Manager()
   write_files = manager.list()
 
   with_errors = False
-  if FLAGS.policy_file:
+  if policy_file:
     # render just one file
     logging.info('rendering one file')
-    RenderFile(FLAGS.policy_file, FLAGS.output_directory, definitions,
+    RenderFile(base_directory, policy_file, output_directory, definitions,
                FLAGS.exp_info, write_files)
   else:
     # render all files in parallel
     logging.info('finding policies...')
     pols = []
-    pols.extend(DescendRecursively(FLAGS.base_directory, FLAGS.output_directory,
+    pols.extend(DescendRecursively(base_directory, output_directory,
                                    definitions))
 
-    pool = multiprocessing.Pool(processes=FLAGS.max_renderers)
+    pool = context.Pool(processes=FLAGS.max_renderers)
     results = []
     for x in pols:
       results.append(pool.apply_async(RenderFile,
-                                      args=(x.get('in_file'),
+                                      args=(base_directory,
+                                            x.get('in_file'),
                                             x.get('out_dir'),
                                             definitions,
                                             FLAGS.exp_info,
@@ -525,8 +516,25 @@ def main(unused_argv):
     logging.info('done.')
 
 
-def entry_point():
-  app.run(main)
+def main(argv):
+  del argv  # Unused.
+
+  if FLAGS.verbose:
+    logging.set_verbosity(logging.INFO)
+  if FLAGS.debug:
+    logging.set_verbosity(logging.DEBUG)
+  logging.debug('binary: %s\noptimize: %d\nbase_directory: %s\n'
+                'policy_file: %s\nrendered_acl_directory: %s',
+                str(sys.argv[0]),
+                int(FLAGS.optimize),
+                str(FLAGS.base_directory),
+                str(FLAGS.policy_file),
+                str(FLAGS.output_directory))
+
+  self.context = multiprocessing.get_context()
+  Run(FLAGS.base_directory, FLAGS.definitions_directory, FLAGS.policy_file,
+      FLAGS.output_directory, context)
+
 
 if __name__ == '__main__':
-  entry_point()
+  app.run(main)

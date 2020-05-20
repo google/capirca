@@ -22,7 +22,6 @@ import shutil
 import tempfile
 
 from absl import flags
-from absl.testing import flagsaver
 from capirca import aclgen
 import mock
 import unittest
@@ -35,9 +34,6 @@ class TestAclGenDemo(unittest.TestCase):
   """Ensure Capirca demo runs successfully out-of-the-box."""
 
   def setUp(self):
-    # Need to initialize flags since unittest doesn't do this for us.
-    FLAGS(['aclgen_test.py'])
-    self.saved_flag_values = flagsaver.save_flag_values()
     self.test_subdirectory = tempfile.mkdtemp()
     self.def_dir = os.path.join(self.test_subdirectory, 'def')
     self.pol_dir = os.path.join(self.test_subdirectory, 'policies')
@@ -45,16 +41,12 @@ class TestAclGenDemo(unittest.TestCase):
     os.mkdir(self.test_subdirectory)
     shutil.copytree('def', self.def_dir)
     shutil.copytree('policies', self.pol_dir)
-    FLAGS.base_directory = self.pol_dir
-    FLAGS.definitions_directory = self.def_dir
-    FLAGS.output_directory = self.test_subdirectory
-
-  def tearDown(self):
-    flagsaver.restore_flag_values(self.saved_flag_values)
+    self.context = multiprocessing.get_context()
 
   @mock.patch.object(aclgen, '_WriteFile', autospec=True)
   def test_smoke_test_generates_successfully(self, mock_writer):
-    aclgen.main([])
+    aclgen.Run(self.pol_dir, self.def_dir, None, self.test_subdirectory,
+               self.context)
     files = ['sample_cisco_lab.acl', 'sample_cloudarmor.gca', 'sample_gce.gce',
              'sample_ipset.ips', 'sample_juniper_loopback.jcl',
              'sample_multitarget.acl', 'sample_multitarget.asa',
@@ -69,9 +61,10 @@ class TestAclGenDemo(unittest.TestCase):
 
   @mock.patch.object(aclgen, '_WriteFile', autospec=True)
   def test_generate_single_policy(self, mock_writer):
-    FLAGS.policy_file = os.path.join(self.test_subdirectory,
-                                     'policies/pol/sample_cisco_lab.pol')
-    aclgen.main([])
+    policy_file = os.path.join(self.test_subdirectory,
+                               'policies/pol/sample_cisco_lab.pol')
+    aclgen.Run(self.pol_dir, self.def_dir, policy_file,
+               self.test_subdirectory, self.context)
     mock_writer.assert_called_with(
         os.path.join(self.test_subdirectory, 'sample_cisco_lab.acl'), mock.ANY)
 
