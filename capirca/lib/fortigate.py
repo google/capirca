@@ -152,40 +152,40 @@ class FortigatePortMap(object):
       raise FortiGateFindServiceError(
           'service not found from %r protocol and %r port' % (protocol, port))
 
-class ObjectsContainer:
+class ObjectsContainer(object):
   """A Container that holds service and network objects."""
 
   def __init__(self):
-    self._FW_ADDRESSES = []
-    self._FW_SERVICES = []
+    self._fw_addresses = []
+    self._fw_services = []
 
     self._FW_DUP_CHECK = set()
 
   def get_fw_addresses(self):
     """Returns the collected addresses."""
-    self._FW_ADDRESSES.extend([' ', 'end', ' '])
-    return self._FW_ADDRESSES
+    self._fw_addresses.extend([' ', 'end', ' '])
+    return self._fw_addresses
 
   def get_fw_services(self):
     """Returns the collected services."""
-    self._FW_SERVICES.extend([' ', 'end', ' '])
-    return self._FW_SERVICES
+    self._fw_services.extend([' ', 'end', ' '])
+    return self._fw_services
 
-  def _add_address_to_fw_addresses(self, addr):
+  def add_address_to_fw_addresses(self, addr):
     """Add address to address store."""
     if addr in self._FW_DUP_CHECK:
       return
-    self._FW_ADDRESSES.extend(['\tedit %s' % addr,
+    self._fw_addresses.extend(['\tedit %s' % addr,
                                '\t\tset subnet %s' % addr,
                                '\tnext'])
     self._FW_DUP_CHECK.add(addr)
 
-  def _add_service_to_fw_services(self, protocol, service):
+  def add_service_to_fw_services(self, protocol, service):
     """Add service to services store."""
     if service in self._FW_DUP_CHECK:
       return
 
-    self._FW_SERVICES.extend(
+    self._fw_services.extend(
         ['\tedit %s' % service,
          '\t\tset protocol TCP/UDP',
          '\t\tset %s-portrange %s' % (protocol.lower(), service),
@@ -244,7 +244,7 @@ class Term(aclgenerator.Term):
       try:
         service = FortigatePortMap.GetProtocol(protocols[0], port[0])
       except FortiGatePortDoesNotExistError:
-        self._obj_container._add_service_to_fw_services(protocols[0], port[0])
+        self._obj_container.add_service_to_fw_services(protocols[0], port[0])
         service = str(port[0])
       services.append(service)
 
@@ -255,7 +255,7 @@ class Term(aclgenerator.Term):
     for group in addresses:
       for addr in group:
         if addr and not isinstance(addr, nacaddr.IPv6):
-          self._obj_container._add_address_to_fw_addresses(addr.with_prefixlen)
+          self._obj_container.add_address_to_fw_addresses(addr.with_prefixlen)
 
   def __str__(self):
     lines = []

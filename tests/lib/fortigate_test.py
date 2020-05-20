@@ -19,8 +19,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import string
 import re
+import string
 import unittest
 
 from capirca.lib import fortigate
@@ -58,6 +58,8 @@ term good-term-2 {{
 }}
 """
 
+EXP_INFO = 2
+
 
 class CustomFormatter(string.Formatter):
   DEFAULT_VALUES = {
@@ -87,9 +89,6 @@ class CustomFormatter(string.Formatter):
       return kwds[key]
     except KeyError:
       return self.DEFAULT_VALUES[key]
-
-
-EXP_INFO = 2
 
 
 class FortigateTest(unittest.TestCase):
