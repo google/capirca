@@ -752,11 +752,9 @@ class Term(aclgenerator.Term):
       if 'fragments' not in self.options:
         self.options.append('fragments')
     # ACL-based Forwarding
-    if (self.platform == 'ciscoxr') and self.term.next_ip and (
-        'nexthop1' not in opts):
-      if self.term.action[0] != 'accept':
-        raise CiscoNextIpError('Next IP value is only valid for accept action. '
-                               'Invaild term: %s' % self.term.name)
+    if (self.platform == 'ciscoxr'
+       ) and not self.term.action and self.term.next_ip and (
+           'nexthop1' not in opts):
       if len(self.term.next_ip) > 1:
         raise CiscoNextIpError('The following term has more than one next IP '
                                'value: %s' % self.term.name)
@@ -770,6 +768,10 @@ class Term(aclgenerator.Term):
       nexthop = self.term.next_ip[0].network_address
       nexthop_protocol = 'ipv4' if nexthop.version == 4 else 'ipv6'
       self.options.append('nexthop1 %s %s' % (nexthop_protocol, nexthop))
+      action = _ACTION_TABLE.get('accept')
+
+    if self.term.action:
+      action = _ACTION_TABLE.get(str(self.term.action[0]))
 
     # ports
     source_port = [()]
@@ -813,16 +815,11 @@ class Term(aclgenerator.Term):
               opts = fixed_opts[proto]
               for icmp_type in icmp_types:
                 for icmp_code in icmp_codes:
-                  ret_str.extend(self._TermletToStr(
-                      _ACTION_TABLE.get(str(self.term.action[0])),
-                      proto,
-                      saddr,
-                      self._FormatPort(sport, proto),
-                      daddr,
-                      self._FormatPort(dport, proto),
-                      icmp_type,
-                      icmp_code,
-                      opts))
+                  ret_str.extend(
+                      self._TermletToStr(action, proto, saddr,
+                                         self._FormatPort(sport, proto), daddr,
+                                         self._FormatPort(dport, proto),
+                                         icmp_type, icmp_code, opts))
 
     return '\n'.join(ret_str)
 

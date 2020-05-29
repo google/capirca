@@ -77,14 +77,13 @@ term good-term-4 {
 
 GOOD_TERM_5 = """
 term good-term-5 {
-  action:: accept
   next-ip:: TEST_NEXT
 }
 """
 
-BAD_TERM_ABF = """
-term bad-term-abf {
-  action:: deny
+GOOD_TERM_6 = """
+term good-term-6 {
+  action:: accept
   next-ip:: TEST_NEXT
 }
 """
@@ -287,14 +286,17 @@ class CiscoXRTest(unittest.TestCase):
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('TEST_NEXT')])
 
-  def testAclBasedForwardingNotAccept(self):
+  def testAclBasedForwardingActionAcceptNextIpIgnored(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
 
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + BAD_TERM_ABF, self.naming)
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_6, self.naming)
     acl = ciscoxr.CiscoXR(pol, EXP_INFO)
-    self.assertRaises(ciscoxr.cisco.CiscoNextIpError, str, acl)
-
-    self.naming.GetNetAddr.assert_has_calls([mock.call('TEST_NEXT')])
+    expected = 'ipv4 access-list test-filter'
+    self.assertIn(expected, str(acl), '[%s]' % str(acl))
+    expected = ' permit ipv4 any any'
+    self.assertIn(expected, str(acl), str(acl))
+    expected = 'nexthop1'
+    self.assertNotIn(expected, str(acl), str(acl))
 
   def testBuildTokens(self):
     pol1 = ciscoxr.CiscoXR(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
