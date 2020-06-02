@@ -26,6 +26,7 @@ import multiprocessing
 import os
 import pathlib
 import sys
+import re
 
 from absl import app
 from absl import flags
@@ -53,6 +54,7 @@ from capirca.lib import policy
 from capirca.lib import speedway
 from capirca.lib import srxlo
 from capirca.lib import windows_advfirewall
+from capirca.utils import platform_policies
 
 
 FLAGS = flags.FLAGS
@@ -172,27 +174,8 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
   logging.debug('rendering file: %s into %s', input_file,
                 output_directory)
   pol = None
-  jcl = False
-  acl = False
-  asacl = False
-  aacl = False
-  bacl = False
-  eacl = False
-  gca = False
-  gcefw = False
-  ips = False
-  ipt = False
-  spd = False
-  nsx = False
-  pcap_accept = False
-  pcap_deny = False
-  pf = False
-  srx = False
-  jsl = False
-  nft = False
-  win_afw = False
-  xacl = False
-  paloalto = False
+  
+  platforms_pol_data = platform_policies.GetDefaultPolicyListAndRenderers()
 
   try:
     with open(input_file) as f:
@@ -216,137 +199,32 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
   platforms = set()
   for header in pol.headers:
     platforms.update(header.platforms)
-
-  if 'juniper' in platforms:
-    jcl = copy.deepcopy(pol)
-  if 'cisco' in platforms:
-    acl = copy.deepcopy(pol)
-  if 'ciscoasa' in platforms:
-    asacl = copy.deepcopy(pol)
-  if 'brocade' in platforms:
-    bacl = copy.deepcopy(pol)
-  if 'arista' in platforms:
-    eacl = copy.deepcopy(pol)
-  if 'aruba' in platforms:
-    aacl = copy.deepcopy(pol)
-  if 'ipset' in platforms:
-    ips = copy.deepcopy(pol)
-  if 'iptables' in platforms:
-    ipt = copy.deepcopy(pol)
-  if 'nsxv' in platforms:
-    nsx = copy.deepcopy(pol)
-  if 'packetfilter' in platforms:
-    pf = copy.deepcopy(pol)
-  if 'pcap' in platforms:
-    pcap_accept = copy.deepcopy(pol)
-    pcap_deny = copy.deepcopy(pol)
-  if 'speedway' in platforms:
-    spd = copy.deepcopy(pol)
-  if 'srx' in platforms:
-    srx = copy.deepcopy(pol)
-  if 'srxlo' in platforms:
-    jsl = copy.deepcopy(pol)
-  if 'windows_advfirewall' in platforms:
-    win_afw = copy.deepcopy(pol)
-  if 'ciscoxr' in platforms:
-    xacl = copy.deepcopy(pol)
-  if 'nftables' in platforms:
-    nft = copy.deepcopy(pol)
-  if 'gce' in platforms:
-    gcefw = copy.deepcopy(pol)
-  if 'paloalto' in platforms:
-    paloalto = copy.deepcopy(pol)
-  if 'cloudarmor' in platforms:
-    gca = copy.deepcopy(pol)
+  
+  for platform in platforms_pol_data:
+    if platform in platforms:
+      platforms_pol_data[platform]['policy'] = copy.deepcopy(pol)
+  
 
   if not output_directory.endswith('/'):
     output_directory += '/'
-
+  
   try:
-    if jcl:
-      acl_obj = juniper.Juniper(jcl, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if srx:
-      acl_obj = junipersrx.JuniperSRX(srx, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if acl:
-      acl_obj = cisco.Cisco(acl, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if asacl:
-      acl_obj = ciscoasa.CiscoASA(asacl, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if aacl:
-      acl_obj = aruba.Aruba(aacl, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if bacl:
-      acl_obj = brocade.Brocade(bacl, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if eacl:
-      acl_obj = arista.Arista(eacl, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if ips:
-      acl_obj = ipset.Ipset(ips, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if ipt:
-      acl_obj = iptables.Iptables(ipt, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if nsx:
-      acl_obj = nsxv.Nsxv(nsx, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if spd:
-      acl_obj = speedway.Speedway(spd, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if pcap_accept:
-      acl_obj = pcap.PcapFilter(pcap_accept, exp_info)
-      RenderACL(str(acl_obj), '-accept' + acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if pcap_deny:
-      acl_obj = pcap.PcapFilter(pcap_deny, exp_info, invert=True)
-      RenderACL(str(acl_obj), '-deny' + acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if pf:
-      acl_obj = packetfilter.PacketFilter(pf, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if win_afw:
-      acl_obj = windows_advfirewall.WindowsAdvFirewall(win_afw, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if jsl:
-      acl_obj = srxlo.SRXlo(jsl, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if xacl:
-      acl_obj = ciscoxr.CiscoXR(xacl, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if nft:
-      acl_obj = nftables.Nftables(nft, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if gcefw:
-      acl_obj = gce.GCE(gcefw, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if paloalto:
-      acl_obj = paloaltofw.PaloAltoFW(paloalto, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
-    if gca:
-      acl_obj = cloudarmor.CloudArmor(gca, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+    for platform in platforms_pol_data:
+      platform_policy = platforms_pol_data[platform]['policy']
+
+      if platform_policy:
+        renderer = platforms_pol_data[platform]['renderer']
+        acl_obj = renderer(platform_policy, exp_info)
+        acl_suffix = acl_obj.SUFFIX
+
+        if platform == 'pcap_accept':
+          acl_suffix = '-accept' + acl_suffix
+        elif platform == 'pcap_deny':
+          acl_suffix = '-deny' + acl_suffix
+
+        RenderACL(str(acl_obj), acl_suffix, output_directory,
+                  input_file, write_files)
+  
   # TODO(robankeny) add additional errors.
   except (juniper.Error, junipersrx.Error, cisco.Error, ipset.Error,
           iptables.Error, speedway.Error, pcap.Error,
