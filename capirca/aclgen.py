@@ -26,35 +26,13 @@ import multiprocessing
 import os
 import pathlib
 import sys
-import re
 
 from absl import app
 from absl import flags
 from absl import logging
-from capirca.lib import aclgenerator
-from capirca.lib import arista
-from capirca.lib import aruba
-from capirca.lib import brocade
-from capirca.lib import cisco
-from capirca.lib import ciscoasa
-from capirca.lib import ciscoxr
-from capirca.lib import cloudarmor
-from capirca.lib import gce
-from capirca.lib import ipset
-from capirca.lib import iptables
-from capirca.lib import juniper
-from capirca.lib import junipersrx
 from capirca.lib import naming
-from capirca.lib import nftables
-from capirca.lib import nsxv
-from capirca.lib import packetfilter
-from capirca.lib import paloaltofw
-from capirca.lib import pcap
 from capirca.lib import policy
-from capirca.lib import speedway
-from capirca.lib import srxlo
-from capirca.lib import windows_advfirewall
-from capirca.utils import platform_policies
+from capirca.utils.platutils import LoadExportedPlatforms
 
 
 FLAGS = flags.FLAGS
@@ -174,8 +152,6 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
   logging.debug('rendering file: %s into %s', input_file,
                 output_directory)
   pol = None
-  
-  platforms_pol_data = platform_policies.GetDefaultPolicyListAndRenderers()
 
   try:
     with open(input_file) as f:
@@ -196,31 +172,22 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
     raise ACLParserError('Error parsing policy file %s:\n%s%s' % (
         input_file, sys.exc_info()[0], sys.exc_info()[1]))
 
-  platforms = set()
+  header_platforms = set()
   for header in pol.headers:
-    platforms.update(header.platforms)
+    header_platforms.update(header.platforms)
   
-  for platform in platforms_pol_data:
-    if platform in platforms:
-      platforms_pol_data[platform]['policy'] = copy.deepcopy(pol)
-  
+  exported_platforms = LoadExportedPlatforms()
 
   if not output_directory.endswith('/'):
     output_directory += '/'
   
   try:
-    for platform in platforms_pol_data:
-      platform_policy = platforms_pol_data[platform]['policy']
-
-      if platform_policy:
-        renderer = platforms_pol_data[platform]['renderer']
-        acl_obj = renderer(platform_policy, exp_info)
+    for platform in exported_platforms:
+      if platform.PLATFORM in header_platforms:
+        policy_data = copy.deepcopy(pol)
+        renderer = platform.RENDERER
+        acl_obj = renderer(policy_data, exp_info)
         acl_suffix = acl_obj.SUFFIX
-
-        if platform == 'pcap_accept':
-          acl_suffix = '-accept' + acl_suffix
-        elif platform == 'pcap_deny':
-          acl_suffix = '-deny' + acl_suffix
 
         RenderACL(str(acl_obj), acl_suffix, output_directory,
                   input_file, write_files)
