@@ -343,10 +343,10 @@ class FortigateTest(unittest.TestCase):
 
   def testPortMap(self):
     port_map = fortigate.FortigatePortMap()
-    self.assertEqual('SSH', port_map.GetProtocol('tcp', 22))
+    self.assertEqual('SSH', port_map.get_protocol('tcp', 22))
     self.assertRaises(fortigate.FortiGatePortDoesNotExistError,
-                      port_map.GetProtocol,
+                      port_map.get_protocol,
                       'tcp', 5000)
     self.assertRaises(fortigate.FortiGateValueError,
-                      port_map.GetProtocol,
+                      port_map.get_protocol,
                       'bad_proto', 22)

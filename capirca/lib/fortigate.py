@@ -24,8 +24,9 @@ import datetime
 
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
-import six
 from absl import logging
+import six
+
 
 
 _ACTION_TABLE = {
@@ -122,7 +123,7 @@ class FortigatePortMap(object):
   }
 
   @staticmethod
-  def GetProtocol(protocol, port=None):
+  def get_protocol(protocol, port=None):
     """Converts a port number to a service name.
 
     Args:
@@ -134,6 +135,8 @@ class FortigatePortMap(object):
 
     Raises:
       FortiGateValueError: When unsupported protocol is used.
+      FortiGatePortDoesNotExistError: if the port does not exist.
+      FortiGateFindServiceError: when unable to find the requested service.
     """
     f_proto = FortigatePortMap._PROTO_MAP.get(protocol, None)
     if f_proto is None:
@@ -152,6 +155,7 @@ class FortigatePortMap(object):
       raise FortiGateFindServiceError(
           'service not found from %r protocol and %r port' % (protocol, port))
 
+
 class ObjectsContainer(object):
   """A Container that holds service and network objects."""
 
@@ -159,7 +163,7 @@ class ObjectsContainer(object):
     self._fw_addresses = []
     self._fw_services = []
 
-    self._FW_DUP_CHECK = set()
+    self._fe_dup_check = set()
 
   def get_fw_addresses(self):
     """Returns the collected addresses."""
@@ -173,16 +177,16 @@ class ObjectsContainer(object):
 
   def add_address_to_fw_addresses(self, addr):
     """Add address to address store."""
-    if addr in self._FW_DUP_CHECK:
+    if addr in self._fe_dup_check:
       return
     self._fw_addresses.extend(['\tedit %s' % addr,
                                '\t\tset subnet %s' % addr,
                                '\tnext'])
-    self._FW_DUP_CHECK.add(addr)
+    self._fe_dup_check.add(addr)
 
   def add_service_to_fw_services(self, protocol, service):
     """Add service to services store."""
-    if service in self._FW_DUP_CHECK:
+    if service in self._fe_dup_check:
       return
 
     self._fw_services.extend(
@@ -191,7 +195,7 @@ class ObjectsContainer(object):
          '\t\tset %s-portrange %s' % (protocol.lower(), service),
          '\tnext'])
 
-    self._FW_DUP_CHECK.add(service)
+    self._fe_dup_check.add(service)
 
 
 class Term(aclgenerator.Term):
@@ -231,18 +235,18 @@ class Term(aclgenerator.Term):
     """Get the service name, if not exist create it.
 
     Args:
-      protocol: list of protocols
-      port: list of ports
+      protocols: list of protocols
+      ports: list of ports
 
     Returns:
       string (all services separated by spaces.
     """
     services = []
     if protocols and not ports:
-      services.append(FortigatePortMap.GetProtocol(protocols[0]))
+      services.append(FortigatePortMap.get_protocol(protocols[0]))
     for port in ports:
       try:
-        service = FortigatePortMap.GetProtocol(protocols[0], port[0])
+        service = FortigatePortMap.get_protocol(protocols[0], port[0])
       except FortiGatePortDoesNotExistError:
         self._obj_container.add_service_to_fw_services(protocols[0], port[0])
         service = str(port[0])
