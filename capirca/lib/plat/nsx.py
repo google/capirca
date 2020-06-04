@@ -1,4 +1,4 @@
 from capirca.lib import nsxv
 
-PLATFORM = "nsx"
+PLATFORM = "nsxv"
 RENDERER = nsxv.Nsxv
