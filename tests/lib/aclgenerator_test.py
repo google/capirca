@@ -200,6 +200,5 @@ class ACLGeneratorTest(unittest.TestCase):
         ['%sId:%s' % ('$', '$')],
         aclgenerator.AddRepositoryTags(date=False, revision=False))
 
-
 if __name__ == '__main__':
   unittest.main()

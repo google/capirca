@@ -3,6 +3,6 @@ python:
   - "3.6"
   - "3.7"
 # command to install dependencies
-install: "pip install -r requirements.txt"
+install: "pip install -r requirements.txt -r test-requirements.txt"
 # command to run tests
-script: python -m unittest discover -s . -p '*_test.py'
+script: pytest tests/
