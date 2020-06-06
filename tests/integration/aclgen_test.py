@@ -18,8 +18,11 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
+import sys
 import shutil
 import tempfile
+import multiprocessing
+
 
 from absl import flags
 from capirca import aclgen
@@ -28,6 +31,7 @@ import unittest
 
 
 FLAGS = flags.FLAGS
+FLAGS(sys.argv)
 
 
 class TestAclGenDemo(unittest.TestCase):
