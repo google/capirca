@@ -31,7 +31,7 @@ import unittest
 
 
 FLAGS = flags.FLAGS
-FLAGS(sys.argv)
+FLAGS(sys.argv[0:1])
 
 
 class TestAclGenDemo(unittest.TestCase):
