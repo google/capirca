@@ -531,7 +531,7 @@ def main(argv):
                 str(FLAGS.policy_file),
                 str(FLAGS.output_directory))
 
-  self.context = multiprocessing.get_context()
+  context = multiprocessing.get_context()
   Run(FLAGS.base_directory, FLAGS.definitions_directory, FLAGS.policy_file,
       FLAGS.output_directory, context)
 
