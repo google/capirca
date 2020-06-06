@@ -6,4 +6,4 @@ ipaddress>=1.0.22
 absl-py
 ply
 mock
-six # requirement from absl-py
+six>=1.12.0
