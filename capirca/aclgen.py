@@ -540,4 +540,4 @@ def entry_point():
   app.run(main)
 
 if __name__ == '__main__':
-  app.run(main)
+  entry_point()
