@@ -74,7 +74,6 @@ class Term(aclgenerator.Term):
   ACTION_MAP = {'accept': 'allowed',
                 'deny': 'denied'}
   # Restrict the number of terms to 256. Proto supports up to 256
-  # http://google3/java/com/google/cloud/cluster/api/bigcluster_api.proto&l=2979
   _TERM_ADDRESS_LIMIT = 256
 
   # Firewall rule name has to match specific RE:
