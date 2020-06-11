@@ -24,7 +24,6 @@ import logging
 import textwrap
 import unittest
 
-
 from capirca.lib import aruba
 from capirca.lib import nacaddr
 from capirca.lib import naming

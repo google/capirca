@@ -21,7 +21,6 @@ from __future__ import unicode_literals
 import datetime
 import unittest
 
-
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy

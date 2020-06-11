@@ -469,6 +469,7 @@ class Term(object):
     self.platform = []
     self.platform_exclude = []
     self.target_resources = []
+    self.target_service_accounts = []
     self.timeout = None
     self.flattened = False
     self.flattened_addr = None
@@ -698,6 +699,9 @@ class Term(object):
       ret_str.append('  destination_tag: %s' % self.destination_tag)
     if self.target_resources:
       ret_str.append('  target_resources: %s' % self.target_resources)
+    if self.target_service_accounts:
+      ret_str.append('  target_service_accounts: %s' %
+                     self.target_service_accounts)
     if self.source_prefix:
       ret_str.append('  source_prefix: %s' % self.source_prefix)
     if self.source_prefix_except:
@@ -1100,6 +1104,8 @@ class Term(object):
           self.flexible_match_range.append(x.value)
         elif x.var_type is VarType.TARGET_RESOURCES:
           self.target_resources.append(x.value)
+        elif x.var_type is VarType.TARGET_SERVICE_ACCOUNTS:
+          self.target_service_accounts.append(x.value)
         else:
           raise TermObjectTypeError(
               '%s isn\'t a type I know how to deal with (contains \'%s\')' % (
@@ -1177,6 +1183,8 @@ class Term(object):
         self.ttl = int(obj.value)
       elif obj.var_type is VarType.TARGET_RESOURCES:
         self.target_resources.append(obj.value)
+      elif obj.var_type is VarType.TARGET_SERVICE_ACCOUNTS:
+        self.target_service_accounts.append(obj.value)
       else:
         raise TermObjectTypeError(
             '%s isn\'t a type I know how to deal with' % (type(obj)))
@@ -1477,6 +1485,7 @@ class VarType(object):
   TTL = 57
   LOG_LIMIT = 58
   TARGET_RESOURCES = 59
+  TARGET_SERVICE_ACCOUNTS = 60
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1697,6 +1706,7 @@ tokens = (
     'STRING',
     'TARGET',
     'TARGET_RESOURCES',
+    'TARGET_SERVICE_ACCOUNTS',
     'TERM',
     'TIMEOUT',
     'TRAFFIC_CLASS_COUNT',
@@ -1770,6 +1780,7 @@ reserved = {
     'source-tag': 'STAG',
     'target': 'TARGET',
     'target-resources': 'TARGET_RESOURCES',
+    'target-service-accounts': 'TARGET_SERVICE_ACCOUNTS',
     'term': 'TERM',
     'timeout': 'TIMEOUT',
     'traffic-class-count': 'TRAFFIC_CLASS_COUNT',
@@ -1822,10 +1833,10 @@ def t_DSCP_RANGE(t):
 
 
 def t_DSCP(t):
-    # we need to handle the '-' as part of the word, not as a boundary
-    r'\b((b[0-1]{6})|(af[1-4]{1}[1-3]{1})|(be)|(ef)|(cs[0-7]{1}))(?![\w-])\b'
-    t.type = reserved.get(t.value, 'DSCP')
-    return t
+  # we need to handle the '-' as part of the word, not as a boundary
+  r'\b((b[0-1]{6})|(af[1-4]{1}[1-3]{1})|(be)|(ef)|(cs[0-7]{1}))(?![\w-])\b'
+  t.type = reserved.get(t.value, 'DSCP')
+  return t
 
 
 def t_HEX(t):
@@ -1938,6 +1949,7 @@ def p_term_spec(p):
                 | term_spec routinginstance_spec
                 | term_spec tag_list_spec
                 | term_spec target_resources_spec
+                | term_spec target_service_accounts_spec
                 | term_spec timeout_spec
                 | term_spec ttl_spec
                 | term_spec traffic_type_spec
@@ -2189,6 +2201,13 @@ def p_target_resources_spec(p):
   p[0] = []
   for target_resource in p[4]:
     p[0].append(VarType(VarType.TARGET_RESOURCES, target_resource))
+
+
+def p_target_service_accounts_spec(p):
+  """ target_service_accounts_spec : TARGET_SERVICE_ACCOUNTS ':' ':' one_or_more_strings """
+  p[0] = []
+  for service_account in p[4]:
+    p[0].append(VarType(VarType.TARGET_SERVICE_ACCOUNTS, service_account))
 
 
 def p_ether_type_spec(p):

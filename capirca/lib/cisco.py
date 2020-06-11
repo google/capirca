@@ -42,7 +42,6 @@ _ACTION_TABLE = {
 }
 
 
-
 # generic error class
 class Error(Exception):
   """Generic error class."""

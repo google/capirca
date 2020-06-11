@@ -417,6 +417,13 @@ term good-term-44 {
   action:: accept
 }
 """
+GOOD_TERM_45 = """
+term good-term-45 {
+  source-address:: ANY
+  action:: accept
+  target-service-accounts:: acct1@blah.com
+}
+"""
 GOOD_TERM_V6_1 = """
 term good-term-v6-1 {
   hop-limit:: 5
@@ -1262,6 +1269,15 @@ class PolicyTest(unittest.TestCase):
     self.assertRaises(policy.MixedPortandNonPortProtos, policy.ParsePolicy,
                       pol, self.naming)
 
+  def testTargetServiceAccount(self):
+    pol = HEADER_HF_1 + GOOD_TERM_45
+
+    result = policy.ParsePolicy(pol, self.naming)
+    term = result.filters[0][1][0]
+    self.assertEqual(
+        ['acct1@blah.com'],
+        term.target_service_accounts)
+
   # Contains Tests
 
   def testVerbatimContains(self):
@@ -1373,6 +1389,16 @@ class PolicyTest(unittest.TestCase):
     term_one = policy.Term([policy.VarType(10, 'tcp')])
     term_two = policy.Term([policy.VarType(10, 'udp')])
     self.assertNotIn(term_one, term_two)
+
+  def testTargetServiceAccountContains(self):
+    two_target_sa = ['acct1@blah.com', 'acct2@blah.com']
+    one_target_sa = ['acct3@blah.com']
+
+    term = policy.Term([policy.VarType(60, two_target_sa)])
+    self.assertIn(two_target_sa, term.target_service_accounts)
+
+    term.AddObject(policy.VarType(60, one_target_sa))
+    self.assertIn(one_target_sa, term.target_service_accounts)
 
   def testProtoExceptNotInEmptyTerm(self):
     term_one = policy.Term([policy.VarType(8, 'tcp')])

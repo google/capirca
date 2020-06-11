@@ -57,8 +57,6 @@ from capirca.lib import nacaddr
 from capirca.lib import port as portlib
 
 
-
-
 class Error(Exception):
   """Create our own base error class to be inherited by other error classes."""
 

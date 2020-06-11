@@ -24,7 +24,6 @@ import datetime
 import re
 import unittest
 
-
 from capirca.lib import aclgenerator
 from capirca.lib import junipersrx
 from capirca.lib import nacaddr

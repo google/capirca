@@ -21,7 +21,6 @@ from __future__ import unicode_literals
 import unittest
 from xml.etree import ElementTree as ET
 
-
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import nsxv

@@ -277,6 +277,7 @@ class Term(aclgenerator.Term):
 
     # term name
     config.Append('%s term %s {' %(term_prefix, self.term.name))
+
     # a default action term doesn't have any from { clause
     has_match_criteria = (self.term.address or
                           self.term.dscp_except or
@@ -685,6 +686,39 @@ class Term(aclgenerator.Term):
     return include_result, exclude_result
 
   def _Comment(self, addr, exclude=False, line_length=132):
+    """Returns address comment field if it exists.
+
+    Args:
+      addr: nacaddr.IPv4 object (?)
+      exclude: bool - address excludes have different indentations
+      line_length: integer - this is the length to which a comment will be
+        truncated, no matter what.  ie, a 1000 character comment will be
+        truncated to line_length, and then split.  if 0, the whole comment
+        is kept. the current default of 132 is somewhat arbitrary.
+
+    Returns:
+      List of strings.
+
+    Notes:
+      This method tries to intelligently split long comments up.  if we've
+      managed to summarize 4 /32's into a /30, each with a nacaddr text field
+      of something like 'foobar N', normal concatination would make the
+      resulting rendered comment look in mondrian like
+
+                         source-address {
+                             ...
+                             1.1.1.0/30; /* foobar1, foobar2, foobar3, foo
+      bar4 */
+
+      b/c of the line splitting at 80 chars.  this method will split the
+      comments at word breaks and make the previous example look like
+
+                         source-address {
+                              ....
+                              1.1.1.0/30; /* foobar1, foobar2, foobar3,
+                                          ** foobar4 */
+      much cleaner.
+    """
     rval = []
     if self.noverbose:
       return rval
