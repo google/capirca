@@ -55,53 +55,56 @@ from capirca.lib import windows_advfirewall
 
 
 FLAGS = flags.FLAGS
-flags.DEFINE_string(
+
+
+def SetupFlags():
+  flags.DEFINE_string(
     'base_directory',
     './policies',
     'The base directory to look for acls; '
     'typically where you\'d find ./corp and ./prod')
-flags.DEFINE_string(
+  flags.DEFINE_string(
     'definitions_directory',
     './def',
     'Directory where the definitions can be found.')
-flags.DEFINE_string(
+  flags.DEFINE_string(
     'policy_file',
     None,
     'Individual policy file to generate.')
-flags.DEFINE_string(
+  flags.DEFINE_string(
     'output_directory',
     './',
     'Directory to output the rendered acls.')
-flags.DEFINE_boolean(
+  flags.DEFINE_boolean(
     'optimize',
     False,
     'Turn on optimization.',
     short_name='o')
-flags.DEFINE_boolean(
+  flags.DEFINE_boolean(
     'recursive',
     True,
     'Descend recursively from the base directory rendering acls')
-flags.DEFINE_boolean(
+  flags.DEFINE_boolean(
     'debug',
     False,
     'Debug messages')
-flags.DEFINE_boolean(
+  flags.DEFINE_boolean(
     'verbose',
     False,
     'Verbose messages')
-flags.DEFINE_list(
+  flags.DEFINE_list(
     'ignore_directories',
     'DEPRECATED, def',
     "Don't descend into directories that look like this string")
-flags.DEFINE_integer(
+  flags.DEFINE_integer(
     'max_renderers',
     10,
     'Max number of rendering processes to use.')
-flags.DEFINE_boolean(
+  flags.DEFINE_boolean(
     'shade_check',
     False,
     'Raise an error when a term is completely shaded by a prior term.')
-flags.DEFINE_integer(
+  flags.DEFINE_integer(
     'exp_info',
     2,
     'Print a info message when a term is set to expire in that many weeks.')
@@ -537,6 +540,7 @@ def main(argv):
 
 
 def entry_point():
+  SetupFlags()
   app.run(main)
 
 if __name__ == '__main__':
