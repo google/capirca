@@ -31,6 +31,7 @@ import unittest
 
 
 FLAGS = flags.FLAGS
+# Pass only the program name into absl so it uses the default flags
 FLAGS(sys.argv[0:1])
 
 
