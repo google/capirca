@@ -20,7 +20,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='capirca',
-    version='1.122',
+    version='1.123',
     description='Capirca',
     license='Apache License, Version 2.0',
     url='https://github.com/google/capirca/',
