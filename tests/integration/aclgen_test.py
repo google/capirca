@@ -77,7 +77,7 @@ class TestAclGenDemo(unittest.TestCase):
     mock_writer.assert_called_with(
         os.path.join(self.test_subdirectory, 'sample_cisco_lab.acl'), mock.ANY)
 
-  
+
   # Test to ensure the existence of the entry point function for installed script
   @mock.patch.object(aclgen, 'SetupFlags', autospec=True)
   @mock.patch.object(app, 'run', autospec=True)
