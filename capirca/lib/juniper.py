@@ -21,13 +21,12 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import datetime
-
+from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from capirca.lib import summarizer
 import six
 from six.moves import range
-from absl import logging
 
 
 # generic error class

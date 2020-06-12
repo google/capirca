@@ -22,9 +22,10 @@ from __future__ import unicode_literals
 import datetime
 import string
 
+from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
-from absl import logging
+
 
 
 CMD_PREFIX = 'netsh ipsec static add '

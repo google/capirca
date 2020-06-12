@@ -26,10 +26,11 @@ import copy
 import datetime
 import itertools
 
+from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 import six
-from absl import logging
+
 
 ICMP_TERM_LIMIT = 8
 

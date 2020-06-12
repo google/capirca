@@ -21,10 +21,11 @@ from __future__ import unicode_literals
 # pylint: disable=g-importing-member
 from string import Template
 
+from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import windows
 from six.moves import range
-from absl import logging
+
 
 
 class Term(windows.Term):

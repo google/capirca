@@ -24,12 +24,12 @@ import datetime
 import re
 import xml
 
+from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 import six
 from six.moves import map
 from six.moves import range
-from absl import logging
 
 
 _ACTION_TABLE = {

@@ -25,9 +25,10 @@ import random
 import time
 import unittest
 
+from absl import logging
 from capirca.lib import nacaddr
 from capirca.lib import summarizer
-from absl import logging
+
 
 
 class SummarizerTest(unittest.TestCase):

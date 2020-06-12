@@ -24,9 +24,9 @@ import collections
 import copy
 import datetime
 
+from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
-from absl import logging
 
 from typing import cast
 

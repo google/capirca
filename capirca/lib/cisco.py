@@ -21,16 +21,14 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import datetime
-
-from capirca.lib import aclgenerator
-from capirca.lib import nacaddr
-from capirca.lib import summarizer
-
 import ipaddress
-from six.moves import range
 from typing import cast, Union
 
 from absl import logging
+from capirca.lib import aclgenerator
+from capirca.lib import nacaddr
+from capirca.lib import summarizer
+from six.moves import range
 
 
 _ACTION_TABLE = {

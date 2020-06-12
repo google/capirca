@@ -27,13 +27,14 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+from absl import logging
 import collections
 import datetime
 
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 import six
-from absl import logging
+
 
 
 class Error(Exception):
