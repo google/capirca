@@ -31,8 +31,8 @@ setup(
         'console_scripts': ['aclgen = capirca.aclgen:entry_point'],
     },
     classifiers=[
-                 'Topic :: Security',
-                 'Topic :: System :: Networking :: Firewalls',
-                ],
-    install_requires=['absl-py', 'ply', 'ipaddress>=1.0.22', 'mock', 'six']
+        'Topic :: Security',
+        'Topic :: System :: Networking :: Firewalls',
+    ],
+    install_requires=['absl-py', 'ply', 'ipaddress>=1.0.22', 'mock', 'six'],
 )
