@@ -764,7 +764,7 @@ class CiscoTest(unittest.TestCase):
                                          self.naming), EXP_INFO)
     self.assertTrue(re.search('permit ipv6 any any', str(acl)), str(acl))
 
-  @mock.patch.object(cisco.logging, 'warn')
+  @mock.patch.object(cisco.logging, 'warning')
   def testExpiredTerm(self, mock_warn):
     _ = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + EXPIRED_TERM,
                                        self.naming), EXP_INFO)
@@ -835,7 +835,7 @@ class CiscoTest(unittest.TestCase):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_21,
                                          self.naming), EXP_INFO)
     expected = 'permit ip 10.0.0.0 0.0.0.255 10.0.0.0 0.0.0.255'
-    self.failUnless(expected in str(acl), str(acl))
+    self.assertTrue(expected in str(acl), str(acl))
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('cs4-valid_network_name'),
                                              mock.call('cs4-valid_network_name')])

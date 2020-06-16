@@ -604,7 +604,7 @@ class Term(aclgenerator.Term):
       if self.term.policer:
         config.Append('policer %s;' % self.term.policer)
         if len(self.term.policer) > oid_length:
-          logging.warn('WARNING: %s is longer than %d bytes. Due to limitation'
+          logging.warning('WARNING: %s is longer than %d bytes. Due to limitation'
                        ' in JUNOS, OIDs longer than %dB can cause SNMP '
                        'timeout issues.',
                        self.term.policer, oid_length, oid_length)
@@ -942,7 +942,7 @@ class Juniper(aclgenerator.ACLGenerator):
             logging.info('INFO: Term %s in policy %s expires '
                          'in less than two weeks.', term.name, filter_name)
           if term.expiration <= current_date:
-            logging.warn('WARNING: Term %s in policy %s is expired and '
+            logging.warning('WARNING: Term %s in policy %s is expired and '
                          'will not be rendered.', term.name, filter_name)
             continue
         if 'is-fragment' in term.option and filter_type == 'inet6':

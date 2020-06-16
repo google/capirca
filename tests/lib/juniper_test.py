@@ -735,7 +735,7 @@ class JuniperTest(unittest.TestCase):
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_36,
                                              self.naming), EXP_INFO)
     output = str(jcl)
-    self.failUnless('inactive: term good-term-36 {' in output, output)
+    self.assertTrue('inactive: term good-term-36 {' in output, output)
 
 
   def testInet6(self):
@@ -1134,7 +1134,7 @@ class JuniperTest(unittest.TestCase):
         ' as it has icmp match specified but '
         'the ACL is of inet6 address family.')
 
-  @mock.patch.object(juniper.logging, 'warn')
+  @mock.patch.object(juniper.logging, 'warning')
   def testExpiredTerm(self, mock_warn):
     _ = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + EXPIRED_TERM,
                                            self.naming), EXP_INFO)
@@ -1302,7 +1302,7 @@ class JuniperTest(unittest.TestCase):
                   output)
 
   def testLongPolicer(self):
-    with mock.patch.object(juniper.logging, 'warn', spec=logging.warn) as warn:
+    with mock.patch.object(juniper.logging, 'warning', spec=logging.warn) as warn:
       policy_text = GOOD_HEADER + LONG_POLICER_TERM_1
       jcl = juniper.Juniper(policy.ParsePolicy(policy_text, self.naming),
                             EXP_INFO)

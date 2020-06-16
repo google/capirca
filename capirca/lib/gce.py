@@ -325,7 +325,7 @@ class GCE(aclgenerator.ACLGenerator):
       if filter_options:
         network = filter_options[0]
       else:
-        logging.warn('GCE filter does not specify a network.')
+        logging.warning('GCE filter does not specify a network.')
 
       term_names = set()
       if IsDefaultDeny(terms[-1]):
@@ -342,7 +342,7 @@ class GCE(aclgenerator.ACLGenerator):
 
       for term in terms:
         if term.stateless_reply:
-          logging.warn('WARNING: Term %s in policy %s is a stateless reply '
+          logging.warning('WARNING: Term %s in policy %s is a stateless reply '
                        'term and will not be rendered.',
                        term.name, filter_name)
           continue
@@ -362,7 +362,7 @@ class GCE(aclgenerator.ACLGenerator):
             logging.info('INFO: Term %s in policy %s expires '
                          'in less than two weeks.', term.name, filter_name)
           if term.expiration <= current_date:
-            logging.warn('WARNING: Term %s in policy %s is expired and '
+            logging.warning('WARNING: Term %s in policy %s is expired and '
                          'will not be rendered.', term.name, filter_name)
             continue
         if term.option:

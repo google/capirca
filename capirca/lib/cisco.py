@@ -97,13 +97,13 @@ class TermStandard(object):
       raise StandardAclTermError(
           'Standard ACLs prohibit use of port numbers')
     if self.term.logging:
-      logging.warn(
+      logging.warning(
           'WARNING: Standard ACL logging is set in filter %s, term %s and '
           'may not implemented on all IOS versions', self.filter_name,
           self.term.name)
       self.logstring = ' log'
     if self.term.dscp_match:
-      logging.warn(
+      logging.warning(
           'WARNING: dscp-match is set in filter %s, term %s and may not be '
           'implemented on all IOS version', self.filter_name, self.term.name)
       self.dscpstring = ' dscp' + self.term.dscp_match
@@ -1159,7 +1159,7 @@ class Cisco(aclgenerator.ACLGenerator):
               logging.info('INFO: Term %s in policy %s expires '
                            'in less than two weeks.', term.name, filter_name)
             if term.expiration <= current_date:
-              logging.warn('WARNING: Term %s in policy %s is expired and '
+              logging.warning('WARNING: Term %s in policy %s is expired and '
                            'will not be rendered.', term.name, filter_name)
               continue
 

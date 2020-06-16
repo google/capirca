@@ -184,7 +184,7 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
       conf = f.read()
       logging.debug('opened and read %s', input_file)
   except IOError as e:
-    logging.warn('bad file: \n%s', e)
+    logging.warning('bad file: \n%s', e)
     raise
 
   try:
@@ -192,7 +192,7 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
         conf, definitions, optimize=FLAGS.optimize,
         base_dir=base_directory, shade_check=FLAGS.shade_check)
   except policy.ShadingError as e:
-    logging.warn('shading errors for %s:\n%s', input_file, e)
+    logging.warning('shading errors for %s:\n%s', input_file, e)
     return
   except (policy.Error, naming.Error):
     raise ACLParserError('Error parsing policy file %s:\n%s%s' % (
@@ -427,12 +427,12 @@ def DescendRecursively(input_dirname, output_dirname, definitions, depth=1):
       # directory has a policy directory
       if curdir in FLAGS.ignore_directories:
         continue
-      logging.warn('-' * (2 * depth) + '> %s' % (
+      logging.warning('-' * (2 * depth) + '> %s' % (
           input_dirname + '/' + curdir))
       files_found = DescendRecursively(input_dirname + '/' + curdir,
                                        output_dirname + '/' + curdir,
                                        definitions, depth + 1)
-      logging.warn('-' * (2 * depth) + '> %s (%d pol files found)' % (
+      logging.warning('-' * (2 * depth) + '> %s (%d pol files found)' % (
           input_dirname + '/' + curdir, len(files_found)))
       files.extend(files_found)
 
@@ -459,7 +459,7 @@ def _WriteFile(output_file, file_string):
       logging.info('writing file: %s', output_file)
       output.write(file_string)
   except IOError:
-    logging.warn('error while writing file: %s', output_file)
+    logging.warning('error while writing file: %s', output_file)
     raise
 
 
@@ -507,13 +507,13 @@ def Run(base_directory, definitions_directory, policy_file, output_directory,
         result.get()
       except (ACLParserError, ACLGeneratorError) as e:
         with_errors = True
-        logging.warn('\n\nerror encountered in rendering process:\n%s\n\n', e)
+        logging.warning('\n\nerror encountered in rendering process:\n%s\n\n', e)
 
   # actually write files to disk
   WriteFiles(write_files)
 
   if with_errors:
-    logging.warn('done, with errors.')
+    logging.warning('done, with errors.')
     sys.exit(1)
   else:
     logging.info('done.')

@@ -255,7 +255,7 @@ class ArubaTest(unittest.TestCase):
     self.assertEqual(SUPPORTED_TOKENS, st)
     self.assertEqual(SUPPORTED_SUB_TOKENS, sst)
 
-  @mock.patch.object(logging, 'warn')
+  @mock.patch.object(logging, 'warning')
   def testExpiredTerm(self, mock_warn):
     aruba.Aruba(policy.ParsePolicy(GOOD_HEADER_V4 + EXPIRED_TERM,
                                    self.naming), EXP_INFO)

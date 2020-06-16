@@ -80,7 +80,7 @@ class Term(aclgenerator.Term):
       raw_comment = ' '.join(self.term.comment)
       if len(raw_comment) > self._MAX_TERM_COMMENT_LENGTH:
         term_dict['description'] = raw_comment[:self._MAX_TERM_COMMENT_LENGTH]
-        logging.warn('Term comment exceeds maximum length = %d; Truncating '
+        logging.warning('Term comment exceeds maximum length = %d; Truncating '
                      'comment..', self._MAX_TERM_COMMENT_LENGTH)
       else:
         term_dict['description'] = raw_comment
@@ -246,7 +246,7 @@ class CloudArmor(aclgenerator.ACLGenerator):
                                         ' a single policy | MAX = %d'
                                         % self._MAX_RULES_PER_POLICY)
           else:
-            logging.warn('Current rule count (%d) is almost at maximum limit '
+            logging.warning('Current rule count (%d) is almost at maximum limit '
                          ' of %d', total_rule_count, self._MAX_RULES_PER_POLICY)
 
   def __str__(self):

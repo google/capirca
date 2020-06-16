@@ -175,7 +175,7 @@ class Term(aclgenerator.Term):
         if ('translated' not in key) and (key not in _NSXV_SUPPORTED_KEYWORDS):
           unsupported_keywords.append(key)
     if unsupported_keywords:
-      logging.warn('WARNING: The keywords %s in Term %s are not supported in '
+      logging.warning('WARNING: The keywords %s in Term %s are not supported in '
                    'Nsxv ', unsupported_keywords, self.term.name)
 
     name = '%s%s%s' % (_XML_TABLE.get('nameStart'), self.term.name,
@@ -268,7 +268,7 @@ class Term(aclgenerator.Term):
           destination_addr = dest_v4_addr
 
         if not source_addr or not destination_addr:
-          logging.warn('Term %s will not be rendered as it has IPv4/IPv6 '
+          logging.warning('Term %s will not be rendered as it has IPv4/IPv6 '
                        'mismatch for source/destination for mixed address '
                        'family.', self.term.name)
           return ''
@@ -517,14 +517,14 @@ class Nsxv(aclgenerator.ACLGenerator):
             logging.info('INFO: Term %s in policy %s expires '
                          'in less than two weeks.', term.name, filter_name)
           if term.expiration <= current_date:
-            logging.warn('WARNING: Term %s in policy %s is expired and '
+            logging.warning('WARNING: Term %s in policy %s is expired and '
                          'will not be rendered.', term.name, filter_name)
             continue
         # Get the mapped action value
         # If there is no mapped action value term is not rendered
         mapped_action = _ACTION_TABLE.get(str(term.action[0]))
         if not mapped_action:
-          logging.warn('WARNING: Action %s in Term %s is not valid and '
+          logging.warning('WARNING: Action %s in Term %s is not valid and '
                        'will not be rendered.', term.action, term.name)
           continue
 
@@ -632,7 +632,7 @@ class Nsxv(aclgenerator.ACLGenerator):
       # check section id value
       section_id = self._FILTER_OPTIONS_DICT['section_id']
       if not section_id or section_id == 0:
-        logging.warn('WARNING: Section-id is 0. A new Section is created for%s.'
+        logging.warning('WARNING: Section-id is 0. A new Section is created for%s.'
                      ' If there is any existing section, it will remain '
                      'unreferenced and should be removed manually.',
                      section_name)

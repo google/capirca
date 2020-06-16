@@ -676,7 +676,7 @@ class CloudArmorTest(unittest.TestCase):
 
     self.naming.GetNetAddr.return_value = TEST_IPS_NOSPLIT
 
-    self.assertRaisesRegexp(
+    self.assertRaisesRegex(
         cloudarmor.UnsupportedFilterTypeError,
         "'inet8' is not a valid filter type",
         cloudarmor.CloudArmor,
@@ -696,7 +696,7 @@ class CloudArmorTest(unittest.TestCase):
 
     self.naming.GetNetAddr.return_value = test_1001_ips_list
 
-    self.assertRaisesRegexp(
+    self.assertRaisesRegex(
         cloudarmor.ExceededMaxTermsError,
         'Exceeded maximum number of rules in a single policy | MAX = 200',
         cloudarmor.CloudArmor,

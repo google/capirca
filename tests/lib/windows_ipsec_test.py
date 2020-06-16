@@ -185,7 +185,7 @@ class WindowsIPSecTest(unittest.TestCase):
         result,
         'good-term-icmp')
 
-  @mock.patch.object(windows_ipsec.logging, 'warn')
+  @mock.patch.object(windows_ipsec.logging, 'warning')
   def testExpiredTerm(self, mock_warn):
     windows_ipsec.WindowsIPSec(policy.ParsePolicy(
         GOOD_HEADER + EXPIRED_TERM, self.naming), EXP_INFO)

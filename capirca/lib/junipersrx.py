@@ -463,7 +463,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                          'in less than two weeks.', term.name, self.from_zone,
                          self.to_zone)
           if term.expiration <= current_date:
-            logging.warn('WARNING: Term %s in policy %s>%s is expired.',
+            logging.warning('WARNING: Term %s in policy %s>%s is expired.',
                          term.name, self.from_zone, self.to_zone)
             continue
 
@@ -598,7 +598,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     for term in terms:
       if (term.AddressesByteLength(
           self._AF_MAP[address_family]) > self._ADDRESS_LENGTH_LIMIT):
-        logging.warn('LARGE TERM ENCOUNTERED')
+        logging.warning('LARGE TERM ENCOUNTERED')
         src_chunks = Chunks(term.source_address)
         counter = 0
         for chunk in src_chunks:

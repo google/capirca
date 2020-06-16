@@ -102,13 +102,13 @@ class Term(windows.Term):
     # yup, the full cartesian product... this makes me cry on the inside.
     for saddr in src_addr:
       if saddr.version != 4:
-        logging.warn('WARNING: term contains a non IPv4 address %s, '
+        logging.warning('WARNING: term contains a non IPv4 address %s, '
                      'ignoring element of term %s.', saddr, self.term_name)
         continue
 
       for daddr in dst_addr:
         if daddr.version != 4:
-          logging.warn('WARNING: term contains a non IPv4 address %s, '
+          logging.warning('WARNING: term contains a non IPv4 address %s, '
                        'ignoring element of term %s.', daddr, self.term_name)
           continue
 
