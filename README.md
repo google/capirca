@@ -5,4 +5,3 @@ Capirca is a tool designed to utilize common definitions of networks, services a
 
 ## Community
 Capirca has a channel on the [NetworkToCode slack](https://networktocode.slack.com/).
- 
