@@ -40,9 +40,9 @@ for my $file (@files)
     my $country_uc = uc($country);
     die "$file is zero bytes\n" if(!-s $file);
     open(OLDFILE, $file) or die "Unable to open $file: $!\n";
-    open(NEWFILE, ">$new_name") 
+    open(NEWFILE, ">$new_name")
       or die "Unable to open $new_name: $!\n";
-    while(<OLDFILE>) 
+    while(<OLDFILE>)
     {
       chomp;
       if ($. == 1)

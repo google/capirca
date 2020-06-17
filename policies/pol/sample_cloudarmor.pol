@@ -25,4 +25,3 @@ term default-deny {
   source-address:: ANY
   action:: deny
 }
-

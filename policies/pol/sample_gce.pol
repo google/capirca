@@ -63,5 +63,3 @@ term test-egress-tag {
   source-tag:: webserver
   action:: accept
 }
-
-

@@ -15,4 +15,3 @@ term deny-to-rfc1918 {
   destination-address:: RFC1918
   action:: deny
 }
-

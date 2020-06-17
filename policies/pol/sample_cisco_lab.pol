@@ -48,4 +48,3 @@ term default-permit {
   comment:: "Allow what's left."
   action:: accept
 }
-

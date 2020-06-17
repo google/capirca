@@ -67,4 +67,3 @@ header {
 term base-forwarding-deny {
   action:: reject
 }
-

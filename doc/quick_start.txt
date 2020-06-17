@@ -13,7 +13,7 @@ Details
 Quick Start
 In the install directory, simply run:
 
-python aclgen.py 
+python aclgen.py
 
 This should generate sample output filters for cisco, juniper and iptables from the provided sample.pol policy file and the predefined network and service definitions.
 
