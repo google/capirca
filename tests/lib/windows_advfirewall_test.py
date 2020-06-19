@@ -268,7 +268,7 @@ class WindowsAdvFirewallTest(unittest.TestCase):
     super(WindowsAdvFirewallTest, self).setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
-  def FailUnless(self, strings, result, term):
+  def assertTrue(self, strings, result, term):
     for string in strings:
       fullstring = 'netsh advfirewall firewall add rule %s' % (string)
       super(WindowsAdvFirewallTest, self).assertIn(
@@ -282,7 +282,7 @@ class WindowsAdvFirewallTest(unittest.TestCase):
     acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
         GOOD_HEADER_OUT + GOOD_TERM_TCP, self.naming), EXP_INFO)
     result = str(acl)
-    self.FailUnless(
+    self.assertTrue(
         ['name=o_good-term-tcp enable=yes interfacetype=any dir=out localip=any'
          ' remoteip=10.0.0.0/8 remoteport=25 protocol=tcp action=allow'],
         result,
@@ -295,7 +295,7 @@ class WindowsAdvFirewallTest(unittest.TestCase):
     acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
         GOOD_HEADER_OUT + GOOD_TERM_ICMP, self.naming), EXP_INFO)
     result = str(acl)
-    self.FailUnless(
+    self.assertTrue(
         ['name=o_good-term-icmp enable=yes interfacetype=any dir=out'
          ' localip=any remoteip=any protocol=icmpv4 action=allow'],
         result,
@@ -305,7 +305,7 @@ class WindowsAdvFirewallTest(unittest.TestCase):
     acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
         GOOD_HEADER_OUT + GOOD_TERM_ICMP_TYPES, self.naming), EXP_INFO)
     result = str(acl)
-    self.FailUnless(
+    self.assertTrue(
         ['name=o_good-term-icmp-types enable=yes interfacetype=any dir=out'
          ' localip=any remoteip=any protocol=icmpv4:0,any action=block',
          'name=o_good-term-icmp-types enable=yes interfacetype=any dir=out'
@@ -321,7 +321,7 @@ class WindowsAdvFirewallTest(unittest.TestCase):
     self.assertRaises(aclgenerator.UnsupportedFilterError,
                       str, acl)
 
-  @mock.patch.object(windows_advfirewall.logging, 'warn')
+  @mock.patch.object(windows_advfirewall.logging, 'warning')
   def testExpiredTerm(self, mock_warn):
     windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
         GOOD_HEADER_OUT + EXPIRED_TERM, self.naming), EXP_INFO)
@@ -347,7 +347,7 @@ class WindowsAdvFirewallTest(unittest.TestCase):
     acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
         GOOD_HEADER_OUT + MULTIPLE_PROTOCOLS_TERM, self.naming), EXP_INFO)
     result = str(acl)
-    self.FailUnless(
+    self.assertTrue(
         ['name=o_multi-proto enable=yes interfacetype=any dir=out localip=any'
          ' remoteip=any protocol=tcp action=allow',
          'name=o_multi-proto enable=yes interfacetype=any dir=out localip=any'
@@ -362,7 +362,7 @@ class WindowsAdvFirewallTest(unittest.TestCase):
     acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
         GOOD_HEADER_OUT + GOOD_TERM_ANYPROTO, self.naming), EXP_INFO)
     result = str(acl)
-    self.FailUnless(
+    self.assertTrue(
         ['name=o_good-term-anyproto enable=yes interfacetype=any dir=out'
          ' localip=10.0.0.0/8 remoteip=10.0.0.0/8 protocol=any action=allow'],
         result,
@@ -373,7 +373,7 @@ class WindowsAdvFirewallTest(unittest.TestCase):
         GOOD_HEADER_OUT + GOOD_TERM_MISCPROTO + GOOD_TERM_HOPOPT, self.naming),
                                                  EXP_INFO)
     result = str(acl)
-    self.FailUnless(
+    self.assertTrue(
         ['name=o_good-term-miscproto enable=yes interfacetype=any dir=out'
          ' localip=any remoteip=any protocol=112 action=allow',
          'name=o_good-term-hopopt enable=yes interfacetype=any dir=out'

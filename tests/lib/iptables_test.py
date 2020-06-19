@@ -579,7 +579,7 @@ class AclCheckTest(unittest.TestCase):
     super(AclCheckTest, self).setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
-  @mock.patch.object(iptables.logging, 'warn')
+  @mock.patch.object(iptables.logging, 'warning')
   def testChainFilter(self, mock_warn):
     filter_name = 'foobar_chain'
     pol = policy.ParsePolicy(CHAIN_HEADER_1 + GOOD_TERM_1, self.naming)
@@ -1115,7 +1115,7 @@ class AclCheckTest(unittest.TestCase):
     self.assertIn('-o eth0', result,
                   'destination interface specification not in output.')
 
-  @mock.patch.object(iptables.logging, 'warn')
+  @mock.patch.object(iptables.logging, 'warning')
   def testExpired(self, mock_warn):
     _ = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_1 + EXPIRED_TERM,
                                              self.naming), EXP_INFO)

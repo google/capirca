@@ -845,7 +845,7 @@ class JuniperSRXTest(unittest.TestCase):
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
-  @mock.patch.object(junipersrx.logging, 'warn')
+  @mock.patch.object(junipersrx.logging, 'warning')
   def testExpiredTerm(self, mock_warn):
     _ = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER + EXPIRED_TERM_1,
                                                  self.naming), EXP_INFO)

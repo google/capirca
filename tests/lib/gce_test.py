@@ -621,7 +621,7 @@ class GCETest(unittest.TestCase):
   def testRaisesWithoutSource(self):
     self.naming.GetServiceByProto.return_value = ['22']
 
-    self.assertRaisesRegexp(
+    self.assertRaisesRegex(
         gce.GceFirewallError,
         'Ingress rule missing required field oneof "sourceRanges" or "sourceTags.',
         gce.GCE,
@@ -635,7 +635,7 @@ class GCETest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = TEST_EXCLUDE_IPS
     self.naming.GetServiceByProto.return_value = ['22']
 
-    self.assertRaisesRegexp(
+    self.assertRaisesRegex(
         gce.GceFirewallError,
         ('GCE firewall does not support address exclusions without a source '
          'address list.'),
@@ -651,7 +651,7 @@ class GCETest(unittest.TestCase):
     self.naming.GetNetAddr.side_effect = [TEST_INCLUDE_IPS, TEST_INCLUDE_IPS]
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
 
-    self.assertRaisesRegexp(
+    self.assertRaisesRegex(
         gce.GceFirewallError,
         ('GCE firewall rule no longer contains any source addresses after '
          'the prefixes in source_address_exclude were removed.'),
@@ -671,7 +671,7 @@ class GCETest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.return_value = ['22']
 
-    self.assertRaisesRegexp(
+    self.assertRaisesRegex(
         gce.GceFirewallError,
         'GCE firewall does not support source port restrictions.',
         gce.GCE,
@@ -700,7 +700,7 @@ class GCETest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.return_value = ['22']
 
-    self.assertRaisesRegexp(
+    self.assertRaisesRegex(
         gce.GceFirewallError,
         'GCE firewall does not support term options.',
         gce.GCE,
@@ -758,7 +758,7 @@ class GCETest(unittest.TestCase):
   def testRaisesWithEgressDestinationTag(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
-    self.assertRaisesRegexp(
+    self.assertRaisesRegex(
         gce.GceFirewallError,
         'GCE Egress rule cannot have destination tag.',
         gce.GCE,
@@ -774,7 +774,7 @@ class GCETest(unittest.TestCase):
   def testRaisesWithEgressSourceAddress(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
-    self.assertRaisesRegexp(
+    self.assertRaisesRegex(
         gce.GceFirewallError,
         'Egress rules cannot include "sourceRanges".',
         gce.GCE,
@@ -789,7 +789,7 @@ class GCETest(unittest.TestCase):
   def testRaisesWithEgressSourceAndDestTag(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
-    self.assertRaisesRegexp(
+    self.assertRaisesRegex(
         gce.GceFirewallError,
         'GCE Egress rule cannot have destination tag.',
         gce.GCE,
@@ -842,14 +842,14 @@ class GCETest(unittest.TestCase):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.return_value = ['22']
 
-    self.assertRaisesRegexp(
+    self.assertRaisesRegex(
         gce.GceFirewallError,
         'Ingress rule missing required field oneof "sourceRanges" or "sourceTags"',
         gce.GCE,
         policy.ParsePolicy(
             GOOD_HEADER_INGRESS + GOOD_TERM_4, self.naming),
         EXP_INFO)
-    self.assertRaisesRegexp(
+    self.assertRaisesRegex(
         gce.GceFirewallError,
         'Egress rules cannot include "sourceRanges".',
         gce.GCE,

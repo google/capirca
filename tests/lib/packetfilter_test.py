@@ -460,7 +460,7 @@ class PacketFilterTest(unittest.TestCase):
         GOOD_HEADER + BAD_TERM_ICMP, self.naming), EXP_INFO)
     self.assertRaises(aclgenerator.UnsupportedFilterError, str, acl)
 
-  @mock.patch.object(packetfilter.logging, 'warn')
+  @mock.patch.object(packetfilter.logging, 'warning')
   def testExpiredTerm(self, mock_warn):
     packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + EXPIRED_TERM, self.naming), EXP_INFO)
@@ -470,7 +470,7 @@ class PacketFilterTest(unittest.TestCase):
         'will not be rendered.', 'expired_test',
         'test-filter')
 
-  @mock.patch.object(packetfilter.logging, 'warn')
+  @mock.patch.object(packetfilter.logging, 'warning')
   def testExpiredTerm2(self, mock_warn):
     packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + EXPIRED_TERM2, self.naming), EXP_INFO)

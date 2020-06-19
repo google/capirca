@@ -153,11 +153,11 @@ def TranslatePorts(ports, protocols, term_name):
     for port in ports:
       service_by_proto = DEFINITIONS.GetServiceByProto(port, proto)
       if not service_by_proto:
-        logging.warn('%s %s %s %s %s %s%s %s', 'Term', term_name,
-                     'has service', port, 'which is not defined with protocol',
-                     proto,
-                     ', but will be permitted. Unless intended, you should',
-                     'consider splitting the protocols into separate terms!')
+        logging.warning('%s %s %s %s %s %s%s %s', 'Term', term_name,
+                        'has service', port, 'which is not defined with '
+                        'protocol',proto, ', but will be permitted. Unless '
+                        'intended, you should consider splitting the protocols '
+                        'into separate terms!')
 
       for p in [x.split('-') for x in service_by_proto]:
         if len(p) == 1:

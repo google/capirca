@@ -337,7 +337,7 @@ class PcapFilter(unittest.TestCase):
     self.assertRaises(aclgenerator.UnsupportedFilterError,
                       str, acl)
 
-  @mock.patch.object(pcap.logging, 'warn')
+  @mock.patch.object(pcap.logging, 'warning')
   def testExpiredTerm(self, mock_warn):
     pcap.PcapFilter(policy.ParsePolicy(
         GOOD_HEADER + EXPIRED_TERM, self.naming), EXP_INFO)

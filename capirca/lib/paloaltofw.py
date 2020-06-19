@@ -349,9 +349,9 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
                          "in less than two weeks.", term.name, self.from_zone,
                          self.to_zone)
           if term.expiration <= current_date:
-            logging.warn("WARNING: Term %s in policy %s>%s is expired and "
-                         "will not be rendered.",
-                         term.name, self.from_zone, self.to_zone)
+            logging.warning("WARNING: Term %s in policy %s>%s is expired and "
+                            "will not be rendered.",
+                            term.name, self.from_zone, self.to_zone)
             continue
 
         for i in term.source_address_exclude:

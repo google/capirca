@@ -23,12 +23,11 @@ from __future__ import unicode_literals
 import collections
 import copy
 import datetime
+from typing import cast
 
 from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
-
-from typing import cast
 
 
 class Error(Exception):
@@ -520,8 +519,8 @@ class PacketFilter(aclgenerator.ACLGenerator):
             logging.info('INFO: Term %s in policy %s expires '
                          'in less than two weeks.', term.name, filter_name)
           if term.expiration <= current_date:
-            logging.warn('WARNING: Term %s in policy %s is expired and '
-                         'will not be rendered.', term.name, filter_name)
+            logging.warning('WARNING: Term %s in policy %s is expired and '
+                            'will not be rendered.', term.name, filter_name)
             continue
 
         new_terms.append(self._TERM(term, filter_name, all_protocols_stateful,

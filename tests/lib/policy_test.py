@@ -954,9 +954,9 @@ class PolicyTest(unittest.TestCase):
 
   def testErrorLineNumber(self):
     pol = HEADER + GOOD_TERM_13 + BAD_TERM_8
-    self.assertRaisesRegexp(policy.ParseError,
-                            r'ERROR on "akshun" \(type STRING, line 1',
-                            policy.ParsePolicy, pol, self.naming)
+    self.assertRaisesRegex(policy.ParseError,
+                           r'ERROR on "akshun" \(type STRING, line 1',
+                           policy.ParsePolicy, pol, self.naming)
 
   def testPrefixList(self):
     spol = HEADER + GOOD_TERM_14

@@ -424,8 +424,8 @@ class PcapFilter(aclgenerator.ACLGenerator):
             logging.info('INFO: Term %s in policy %s expires '
                          'in less than two weeks.', term.name, filter_name)
           if term.expiration <= current_date:
-            logging.warn('WARNING: Term %s in policy %s is expired and '
-                         'will not be rendered.', term.name, filter_name)
+            logging.warning('WARNING: Term %s in policy %s is expired and '
+                            'will not be rendered.', term.name, filter_name)
             continue
 
         if not term:

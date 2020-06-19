@@ -191,7 +191,8 @@ class Term(aclgenerator.Term):
     else:
       protocol = ['all']
     if 'hopopt' in protocol and self.af == 'inet':
-      logging.warn('Term %s is using hopopt in IPv4 context.', self.term_name)
+      logging.warning('Term %s is using hopopt in IPv4 context.',
+                      self.term_name)
       return ''
 
     (term_saddr, exclude_saddr,
@@ -690,9 +691,9 @@ class Iptables(aclgenerator.ACLGenerator):
   def _WarnIfCustomTarget(self, target):
     """Emit a warning if a policy's default target is not a built-in chain."""
     if target not in self._GOOD_FILTERS:
-      logging.warn('Filter is generating a non-standard chain that will not '
-                   'apply to traffic unless linked from INPUT, OUTPUT or '
-                   'FORWARD filters. New chain name is: %s', target)
+      logging.warning('Filter is generating a non-standard chain that will not '
+                      'apply to traffic unless linked from INPUT, OUTPUT or '
+                      'FORWARD filters. New chain name is: %s', target)
 
   def _TranslatePolicy(self, pol, exp_info):
     """Translate a policy from objects into strings."""
@@ -780,8 +781,8 @@ class Iptables(aclgenerator.ACLGenerator):
             logging.info('INFO: Term %s in policy %s expires '
                          'in less than two weeks.', term.name, filter_name)
           if term.expiration <= current_date:
-            logging.warn('WARNING: Term %s in policy %s is expired and '
-                         'will not be rendered.', term.name, filter_name)
+            logging.warning('WARNING: Term %s in policy %s is expired and '
+                            'will not be rendered.', term.name, filter_name)
             continue
 
         new_terms.append(self._TERM(term, filter_name, all_protocols_stateful,

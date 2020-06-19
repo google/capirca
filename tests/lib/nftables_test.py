@@ -350,7 +350,7 @@ class NftablesTest(unittest.TestCase):
         'table ip6 table_filter {\n\tchain chain_name {\n\t\ttype filter '
         'hook input priority 0;\n\t\tdrop\n\t}\n}', nft)
 
-  @mock.patch.object(logging, 'warn')
+  @mock.patch.object(logging, 'warning')
   def testExpired(self, mock_logging_warn):
     nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + EXPIRED_TERM,
                                          self.mock_naming), EXP_INFO)
@@ -463,7 +463,7 @@ class NftablesTest(unittest.TestCase):
     self.assertIn('comment "comment first line comment second line '
                   'Owner: owner@enterprise.com"', nft)
 
-  @mock.patch.object(logging, 'warn')
+  @mock.patch.object(logging, 'warning')
   def testCommentTruncate(self, mock_logging_warn):
     nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_17,
                                                    self.mock_naming), EXP_INFO))
