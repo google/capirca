@@ -431,7 +431,7 @@ class PortMap(object):
   }
 
   @staticmethod
-  def getProtocol(port_num, proto, platform='cisco'):
+  def GetProtocol(port_num, proto, platform='cisco'):
     """Converts a port number to a name or returns the number.
 
     Args:

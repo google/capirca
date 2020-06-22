@@ -202,9 +202,9 @@ class SRXloTest(unittest.TestCase):
     self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testInactiveTerm(self):
-      output = str(srxlo.SRXlo(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_3,
-                                                  self.naming), EXP_INFO))
-      self.assertTrue('inactive: term good-term-3 {' in output, output)
+    output = str(srxlo.SRXlo(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_3,
+                                                self.naming), EXP_INFO))
+    self.assertIn('inactive: term good-term-3 {', output)
 
 if __name__ == '__main__':
   unittest.main()

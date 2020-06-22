@@ -27,13 +27,13 @@ from __future__ import unicode_literals
 
 import copy
 import datetime
+import ipaddress
 import json
 import logging
 import re
 
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
-import ipaddress
 import six
 from six.moves import range
 

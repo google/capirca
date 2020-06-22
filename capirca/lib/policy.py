@@ -25,14 +25,13 @@ import datetime
 import os
 import sys
 
+from absl import logging
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from ply import lex
 from ply import yacc
 from six.moves import map
 from six.moves import range
-
-from absl import logging
 
 
 DEFINITIONS = None
@@ -1205,6 +1204,8 @@ class Term(object):
         upper-layer protocol restrictions
       InvalidTermActionError: action and routing-instance both defined
       InvalidTermTTLValue: TTL value is invalid.
+      MixedPortandNonPortProtos: Ports specified with protocol that doesn't
+        support ports.
 
     This should be called when the term is fully formed, and
     all of the options are set.
@@ -1266,9 +1267,9 @@ class Term(object):
     proto_copy = [p for p in self.protocol if p != 'tcp' and p != 'udp']
     if ('tcp'in self.protocol or 'udp' in self.protocol) and proto_copy:
       if self.source_port or self.destination_port or self.port:
-        raise MixedPortandNonPortProtos('Term %s contains mixed uses of '
-           'protocols with and without port numbers.\nProtocols: %s' %
-            (self.name, self.protocol))
+        raise MixedPortandNonPortProtos(
+            'Term %s contains mixed uses of protocols with and without port '
+            'numbers.\nProtocols: %s' % (self.name, self.protocol))
 
     if self.ttl:
       if not _MIN_TTL <= self.ttl <= _MAX_TTL:

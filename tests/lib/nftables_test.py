@@ -31,8 +31,6 @@ from capirca.lib import policy
 import mock
 
 
-
-
 BAD_HEADER = """
 header {
   target:: nftables %s

@@ -21,11 +21,11 @@ from __future__ import unicode_literals
 
 import unittest
 
+from absl import logging
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
 import mock
-from absl import logging
 
 
 HEADER = """

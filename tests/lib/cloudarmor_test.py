@@ -9,7 +9,6 @@ import json
 import random
 import unittest
 
-
 from capirca.lib import cloudarmor
 from capirca.lib import nacaddr
 from capirca.lib import naming

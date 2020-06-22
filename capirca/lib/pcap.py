@@ -34,8 +34,8 @@ from __future__ import unicode_literals
 
 import datetime
 
-from capirca.lib import aclgenerator
 from absl import logging
+from capirca.lib import aclgenerator
 
 
 class Error(Exception):

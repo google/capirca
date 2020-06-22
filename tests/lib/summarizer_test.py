@@ -30,7 +30,6 @@ from capirca.lib import nacaddr
 from capirca.lib import summarizer
 
 
-
 class SummarizerTest(unittest.TestCase):
 
   def setUp(self):

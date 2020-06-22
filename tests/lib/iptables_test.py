@@ -895,7 +895,7 @@ class AclCheckTest(unittest.TestCase):
     self.assertIn('google-experiment-abbrev', result,
                   'Our strings disappeared during truncation.')
     self.assertNotIn('google-experiment-abbreviations', result,
-                  'Term name was not truncated as expected.')
+                     'Term name was not truncated as expected.')
 
   def testFragmentOptions(self):
     pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_7, self.naming)

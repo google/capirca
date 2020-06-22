@@ -89,7 +89,7 @@ class UndefinedPortError(Error):
   """Raised if a port/protocol pair has not been defined."""
 
 
-class UnexpectedDefinitionType(Error):
+class UnexpectedDefinitionTypeError(Error):
   """An unexpected/unknown definition type was used."""
 
 
@@ -120,6 +120,9 @@ class Naming(object):
      current_symbol: The current token being handled while parsing data.
      services: A collection of all of the current service item tokens.
      networks: A collection of all the current network item tokens.
+     unseen_services: Undefined service entries.
+     unseen_networks: Undefined network entries.
+     port_re: Regular Expression matching valid port entries.
   """
 
   def __init__(self, naming_dir=None, naming_file=None, naming_type=None):
@@ -525,7 +528,7 @@ class Naming(object):
         file_handle = open(current_file, 'r')
         self._ParseFile(file_handle, def_type)
       except IOError as error_info:
-        raise NoDefinitionsError('%s', error_info)
+        raise NoDefinitionsError('%s' % error_info)
 
   def _ParseFile(self, file_handle, def_type):
     for line in file_handle:
@@ -568,13 +571,13 @@ class Naming(object):
       definition_type: Either 'networks' or 'services'
 
     Raises:
-      UnexpectedDefinitionType: called with unexpected type of definitions.
+      UnexpectedDefinitionTypeError: called with unexpected type of definitions.
       NamespaceCollisionError: when overlapping tokens are found.
       ParseError: If errors occur
       NamingSyntaxError: Syntax error parsing config.
     """
     if definition_type not in ['services', 'networks']:
-      raise UnexpectedDefinitionType('%s %s' % (
+      raise UnexpectedDefinitionTypeError('%s %s' % (
           'Received an unexpected definition type:', definition_type))
     line = line.strip()
     if not line or line.startswith('#'):  # Skip comments and blanks.
