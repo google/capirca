@@ -325,13 +325,11 @@ class CiscoXRTest(unittest.TestCase):
     self.assertEqual(st, SUPPORTED_TOKENS)
     self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
-  def testAclBasedForwardingActionAcceptNextIpIgnored(self):
+  def testVerbatimObjectGroup(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
-
     pol = policy.ParsePolicy(OBJECT_GROUP_HEADER + VERBATIM_TERM, self.naming)
     acl = ciscoxr.CiscoXR(pol, EXP_INFO)
-    print(acl)
-    self.assertIn("permit tcp any", str(acl))
+    self.assertIn('permit tcp any', str(acl))
 
 if __name__ == '__main__':
   unittest.main()
