@@ -955,7 +955,6 @@ class ObjectGroupTerm(Term):
   """
   # Protocols should be emitted as integers rather than strings.
   _PROTO_INT = True
-  _PLATFORM = 'cisco'
 
   def __init__(self, term, filter_name, platform='cisco', verbose=True):
     super(ObjectGroupTerm, self).__init__(term)
@@ -990,7 +989,7 @@ class ObjectGroupTerm(Term):
     # code by returning early.  Warnings provided in policy.py.
     if self.term.verbatim:
       for next_verbatim in self.term.verbatim:
-        if next_verbatim[0] == self._PLATFORM:
+        if next_verbatim[0] == self.platform:
           ret_str.append(str(next_verbatim[1]))
         return '\n'.join(ret_str)
 

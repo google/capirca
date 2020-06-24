@@ -64,7 +64,7 @@ class CiscoXR(cisco.Cisco):
 
   def _GetObjectGroupTerm(self, term, filter_name, verbose=True):
     """Returns an ObjectGroupTerm object."""
-    return CiscoXRObjectGroupTerm(term, filter_name, verbose=verbose)
+    return CiscoXRObjectGroupTerm(term, filter_name, platform=self._PLATFORM, verbose=verbose)
 
 
 class CiscoXRObjectGroupTerm(cisco.ObjectGroupTerm):

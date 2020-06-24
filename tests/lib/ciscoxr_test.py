@@ -41,6 +41,11 @@ header {
 }
 """
 
+OBJECT_GROUP_HEADER = """
+header {
+  target:: ciscoxr foo object-group
+}
+"""
 GOOD_TERM_1 = """
 term good-term-1 {
   source-address:: SOME_HOST
@@ -88,6 +93,11 @@ term good-term-6 {
 }
 """
 
+VERBATIM_TERM = """
+term verb_term {
+  verbatim:: ciscoxr " permit tcp any"
+}
+"""
 EXPIRED_TERM = """
 term is_expired {
   expiration:: 2001-01-01
@@ -315,6 +325,13 @@ class CiscoXRTest(unittest.TestCase):
     self.assertEqual(st, SUPPORTED_TOKENS)
     self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
+  def testAclBasedForwardingActionAcceptNextIpIgnored(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
+
+    pol = policy.ParsePolicy(OBJECT_GROUP_HEADER + VERBATIM_TERM, self.naming)
+    acl = ciscoxr.CiscoXR(pol, EXP_INFO)
+    print(acl)
+    self.assertIn("permit tcp any", str(acl))
 
 if __name__ == '__main__':
   unittest.main()
