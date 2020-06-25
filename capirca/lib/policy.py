@@ -2420,7 +2420,7 @@ def p_strings_or_ints(p):
 
 def p_error(p):
   """."""
-  next_token = yacc.token()
+  next_token = parser.token()
   if next_token is None:
     use_token = 'EOF'
   else:
@@ -2432,6 +2432,9 @@ def p_error(p):
   else:
     raise ParseError(' ERROR you likely have unablanaced "{"\'s')
 
+
+parser = yacc.yacc(write_tables=False, debug=0, errorlog=yacc.NullLogger())
+  
 # pylint: enable=unused-argument,invalid-name,g-short-docstring-punctuation
 # pylint: enable=g-docstring-quotes,g-short-docstring-space
 # pylint: enable=g-space-before-docstring-summary,g-doc-args
@@ -2548,8 +2551,7 @@ def ParsePolicy(data, definitions=None, optimize=True, base_dir='',
     lexer = lex.lex()
 
     preprocessed_data = '\n'.join(_Preprocess(data, base_dir=base_dir))
-    p = yacc.yacc(write_tables=False, debug=0, errorlog=yacc.NullLogger())
-    policy = p.parse(preprocessed_data, lexer=lexer)
+    policy = parser.parse(preprocessed_data, lexer=lexer)
     policy.filename = filename
     return policy
 
