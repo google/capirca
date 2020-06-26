@@ -2420,6 +2420,7 @@ def p_strings_or_ints(p):
 
 def p_error(p):
   """."""
+  
   next_token = parser.token()
   if next_token is None:
     use_token = 'EOF'
