@@ -2434,7 +2434,7 @@ def p_error(p):
 
 
 parser = yacc.yacc(write_tables=False, debug=0, errorlog=yacc.NullLogger())
-  
+
 # pylint: enable=unused-argument,invalid-name,g-short-docstring-punctuation
 # pylint: enable=g-docstring-quotes,g-short-docstring-space
 # pylint: enable=g-space-before-docstring-summary,g-doc-args
