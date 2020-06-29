@@ -692,7 +692,7 @@ class JuniperTest(unittest.TestCase):
         ' ' * 24 + '/* this is a very descriptive comment  this is a\n' +
         ' ' * 24 + '** very descriptive comment  this is a very\n' +
         ' ' * 24 + '** descriptive comment  this is a very descript */'
-        )
+    )
     self.naming.GetNetAddr.return_value = (
         [nacaddr.IPv4('10.0.0.0/8', comment=long_comment)])
     self.naming.GetServiceByProto.return_value = ['25']

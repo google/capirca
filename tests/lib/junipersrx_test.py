@@ -698,8 +698,7 @@ class JuniperSRXTest(unittest.TestCase):
 
     # Check the application was split into a set of many applications; 9 terms.
     pattern = re.compile(
-        r'application-set accept-icmpv6-types-app \{\s+(application accept-icmpv6-types-app\d;\s+){9}\}'
-    )
+        r'application-set accept-icmpv6-types-app \{\s+(application accept-icmpv6-types-app\d;\s+){9}\}')
     self.assertTrue(pattern.search(output), output)
 
     # Check that each of the 9 applications with 1 term each.
@@ -714,8 +713,7 @@ class JuniperSRXTest(unittest.TestCase):
 
     # Check for split into application set of many applications; 18 terms.
     pattern = re.compile(
-        r'application-set accept-icmp-types-app \{\s+(application accept-icmp-types-app\d{1,2};\s+){18}\}'
-    )
+        r'application-set accept-icmp-types-app \{\s+(application accept-icmp-types-app\d{1,2};\s+){18}\}')
     self.assertTrue(pattern.search(output), output)
 
     # Check that each of the 18 applications have 1 term each.
@@ -1127,7 +1125,7 @@ class JuniperSRXTest(unittest.TestCase):
     mo_ips = []
     counter = 0
     for ip in ips:
-      if counter%2 == 0:
+      if counter % 2 == 0:
         mo_ips.append(nacaddr.IP(ip))
       counter += 1
 
@@ -1135,7 +1133,7 @@ class JuniperSRXTest(unittest.TestCase):
     prodcolos_ips = []
     counter = 0
     for ip in ips:
-      if counter%2 == 0:
+      if counter % 2 == 0:
         prodcolos_ips.append(nacaddr.IP(ip))
       counter += 1
 
@@ -1153,20 +1151,20 @@ class JuniperSRXTest(unittest.TestCase):
 
   def testLargeTermSplittingV6(self):
     ips = list(nacaddr.IP('2620:0:1000:3103:eca0:2c09:6b32:e000/119'
-                         ).subnets(new_prefix=128))
+                          ).subnets(new_prefix=128))
     mo_ips = []
     counter = 0
     for ip in ips:
-      if counter%2 == 0:
+      if counter % 2 == 0:
         mo_ips.append(nacaddr.IP(ip))
       counter += 1
 
     ips = list(nacaddr.IP('2720:0:1000:3103:eca0:2c09:6b32:e000/119'
-                         ).subnets(new_prefix=128))
+                          ).subnets(new_prefix=128))
     prodcolos_ips = []
     counter = 0
     for ip in ips:
-      if counter%2 == 0:
+      if counter % 2 == 0:
         prodcolos_ips.append(nacaddr.IP(ip))
       counter += 1
 
@@ -1184,21 +1182,21 @@ class JuniperSRXTest(unittest.TestCase):
 
   def testLargeTermSplitIgnoreV6(self):
     ips = list(nacaddr.IP('2620:0:1000:3103:eca0:2c09:6b32:e000/119'
-                         ).subnets(new_prefix=128))
+                          ).subnets(new_prefix=128))
     mo_ips = []
     counter = 0
     for ip in ips:
-      if counter%2 == 0:
+      if counter % 2 == 0:
         mo_ips.append(nacaddr.IP(ip))
       counter += 1
 
     ips = list(nacaddr.IP('2720:0:1000:3103:eca0:2c09:6b32:e000/119'
-                         ).subnets(new_prefix=128))
+                          ).subnets(new_prefix=128))
     ips.append(nacaddr.IPv4('10.0.0.1/32'))
     prodcolos_ips = []
     counter = 0
     for ip in ips:
-      if counter%2 == 0:
+      if counter % 2 == 0:
         prodcolos_ips.append(nacaddr.IP(ip))
       counter += 1
 

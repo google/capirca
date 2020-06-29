@@ -206,5 +206,6 @@ class SRXloTest(unittest.TestCase):
                                                 self.naming), EXP_INFO))
     self.assertIn('inactive: term good-term-3 {', output)
 
+
 if __name__ == '__main__':
   unittest.main()

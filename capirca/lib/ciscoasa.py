@@ -365,4 +365,3 @@ class CiscoASA(aclgenerator.ACLGenerator):
 
       # end for header, filter_name, filter_type...
       return '\n'.join(target)
-

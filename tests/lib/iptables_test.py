@@ -874,7 +874,7 @@ class AclCheckTest(unittest.TestCase):
 
     self.assertTrue(re.search(
         '--comment "Text describing with quotes"', result),
-                    'Iptables did not strip out quotes')
+        'Iptables did not strip out quotes')
 
   def testLongTermName(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + BAD_LONG_TERM_NAME, self.naming)
@@ -1249,6 +1249,7 @@ class AclCheckTest(unittest.TestCase):
 
     self.assertNotIn('-m u32 --u32 "0x3&0xff=0x0"', result,
                      'match for hop-by-hop header is missing')
+
 
 if __name__ == '__main__':
   unittest.main()

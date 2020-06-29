@@ -995,5 +995,6 @@ class TermTest(unittest.TestCase):
     self.assertTrue(ipv4_address)
     self.assertTrue(ipv6_address)
 
+
 if __name__ == '__main__':
   unittest.main()

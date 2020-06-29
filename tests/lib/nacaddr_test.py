@@ -158,8 +158,8 @@ class NacaddrUnitTest(unittest.TestCase):
                          expected)
 
   def testAddressListExcludeCaseOne(self):
-  # Small block eliminated by large block, and an extra block that stays.
-  # For both IP versions.
+    # Small block eliminated by large block, and an extra block that stays.
+    # For both IP versions.
     superset = [nacaddr.IPv4('200.0.0.0/24'), nacaddr.IPv4('10.1.0.0/24'),
                 nacaddr.IPv6('200::/56'), nacaddr.IPv6('10:1::/56')]
     excludes = [nacaddr.IPv6('10::/16'), nacaddr.IPv4('10.0.0.0/8')]
@@ -168,7 +168,7 @@ class NacaddrUnitTest(unittest.TestCase):
                          expected)
 
   def testAddressListExcludeCaseTwo(self):
-  # Two blocks out of the middle of a large block.
+    # Two blocks out of the middle of a large block.
     superset = [nacaddr.IPv4('200.0.0.0/24'), nacaddr.IPv4('10.0.0.0/8'),
                 nacaddr.IPv6('200::/56'), nacaddr.IPv6('10::/16')]
     excludes = [nacaddr.IPv6('10:8000::/18'), nacaddr.IPv6('10:4000::/18'),
@@ -181,7 +181,7 @@ class NacaddrUnitTest(unittest.TestCase):
                          expected)
 
   def testAddressListExcludeCaseThree(self):
-  # Two blocks off both ends of a large block.
+    # Two blocks off both ends of a large block.
     superset = [nacaddr.IPv4('200.0.0.0/24'), nacaddr.IPv4('10.0.0.0/8'),
                 nacaddr.IPv6('200::/56'), nacaddr.IPv6('10::/16')]
     excludes = [nacaddr.IPv6('10::/18'), nacaddr.IPv6('10:c000::/18'),
@@ -194,7 +194,7 @@ class NacaddrUnitTest(unittest.TestCase):
                          expected)
 
   def testAddressListExcludeCaseFour(self):
-  # IPv6 does not affect IPv4
+    # IPv6 does not affect IPv4
     superset = [nacaddr.IPv4('0.0.0.0/0')]
     excludes = [nacaddr.IPv6('::/0')]
     expected = [nacaddr.IPv4('0.0.0.0/0')]
@@ -202,7 +202,7 @@ class NacaddrUnitTest(unittest.TestCase):
                          expected)
 
   def testAddressListExcludeCaseFive(self):
-  # IPv6 does not affect IPv4
+    # IPv6 does not affect IPv4
     superset = [nacaddr.IPv6('::/0')]
     excludes = [nacaddr.IPv4('0.0.0.0/0')]
     expected = [nacaddr.IPv6('::/0')]
@@ -210,7 +210,7 @@ class NacaddrUnitTest(unittest.TestCase):
                          expected)
 
   def testAddressListExcludeCaseSix(self):
-  # IPv6 does not affect IPv4
+    # IPv6 does not affect IPv4
     superset = [nacaddr.IPv6('0::ffff:0.0.0.0/96')]
     excludes = [nacaddr.IPv4('0.0.0.0/0')]
     expected = [nacaddr.IPv6('0::ffff:0.0.0.0/96')]
@@ -229,13 +229,13 @@ class NacaddrUnitTest(unittest.TestCase):
                  nacaddr.IPv4('192.168.1.7/31',
                               token='UNDERSUPER',
                               strict=False)
-                ]
+                 ]
     expected = [nacaddr.IPv4('10.0.0.7/32', token='BAR'),
                 nacaddr.IPv4('10.0.0.9/32', token='BAR'),
                 nacaddr.IPv4('10.0.1.6/31', token='BIZ'),
                 nacaddr.IPv4('10.0.0.6/32', token='FOO'),
                 nacaddr.IPv4('10.0.0.8/32', token='FOO'),
-                nacaddr.IPv4('192.168.1.1/24', token='SUPER', strict=False),]
+                nacaddr.IPv4('192.168.1.1/24', token='SUPER', strict=False), ]
     collapsed = nacaddr.CollapseAddrListPreserveTokens(addr_list)
     self.assertListEqual(collapsed, expected)
 
@@ -274,7 +274,7 @@ class NacaddrUnitTest(unittest.TestCase):
                    nacaddr.IPv6('10::/56')],
                   [nacaddr.IPv6('8::/64')],
                   [nacaddr.IPv6('10::/56')])
-                ]
+                 ]
     for addresses, complement_addresses, result in test_data:
       self.assertEqual(nacaddr.CollapseAddrList(addresses,
                                                 complement_addresses), result)

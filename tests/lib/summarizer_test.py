@@ -44,9 +44,9 @@ class SummarizerTest(unittest.TestCase):
     random.seed(random_seed)
 
   def testToDottedQuad(self):
-    net = summarizer.DSMNet(1<<32, 4294967264)
+    net = summarizer.DSMNet(1 << 32, 4294967264)
     self.assertRaises(ValueError)
-    net = summarizer.DSMNet(3232235584, 1<<16)
+    net = summarizer.DSMNet(3232235584, 1 << 16)
     self.assertRaises(ValueError)
     net = summarizer.DSMNet(3232235584, 4294967264)
     self.assertEqual(summarizer.ToDottedQuad(net),
@@ -171,7 +171,7 @@ class SummarizerTest(unittest.TestCase):
                               summarizer.DSMNet(3232249888, 4294966398),
                               summarizer.DSMNet(3232249908, 4294966398),
                               summarizer.DSMNet(3232249942, 4294966398),
-                             ])
+                              ])
 
   def testMergeText(self):
     existing_comment = 'comment that already exists'
@@ -198,9 +198,8 @@ class SummarizerTest(unittest.TestCase):
     result = summarizer.Summarize(nets)
     self.assertEqual(result, [summarizer.DSMNet(1249711233, 4294967039),
                               summarizer.DSMNet(3512046465, 4294967295)
-                             ])
+                              ])
 
 
 if __name__ == '__main__':
   unittest.main()
-

@@ -331,5 +331,6 @@ class CiscoXRTest(unittest.TestCase):
     acl = ciscoxr.CiscoXR(pol, EXP_INFO)
     self.assertIn('permit tcp any', str(acl))
 
+
 if __name__ == '__main__':
   unittest.main()

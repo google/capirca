@@ -195,5 +195,6 @@ class NamingUnitTest(unittest.TestCase):
   def testGetNetChildrenNoChild(self):
     self.assertEqual([], self.defs.GetNetChildren('NET1'))
 
+
 if __name__ == '__main__':
   unittest.main()
