@@ -25,6 +25,7 @@ import ipaddress
 import itertools
 from typing import Union
 
+import capirca.utils.iputils as iputils
 
 def IP(ip, comment='', token='', strict=True):
   """Take an ip string and return an object of the correct type.
@@ -392,7 +393,7 @@ def RemoveAddressFromList(superset, exclude):
     elif exclude.version == addr.version and exclude.subnet_of(addr):
       # this could be optimized except that one group uses this
       # code with ipaddrs (instead of nacaddrs).
-      ret_array.extend([IP(x) for x in addr.address_exclude(exclude)])
+      ret_array.extend((IP(x) for x in iputils.exclude_address(addr, exclude)))
     else:
       ret_array.append(addr)
   return sorted(ret_array)
