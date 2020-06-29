@@ -1,0 +1,6 @@
+#!/bin/bash
+
+pip install -e .
+pip install pre-commit
+# Install the pre-commit hooks as well
+pre-commit install
