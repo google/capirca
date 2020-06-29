@@ -169,7 +169,7 @@ class ACLGeneratorTest(unittest.TestCase):
                  'ipip': 4,
                  'tcp': 6,
                  'gre': 47,
-                }
+                 }
     proto_convert = ['gre', 'tcp']
 
     protocol_list = ['icmp', 'gre', 'tcp', 'ipip']

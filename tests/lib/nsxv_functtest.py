@@ -42,7 +42,7 @@ class NsxvFunctionalTest(unittest.TestCase):
     """
     _parser = OptionParser()
     _parser.add_option('-d', '--def', dest='definitions',
-                      help='definitions directory', default='../def')
+                       help='definitions directory', default='../def')
     (FLAGS, args) = _parser.parse_args()
     self.defs = naming.Naming(FLAGS.definitions)
 
@@ -61,14 +61,14 @@ class NsxvFunctionalTest(unittest.TestCase):
 
     # parse the xml
     root = ET.fromstring(output)
-     # check section name
+    # check section name
     section_name = {'id': '1007', 'name': 'POLICY_NAME'}
     self.assertEqual(root.attrib, section_name)
     # check name and action
     self.assertEqual(root.find('./rule/name').text, 'reject-imap-requests')
     self.assertEqual(root.find('./rule/action').text, 'reject')
 
-    #check IPV4 destination
+    # check IPV4 destination
     exp_destaddr = ['200.1.1.4/31']
 
     for destination in root.findall('./rule/destinations/destination'):
@@ -77,8 +77,8 @@ class NsxvFunctionalTest(unittest.TestCase):
       if value not in exp_destaddr:
         self.fail('IPv4Address destination not found in test_nsxv_str()')
 
-    #check protocol
-    protocol =  int(root.find('./rule/services/service/protocol').text)
+    # check protocol
+    protocol = int(root.find('./rule/services/service/protocol').text)
     self.assertEqual(protocol, 6)
 
     # check destination port
@@ -93,15 +93,15 @@ class NsxvFunctionalTest(unittest.TestCase):
     output = str(fw)
     # parse the xml
     root = ET.fromstring(output)
-     # check section name
+    # check section name
     section_name = {'name': 'POLICY_NO_SECTION_ID_NAME'}
     self.assertEqual(root.attrib, section_name)
     # check name and action
     self.assertEqual(root.find('./rule/name').text, 'accept-icmp')
     self.assertEqual(root.find('./rule/action').text, 'allow')
 
-    #check protocol
-    protocol =  int(root.find('./rule/services/service/protocol').text)
+    # check protocol
+    protocol = int(root.find('./rule/services/service/protocol').text)
     self.assertEqual(protocol, 1)
 
   def test_nsxv_nofiltertype(self):

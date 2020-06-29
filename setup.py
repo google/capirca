@@ -15,7 +15,6 @@
 # limitations under the License.
 
 
-import os
 from setuptools import setup, find_packages
 
 setup(

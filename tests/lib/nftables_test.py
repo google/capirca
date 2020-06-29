@@ -469,7 +469,7 @@ class NftablesTest(unittest.TestCase):
         'Term %s in policy is too long (>%d characters) and will be'
         ' truncated', 'good-term-17', nftables.Term.MAX_CHARACTERS)
     # Ensure that the truncate did happen and stripped off the ':'
-    self.assertIn('comment "%(long_line)s' % {'long_line': 'A' *127}, nft)
+    self.assertIn('comment "%(long_line)s' % {'long_line': 'A' * 127}, nft)
 
   def testLogTerm(self):
     nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_13,

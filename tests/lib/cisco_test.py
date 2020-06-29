@@ -485,7 +485,7 @@ class CiscoTest(unittest.TestCase):
     # Standard ACLs should have standard remark style.
     acl = cisco.Cisco(policy.ParsePolicy(
         GOOD_STANDARD_NUMBERED_HEADER + GOOD_STANDARD_TERM_1, self.naming),
-                      EXP_INFO)
+        EXP_INFO)
     self.assertIn('access-list 50 remark numbered standard', str(acl),
                   str(acl))
     self.assertIn('access-list 50 remark standard-term-1', str(acl),
@@ -839,6 +839,7 @@ class CiscoTest(unittest.TestCase):
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('cs4-valid_network_name'),
                                              mock.call('cs4-valid_network_name')])
+
   def testNoVerbose(self):
     for i in [GOOD_NOVERBOSE_HEADER, GOOD_NOVERBOSE_STANDARD_HEADER,
               GOOD_NOVERBOSE_OBJGRP_HEADER, GOOD_NOVERBOSE_INET6_HEADER]:
@@ -846,6 +847,7 @@ class CiscoTest(unittest.TestCase):
       acl = cisco.Cisco(policy.ParsePolicy(i+GOOD_STANDARD_TERM_1, self.naming),
                         EXP_INFO)
       self.assertNotIn('remark', str(acl), str(acl))
+
 
 if __name__ == '__main__':
   unittest.main()

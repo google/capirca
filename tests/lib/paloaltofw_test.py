@@ -225,7 +225,7 @@ class PaloAltoFWTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['25']
 
     paloalto = paloaltofw.PaloAltoFW(
-        policy.ParsePolicy(GOOD_HEADER_1 +GOOD_TERM_1,
+        policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
                            self.naming), EXP_INFO)
     output = str(paloalto)
     self.assertIn('<entry name="good-term-1">', output, output)
@@ -262,6 +262,7 @@ class PaloAltoFWTest(unittest.TestCase):
     st, sst = pol1._BuildTokens()
     self.assertEqual(st, SUPPORTED_TOKENS)
     self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
+
 
 if __name__ == '__main__':
   unittest.main()
