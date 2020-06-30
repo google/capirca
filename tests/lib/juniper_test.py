@@ -23,6 +23,7 @@ import datetime
 import re
 import unittest
 
+from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import juniper
 from capirca.lib import nacaddr
@@ -30,11 +31,6 @@ from capirca.lib import naming
 from capirca.lib import policy
 import mock
 from six.moves import range
-
-from absl import flags
-from absl import logging
-
-FLAGS = flags.FLAGS
 
 GOOD_HEADER = """
 header {

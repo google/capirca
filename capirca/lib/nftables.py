@@ -27,14 +27,13 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from absl import logging
 import collections
 import datetime
 
+from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 import six
-
 
 
 class Error(Exception):
@@ -176,7 +175,8 @@ class Term(aclgenerator.Term):
       if icmp_types != ['']:
         # nft intepreter requires ICMP types to be spelled out
         icmp_name_types = self.ICMP_TYPE[self.AF_MAP[self.af]]
-        icmp_type_names = dict((v, k) for k, v in six.iteritems(icmp_name_types))
+        icmp_type_names = dict((v, k) for k, v in six.iteritems(
+            icmp_name_types))
         output.append('icmp type %s' %
                       self._FormatMatch([icmp_type_names[icmp_type] for
                                          icmp_type in icmp_types]))

@@ -333,6 +333,11 @@ class PcapFilter(aclgenerator.ACLGenerator):
     Takes standard ACLGenerator arguments, as well as an 'invert' kwarg.  If
     this argument is true, the pcap filter will be reversed, such that it
     matches all those packets that would be denied by the specified policy.
+
+    Args:
+      *args: Arguments.
+      **kwargs: Keyword arguments.
+
     """
     self._invert = False
     if 'invert' in kwargs:

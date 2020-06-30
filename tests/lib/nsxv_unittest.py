@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""UnitTest class for nsxv.py"""
+"""UnitTest class for nsxv.py."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -46,19 +46,19 @@ class TermTest(unittest.TestCase):
     pass
 
   def test_init_forinet(self):
-    """ Test for Term._init_ """
+    """Test for Term._init_."""
     inet_term = nsxv.Term(nsxv_mocktest.INET_TERM, 'inet')
     self.assertEqual(inet_term.af, 4)
     self.assertEqual(inet_term.filter_type, 'inet')
 
   def test_init_forinet6(self):
-    """ Test for Term._init_ """
+    """Test for Term._init_."""
     inet6_term = nsxv.Term(nsxv_mocktest.INET6_TERM, 'inet6', 6)
     self.assertEqual(inet6_term.af, 6)
     self.assertEqual(inet6_term.filter_type, 'inet6')
 
   def test_ServiceToStr(self):
-    """ Test for Term._ServiceToStr """
+    """Test for Term._ServiceToStr."""
 
     proto = 6
     icmp_types = []
@@ -66,17 +66,18 @@ class TermTest(unittest.TestCase):
     spots = [(123, 123)]
     nsxv_term = nsxv.Term(nsxv_mocktest.INET_TERM, 'inet')
     service = nsxv_term._ServiceToString(proto, spots, dports, icmp_types)
-    self.assertEquals(
-        service,
-        '<service><protocol>6</protocol><sourcePort>123</sourcePort><destinationPort>1024-65535</destinationPort></service>')
+    self.assertEquals(service,
+                      '<service><protocol>6</protocol><sourcePort>123'
+                      '</sourcePort><destinationPort>1024-65535'
+                      '</destinationPort></service>')
 
   def test_str_forinet(self):
-    """ Test for Term._str_ """
+    """Test for Term._str_ """
     pol = policy.ParsePolicy(nsxv_mocktest.INET_FILTER, self.defs, False)
     af = 4
     for header, terms in pol.filters:
-       nsxv_term = nsxv.Term(terms[0], af)
-       rule_str = nsxv.Term.__str__(nsxv_term)
+      nsxv_term = nsxv.Term(terms[0], af)
+      rule_str = nsxv.Term.__str__(nsxv_term)
     # parse xml rule and check if the values are correct
     root = ET.fromstring(rule_str)
     # check name and action
@@ -116,13 +117,13 @@ class TermTest(unittest.TestCase):
     self.assertEqual(notes, 'Allow ntp request')
 
   def test_str_forinet6(self):
-    """ Test for Term._str_ """
+    """Test for Term._str_."""
     pol = policy.ParsePolicy(nsxv_mocktest.INET6_FILTER, self.defs, False)
     af = 6
     filter_type = 'inet6'
     for header, terms in pol.filters:
-       nsxv_term = nsxv.Term(terms[0], filter_type, af)
-       rule_str = nsxv.Term.__str__(nsxv_term)
+      nsxv_term = nsxv.Term(terms[0], filter_type, af)
+      rule_str = nsxv.Term.__str__(nsxv_term)
 
     # parse xml rule and check if the values are correct
     root = ET.fromstring(rule_str)
@@ -141,7 +142,7 @@ class TermTest(unittest.TestCase):
         self.fail('subProtocol not matched in test_str_forinet6()')
 
   def test_TranslatePolicy(self):
-    """ Test for Nsxv.test_TranslatePolicy """
+    """Test for Nsxv.test_TranslatePolicy."""
     # exp_info default is 2
     exp_info = 2
     pol = policy.ParsePolicy(nsxv_mocktest.INET_FILTER, self.defs, False)
@@ -154,7 +155,7 @@ class TermTest(unittest.TestCase):
       self.assertEqual(len(terms), 1)
 
   def test_nsxv_str(self):
-    """ Test for Nsxv._str_ """
+    """Test for Nsxv._str_."""
     # exp_info default is 2
     exp_info = 2
     pol = policy.ParsePolicy(nsxv_mocktest.MIXED_FILTER, self.defs, False)

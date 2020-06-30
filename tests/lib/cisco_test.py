@@ -837,8 +837,9 @@ class CiscoTest(unittest.TestCase):
     expected = 'permit ip 10.0.0.0 0.0.0.255 10.0.0.0 0.0.0.255'
     self.assertTrue(expected in str(acl), str(acl))
 
-    self.naming.GetNetAddr.assert_has_calls([mock.call('cs4-valid_network_name'),
-                                             mock.call('cs4-valid_network_name')])
+    self.naming.GetNetAddr.assert_has_calls(
+        [mock.call('cs4-valid_network_name'),
+         mock.call('cs4-valid_network_name')])
 
   def testNoVerbose(self):
     for i in [GOOD_NOVERBOSE_HEADER, GOOD_NOVERBOSE_STANDARD_HEADER,

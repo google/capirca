@@ -1159,7 +1159,7 @@ class Cisco(aclgenerator.ACLGenerator):
                            'in less than two weeks.', term.name, filter_name)
             if term.expiration <= current_date:
               logging.warning('WARNING: Term %s in policy %s is expired and '
-                           'will not be rendered.', term.name, filter_name)
+                              'will not be rendered.', term.name, filter_name)
               continue
 
           # render terms based on filter type

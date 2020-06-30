@@ -18,14 +18,11 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-# pylint: disable=g-importing-member
 from string import Template
 
-# pylint: disable=unused-import
-# logging is used in the test mock
+from absl import logging
 from capirca.lib import windows
 from six.moves import range
-from absl import logging
 
 
 class Term(windows.Term):

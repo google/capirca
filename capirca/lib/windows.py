@@ -27,7 +27,6 @@ from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 
 
-
 CMD_PREFIX = 'netsh ipsec static add '
 
 

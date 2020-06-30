@@ -452,7 +452,7 @@ class Nsxv(aclgenerator.ACLGenerator):
     This class takes a policy object and renders the output into a syntax
     which is understood by nsxv policy.
 
-  Args:
+  Attributes:
     pol: policy.Policy object
 
   Raises:

@@ -122,11 +122,11 @@ class Term(aclgenerator.Term):
   """Representation of an individual Juniper term.
 
     This is mostly useful for the __str__() method.
-
-  Args:
-    term: policy.Term object
-    term_type: the address family for the term, one of "inet", "inet6",
-      or "bridge"
+  Attributes:
+    term: The term object from policy.
+    term_type: String indicating type of term, inet, inet6 icmp etc.
+    enable_dsmo: Boolean to enable dsmo.
+    noverbose: Boolean to disable verbosity.
   """
   _PLATFORM = 'juniper'
   _DEFAULT_INDENT = 12
@@ -826,7 +826,7 @@ class Juniper(aclgenerator.ACLGenerator):
     This class takes a policy object and renders the output into a syntax
     which is understood by juniper routers.
 
-  Args:
+  Attributes:
     pol: policy.Policy object
   """
 
@@ -906,7 +906,6 @@ class Juniper(aclgenerator.ACLGenerator):
       enable_dsmo = 'enable_dsmo' in filter_options[1:]
       noverbose = 'noverbose' in filter_options[1:]
 
-
       if not interface_specific:
         filter_options.remove('not-interface-specific')
       if enable_dsmo:
@@ -921,7 +920,7 @@ class Juniper(aclgenerator.ACLGenerator):
       new_terms = []
       for term in terms:
 
-        # if the inactive option is set, we should deactivate the term and remove the option
+        # if inactive is set, deactivate the term and remove the option.
         if 'inactive' in term.option:
           term.inactive = True
           term.option.remove('inactive')

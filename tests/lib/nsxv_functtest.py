@@ -12,34 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Functional test class for nsxv.py"""
+"""Functional test class for nsxv.py."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import unittest
-# system imports
 import copy
 from optparse import OptionParser
+import unittest
 from xml.etree import ElementTree as ET
 
-# compiler imports
 from lib import naming
-from lib import policy
 from lib import nsxv
+from lib import policy
 import nsxv_mocktest
 
 
 class NsxvFunctionalTest(unittest.TestCase):
-  """
-  Reads the policy and the output has the xml formed correctly with the tags and values
-  """
+  """Functional testing for NSXV."""
 
   def setUp(self):
-    """Call before every test case
-    """
+    """Call before every test case."""
     _parser = OptionParser()
     _parser.add_option('-d', '--def', dest='definitions',
                        help='definitions directory', default='../def')
@@ -114,11 +109,13 @@ class NsxvFunctionalTest(unittest.TestCase):
 
   def test_nsxv_incorrectfiltertype(self):
     def test_incorrectfiltertype():
-      pol = policy.ParsePolicy(nsxv_mocktest.POLICY_INCORRECT_FILTERTYPE, self.defs)
+      pol = policy.ParsePolicy(nsxv_mocktest.POLICY_INCORRECT_FILTERTYPE,
+                               self.defs)
       exp_info = 2
       nsx = copy.deepcopy(pol)
       fw = nsxv.Nsxv(nsx, exp_info)
-    self.assertRaises(nsxv.UnsupportedNsxvAccessListError, test_incorrectfiltertype)
+    self.assertRaises(nsxv.UnsupportedNsxvAccessListError,
+                      test_incorrectfiltertype)
 
   def test_nsxv_optionkywd(self):
     def test_optionkywd():
