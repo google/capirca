@@ -34,7 +34,7 @@ def exclude_address(
       '%s and %s are not of the same version' % (base_net, exclude_net)
     )
 
-  if not isinstance(exclude_net, _BaseNetwork):
+  if not isinstance(exclude_net, ipaddress._BaseNetwork):
     raise TypeError('%s is not a network object' % exclude_net)
 
   if not exclude_net.subnet_of(base_net):
@@ -48,15 +48,15 @@ def exclude_address(
   if include_range[0] == exclude_range[0]:
     result_start = address_class(exclude_range[1]+1)
     result_end = address_class(include_range[1])
-    yield from summarize_address_range(result_start, result_end)
+    yield from ipaddress.summarize_address_range(result_start, result_end)
   elif include_range[1] == exclude_range[1]:
     result_start = address_class(include_range[0])
     result_end = address_class(exclude_range[0]-1)
-    yield from summarize_address_range(result_start, result_end)
+    yield from ipaddress.summarize_address_range(result_start, result_end)
   else:
     first_section_start = address_class(include_range[0])
     first_section_end = address_class(exclude_range[0]-1)
     second_section_start = address_class(exclude_range[1]+1)
     second_section_end = address_class(include_range[1])
-    yield from summarize_address_range(first_section_start, first_section_end)
-    yield from summarize_address_range(second_section_start, second_section_end)
+    yield from ipaddress.summarize_address_range(first_section_start, first_section_end)
+    yield from ipaddress.summarize_address_range(second_section_start, second_section_end)
