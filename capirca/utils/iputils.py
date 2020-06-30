@@ -1,7 +1,13 @@
-from ipaddress import summarize_address_range, _BaseNetwork
+'''
+A module of utilities to work with IP addresses in a faster way
+'''
 
+import ipaddress
 
-def exclude_address(base_net: _BaseNetwork, exclude_net: _BaseNetwork):
+def exclude_address(
+    base_net: ipaddress._BaseNetwork,
+    exclude_net: ipaddress._BaseNetwork
+):
   '''
   Function to exclude a subnetwork from another, returning a generator that yields
   all values that correspond to the base network without the exclude network.
@@ -11,30 +17,34 @@ def exclude_address(base_net: _BaseNetwork, exclude_net: _BaseNetwork):
   the standard library function is a O(n) operation on the length of the
   netmask of the excluding network, whereas this function is O(1) for all cases.
 
-  args:
+  Args:
     base_net: an object of type _BaseNetwork, the network that
               contains the exclude network
     exclude_net: an object of type _BaseNetwork, the network
                  that is being removed from the base_net
-  raises:
+  Raises:
     ValueError if exclude_net is not completely contained in base_net
+
+  Yields:
+    A sequence of IP networks that do not encompass the exclude_net
   '''
 
   if not base_net._version == exclude_net._version:
-    raise TypeError("%s and %s are not of the same version" % (
-      base_net, exclude_net))
+    raise TypeError(
+      '%s and %s are not of the same version' % (base_net, exclude_net)
+    )
 
   if not isinstance(exclude_net, _BaseNetwork):
-    raise TypeError("%s is not a network object" % exclude_net)
+    raise TypeError('%s is not a network object' % exclude_net)
 
   if not exclude_net.subnet_of(base_net):
     raise ValueError()
   if exclude_net == base_net:
     return
 
-  include_range = base_net.network_address._ip, base_net.broadcast_address._ip
-  exclude_range = exclude_net.network_address._ip, exclude_net.broadcast_address._ip
-  address_class = base_net.network_address.__class__
+  include_range = base_net.network_address._ip, base_net.broadcast_address._ip  # pylint disable=protected-access
+  exclude_range = exclude_net.network_address._ip, exclude_net.broadcast_address._ip  # pylint disable=protected-access
+  address_class = base_net.network_address.__class__  # pylint disable=protected-access
   if include_range[0] == exclude_range[0]:
     result_start = address_class(exclude_range[1]+1)
     result_end = address_class(include_range[1])
