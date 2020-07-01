@@ -266,7 +266,7 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
       # ensure all options after the filter name are expected
       for opt in filter_options:
         if opt not in good_default_actions + self._GOOD_AFS + good_options:
-          raise aclgenerator.UnsupportedTargetOption('%s %s %s %s' % (
+          raise aclgenerator.UnsupportedTargetOptionError('%s %s %s %s' % (
               '\nUnsupported option found in', self._PLATFORM,
               'target definition:', opt))
 
@@ -290,7 +290,7 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
               if arg in good_default_actions:
                 default_action = arg
       if default_action and default_action not in good_default_actions:
-        raise aclgenerator.UnsupportedTargetOption('%s %s %s %s %s' % (
+        raise aclgenerator.UnsupportedTargetOptionError('%s %s %s %s %s' % (
             '\nOnly', ', '.join(good_default_actions),
             'default filter action allowed;', default_action, 'used.'))
 
@@ -344,7 +344,7 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
       target.append(': ' + filter_type)
 
       if default_action:
-        raise aclgenerator.UnsupportedTargetOption(
+        raise aclgenerator.UnsupportedTargetOptionError(
             'Windows generator does not support default actions')
 
       # add the terms

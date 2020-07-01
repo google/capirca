@@ -663,7 +663,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['25']
 
     pol = policy.ParsePolicy(BAD_HEADER_2 + GOOD_TERM_1, self.naming)
-    self.assertRaises(aclgenerator.UnsupportedAF, juniper.Juniper,
+    self.assertRaises(aclgenerator.UnsupportedAFError, juniper.Juniper,
                       pol, EXP_INFO)
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')

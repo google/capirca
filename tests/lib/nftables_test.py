@@ -327,7 +327,7 @@ class NftablesTest(unittest.TestCase):
       logging.info('Testing bad address family case %s.', case)
       header = BAD_HEADER % case
       pol = policy.ParsePolicy(header + GOOD_TERM_1, self.mock_naming)
-      self.assertRaises(aclgenerator.UnsupportedAF,
+      self.assertRaises(aclgenerator.UnsupportedAFError,
                         nftables.Nftables.__init__,
                         nftables.Nftables.__new__(nftables.Nftables),
                         pol, EXP_INFO)

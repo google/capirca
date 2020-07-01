@@ -114,7 +114,7 @@ class ACLGeneratorTest(unittest.TestCase):
     acl = ACLMock(pol, EXP_INFO)
     for _, terms in pol.filters:
       for term in terms:
-        self.assertRaises(aclgenerator.UnsupportedAF,
+        self.assertRaises(aclgenerator.UnsupportedAFError,
                           acl.FixHighPorts, term, 'unsupported', False)
 
   def testTermNameBelowLimit(self):

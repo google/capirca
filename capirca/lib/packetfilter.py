@@ -436,7 +436,7 @@ class PacketFilter(aclgenerator.ACLGenerator):
       # ensure all options after the filter name are expected
       for opt in filter_options:
         if opt not in good_afs + good_options:
-          raise aclgenerator.UnsupportedTargetOption('%s %s %s %s' % (
+          raise aclgenerator.UnsupportedTargetOptionError('%s %s %s %s' % (
               '\nUnsupported option found in', self._PLATFORM,
               'target definition:', opt))
 

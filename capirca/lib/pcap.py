@@ -46,7 +46,7 @@ class UnsupportedActionError(Error):
   """Raised when we see an unsupported action."""
 
 
-class UnsupportedTargetOption(Error):
+class UnsupportedTargetOptionError(Error):
   """Raised when we see an unsupported option."""
 
 
@@ -394,7 +394,7 @@ class PcapFilter(aclgenerator.ACLGenerator):
       # ensure all options after the filter name are expected
       for opt in filter_options:
         if opt not in good_afs + good_options:
-          raise UnsupportedTargetOption('%s %s %s %s' % (
+          raise UnsupportedTargetOptionError('%s %s %s %s' % (
               '\nUnsupported option found in', self._PLATFORM,
               'target definition:', opt))
 
