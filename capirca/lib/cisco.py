@@ -732,11 +732,12 @@ class Term(aclgenerator.Term):
     # options
     opts = [str(x) for x in self.term.option]
     if ((self.PROTO_MAP['tcp'] in protocol or 'tcp' in protocol)
-        and ('tcp-established' in opts or 'established' in opts)):
+      and ('tcp-established' in opts or 'established' in opts)):
       if 'established' not in self.options:
         self.options.append('established')
     # Using both 'fragments' and 'is-fragment', ref Github Issue #187
-    if ('ip' in protocol) and (('fragments' in opts) or ('is-fragment' in opts)):
+    if ('ip' in protocol) and (('fragments' in opts) or \
+      ('is-fragment' in opts)):
       if 'fragments' not in self.options:
         self.options.append('fragments')
 
