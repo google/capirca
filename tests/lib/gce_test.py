@@ -816,7 +816,7 @@ class GCETest(unittest.TestCase):
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
     acl = gce.GCE(policy.ParsePolicy(
         GOOD_HEADER_INGRESS + GOOD_TERM_INGRESS_SOURCETAG, self.naming),
-        EXP_INFO)
+                  EXP_INFO)
 
     self.assertIn('sourceTags', str(acl))
     self.assertNotIn('targetTags', str(acl))

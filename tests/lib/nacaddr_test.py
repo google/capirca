@@ -235,7 +235,7 @@ class NacaddrUnitTest(unittest.TestCase):
                 nacaddr.IPv4('10.0.1.6/31', token='BIZ'),
                 nacaddr.IPv4('10.0.0.6/32', token='FOO'),
                 nacaddr.IPv4('10.0.0.8/32', token='FOO'),
-                nacaddr.IPv4('192.168.1.1/24', token='SUPER', strict=False), ]
+                nacaddr.IPv4('192.168.1.1/24', token='SUPER', strict=False)]
     collapsed = nacaddr.CollapseAddrListPreserveTokens(addr_list)
     self.assertListEqual(collapsed, expected)
 

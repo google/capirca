@@ -731,7 +731,7 @@ class JuniperTest(unittest.TestCase):
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_36,
                                              self.naming), EXP_INFO)
     output = str(jcl)
-    self.assertTrue('inactive: term good-term-36 {' in output, output)
+    self.assertIn('inactive: term good-term-36 {', output)
 
   def testInet6(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('2001::/33')]
