@@ -736,7 +736,7 @@ class Term(aclgenerator.Term):
       if 'established' not in self.options:
         self.options.append('established')
     # Using both 'fragments' and 'is-fragment', ref Github Issue #187
-    if ('ip' in protocol) and (('fragments' in opts) or \
+    if ('ip' in protocol) and (('fragments' in opts) or 
       ('is-fragment' in opts)):
       if 'fragments' not in self.options:
         self.options.append('fragments')
