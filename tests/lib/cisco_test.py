@@ -324,6 +324,14 @@ term good_term_21 {
   action:: accept
 }
 """
+GOOD_TERM_22 = """
+term good_term_22 {
+  source-address:: SOME_HOST
+  destination-address:: SOME_HOST
+  option:: is-fragment
+  action:: accept
+}
+"""
 LONG_COMMENT_TERM = """
 term long-comment-term {
   comment:: "%s "
@@ -406,6 +414,7 @@ SUPPORTED_SUB_TOKENS = {
     },
     'option': {'established',
                'tcp-established',
+               'is-fragment',
                'fragments'}
 }
 
@@ -820,7 +829,8 @@ class CiscoTest(unittest.TestCase):
     self.assertIn('permit udp any any range 1024 65535', str(acl),
                   str(acl))
 
-  def testFragments(self):
+def testFragments_01(self):
+    """Test policy term using 'fragments' (ref Github issue #187)"""
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/24')]
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_20,
                                          self.naming), EXP_INFO)
@@ -829,6 +839,14 @@ class CiscoTest(unittest.TestCase):
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
                                              mock.call('SOME_HOST')])
+
+def testFragments_02(self):
+  """Test policy term using 'is-fragment' (ref Github issue #187)"""
+  self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/24')]
+  acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_22,
+                                       self.naming), EXP_INFO)
+  expected = 'permit ip 10.0.0.0 0.0.0.255 10.0.0.0 0.0.0.255 fragments'
+  self.assertIn(expected, str(acl))
 
   def testTermDSCPMarker(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/24')]
