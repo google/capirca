@@ -428,8 +428,8 @@ class PacketFilterTest(unittest.TestCase):
     self.assertIn('# term good-term-icmp', result,
                   'did not find comment for good-term-icmp')
     self.assertIn(
-        'pass quick proto { icmp } from { any } to { any } keep state\n', result,
-        'did not find actual term for good-term-icmp')
+        'pass quick proto { icmp } from { any } to { any } keep state\n',
+        result, 'did not find actual term for good-term-icmp')
 
   def testIcmpTypes(self):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
@@ -449,7 +449,8 @@ class PacketFilterTest(unittest.TestCase):
     self.assertIn('# term good-term-icmpv6', result,
                   'did not find comment for good-term-icmpv6')
     self.assertIn(
-        'pass quick proto { ipv6-icmp } from { any } to { any } keep state\n', result,
+        'pass quick proto { ipv6-icmp } from { any } to { any } keep state\n',
+        result,
         'did not find actual term for good-term-icmpv6')
 
   def testBadIcmp(self):
@@ -496,7 +497,9 @@ class PacketFilterTest(unittest.TestCase):
     self.assertIn('# term multi-proto', result,
                   'did not find comment for multi-proto')
     self.assertIn(
-        'pass quick proto { tcp udp icmp } from { any } to { any } keep state\n', result,
+        'pass quick proto { tcp udp icmp } from { any } '
+        'to { any } keep state\n',
+        result,
         'did not find actual term for multi-proto')
 
   def testNextTerm(self):
@@ -643,7 +646,7 @@ class PacketFilterTest(unittest.TestCase):
 
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER_DIRECTIONAL_STATELESS + GOOD_TERM_TCP, self.naming),
-        EXP_INFO)
+                                    EXP_INFO)
     result = str(acl)
     self.assertIn('# term good-term-tcp', result,
                   'did not find comment for good-term-tcp')
@@ -658,7 +661,7 @@ class PacketFilterTest(unittest.TestCase):
   def testStatelessEstablished(self):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER_STATELESS + TCP_STATE_TERM, self.naming),
-        EXP_INFO)
+                                    EXP_INFO)
     result = str(acl)
     self.assertIn('# term tcp-established-only', result,
                   'did not find comment for tcp-established-only')
@@ -687,7 +690,7 @@ class PacketFilterTest(unittest.TestCase):
   def testUdpStatelessEstablished(self):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER_STATELESS + UDP_ESTABLISHED_TERM, self.naming),
-        EXP_INFO)
+                                    EXP_INFO)
     result = str(acl)
     self.assertIn('# term udp-established', result,
                   'did not find comment for udp-established')
@@ -710,7 +713,7 @@ class PacketFilterTest(unittest.TestCase):
   def testTcpEstablished(self):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + TCP_GOOD_ESTABLISHED_TERM, self.naming),
-        EXP_INFO)
+                                    EXP_INFO)
     result = str(acl)
     self.assertIn('# term tcp-established-good', result,
                   'did not find comment for tcp-established-good')
@@ -733,7 +736,7 @@ class PacketFilterTest(unittest.TestCase):
 
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + MULTIPLE_NAME_TERM, self.naming),
-        EXP_INFO)
+                                    EXP_INFO)
     result = str(acl)
     self.assertIn(
         'table <PROD_NETWORK> {10.0.0.0/8}', result,
