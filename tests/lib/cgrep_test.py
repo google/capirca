@@ -379,26 +379,29 @@ class CgrepTest(unittest.TestCase):
   def test_group_diff(self):
     expected_results = sorted((
         ['ANY'],
-        ['GOOGLE_DNS -> GOOGLE_PUBLIC_DNS_ANYCAST', 'GOOGLE_DNS'],
-        ['RESERVED -> LOOPBACK', 'RESERVED']
+        ['GOOGLE_DNS', 'GOOGLE_DNS -> GOOGLE_PUBLIC_DNS_ANYCAST'],
+        ['RESERVED', 'RESERVED -> LOOPBACK']
     ))
     options = Namespace()
     options.gmp = ['8.8.8.8', '127.0.0.1']
     results = sorted(cgrep.group_diff(options, self.db))
-    self.assertEqual(sorted(results[2]), sorted(expected_results[2]))
+    self.assertCountEqual(results, expected_results)
 
   # test to make sure two IPs share the same groups
   def test_group_diff_identical(self):
     expected_results = sorted((
-        ['RESERVED', 'INTERNAL', 'RESERVED -> RFC1918',
-         'ANY', 'INTERNAL -> RFC1918'],
+        ['ANY',
+         'INTERNAL',
+         'INTERNAL -> RFC1918',
+         'RESERVED',
+         'RESERVED -> RFC1918'],
         [],
         []
     ))
     options = Namespace()
     options.gmp = ['172.16.0.1', '192.168.0.1']
     results = sorted(cgrep.group_diff(options, self.db))
-    self.assertEqual(sorted(results[2]), sorted(expected_results[2]))
+    self.assertCountEqual(results, expected_results)
 
   #
   # test token->ip(s) resolution (-o)
