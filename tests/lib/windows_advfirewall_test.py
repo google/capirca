@@ -371,13 +371,13 @@ class WindowsAdvFirewallTest(unittest.TestCase):
   def testMiscProtocol(self):
     acl = windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
         GOOD_HEADER_OUT + GOOD_TERM_MISCPROTO + GOOD_TERM_HOPOPT, self.naming),
-        EXP_INFO)
+                                                 EXP_INFO)
     result = str(acl)
     self.assertTrue(
         ['name=o_good-term-miscproto enable=yes interfacetype=any dir=out'
          ' localip=any remoteip=any protocol=112 action=allow',
          'name=o_good-term-hopopt enable=yes interfacetype=any dir=out'
-         ' localip=any remoteip=any protocol=0 action=allow', ],
+         ' localip=any remoteip=any protocol=0 action=allow'],
         result,
         'explicit miscellaneous proto')
 
