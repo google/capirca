@@ -485,7 +485,7 @@ class CiscoTest(unittest.TestCase):
     # Standard ACLs should have standard remark style.
     acl = cisco.Cisco(policy.ParsePolicy(
         GOOD_STANDARD_NUMBERED_HEADER + GOOD_STANDARD_TERM_1, self.naming),
-        EXP_INFO)
+                      EXP_INFO)
     self.assertIn('access-list 50 remark numbered standard', str(acl),
                   str(acl))
     self.assertIn('access-list 50 remark standard-term-1', str(acl),
@@ -835,7 +835,7 @@ class CiscoTest(unittest.TestCase):
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_21,
                                          self.naming), EXP_INFO)
     expected = 'permit ip 10.0.0.0 0.0.0.255 10.0.0.0 0.0.0.255'
-    self.assertTrue(expected in str(acl), str(acl))
+    self.assertIn(expected, str(acl))
 
     self.naming.GetNetAddr.assert_has_calls(
         [mock.call('cs4-valid_network_name'),
