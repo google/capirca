@@ -26,6 +26,7 @@ from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
 from capirca.lib import windows_advfirewall
+from capirca.lib import windows
 import mock
 
 
@@ -321,7 +322,7 @@ class WindowsAdvFirewallTest(unittest.TestCase):
     self.assertRaises(aclgenerator.UnsupportedFilterError,
                       str, acl)
 
-  @mock.patch.object(windows_advfirewall.logging, 'warning')
+  @mock.patch.object(windows.logging, 'warning')
   def testExpiredTerm(self, mock_warn):
     windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
         GOOD_HEADER_OUT + EXPIRED_TERM, self.naming), EXP_INFO)
@@ -331,7 +332,7 @@ class WindowsAdvFirewallTest(unittest.TestCase):
         'and will not be rendered.',
         'expired_test', 'out')
 
-  @mock.patch.object(windows_advfirewall.logging, 'info')
+  @mock.patch.object(windows.logging, 'info')
   def testExpiringTerm(self, mock_info):
     exp_date = datetime.date.today() + datetime.timedelta(weeks=EXP_INFO)
     windows_advfirewall.WindowsAdvFirewall(policy.ParsePolicy(
