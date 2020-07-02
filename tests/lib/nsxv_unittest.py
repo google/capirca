@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-
+import optparse
 import unittest
 from xml.etree import ElementTree as ET
 
@@ -33,13 +33,15 @@ class TermTest(unittest.TestCase):
 
   def setUp(self):
     """Call before every test case."""
-    _parser = OptionParser()
-    _parser.add_option('-d', '--def', dest='definitions',
-                       help='definitions directory', default='../def')
-    (FLAGS, args) = _parser.parse_args()
+    super(TermTest, self).setUp()
+    parser = optparse.OptionParser()
+    parser.add_option('-d', '--def', dest='definitions',
+                      help='definitions directory', default='../def')
+    (FLAGS, args) = parser.parse_args()
     self.defs = naming.Naming(FLAGS.definitions)
 
   def tearDown(self):
+    super(TermTest, self).setUp()
     pass
 
   def runTest(self):
@@ -66,16 +68,16 @@ class TermTest(unittest.TestCase):
     spots = [(123, 123)]
     nsxv_term = nsxv.Term(nsxv_mocktest.INET_TERM, 'inet')
     service = nsxv_term._ServiceToString(proto, spots, dports, icmp_types)
-    self.assertEquals(service,
-                      '<service><protocol>6</protocol><sourcePort>123'
-                      '</sourcePort><destinationPort>1024-65535'
-                      '</destinationPort></service>')
+    self.assertEqual(service,
+                     '<service><protocol>6</protocol><sourcePort>123'
+                     '</sourcePort><destinationPort>1024-65535'
+                     '</destinationPort></service>')
 
   def test_str_forinet(self):
-    """Test for Term._str_ """
+    """Test for Term._str_."""
     pol = policy.ParsePolicy(nsxv_mocktest.INET_FILTER, self.defs, False)
     af = 4
-    for header, terms in pol.filters:
+    for _, terms in pol.filters:
       nsxv_term = nsxv.Term(terms[0], af)
       rule_str = nsxv.Term.__str__(nsxv_term)
     # parse xml rule and check if the values are correct
@@ -121,7 +123,7 @@ class TermTest(unittest.TestCase):
     pol = policy.ParsePolicy(nsxv_mocktest.INET6_FILTER, self.defs, False)
     af = 6
     filter_type = 'inet6'
-    for header, terms in pol.filters:
+    for _, terms in pol.filters:
       nsxv_term = nsxv.Term(terms[0], filter_type, af)
       rule_str = nsxv.Term.__str__(nsxv_term)
 
@@ -148,7 +150,7 @@ class TermTest(unittest.TestCase):
     pol = policy.ParsePolicy(nsxv_mocktest.INET_FILTER, self.defs, False)
     translate_pol = nsxv.Nsxv(pol, exp_info)
     nsxv_policies = translate_pol.nsxv_policies
-    for (header, filter_name, filter_list, terms
+    for (_, filter_name, filter_list, terms
          ) in nsxv_policies:
       self.assertEqual(filter_name, 'inet')
       self.assertEqual(filter_list, ['inet'])
@@ -175,10 +177,10 @@ class TermTest(unittest.TestCase):
     exp_ipv6dest = ['2001:4860:4860::8844', '2001:4860:4860::8888']
 
     for destination in root.findall('./rule/destinations/destination'):
-      type = destination.find('type').text
+      obj_type = destination.find('type').text
       value = (destination.find('value').text)
 
-      if 'Ipv4Address' in type:
+      if 'Ipv4Address' in obj_type:
         if value not in exp_ipv4dest:
           self.fail('IPv4Address not found in test_nsxv_str()')
       else:
