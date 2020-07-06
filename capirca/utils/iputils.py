@@ -5,8 +5,8 @@ A module of utilities to work with IP addresses in a faster way
 import ipaddress
 
 def exclude_address(
-    base_net: ipaddress._BaseNetwork,
-    exclude_net: ipaddress._BaseNetwork
+    base_net: ipaddress._BaseNetwork,    # pylint disable=protected-access
+    exclude_net: ipaddress._BaseNetwork  # pylint disable=protected-access
 ):
   '''
   Function to exclude a subnetwork from another, returning a generator that yields
@@ -29,13 +29,16 @@ def exclude_address(
     A sequence of IP networks that do not encompass the exclude_net
   '''
 
-  if not base_net._version == exclude_net._version:
+  if not isinstance(base_net, ipaddress._BaseNetwork):  # pylint disable=protected-access
+    raise TypeError('%s is not a network object' % base_net)
+
+  if not isinstance(exclude_net, ipaddress._BaseNetwork):  # pylint disable=protected-access
+    raise TypeError('%s is not a network object' % exclude_net)
+
+  if not base_net._version == exclude_net._version:  # pylint disable=protected-access
     raise TypeError(
       '%s and %s are not of the same version' % (base_net, exclude_net)
     )
-
-  if not isinstance(exclude_net, ipaddress._BaseNetwork):
-    raise TypeError('%s is not a network object' % exclude_net)
 
   if not exclude_net.subnet_of(base_net):
     raise ValueError()
