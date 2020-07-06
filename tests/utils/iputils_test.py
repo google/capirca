@@ -29,4 +29,3 @@ class TestIPUtils:
     result = iputils.exclude_address(ip, exclude)
 
     assert list(result) == expected
-
