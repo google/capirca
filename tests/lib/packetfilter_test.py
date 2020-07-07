@@ -418,8 +418,7 @@ class PacketFilterTest(unittest.TestCase):
                   'did not find comment for good-term-log')
     self.assertIn(
         'pass quick log proto { tcp } from { any } to { any } flags S/SA '
-        'keep state\n'
-        , result,
+        'keep state\n', result,
         'did not find actual term for good-term-log')
 
   def testIcmp(self):
@@ -429,9 +428,8 @@ class PacketFilterTest(unittest.TestCase):
     self.assertIn('# term good-term-icmp', result,
                   'did not find comment for good-term-icmp')
     self.assertIn(
-        'pass quick proto { icmp } from { any } to { any } keep state\n'
-        , result,
-        'did not find actual term for good-term-icmp')
+        'pass quick proto { icmp } from { any } to { any } keep state\n',
+        result, 'did not find actual term for good-term-icmp')
 
   def testIcmpTypes(self):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
@@ -451,8 +449,8 @@ class PacketFilterTest(unittest.TestCase):
     self.assertIn('# term good-term-icmpv6', result,
                   'did not find comment for good-term-icmpv6')
     self.assertIn(
-        'pass quick proto { ipv6-icmp } from { any } to { any } keep state\n'
-        , result,
+        'pass quick proto { ipv6-icmp } from { any } to { any } keep state\n',
+        result,
         'did not find actual term for good-term-icmpv6')
 
   def testBadIcmp(self):
@@ -499,8 +497,9 @@ class PacketFilterTest(unittest.TestCase):
     self.assertIn('# term multi-proto', result,
                   'did not find comment for multi-proto')
     self.assertIn(
-        'pass quick proto { tcp udp icmp } from { any } to { any } keep state\n'
-        , result,
+        'pass quick proto { tcp udp icmp } from { any } '
+        'to { any } keep state\n',
+        result,
         'did not find actual term for multi-proto')
 
   def testNextTerm(self):
@@ -591,8 +590,7 @@ class PacketFilterTest(unittest.TestCase):
                   'did not find comment for good-term-log')
     self.assertIn(
         'pass quick log inet proto { tcp } from { any } to { any } flags S/SA '
-        'keep state\n'
-        , result,
+        'keep state\n', result,
         'did not find actual term for good-term-log')
 
   def testInet6(self):
@@ -603,8 +601,7 @@ class PacketFilterTest(unittest.TestCase):
                   'did not find comment for good-term-log')
     self.assertIn(
         'pass quick log inet6 proto { tcp } from { any } to { any } flags S/SA '
-        'keep state\n'
-        , result,
+        'keep state\n', result,
         'did not find actual term for good-term-log')
 
   def testDirectional(self):
@@ -750,8 +747,7 @@ class PacketFilterTest(unittest.TestCase):
         'did not find CORP_INTERNAL table in header')
     self.assertIn(
         'pass quick proto { tcp } from { <CORP_INTERNAL> } to '
-        '{ <PROD_NETWORK> } port { 25 } flags S/SA keep state'
-        , result,
+        '{ <PROD_NETWORK> } port { 25 } flags S/SA keep state', result,
         'did not find actual term for multiple-name')
 
     self.naming.GetNetAddr.assert_has_calls([
@@ -775,8 +771,7 @@ class PacketFilterTest(unittest.TestCase):
     self.assertIn(
         'pass out quick proto { tcp } from { any } to '
         '{ <PROD_NETWORK_EXTREAMLY_LONG_VER> } '
-        'port { 53 } flags S/SA keep state'
-        , result,
+        'port { 53 } flags S/SA keep state', result,
         'did not find actual term for multiple-name')
 
     self.naming.GetNetAddr.assert_called_once_with(
@@ -822,14 +817,12 @@ class PacketFilterTest(unittest.TestCase):
     self.assertIn(
         'pass out quick proto { tcp } from { any } to '
         '{ <PROD_NETWORK_EXTREAMLY_LONG_VER> } '
-        'port { 53 } flags S/SA keep state'
-        , result,
+        'port { 53 } flags S/SA keep state', result,
         'did not find actual TCP term for multiple-name')
     self.assertIn(
         'pass out quick proto { udp } from { any } to '
         '{ <PROD_NETWORK_EXTREAMLY_LONG_VER> } '
-        'port { 53 } keep state'
-        , result,
+        'port { 53 } keep state', result,
         'did not find actual UDP for multiple-name')
 
     self.naming.GetNetAddr.assert_has_calls([
@@ -856,14 +849,12 @@ class PacketFilterTest(unittest.TestCase):
     self.assertIn(
         'pass out quick proto { tcp } from { any } to '
         '{ <PROD_NETWORK_EXTREAMLY_LONG_VER> } '
-        'port { 53 } flags S/SA keep state'
-        , result,
+        'port { 53 } flags S/SA keep state', result,
         'did not find actual TCP term for multiple-name')
     self.assertIn(
         'pass out quick proto { udp } from { any } to '
         '{ <PROD_NETWORK_EXTREAMLY_LONG_VER> } '
-        'port { 53 } keep state'
-        , result,
+        'port { 53 } keep state', result,
         'did not find actual UDP for multiple-name')
 
     self.naming.GetNetAddr.assert_has_calls([

@@ -46,7 +46,7 @@ class UnsupportedActionError(Error):
   """Raised when we see an unsupported action."""
 
 
-class UnsupportedTargetOption(Error):
+class UnsupportedTargetOptionError(Error):
   """Raised when we see an unsupported option."""
 
 
@@ -333,6 +333,11 @@ class PcapFilter(aclgenerator.ACLGenerator):
     Takes standard ACLGenerator arguments, as well as an 'invert' kwarg.  If
     this argument is true, the pcap filter will be reversed, such that it
     matches all those packets that would be denied by the specified policy.
+
+    Args:
+      *args: Arguments.
+      **kwargs: Keyword arguments.
+
     """
     self._invert = False
     if 'invert' in kwargs:
@@ -389,7 +394,7 @@ class PcapFilter(aclgenerator.ACLGenerator):
       # ensure all options after the filter name are expected
       for opt in filter_options:
         if opt not in good_afs + good_options:
-          raise UnsupportedTargetOption('%s %s %s %s' % (
+          raise UnsupportedTargetOptionError('%s %s %s %s' % (
               '\nUnsupported option found in', self._PLATFORM,
               'target definition:', opt))
 

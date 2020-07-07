@@ -507,7 +507,8 @@ def Run(base_directory, definitions_directory, policy_file, output_directory,
         result.get()
       except (ACLParserError, ACLGeneratorError) as e:
         with_errors = True
-        logging.warning('\n\nerror encountered in rendering process:\n%s\n\n', e)
+        logging.warning('\n\nerror encountered in rendering '
+                        'process:\n%s\n\n', e)
 
   # actually write files to disk
   WriteFiles(write_files)

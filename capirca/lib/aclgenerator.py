@@ -39,10 +39,6 @@ class NoPlatformPolicyError(Error):
   """Raised when a policy is received that doesn't support this platform."""
 
 
-class UnsupportedFilter(Error):
-  """Raised when we see an inappropriate filter."""
-
-
 class UnknownIcmpTypeError(Error):
   """Raised when we see an unknown icmp-type."""
 
@@ -55,7 +51,7 @@ class EstablishedError(Error):
   """Raised when a term has established option with inappropriate protocol."""
 
 
-class UnsupportedAF(Error):
+class UnsupportedAFError(Error):
   """Raised when provided an unsupported address family."""
 
 
@@ -67,7 +63,7 @@ class UnsupportedFilterError(Error):
   """Raised when we see an inappropriate filter."""
 
 
-class UnsupportedTargetOption(Error):
+class UnsupportedTargetOptionError(Error):
   """Raised when a filter has an impermissible default action specified."""
 
 
@@ -151,7 +147,7 @@ class Term(object):
       af: Numeric address family value
 
     Raises:
-      UnsupportedAF: Address family not in keys or values of our AF_MAP.
+      UnsupportedAFError: Address family not in keys or values of our AF_MAP.
     """
     # ensure address family (af) is valid
     if af in self.AF_MAP_BY_NUMBER:
@@ -160,8 +156,8 @@ class Term(object):
       # convert AF name to number (e.g. 'inet' becomes 4, 'inet6' becomes 6)
       af = self.AF_MAP[af]
     else:
-      raise UnsupportedAF('Address family %s is not supported, term %s.' % (
-          af, self.term.name))
+      raise UnsupportedAFError('Address family %s is not supported, '
+                               'term %s.' % (af, self.term.name))
     return af
 
   def NormalizeIcmpTypes(self, icmp_types, protocols, af):
@@ -417,9 +413,10 @@ class ACLGenerator(object):
       Copy of term that has been fixed
 
     Raises:
-      UnsupportedAF: Address family provided but unsupported.
+      UnsupportedAFError: Address family provided but unsupported.
       UnsupportedFilter: Protocols do not match the address family.
       EstablishedError: Established option used with inappropriate protocol.
+      UnsupportedFilterError: Filter does not support protocols with AF.
     """
     mod = term
 
@@ -431,15 +428,18 @@ class ACLGenerator(object):
 
     # Check that the address family matches the protocols.
     if af not in self._SUPPORTED_AF:
-      raise UnsupportedAF('\nAddress family %s, found in %s, '
-                          'unsupported by %s' % (af, term.name, self._PLATFORM))
+      raise UnsupportedAFError(
+          '\nAddress family %s, found in %s, unsupported '
+          'by %s' % (af, term.name, self._PLATFORM))
     if af in self._FILTER_BLACKLIST:
       unsupported_protocols = self._FILTER_BLACKLIST[af].intersection(protocols)
       if unsupported_protocols:
-        raise UnsupportedFilter('\n%s targets do not support protocol(s) %s '
-                                'with address family %s (in %s)' %
-                                (self._PLATFORM, unsupported_protocols,
-                                 af, term.name))
+        raise UnsupportedFilterError(
+            '\n%s targets do not support protocol(s) %s '
+            'with address family %s (in %s)' % (self._PLATFORM,
+                                                unsupported_protocols,
+                                                af,
+                                                term.name))
 
     # Many renders expect high ports for terms with the established option.
     for opt in [str(x) for x in term.option]:

@@ -745,7 +745,9 @@ class Term(aclgenerator.Term):
         and ('tcp-established' in opts or 'established' in opts)):
       if 'established' not in self.options:
         self.options.append('established')
-    if ('ip' in protocol) and ('fragments' in opts):
+    # Using both 'fragments' and 'is-fragment', ref Github Issue #187
+    if ('ip' in protocol) and (('fragments' in opts) or
+      ('is-fragment' in opts)):
       if 'fragments' not in self.options:
         self.options.append('fragments')
     # ACL-based Forwarding
@@ -1077,6 +1079,7 @@ class Cisco(aclgenerator.ACLGenerator):
 
     supported_sub_tokens.update({'option': {'established',
                                             'tcp-established',
+                                            'is-fragment',
                                             'fragments'},
                                  # Warning, some of these are mapped
                                  # differently. See _ACTION_TABLE
@@ -1159,7 +1162,7 @@ class Cisco(aclgenerator.ACLGenerator):
                            'in less than two weeks.', term.name, filter_name)
             if term.expiration <= current_date:
               logging.warning('WARNING: Term %s in policy %s is expired and '
-                           'will not be rendered.', term.name, filter_name)
+                              'will not be rendered.', term.name, filter_name)
               continue
 
           # render terms based on filter type

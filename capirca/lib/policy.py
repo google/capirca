@@ -2389,7 +2389,8 @@ def p_one_or_more_tuples(p):
 def p_one_tuple(p):
   """ one_tuple : LPAREN STRING ',' STRING RPAREN
                 | """
-  p[0] = (p[2],p[4])
+  p[0] = (p[2], p[4])
+
 
 def p_one_or_more_ints(p):
   """ one_or_more_ints : one_or_more_ints INTEGER

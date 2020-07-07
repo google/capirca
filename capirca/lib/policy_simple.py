@@ -26,10 +26,9 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+from absl import logging
 import six
 from six.moves import zip
-
-from absl import logging
 
 
 class Field(object):

@@ -24,7 +24,6 @@ from capirca.lib import policy_simple
 from six.moves import range
 
 
-
 class FieldTest(unittest.TestCase):
 
   def setUp(self):

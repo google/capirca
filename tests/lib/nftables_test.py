@@ -327,7 +327,7 @@ class NftablesTest(unittest.TestCase):
       logging.info('Testing bad address family case %s.', case)
       header = BAD_HEADER % case
       pol = policy.ParsePolicy(header + GOOD_TERM_1, self.mock_naming)
-      self.assertRaises(aclgenerator.UnsupportedAF,
+      self.assertRaises(aclgenerator.UnsupportedAFError,
                         nftables.Nftables.__init__,
                         nftables.Nftables.__new__(nftables.Nftables),
                         pol, EXP_INFO)
@@ -469,7 +469,7 @@ class NftablesTest(unittest.TestCase):
         'Term %s in policy is too long (>%d characters) and will be'
         ' truncated', 'good-term-17', nftables.Term.MAX_CHARACTERS)
     # Ensure that the truncate did happen and stripped off the ':'
-    self.assertIn('comment "%(long_line)s' % {'long_line': 'A' *127}, nft)
+    self.assertIn('comment "%(long_line)s' % {'long_line': 'A' * 127}, nft)
 
   def testLogTerm(self):
     nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_13,

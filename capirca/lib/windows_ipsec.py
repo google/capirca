@@ -27,7 +27,6 @@ from capirca.lib import windows
 from six.moves import range
 
 
-
 class Term(windows.Term):
   """Generate windows IP security policy terms."""
 

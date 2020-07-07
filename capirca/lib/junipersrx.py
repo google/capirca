@@ -448,8 +448,8 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       self._FixLargePolices(terms, filter_type)
       for term in terms:
         if set(['established', 'tcp-established']).intersection(term.option):
-          logging.debug('Skipping established term %s ' +
-                        'because SRX is stateful.', term.name)
+          logging.debug('Skipping established term %s because SRX is stateful.',
+                        term.name)
           continue
         term.name = self.FixTermLength(term.name)
         if term.name in term_dup_check:

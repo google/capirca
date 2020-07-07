@@ -21,14 +21,14 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import datetime
+import ipaddress
 import logging
 import re
+from typing import cast
 
 from capirca.lib import aclgenerator
 from capirca.lib import cisco
 from capirca.lib import nacaddr
-import ipaddress
-from typing import cast
 
 
 _ACTION_TABLE = {
@@ -365,4 +365,3 @@ class CiscoASA(aclgenerator.ACLGenerator):
 
       # end for header, filter_name, filter_type...
       return '\n'.join(target)
-

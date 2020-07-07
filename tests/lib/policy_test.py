@@ -1674,5 +1674,6 @@ class PolicyTest(unittest.TestCase):
                                  ('proj3', 'vpc3'), ('proj4', 'vpc4')]
     self.assertListEqual(expected_target_resources, terms[0].target_resources)
 
+
 if __name__ == '__main__':
   unittest.main()

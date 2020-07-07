@@ -183,7 +183,7 @@ def main(argv):
     logging.info('Union of %s and %s:\n %s\n', first_name, second_name, union)
     logging.info('Diff of %s and %s:', first_name, second_name)
     for i in results:
-      logging.info(' ' + i)
+      logging.info(' %s', i)
     logging.info('')
     first_obj, sec_obj = options.cmp
     if check_encapsulated('network', first_obj, sec_obj, db):
@@ -204,7 +204,7 @@ def main(argv):
       except naming.UndefinedAddressError:
         logging.info('%s is an invalid object', obj)
       else:
-        logging.info(token + ':')
+        logging.info('%s:', token)
         # convert list of ip objects to strings and sort them
         ips.sort(key=lambda x: int(x.ip))
         p([str(x) for x in ips])
@@ -218,7 +218,7 @@ def main(argv):
     else:
       for result in get_ports(options.svc, db):
         svc, port = result
-        logging.info(svc + ':')
+        logging.info('%s:', svc)
         p(port)
 
   # if -p
@@ -320,9 +320,9 @@ def group_diff(options, db):
   # get just the list of groups, stripping out the networks.
   group1 = [x[0] for x in nested_rvals[0]]
   group2 = [x[0] for x in nested_rvals[1]]
-  common = list(set(group1) & set(group2))
-  diff1 = list(set(group1) - set(group2))
-  diff2 = list(set(group2) - set(group1))
+  common = sorted(list(set(group1) & set(group2)))
+  diff1 = sorted(list(set(group1) - set(group2)))
+  diff2 = sorted(list(set(group2) - set(group1)))
   return common, diff1, diff2
 
 

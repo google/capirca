@@ -123,6 +123,7 @@ SUPPORTED_SUB_TOKENS = {
     },
     'option': {'established',
                'tcp-established',
+               'is-fragment',
                'fragments'}
 }
 

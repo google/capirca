@@ -58,7 +58,7 @@ class Term(aclgenerator.Term):
 
   This is mostly useful for the __str__() method.
 
-  Args:
+  Attributes:
     obj: a policy.Term object
     term_type: type of filter to generate, e.g. inet or inet6
     filter_options: list of remaining target options (zones)
@@ -125,7 +125,7 @@ class Term(aclgenerator.Term):
 
 
 class Service(object):
-
+  """Generate PacketFilter policy terms."""
   service_map = {}
 
   def __init__(self, ports, service_name,

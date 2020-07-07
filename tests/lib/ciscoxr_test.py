@@ -181,6 +181,7 @@ SUPPORTED_SUB_TOKENS = {
     },
     'option': {'established',
                'tcp-established',
+               'is-fragment',
                'fragments'}
 }
 
@@ -330,6 +331,7 @@ class CiscoXRTest(unittest.TestCase):
     pol = policy.ParsePolicy(OBJECT_GROUP_HEADER + VERBATIM_TERM, self.naming)
     acl = ciscoxr.CiscoXR(pol, EXP_INFO)
     self.assertIn('permit tcp any', str(acl))
+
 
 if __name__ == '__main__':
   unittest.main()

@@ -309,7 +309,7 @@ class Aruba(aclgenerator.ACLGenerator):
 
           if term.expiration <= current_date:
             logging.warning('WARNING: Term %s in policy %s is expired and '
-                         'will not be rendered.', term.name, filter_name)
+                            'will not be rendered.', term.name, filter_name)
             continue
 
         new_terms.append(Term(term, filter_type, verbose))

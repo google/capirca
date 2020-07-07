@@ -973,5 +973,6 @@ class GcpHfTest(parameterized.TestCase):
 
     self.assertEqual(gcp_hf.GetCost(term), expected)
 
+
 if __name__ == '__main__':
   unittest.main()

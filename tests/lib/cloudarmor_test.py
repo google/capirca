@@ -747,6 +747,6 @@ class CloudArmorTest(unittest.TestCase):
                            self.naming), EXP_INFO)
     self.assertNotIn('description', str(acl))
 
+
 if __name__ == '__main__':
   unittest.main()
-

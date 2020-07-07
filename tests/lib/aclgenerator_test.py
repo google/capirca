@@ -114,7 +114,7 @@ class ACLGeneratorTest(unittest.TestCase):
     acl = ACLMock(pol, EXP_INFO)
     for _, terms in pol.filters:
       for term in terms:
-        self.assertRaises(aclgenerator.UnsupportedAF,
+        self.assertRaises(aclgenerator.UnsupportedAFError,
                           acl.FixHighPorts, term, 'unsupported', False)
 
   def testTermNameBelowLimit(self):
@@ -169,7 +169,7 @@ class ACLGeneratorTest(unittest.TestCase):
                  'ipip': 4,
                  'tcp': 6,
                  'gre': 47,
-                }
+                 }
     proto_convert = ['gre', 'tcp']
 
     protocol_list = ['icmp', 'gre', 'tcp', 'ipip']

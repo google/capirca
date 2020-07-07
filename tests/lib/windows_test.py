@@ -180,5 +180,6 @@ class WindowsGeneratorTest(unittest.TestCase):
         GOOD_HEADER + UDP_ESTABLISHED_TERM + GOOD_TERM, self.naming), EXP_INFO)
     self.assertEqual(len(pol.windows_policies[0][4]), 1)
 
+
 if __name__ == '__main__':
   unittest.main()

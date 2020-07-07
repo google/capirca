@@ -26,8 +26,7 @@ from six.moves import range
 
 
 class DSMNet(object):
-  """Value object to hold IP address information for the purposes
-    of discontinuous subnet mask summarization.
+  """Hold IP address information for the purposes of DSM summarization.
 
     ipaddr maintainers explicitly declared that they will not
     support discontinuous subnet masks, hence this is required.

@@ -18,14 +18,10 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-# pylint: disable=g-importing-member
-from string import Template
+import string
 
-# pylint: disable=unused-import
-# logging is used in the test mock
 from capirca.lib import windows
 from six.moves import range
-from absl import logging
 
 
 class Term(windows.Term):
@@ -39,18 +35,18 @@ class Term(windows.Term):
   # netsh advfirewall>set allprofiles logging droppedconnections enable"
 
   # 'in' or 'out'
-  _DIR_ATOM = Template('dir=${dir}')
+  _DIR_ATOM = string.Template('dir=${dir}')
   # 'local' or 'remote'
-  _ADDR_ATOM = Template('${dir}ip=${addr}')
-  _PORT_ATOM = Template('${dir}port=${port}')
+  _ADDR_ATOM = string.Template('${dir}ip=${addr}')
+  _PORT_ATOM = string.Template('${dir}port=${port}')
   # any | Integer | icmpv4 | icmpv6 | icmpv4:type,code | icmpv6:type,code
   # | tcp | udp
-  _PROTO_ATOM = Template('protocol=${protocol}')
+  _PROTO_ATOM = string.Template('protocol=${protocol}')
   # 'allow' or 'block'
-  _ACTION_ATOM = Template('action=${action}')
+  _ACTION_ATOM = string.Template('action=${action}')
 
-  _RULE_FORMAT = Template('add rule name=${name} enable=yes interfacetype=any '
-                          '${atoms}')
+  _RULE_FORMAT = string.Template('add rule name=${name} enable=yes '
+                                 'interfacetype=any ${atoms}')
 
   _ACTION_TABLE = {
       'accept': 'allow',
@@ -72,7 +68,7 @@ class Term(windows.Term):
       if types:
         protocols = []
         for typ in types:
-          protocols.append('%s:%d,any' % (icmp_prefix, typ))
+          protocols.append('%s:%s,any' % (icmp_prefix, typ))
         types = ['']
 
     # fixup for icmp v4

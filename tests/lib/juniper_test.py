@@ -23,6 +23,7 @@ import datetime
 import re
 import unittest
 
+from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import juniper
 from capirca.lib import nacaddr
@@ -30,11 +31,6 @@ from capirca.lib import naming
 from capirca.lib import policy
 import mock
 from six.moves import range
-
-from absl import flags
-from absl import logging
-
-FLAGS = flags.FLAGS
 
 GOOD_HEADER = """
 header {
@@ -667,7 +663,7 @@ class JuniperTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['25']
 
     pol = policy.ParsePolicy(BAD_HEADER_2 + GOOD_TERM_1, self.naming)
-    self.assertRaises(aclgenerator.UnsupportedAF, juniper.Juniper,
+    self.assertRaises(aclgenerator.UnsupportedAFError, juniper.Juniper,
                       pol, EXP_INFO)
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
@@ -692,7 +688,7 @@ class JuniperTest(unittest.TestCase):
         ' ' * 24 + '/* this is a very descriptive comment  this is a\n' +
         ' ' * 24 + '** very descriptive comment  this is a very\n' +
         ' ' * 24 + '** descriptive comment  this is a very descript */'
-        )
+    )
     self.naming.GetNetAddr.return_value = (
         [nacaddr.IPv4('10.0.0.0/8', comment=long_comment)])
     self.naming.GetServiceByProto.return_value = ['25']
@@ -735,7 +731,7 @@ class JuniperTest(unittest.TestCase):
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_36,
                                              self.naming), EXP_INFO)
     output = str(jcl)
-    self.assertTrue('inactive: term good-term-36 {' in output, output)
+    self.assertIn('inactive: term good-term-36 {', output)
 
   def testInet6(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('2001::/33')]

@@ -12,41 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Functional test class for nsxv.py"""
+"""Functional test class for nsxv.py."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import unittest
-# system imports
 import copy
-from optparse import OptionParser
+import optparse
+import unittest
 from xml.etree import ElementTree as ET
 
-# compiler imports
 from lib import naming
-from lib import policy
 from lib import nsxv
+from lib import policy
 import nsxv_mocktest
 
 
 class NsxvFunctionalTest(unittest.TestCase):
-  """
-  Reads the policy and the output has the xml formed correctly with the tags and values
-  """
+  """Functional testing for NSXV."""
 
   def setUp(self):
-    """Call before every test case
-    """
-    _parser = OptionParser()
-    _parser.add_option('-d', '--def', dest='definitions',
+    """Call before every test case."""
+    super(NsxvFunctionalTest, self).setUp()
+    parser = optparse.OptionParser()
+    parser.add_option('-d', '--def', dest='definitions',
                       help='definitions directory', default='../def')
     (FLAGS, args) = _parser.parse_args()
     self.defs = naming.Naming(FLAGS.definitions)
 
   def tearDown(self):
+    super(NsxvFunctionalTest, self).tearDown()
     pass
 
   def runTest(self):
@@ -61,14 +58,14 @@ class NsxvFunctionalTest(unittest.TestCase):
 
     # parse the xml
     root = ET.fromstring(output)
-     # check section name
+    # check section name
     section_name = {'id': '1007', 'name': 'POLICY_NAME'}
     self.assertEqual(root.attrib, section_name)
     # check name and action
     self.assertEqual(root.find('./rule/name').text, 'reject-imap-requests')
     self.assertEqual(root.find('./rule/action').text, 'reject')
 
-    #check IPV4 destination
+    # check IPV4 destination
     exp_destaddr = ['200.1.1.4/31']
 
     for destination in root.findall('./rule/destinations/destination'):
@@ -77,8 +74,8 @@ class NsxvFunctionalTest(unittest.TestCase):
       if value not in exp_destaddr:
         self.fail('IPv4Address destination not found in test_nsxv_str()')
 
-    #check protocol
-    protocol =  int(root.find('./rule/services/service/protocol').text)
+    # check protocol
+    protocol = int(root.find('./rule/services/service/protocol').text)
     self.assertEqual(protocol, 6)
 
     # check destination port
@@ -93,41 +90,30 @@ class NsxvFunctionalTest(unittest.TestCase):
     output = str(fw)
     # parse the xml
     root = ET.fromstring(output)
-     # check section name
+    # check section name
     section_name = {'name': 'POLICY_NO_SECTION_ID_NAME'}
     self.assertEqual(root.attrib, section_name)
     # check name and action
     self.assertEqual(root.find('./rule/name').text, 'accept-icmp')
     self.assertEqual(root.find('./rule/action').text, 'allow')
 
-    #check protocol
-    protocol =  int(root.find('./rule/services/service/protocol').text)
+    # check protocol
+    protocol = int(root.find('./rule/services/service/protocol').text)
     self.assertEqual(protocol, 1)
 
   def test_nsxv_nofiltertype(self):
-    def test_nofiltertype():
-      pol = policy.ParsePolicy(nsxv_mocktest.POLICY_NO_FILTERTYPE, self.defs)
-      exp_info = 2
-      nsx = copy.deepcopy(pol)
-      fw = nsxv.Nsxv(nsx, exp_info)
-    self.assertRaises(nsxv.UnsupportedNsxvAccessListError, test_nofiltertype)
+    pol = policy.ParsePolicy(nsxv_mocktest.POLICY_NO_FILTERTYPE, self.defs)
+    self.assertRaises(nsxv.UnsupportedNsxvAccessListError, nsxv.Nsxv(pol, 2))
 
   def test_nsxv_incorrectfiltertype(self):
-    def test_incorrectfiltertype():
-      pol = policy.ParsePolicy(nsxv_mocktest.POLICY_INCORRECT_FILTERTYPE, self.defs)
-      exp_info = 2
-      nsx = copy.deepcopy(pol)
-      fw = nsxv.Nsxv(nsx, exp_info)
-    self.assertRaises(nsxv.UnsupportedNsxvAccessListError, test_incorrectfiltertype)
+    pol = policy.ParsePolicy(nsxv_mocktest.POLICY_INCORRECT_FILTERTYPE,
+                             self.defs)
+    self.assertRaises(nsxv.UnsupportedNsxvAccessListError,
+                      nsxv.Nsxv(pol, 2))
 
   def test_nsxv_optionkywd(self):
-    def test_optionkywd():
-      pol = policy.ParsePolicy(nsxv_mocktest.POLICY_OPTION_KYWD, self.defs)
-      exp_info = 2
-      nsx = copy.deepcopy(pol)
-      fw = nsxv.Nsxv(nsx, exp_info)
-      output = str(fw)
-    self.assertRaises(nsxv.NsxvAclTermError, test_optionkywd)
+    pol = policy.ParsePolicy(nsxv_mocktest.POLICY_OPTION_KYWD, self.defs)
+    self.assertRaises(nsxv.NsxvAclTermError, str(nsxv.Nsxv(pol, 2)))
 
   if __name__ == '__main__':
     unittest.main()

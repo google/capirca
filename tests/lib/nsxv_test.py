@@ -764,7 +764,7 @@ class TermTest(unittest.TestCase):
       pol._ParseFilterOptions(filter_options)
       self.assertEqual(nsxv.Nsxv._FILTER_OPTIONS_DICT['filter_type'], 'inet')
       self.assertEqual(nsxv.Nsxv._FILTER_OPTIONS_DICT['section_id'], '1009')
-      self.assertEqual(nsxv.Nsxv._FILTER_OPTIONS_DICT['applied_to'], None)
+      self.assertIsNone(nsxv.Nsxv._FILTER_OPTIONS_DICT['applied_to'])
 
   def testParseFilterOptionsCase2(self):
     pol = nsxv.Nsxv(policy.ParsePolicy(HEADER_WITH_SECURITYGROUP + INET6_TERM,
@@ -994,6 +994,7 @@ class TermTest(unittest.TestCase):
 
     self.assertTrue(ipv4_address)
     self.assertTrue(ipv6_address)
+
 
 if __name__ == '__main__':
   unittest.main()

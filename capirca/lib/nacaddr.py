@@ -21,8 +21,8 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
-import itertools
 import ipaddress
+import itertools
 from typing import Union
 
 

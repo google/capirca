@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""UnitTest class for nsxv.py"""
+"""UnitTest class for nsxv.py."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-
+import optparse
 import unittest
 from xml.etree import ElementTree as ET
 
@@ -33,32 +33,34 @@ class TermTest(unittest.TestCase):
 
   def setUp(self):
     """Call before every test case."""
-    _parser = OptionParser()
-    _parser.add_option('-d', '--def', dest='definitions',
+    super(TermTest, self).setUp()
+    parser = optparse.OptionParser()
+    parser.add_option('-d', '--def', dest='definitions',
                       help='definitions directory', default='../def')
-    (FLAGS, args) = _parser.parse_args()
+    (FLAGS, args) = parser.parse_args()
     self.defs = naming.Naming(FLAGS.definitions)
 
   def tearDown(self):
+    super(TermTest, self).setUp()
     pass
 
   def runTest(self):
     pass
 
   def test_init_forinet(self):
-    """ Test for Term._init_ """
+    """Test for Term._init_."""
     inet_term = nsxv.Term(nsxv_mocktest.INET_TERM, 'inet')
     self.assertEqual(inet_term.af, 4)
     self.assertEqual(inet_term.filter_type, 'inet')
 
   def test_init_forinet6(self):
-    """ Test for Term._init_ """
+    """Test for Term._init_."""
     inet6_term = nsxv.Term(nsxv_mocktest.INET6_TERM, 'inet6', 6)
     self.assertEqual(inet6_term.af, 6)
     self.assertEqual(inet6_term.filter_type, 'inet6')
 
   def test_ServiceToStr(self):
-    """ Test for Term._ServiceToStr """
+    """Test for Term._ServiceToStr."""
 
     proto = 6
     icmp_types = []
@@ -66,42 +68,45 @@ class TermTest(unittest.TestCase):
     spots = [(123, 123)]
     nsxv_term = nsxv.Term(nsxv_mocktest.INET_TERM, 'inet')
     service = nsxv_term._ServiceToString(proto, spots, dports, icmp_types)
-    self.assertEquals(service, '<service><protocol>6</protocol><sourcePort>123</sourcePort><destinationPort>1024-65535</destinationPort></service>')
+    self.assertEqual(service,
+                     '<service><protocol>6</protocol><sourcePort>123'
+                     '</sourcePort><destinationPort>1024-65535'
+                     '</destinationPort></service>')
 
   def test_str_forinet(self):
-    """ Test for Term._str_ """
+    """Test for Term._str_."""
     pol = policy.ParsePolicy(nsxv_mocktest.INET_FILTER, self.defs, False)
-    af=4
-    for header, terms in pol.filters:
-       nsxv_term= nsxv.Term(terms[0], af)
-       rule_str = nsxv.Term.__str__(nsxv_term)
+    af = 4
+    for _, terms in pol.filters:
+      nsxv_term = nsxv.Term(terms[0], af)
+      rule_str = nsxv.Term.__str__(nsxv_term)
     # parse xml rule and check if the values are correct
     root = ET.fromstring(rule_str)
     # check name and action
     self.assertEqual(root.find('name').text, 'allow-ntp-request')
     self.assertEqual(root.find('action').text, 'allow')
 
-    #check source address
-    exp_sourceaddr = ['10.0.0.1','10.0.0.2']
+    # check source address
+    exp_sourceaddr = ['10.0.0.1', '10.0.0.2']
     for destination in root.findall('./sources/source'):
       self.assertEqual((destination.find('type').text), 'Ipv4Address')
       value = (destination.find('value').text)
       if value not in exp_sourceaddr:
         self.fail('IPv4Address source address not found in test_str_forinet()')
 
-    #check destination address
-    exp_destaddr = ['10.0.0.0/8','172.16.0.0/12','192.168.0.0/16']
+    # check destination address
+    exp_destaddr = ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']
     for destination in root.findall('./destinations/destination'):
       self.assertEqual((destination.find('type').text), 'Ipv4Address')
       value = (destination.find('value').text)
       if value not in exp_destaddr:
         self.fail('IPv4Address destination not found in test_str_forinet()')
 
-    #check protocol
-    protocol =  int(root.find('./services/service/protocol').text)
+    # check protocol
+    protocol = int(root.find('./services/service/protocol').text)
     self.assertEqual(protocol, 17)
 
-    #check source port
+    # check source port
     source_port = root.find('./services/service/sourcePort').text
     self.assertEqual(source_port, '123')
 
@@ -110,17 +115,17 @@ class TermTest(unittest.TestCase):
     self.assertEqual(destination_port, '123')
 
     # check notes
-    notes =  root.find('notes').text
+    notes = root.find('notes').text
     self.assertEqual(notes, 'Allow ntp request')
 
   def test_str_forinet6(self):
-    """ Test for Term._str_ """
+    """Test for Term._str_."""
     pol = policy.ParsePolicy(nsxv_mocktest.INET6_FILTER, self.defs, False)
-    af=6
+    af = 6
     filter_type = 'inet6'
-    for header, terms in pol.filters:
-       nsxv_term= nsxv.Term(terms[0], filter_type, af)
-       rule_str = nsxv.Term.__str__(nsxv_term)
+    for _, terms in pol.filters:
+      nsxv_term = nsxv.Term(terms[0], filter_type, af)
+      rule_str = nsxv.Term.__str__(nsxv_term)
 
     # parse xml rule and check if the values are correct
     root = ET.fromstring(rule_str)
@@ -128,7 +133,7 @@ class TermTest(unittest.TestCase):
     self.assertEqual(root.find('name').text, 'test-icmpv6')
     self.assertEqual(root.find('action').text, 'allow')
 
-    #check protocol and sub protocol
+    # check protocol and sub protocol
     exp_subprotocol = [128, 129]
     for service in root.findall('./services/service'):
       protocol = int(service.find('protocol').text)
@@ -139,26 +144,26 @@ class TermTest(unittest.TestCase):
         self.fail('subProtocol not matched in test_str_forinet6()')
 
   def test_TranslatePolicy(self):
-    """ Test for Nsxv.test_TranslatePolicy """
+    """Test for Nsxv.test_TranslatePolicy."""
     # exp_info default is 2
     exp_info = 2
     pol = policy.ParsePolicy(nsxv_mocktest.INET_FILTER, self.defs, False)
     translate_pol = nsxv.Nsxv(pol, exp_info)
     nsxv_policies = translate_pol.nsxv_policies
-    for (header, filter_name, filter_list, terms
-        ) in nsxv_policies:
+    for (_, filter_name, filter_list, terms
+         ) in nsxv_policies:
       self.assertEqual(filter_name, 'inet')
       self.assertEqual(filter_list, ['inet'])
-      self.assertEqual(len(terms) , 1)
+      self.assertEqual(len(terms), 1)
 
   def test_nsxv_str(self):
-    """ Test for Nsxv._str_ """
+    """Test for Nsxv._str_."""
     # exp_info default is 2
     exp_info = 2
     pol = policy.ParsePolicy(nsxv_mocktest.MIXED_FILTER, self.defs, False)
     target = nsxv.Nsxv(pol, exp_info)
 
-    #parse the xml and check the values
+    # parse the xml and check the values
     root = ET.fromstring(str(target))
     # check section name
     section_name = {'id': '1009', 'name': 'MIXED_FILTER_NAME'}
@@ -167,23 +172,23 @@ class TermTest(unittest.TestCase):
     self.assertEqual(root.find('./rule/name').text, 'accept-to-honestdns')
     self.assertEqual(root.find('./rule/action').text, 'allow')
 
-    #check IPV4 and IPV6 destinations
-    exp_ipv4dest = ['8.8.4.4','8.8.8.8']
-    exp_ipv6dest = ['2001:4860:4860::8844','2001:4860:4860::8888']
+    # check IPV4 and IPV6 destinations
+    exp_ipv4dest = ['8.8.4.4', '8.8.8.8']
+    exp_ipv6dest = ['2001:4860:4860::8844', '2001:4860:4860::8888']
 
     for destination in root.findall('./rule/destinations/destination'):
-      type = destination.find('type').text
+      obj_type = destination.find('type').text
       value = (destination.find('value').text)
 
-      if 'Ipv4Address' in type:
+      if 'Ipv4Address' in obj_type:
         if value not in exp_ipv4dest:
           self.fail('IPv4Address not found in test_nsxv_str()')
       else:
         if value not in exp_ipv6dest:
           self.fail('IPv6Address not found in test_nsxv_str()')
 
-    #check protocol
-    protocol =  int(root.find('./rule/services/service/protocol').text)
+    # check protocol
+    protocol = int(root.find('./rule/services/service/protocol').text)
     self.assertEqual(protocol, 17)
 
     # check destination port
@@ -191,7 +196,7 @@ class TermTest(unittest.TestCase):
     self.assertEqual(destination_port, '53')
 
     # check notes
-    notes =  root.find('./rule/notes').text
+    notes = root.find('./rule/notes').text
     self.assertEqual(notes, 'Allow name resolution using honestdns.')
 
   if __name__ == '__main__':
