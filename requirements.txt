@@ -5,5 +5,4 @@
 ipaddress>=1.0.22
 absl-py
 ply
-mock
 six>=1.12.0

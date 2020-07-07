@@ -556,11 +556,12 @@ def WrapWords(textlist, size, joiner='\n'):
   Returns:
     list of strings
   """
-  # \S*? is a non greedy match to collect words of len > size
-  # .{1,%d} collects words and spaces up to size in length.
-  # (?:\s|\Z) ensures that we break on spaces or at end of string.
+  # \S{%d}(?!\s|\Z) collets the max size for words that are larger than the max
+  # (?<=\S{%d})\S+ collects the remaining text for overflow words in their own line
+  # \S.{1,%d}(?=\s|\Z)) collects all words and spaces up to max size, breaking at
+  #                     the last space
   rval = []
-  linelength_re = re.compile(r'(\S*?.{1,%d}(?:\s|\Z))' % size)
+  linelength_re = re.compile(r'(\S{%d}(?!\s|\Z)|(?<=\S{%d})\S+|\S.{1,%d}(?=\s|\Z))' % (size, size, size-1))
   for index in range(len(textlist)):
     if len(textlist[index]) > size:
       # insert joiner into the string at appropriate places.
