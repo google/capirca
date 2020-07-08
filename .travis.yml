@@ -3,8 +3,8 @@ python:
   - "3.6"
   - "3.7"
 # command to install dependencies
-install: "pip install -r requirements.txt . && pip install flake8"
+install: "pip install -r requirements.txt -r test-requirements.txt . && pip install flake8"
 # command to run tests
 script:
   - pytest
-  - flake8 . --count --select=W291,W293,W391 --statistics
+  - flake8 . --count --select=W291,W293,W391 --statistic
