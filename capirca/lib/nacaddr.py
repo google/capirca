@@ -75,13 +75,7 @@ class IPv4(ipaddress.IPv4Network):
     self.text = comment
     self.token = token
     self.parent_token = token
-    if isinstance(ip_string, ipaddress._BaseNetwork):  # pylint disable=protected-access
-      self.network_address = ip_string.network_address
-      self.netmask = ip_string.netmask
-      self._prefixlen = ip_string._prefixlen  # pylint disable=protected-access
-      self.hosts = ip_string.hosts
-    else:
-      super(IPv4, self).__init__(ip_string, strict)
+    super(IPv4, self).__init__(ip_string, strict)
 
   def subnet_of(self, other):
     """Return True if this network is a subnet of other."""
@@ -153,13 +147,7 @@ class IPv6(ipaddress.IPv6Network):
     self.text = comment
     self.token = token
     self.parent_token = token
-    if isinstance(ip_string, ipaddress._BaseNetwork):  # pylint disable=protected-access
-      self.network_address = ip_string.network_address
-      self.netmask = ip_string.netmask
-      self._prefixlen = ip_string._prefixlen  # pylint disable=protected-access
-      self.hosts = ip_string.hosts
-    else:
-      super(IPv6, self).__init__(ip_string, strict)
+    super(IPv6, self).__init__(ip_string, strict)
 
   def subnet_of(self, other):
     """Return True if this network is a subnet of other."""
