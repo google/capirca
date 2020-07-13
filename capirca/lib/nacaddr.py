@@ -42,7 +42,10 @@ def IP(ip, comment='', token='', strict=True):
   Raises:
     ValueError: if the string passed isn't either a v4 or a v6 address.
   """
-  imprecise_ip = ipaddress.ip_network(ip, strict=strict)
+  if isinstance(ip, ipaddress._BaseNetwork): # pylint disable=protected-access
+    imprecise_ip = ip
+  else:
+    imprecise_ip = ipaddress.ip_network(ip, strict=strict)
   if imprecise_ip.version == 4:
     return IPv4(ip, comment, token, strict=strict)
   elif imprecise_ip.version == 6:
@@ -72,7 +75,13 @@ class IPv4(ipaddress.IPv4Network):
     self.text = comment
     self.token = token
     self.parent_token = token
-    super(IPv4, self).__init__(ip_string, strict)
+    if isinstance(ip_string, ipaddress._BaseNetwork):  # pylint disable=protected-access
+      self.network_address = ip_string.network_address
+      self.netmask = ip_string.netmask
+      self._prefixlen = ip_string._prefixlen  # pylint disable=protected-access
+      self.hosts = ip_string.hosts
+    else:
+      super(IPv4, self).__init__(ip_string, strict)
 
   def subnet_of(self, other):
     """Return True if this network is a subnet of other."""
@@ -144,7 +153,13 @@ class IPv6(ipaddress.IPv6Network):
     self.text = comment
     self.token = token
     self.parent_token = token
-    super(IPv6, self).__init__(ip_string, strict)
+    if isinstance(ip_string, ipaddress._BaseNetwork):  # pylint disable=protected-access
+      self.network_address = ip_string.network_address
+      self.netmask = ip_string.netmask
+      self._prefixlen = ip_string._prefixlen  # pylint disable=protected-access
+      self.hosts = ip_string.hosts
+    else:
+      super(IPv6, self).__init__(ip_string, strict)
 
   def subnet_of(self, other):
     """Return True if this network is a subnet of other."""
@@ -393,7 +408,7 @@ def RemoveAddressFromList(superset, exclude):
     elif exclude.version == addr.version and exclude.subnet_of(addr):
       # this could be optimized except that one group uses this
       # code with ipaddrs (instead of nacaddrs).
-      ret_array.extend((IP(x) for x in iputils.exclude_address(addr, exclude)))
+      ret_array.extend(IP(x) for x in iputils.exclude_address(addr, exclude))
     else:
       ret_array.append(addr)
   return sorted(ret_array)
