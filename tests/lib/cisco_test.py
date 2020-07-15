@@ -134,6 +134,12 @@ header {
   target:: cisco 1300
 }
 """
+LONG_VERSION_HEADER = """
+header {
+  comment:: "This long header should be split even on a looooooooooooooooooooooooooonnnnnnnnnnnnnnnnnngggggggggg string. https://www.google.com/maps/place/1600+Amphitheatre+Parkway,+Mountain+View,+CA/@37.507491,-122.2540443,15z/data=!4m5!3m4!1s0x808fb99f8c51e885:0x169ef02a512c5b28!8m2!3d37.4220579!4d-122.0840897"
+  target:: cisco test-filter
+}
+"""
 GOOD_STANDARD_TERM_1 = """
 term standard-term-1 {
   address:: SOME_HOST
@@ -829,7 +835,7 @@ class CiscoTest(unittest.TestCase):
     self.assertIn('permit udp any any range 1024 65535', str(acl),
                   str(acl))
 
-def testFragments_01(self):
+  def testFragments_01(self):
     """Test policy term using 'fragments' (ref Github issue #187)"""
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/24')]
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_20,
@@ -840,13 +846,13 @@ def testFragments_01(self):
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
                                              mock.call('SOME_HOST')])
 
-def testFragments_02(self):
-  """Test policy term using 'is-fragment' (ref Github issue #187)"""
-  self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/24')]
-  acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_22,
-                                       self.naming), EXP_INFO)
-  expected = 'permit ip 10.0.0.0 0.0.0.255 10.0.0.0 0.0.0.255 fragments'
-  self.assertIn(expected, str(acl))
+  def testFragments_02(self):
+    """Test policy term using 'is-fragment' (ref Github issue #187)"""
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/24')]
+    acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_22,
+                                         self.naming), EXP_INFO)
+    expected = 'permit ip 10.0.0.0 0.0.0.255 10.0.0.0 0.0.0.255 fragments'
+    self.assertIn(expected, str(acl))
 
   def testTermDSCPMarker(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/24')]
@@ -866,6 +872,23 @@ def testFragments_02(self):
       acl = cisco.Cisco(policy.ParsePolicy(i+GOOD_STANDARD_TERM_1, self.naming),
                         EXP_INFO)
       self.assertNotIn('remark', str(acl), str(acl))
+
+  def testLongHeader(self):
+    pol = policy.ParsePolicy(
+        LONG_VERSION_HEADER + GOOD_TERM_7,
+        self.naming)
+    acl = cisco.Cisco(pol, EXP_INFO)
+    print(acl)
+    self.assertIn('remark This long header should be split even on a', str(acl))
+    self.assertIn(('remark looooooooooooooooooooooooooonnnnnnnnnnnnnnnnnn'
+                   'gggggggggg string.'), str(acl))
+    self.assertIn(('remark https://www.google.com/maps/place/1600+Amphitheatr'
+                   'e+Parkway,+Mountain+'), str(acl))
+    self.assertIn(('remark View,+CA/@37.507491,-122.2540443,15z/data=!4m5!3m4!'
+                   '1s0x808fb99f8c51e88'), str(acl))
+    self.assertIn(('remark 5:0x169ef02a512c5b28!8m2!3d37.4220579!4d-122.084'
+                   '0897'), str(acl))
+
 
 if __name__ == '__main__':
   unittest.main()

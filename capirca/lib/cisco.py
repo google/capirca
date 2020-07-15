@@ -39,6 +39,8 @@ _ACTION_TABLE = {
     'reject-with-tcp-rst': 'deny',  # tcp rst not supported
 }
 
+_COMMENT_MAX_WIDTH = 70
+
 
 # generic error class
 class Error(Exception):
@@ -67,7 +69,6 @@ class ExtendedACLTermError(Error):
 
 class TermStandard(object):
   """A single standard ACL Term."""
-  COMMENT_MAX_WIDTH = 70
 
   def __init__(self, term, filter_name, platform='cisco', verbose=True):
     self.term = term
@@ -134,10 +135,8 @@ class TermStandard(object):
       if self.verbose:
         ret_str.append('access-list %s remark %s' % (self.filter_name,
                                                      self.term.name))
-
         comments = aclgenerator.WrapWords(self.term.comment,
-                                          self.COMMENT_MAX_WIDTH)
-
+                                          _COMMENT_MAX_WIDTH)
         for comment in comments:
           ret_str.append('access-list %s remark %s' % (self.filter_name,
                                                        comment))
@@ -169,7 +168,7 @@ class TermStandard(object):
       if self.verbose:
         ret_str.append(' remark ' + self.term.name)
         comments = aclgenerator.WrapWords(self.term.comment,
-                                          self.COMMENT_MAX_WIDTH)
+                                          _COMMENT_MAX_WIDTH)
         if comments and comments[0]:
           for comment in comments:
             ret_str.append(' remark ' + str(comment))
@@ -615,7 +614,6 @@ class Term(aclgenerator.Term):
   ALLOWED_PROTO_STRINGS = ['eigrp', 'gre', 'icmp', 'igmp', 'igrp', 'ip',
                            'ipinip', 'nos', 'pim', 'tcp', 'udp',
                            'sctp', 'ahp']
-  COMMENT_MAX_WIDTH = 70
 
   IPV4_ADDRESS = Union[nacaddr.IPv4, ipaddress.IPv4Network]
   IPV6_ADDRESS = Union[nacaddr.IPv6, ipaddress.IPv6Network]
@@ -980,9 +978,8 @@ class ObjectGroupTerm(Term):
     ret_str = ['\n']
     if self.verbose:
       ret_str.append(' remark %s' % self.term.name)
-
       comments = aclgenerator.WrapWords(self.term.comment,
-                                        self.COMMENT_MAX_WIDTH)
+                                        _COMMENT_MAX_WIDTH)
       if comments and comments[0]:
         for comment in comments:
           ret_str.append(' remark %s' % str(comment))
@@ -1259,7 +1256,9 @@ class Cisco(aclgenerator.ACLGenerator):
                 ' remark ', date=False, revision=False))
 
           # add a header comment if one exists
-          for comment in header.comment:
+
+          for comment in aclgenerator.WrapWords(header.comment,
+                                                _COMMENT_MAX_WIDTH):
             for line in comment.split('\n'):
               if (self._PLATFORM == 'cisco' and filter_type == 'standard' and
                   filter_name.isdigit()):
