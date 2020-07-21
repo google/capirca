@@ -32,7 +32,7 @@ import mock
 
 GOOD_HEADER = """
 header {
-  comment:: "this is a test acl"  
+  comment:: "this is a test acl"
   target:: fortigate from-id 2
 }
 """
@@ -261,7 +261,7 @@ class FortigateTest(unittest.TestCase):
     self.assertIn(
         icmp_sig, str(icmp_acl), '[%s]' % str(icmp_acl))
     self.assertIn(
-        ip_sig , str(ip_acl), '[%s]' % str(ip_acl))
+        ip_sig, str(ip_acl), '[%s]' % str(ip_acl))
     self.assertIn(
         custom_port_sig, str(custom_port_acl), '[%s]' % str(custom_port_acl))
 
@@ -277,7 +277,7 @@ class FortigateTest(unittest.TestCase):
                                          remove_fields=('src_interface',))
     both_interfaces_term = self.fmt.format(TERM_TEMPLATE,
                                            src_interface='wan1',
-                                           dest_interface='wan2', )
+                                           dest_interface='wan2')
 
     no_interfaces_acl = fortigate.Fortigate(
         policy.ParsePolicy(GOOD_HEADER + no_interfaces_term,

@@ -22,11 +22,10 @@ from __future__ import unicode_literals
 
 import datetime
 
+from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
-from absl import logging
 import six
-
 
 
 _ACTION_TABLE = {
