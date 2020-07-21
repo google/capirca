@@ -249,7 +249,7 @@ class FortigateTest(unittest.TestCase):
     src_only_sig = dup_sig
     icmp_sig = 'set service ALL_ICMP\n'
     ip_sig = 'set service ALL\n'
-    custom_port_sig = ('config firewall service custom\n\tedit 43\n\t\t' 
+    custom_port_sig = ('config firewall service custom\n\tedit 43\n\t\t'
                        'set protocol TCP/UDP\n\t\tset tcp-portrange 43\n\tnext')
 
     self.assertIn(
