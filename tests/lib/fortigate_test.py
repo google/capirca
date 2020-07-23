@@ -478,5 +478,6 @@ class FortigateTest(unittest.TestCase):
                       port_map.get_protocol,
                       'bad_proto', 22)
 
+
 if __name__ == '__main__':
   unittest.main()
