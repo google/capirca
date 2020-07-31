@@ -323,8 +323,12 @@ def _CollapseAddrListInternal(addresses, complements_by_network):
         prev_addr.AddComment(addr.text)
       elif (prev_addr.version == addr.version and
             prev_addr.prefixlen == addr.prefixlen and
-            prev_addr.broadcast_address + 1 == addr.network_address and
-            prev_addr.Supernet().network_address == prev_addr.network_address):
+            # It's faster to compare integers than IP objects
+            prev_addr.broadcast_address._ip + 1 == addr.network_address._ip and  # pylint disable=protected-access
+            # Generating Supernet is relatively intensive compared to doing bit
+            # operations
+            (prev_addr.netmask._ip << 1) & prev_addr.network_address._ip ==      # pylint disable=protected-access
+            prev_addr.network_address._ip):                                      # pylint disable=protected-access
         # Preserve addr's comment, then merge with it.
         prev_addr.AddComment(addr.text)
         addr = ret_array.pop().Supernet()
