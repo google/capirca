@@ -71,14 +71,7 @@ class IPv4(ipaddress.IPv4Network):
     self.text = comment
     self.token = token
     self.parent_token = token
-
-    # Using a tuple of IP integer/prefixlength is significantly faster than
-    # using the BaseNetwork object for recreating the IP network
-    if isinstance(ip_string, ipaddress._BaseNetwork):  # pylint disable=protected-access
-      ip = (ip_string.network_address._ip, ip_string.prefixlen)  # pylint disable=protected-access
-    else:
-      ip = ip_string
-    super(IPv4, self).__init__(ip, strict)
+    super(IPv4, self).__init__(ip_string, strict)
 
   def subnet_of(self, other):
     """Return True if this network is a subnet of other."""
@@ -93,7 +86,7 @@ class IPv4(ipaddress.IPv4Network):
     return self._is_subnet_of(other, self)
 
   def __deepcopy__(self, memo):
-    result = self.__class__(self)
+    result = self.__class__(self.with_prefixlen)
     result.text = self.text
     result.token = self.token
     result.parent_token = self.parent_token
@@ -150,14 +143,7 @@ class IPv6(ipaddress.IPv6Network):
     self.text = comment
     self.token = token
     self.parent_token = token
-
-    # Using a tuple of IP integer/prefixlength is significantly faster than
-    # using the BaseNetwork object for recreating the IP network
-    if isinstance(ip_string, ipaddress._BaseNetwork):  # pylint disable=protected-access
-      ip = (ip_string.network_address._ip, ip_string.prefixlen)  # pylint disable=protected-access
-    else:
-      ip = ip_string
-    super(IPv6, self).__init__(ip, strict)
+    super(IPv6, self).__init__(ip_string, strict)
 
   def subnet_of(self, other):
     """Return True if this network is a subnet of other."""
@@ -172,7 +158,7 @@ class IPv6(ipaddress.IPv6Network):
     return self._is_subnet_of(other, self)
 
   def __deepcopy__(self, memo):
-    result = self.__class__(self)
+    result = self.__class__(self.with_prefixlen)
     result.text = self.text
     result.token = self.token
     result.parent_token = self.parent_token
@@ -337,12 +323,8 @@ def _CollapseAddrListInternal(addresses, complements_by_network):
         prev_addr.AddComment(addr.text)
       elif (prev_addr.version == addr.version and
             prev_addr.prefixlen == addr.prefixlen and
-            # It's faster to compare integers than IP objects
-            prev_addr.broadcast_address._ip + 1 == addr.network_address._ip and  # pylint disable=protected-access
-            # Generating Supernet is relatively intensive compared to doing bit
-            # operations
-            (prev_addr.netmask._ip << 1) & prev_addr.network_address._ip ==      # pylint disable=protected-access
-            prev_addr.network_address._ip):                                      # pylint disable=protected-access
+            prev_addr.broadcast_address + 1 == addr.network_address and
+            prev_addr.Supernet().network_address == prev_addr.network_address):
         # Preserve addr's comment, then merge with it.
         prev_addr.AddComment(addr.text)
         addr = ret_array.pop().Supernet()
