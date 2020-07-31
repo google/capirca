@@ -71,7 +71,14 @@ class IPv4(ipaddress.IPv4Network):
     self.text = comment
     self.token = token
     self.parent_token = token
-    super(IPv4, self).__init__(ip_string, strict)
+
+    # Using a tuple of IP integer/prefixlength is significantly faster than
+    # using the BaseNetwork object for recreating the IP network
+    if isinstance(ip_string, ipaddress._BaseNetwork):  # pylint disable=protected-access
+      ip = (ip_string.network_address._ip, ip_string.prefixlen)  # pylint disable=protected-access # pytype: disable=attribute-error
+    else:
+      ip = ip_string
+    super(IPv4, self).__init__(ip, strict)
 
   def subnet_of(self, other):
     """Return True if this network is a subnet of other."""
@@ -86,7 +93,7 @@ class IPv4(ipaddress.IPv4Network):
     return self._is_subnet_of(other, self)
 
   def __deepcopy__(self, memo):
-    result = self.__class__(self.with_prefixlen)
+    result = self.__class__(self)
     result.text = self.text
     result.token = self.token
     result.parent_token = self.parent_token
@@ -143,7 +150,14 @@ class IPv6(ipaddress.IPv6Network):
     self.text = comment
     self.token = token
     self.parent_token = token
-    super(IPv6, self).__init__(ip_string, strict)
+
+    # Using a tuple of IP integer/prefixlength is significantly faster than
+    # using the BaseNetwork object for recreating the IP network
+    if isinstance(ip_string, ipaddress._BaseNetwork):  # pylint disable=protected-access
+      ip = (ip_string.network_address._ip, ip_string.prefixlen)  # pylint disable=protected-access # pytype: disable=attribute-error
+    else:
+      ip = ip_string
+    super(IPv6, self).__init__(ip, strict)
 
   def subnet_of(self, other):
     """Return True if this network is a subnet of other."""
@@ -158,7 +172,7 @@ class IPv6(ipaddress.IPv6Network):
     return self._is_subnet_of(other, self)
 
   def __deepcopy__(self, memo):
-    result = self.__class__(self.with_prefixlen)
+    result = self.__class__(self)
     result.text = self.text
     result.token = self.token
     result.parent_token = self.parent_token
