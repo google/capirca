@@ -17,10 +17,18 @@
 
 from setuptools import setup, find_packages
 
+with open('VERSION') as f:
+    version = f.read()
+
+with open('README.md') as f:
+    long_description = f.read()
+
 setup(
     name='capirca',
-    version='1.123',
+    version=version,
     description='Capirca',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     license='Apache License, Version 2.0',
     url='https://github.com/google/capirca/',
     maintainer='Rob Ankeny',
@@ -31,8 +39,13 @@ setup(
         'console_scripts': ['aclgen = capirca.aclgen:entry_point'],
     },
     classifiers=[
-                 'Topic :: Security',
-                 'Topic :: System :: Networking :: Firewalls',
-                ],
-    install_requires=['absl-py', 'ply', 'ipaddress>=1.0.22', 'mock', 'six']
+        'Development Status :: 5 - Production/Stable',
+        'License :: OSI Approved :: Apache Software License',
+        'Operating System :: OS Independent',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6',
+        'Topic :: Security',
+        'Topic :: System :: Networking :: Firewalls',
+    ],
+    install_requires=['absl-py', 'ply', 'ipaddress>=1.0.22', 'six']
 )
