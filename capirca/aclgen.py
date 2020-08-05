@@ -23,6 +23,7 @@ from __future__ import unicode_literals
 
 import copy
 import multiprocessing
+import pathlib
 import os
 import sys
 
@@ -455,6 +456,8 @@ def WriteFiles(write_files):
 
 def _WriteFile(output_file, file_string):
   try:
+    file_path = pathlib.Path(output_file)
+    file_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_file, 'w') as output:
       logging.info('writing file: %s', output_file)
       output.write(file_string)
@@ -543,6 +546,7 @@ def main(argv):
 def entry_point():
   SetupFlags()
   app.run(main)
+
 
 if __name__ == '__main__':
   entry_point()
