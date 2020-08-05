@@ -19,5 +19,5 @@ If your usecase is to just use the CLI and you don't want to go through the proc
 Example:
 
 ```bash
-$ docker run -v "${PWD}:/data" capirca
+$ docker run -v "${PWD}:/data" docker.pkg.github.com/google/capirca/capirca:latest
 ```
