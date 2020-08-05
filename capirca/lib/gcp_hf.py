@@ -214,18 +214,25 @@ class HierarchicalFirewall(gcp.GCP):
           address_family = i
           filter_options.remove(i)
 
-      # If there is one option left, it should be the default
-      # maximum cost of a policy.
+      # Find the default maximum cost of a policy, an integer, if specified.
       max_cost = self._DEFAULT_MAXIMUM_COST
-      if len(filter_options) == 1:
+      for opt in filter_options:
         try:
-          max_cost = int(filter_options[0])
+          max_cost = int(opt)
+          filter_options.remove(opt)
+          break
         except ValueError:
-          raise gcp.HeaderError('Unknown filter option %s in policy %s' %
-                                (filter_options[0], filter_name))
-        if max_cost > 65536:
-          raise gcp.HeaderError(
-              'Default maximum cost cannot be higher than 65536')
+          continue
+
+      if max_cost > 65536:
+        raise gcp.HeaderError(
+            'Default maximum cost cannot be higher than 65536')
+
+      # If there are remaining options, they are unknown/unsupported options.
+      if filter_options:
+        raise gcp.HeaderError(
+            'Unsupported or unknown filter options %s in policy %s ' %
+            (str(filter_options), filter_name))
 
       for term in terms:
         total_cost += GetCost(term)

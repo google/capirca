@@ -27,6 +27,7 @@ from typing import Union
 
 import capirca.utils.iputils as iputils
 
+
 def IP(ip, comment='', token='', strict=True):
   """Take an ip string and return an object of the correct type.
 
@@ -42,7 +43,7 @@ def IP(ip, comment='', token='', strict=True):
   Raises:
     ValueError: if the string passed isn't either a v4 or a v6 address.
   """
-  if isinstance(ip, ipaddress._BaseNetwork): # pylint disable=protected-access
+  if isinstance(ip, ipaddress._BaseNetwork):  # pylint disable=protected-access
     imprecise_ip = ip
   else:
     imprecise_ip = ipaddress.ip_network(ip, strict=strict)
@@ -75,7 +76,14 @@ class IPv4(ipaddress.IPv4Network):
     self.text = comment
     self.token = token
     self.parent_token = token
-    super(IPv4, self).__init__(ip_string, strict)
+
+    # Using a tuple of IP integer/prefixlength is significantly faster than
+    # using the BaseNetwork object for recreating the IP network
+    if isinstance(ip_string, ipaddress._BaseNetwork):  # pylint disable=protected-access
+      ip = (ip_string.network_address._ip, ip_string.prefixlen)  # pylint disable=protected-access # pytype: disable=attribute-error
+    else:
+      ip = ip_string
+    super(IPv4, self).__init__(ip, strict)
 
   def subnet_of(self, other):
     """Return True if this network is a subnet of other."""
@@ -90,7 +98,7 @@ class IPv4(ipaddress.IPv4Network):
     return self._is_subnet_of(other, self)
 
   def __deepcopy__(self, memo):
-    result = self.__class__(self.with_prefixlen)
+    result = self.__class__(self)
     result.text = self.text
     result.token = self.token
     result.parent_token = self.parent_token
@@ -147,7 +155,14 @@ class IPv6(ipaddress.IPv6Network):
     self.text = comment
     self.token = token
     self.parent_token = token
-    super(IPv6, self).__init__(ip_string, strict)
+
+    # Using a tuple of IP integer/prefixlength is significantly faster than
+    # using the BaseNetwork object for recreating the IP network
+    if isinstance(ip_string, ipaddress._BaseNetwork):  # pylint disable=protected-access
+      ip = (ip_string.network_address._ip, ip_string.prefixlen)  # pylint disable=protected-access # pytype: disable=attribute-error
+    else:
+      ip = ip_string
+    super(IPv6, self).__init__(ip, strict)
 
   def subnet_of(self, other):
     """Return True if this network is a subnet of other."""
@@ -162,7 +177,7 @@ class IPv6(ipaddress.IPv6Network):
     return self._is_subnet_of(other, self)
 
   def __deepcopy__(self, memo):
-    result = self.__class__(self.with_prefixlen)
+    result = self.__class__(self)
     result.text = self.text
     result.token = self.token
     result.parent_token = self.parent_token
@@ -327,8 +342,12 @@ def _CollapseAddrListInternal(addresses, complements_by_network):
         prev_addr.AddComment(addr.text)
       elif (prev_addr.version == addr.version and
             prev_addr.prefixlen == addr.prefixlen and
-            prev_addr.broadcast_address + 1 == addr.network_address and
-            prev_addr.Supernet().network_address == prev_addr.network_address):
+            # It's faster to compare integers than IP objects
+            prev_addr.broadcast_address._ip + 1 == addr.network_address._ip and  # pylint disable=protected-access
+            # Generating Supernet is relatively intensive compared to doing bit
+            # operations
+            (prev_addr.netmask._ip << 1) & prev_addr.network_address._ip ==      # pylint disable=protected-access
+            prev_addr.network_address._ip):                                      # pylint disable=protected-access
         # Preserve addr's comment, then merge with it.
         prev_addr.AddComment(addr.text)
         addr = ret_array.pop().Supernet()
