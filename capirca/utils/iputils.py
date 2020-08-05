@@ -4,6 +4,7 @@ A module of utilities to work with IP addresses in a faster way
 
 import ipaddress
 
+
 def exclude_address(
     base_net: ipaddress._BaseNetwork,    # pylint disable=protected-access
     exclude_net: ipaddress._BaseNetwork  # pylint disable=protected-access
@@ -49,17 +50,21 @@ def exclude_address(
   exclude_range = exclude_net.network_address._ip, exclude_net.broadcast_address._ip  # pylint disable=protected-access
   address_class = base_net.network_address.__class__  # pylint disable=protected-access
   if include_range[0] == exclude_range[0]:
-    result_start = address_class(exclude_range[1]+1)
+    result_start = address_class(exclude_range[1] + 1)
     result_end = address_class(include_range[1])
-    yield from ipaddress.summarize_address_range(result_start, result_end)
+    for address in ipaddress.summarize_address_range(result_start, result_end):
+      yield address
   elif include_range[1] == exclude_range[1]:
     result_start = address_class(include_range[0])
-    result_end = address_class(exclude_range[0]-1)
-    yield from ipaddress.summarize_address_range(result_start, result_end)
+    result_end = address_class(exclude_range[0] - 1)
+    for address in ipaddress.summarize_address_range(result_start, result_end):
+      yield address
   else:
     first_section_start = address_class(include_range[0])
-    first_section_end = address_class(exclude_range[0]-1)
-    second_section_start = address_class(exclude_range[1]+1)
+    first_section_end = address_class(exclude_range[0] - 1)
+    second_section_start = address_class(exclude_range[1] + 1)
     second_section_end = address_class(include_range[1])
-    yield from ipaddress.summarize_address_range(first_section_start, first_section_end)
-    yield from ipaddress.summarize_address_range(second_section_start, second_section_end)
+    for address in ipaddress.summarize_address_range(first_section_start, first_section_end):
+      yield address
+    for address in ipaddress.summarize_address_range(second_section_start, second_section_end):
+      yield address
