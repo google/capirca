@@ -323,6 +323,7 @@ class Term(object):
     dscp-match: VarType.DSCP_MATCH
     dscp-except: VarType.DSCP_EXCEPT
     comments: VarType.COMMENT
+    encapsulate: VarType.ENCAPSULATE
     flexible-match-range: VarType.FLEXIBLE_MATCH_RANGE
     forwarding-class: VarType.FORWARDING_CLASS
     forwarding-class-except: VarType.FORWARDING_CLASS_EXCEPT
@@ -455,6 +456,7 @@ class Term(object):
     self.source_prefix_except = []
     self.destination_prefix_except = []
     self.inactive = False
+    self.encapsulate = None
     # srx specific
     self.vpn = None
     # gce specific
@@ -622,6 +624,9 @@ class Term(object):
     if self.next_ip:
       if not other.next_ip:
         return False
+    if self.encapsulate:
+      if not other.encapsulate:
+        return False
     if self.fragment_offset:
       # fragment_offset looks like 'integer-integer' or just, 'integer'
       sfo = sorted([int(x) for x in self.fragment_offset.split('-')])
@@ -720,6 +725,8 @@ class Term(object):
       ret_str.append('  icmp_code: %s' % sorted(self.icmp_code))
     if self.next_ip:
       ret_str.append('  next_ip: %s' % self.next_ip)
+    if self.encapsulate:
+      ret_str.append('  encapsulate: %s' % self.encapsulate)
     if self.protocol:
       ret_str.append('  protocol: %s' % sorted(self.protocol))
     if self.protocol_except:
@@ -905,6 +912,10 @@ class Term(object):
 
     # next_ip
     if self.next_ip != other.next_ip:
+      return False
+
+    # encapsulate
+    if self.encapsulate != other.encapsulate:
       return False
 
     # flexible_match
@@ -1138,6 +1149,8 @@ class Term(object):
         self.action.append(obj.value)
       elif obj.var_type is VarType.COUNTER:
         self.counter = obj
+      elif obj.var_type is VarType.ENCAPSULATE:
+        self.encapsulate = obj.value
       elif obj.var_type is VarType.TRAFFIC_CLASS_COUNT:
         self.traffic_class_count = obj
       elif obj.var_type is VarType.ICMP_TYPE:
@@ -1216,7 +1229,7 @@ class Term(object):
         raise ParseError(
             'term "%s" has both verbatim and non-verbatim tokens.' % self.name)
     else:
-      if not self.action and not self.routing_instance and not self.next_ip:
+      if not self.action and not self.routing_instance and not self.next_ip and not self.encapsulate:
         raise TermNoActionError('no action specified for term %s' % self.name)
       # have we specified a port with a protocol that doesn't support ports?
       if self.source_port or self.destination_port or self.port:
@@ -1486,6 +1499,7 @@ class VarType(object):
   LOG_LIMIT = 58
   TARGET_RESOURCES = 59
   TARGET_SERVICE_ACCOUNTS = 60
+  ENCAPSULATE = 61
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1658,6 +1672,7 @@ tokens = (
     'DSCP_RANGE',
     'DSCP_SET',
     'DTAG',
+    'ENCAPSULATE',
     'ESCAPEDSTRING',
     'ETHER_TYPE',
     'EXPIRATION',
@@ -1739,6 +1754,7 @@ reserved = {
     'dscp-except': 'DSCP_EXCEPT',
     'dscp-match': 'DSCP_MATCH',
     'dscp-set': 'DSCP_SET',
+    'encapsulate': 'ENCAPSULATE',
     'ether-type': 'ETHER_TYPE',
     'expiration': 'EXPIRATION',
     'flexible-match-range': 'FLEXIBLE_MATCH_RANGE',
@@ -1918,6 +1934,7 @@ def p_term_spec(p):
                 | term_spec dscp_set_spec
                 | term_spec dscp_match_spec
                 | term_spec dscp_except_spec
+                | term_spec encapsulate_spec
                 | term_spec ether_type_spec
                 | term_spec exclude_spec
                 | term_spec expiration_spec
@@ -2038,6 +2055,11 @@ def p_forwarding_class_except_spec(p):
 def p_next_ip_spec(p):
   """ next_ip_spec : NEXT_IP ':' ':' STRING """
   p[0] = VarType(VarType.NEXT_IP, p[4])
+
+
+def p_encapsulate_spec(p):
+  """ encapsulate_spec : ENCAPSULATE ':' ':' STRING """
+  p[0] = VarType(VarType.ENCAPSULATE, p[4])
 
 
 def p_icmp_type_spec(p):

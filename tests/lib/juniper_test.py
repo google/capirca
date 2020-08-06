@@ -431,6 +431,33 @@ term default-term-1 {
   action:: deny
 }
 """
+ENCAPSULATE_GOOD_TERM_1 = """
+term good-term-1 {
+  protocol:: tcp
+  encapsulate:: template-name
+}
+"""
+ENCAPSULATE_GOOD_TERM_2 = """
+term good-term-2 {
+  protocol:: tcp
+  encapsulate:: template-name
+  counter:: count-name
+}
+"""
+ENCAPSULATE_BAD_TERM_1 = """
+term bad-term-1 {
+  protocol:: tcp
+  encapsulate:: template-name
+  action:: accept
+}
+"""
+ENCAPSULATE_BAD_TERM_2 = """
+term bad-term-2 {
+  protocol:: tcp
+  encapsulate:: template-name
+  routing-instance:: instance-name
+}
+"""
 LONG_COMMENT_TERM_1 = """
 term long-comment-term-1 {
   comment:: "this is very very very very very very very very very very very
@@ -512,7 +539,7 @@ term flex-match-term-1 {
 }
 """
 
-SUPPORTED_TOKENS = {
+SUPPORTED_TOKENS = frozenset([
     'action',
     'address',
     'comment',
@@ -525,6 +552,7 @@ SUPPORTED_TOKENS = {
     'dscp_except',
     'dscp_match',
     'dscp_set',
+    'encapsulate',
     'ether_type',
     'expiration',
     'flexible_match_range',
@@ -560,8 +588,7 @@ SUPPORTED_TOKENS = {
     'traffic_type',
     'translated',
     'ttl',
-    'verbatim',
-}
+    'verbatim'])
 
 SUPPORTED_SUB_TOKENS = {
     'action': {'accept', 'deny', 'reject', 'next', 'reject-with-tcp-rst'},
@@ -706,6 +733,29 @@ class JuniperTest(unittest.TestCase):
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.assertNotIn('from {', output, output)
+
+  def testEncapsulate(self):
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(GOOD_HEADER + ENCAPSULATE_GOOD_TERM_1, self.naming),
+        EXP_INFO)
+    output = str(jcl)
+    self.assertIn('encapsulate template-name;', output, output)
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(GOOD_HEADER + ENCAPSULATE_GOOD_TERM_2, self.naming),
+        EXP_INFO)
+    output = str(jcl)
+    self.assertIn('encapsulate template-name;', output, output)
+    self.assertIn('count count-name;', output, output)
+
+  def testFailEncapsulate(self):
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(GOOD_HEADER + ENCAPSULATE_BAD_TERM_1, self.naming),
+        EXP_INFO)
+    self.assertRaises(juniper.JuniperMultipleTerminatingActionError, str, jcl)
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(GOOD_HEADER + ENCAPSULATE_BAD_TERM_2, self.naming),
+        EXP_INFO)
+    self.assertRaises(juniper.JuniperMultipleTerminatingActionError, str, jcl)
 
   def testIcmpType(self):
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_3,

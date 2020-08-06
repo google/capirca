@@ -424,6 +424,12 @@ term good-term-45 {
   target-service-accounts:: acct1@blah.com
 }
 """
+GOOD_TERM_46 = """
+term good-term-46 {
+  protocol:: icmp tcp udp gre esp ah sctp
+  encapsulate:: stuff_and_things
+}
+"""
 GOOD_TERM_V6_1 = """
 term good-term-v6-1 {
   hop-limit:: 5
@@ -1224,6 +1230,11 @@ class PolicyTest(unittest.TestCase):
     self.assertTrue(policy._SHADE_CHECK)
     _ = policy.ParsePolicy(pol, self.naming)
     self.assertFalse(policy._SHADE_CHECK)
+
+  def testEncapsulate(self):
+    pol = HEADER + GOOD_TERM_46
+    result = policy.ParsePolicy(pol, self.naming)
+    self.assertIn('encapsulate: stuff_and_things', str(result))
 
   def testTTL(self):
     pol = HEADER + GOOD_TERM_43

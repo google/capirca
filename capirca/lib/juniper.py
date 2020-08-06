@@ -134,7 +134,8 @@ class Term(aclgenerator.Term):
              'deny': 'discard',
              'reject': 'reject',
              'next': 'next term',
-             'reject-with-tcp-rst': 'reject tcp-reset'}
+             'reject-with-tcp-rst': 'reject tcp-reset',
+             'encapsulate': 'encapsulate'}
 
   # the following lookup table is used to map between the various types of
   # filters the juniper generator can render.  As new differences are
@@ -285,6 +286,7 @@ class Term(aclgenerator.Term):
                           self.term.destination_port or
                           self.term.destination_prefix or
                           self.term.destination_prefix_except or
+                          self.term.encapsulate or
                           self.term.ether_type or
                           self.term.flexible_match_range or
                           self.term.forwarding_class or
@@ -538,9 +540,12 @@ class Term(aclgenerator.Term):
     #     accept;
     # }"
     #
+    self.CheckTerminatingAction()
     unique_actions = set(self.extra_actions)
     if not self.term.routing_instance:
       unique_actions.update(self.term.action)
+    if self.term.encapsulate:
+      unique_actions.add('encapsulate')
     if len(unique_actions) <= 1:
       for action in [self.term.logging, self.term.routing_instance,
                      self.term.counter, self.term.policer, self.term.qos,
@@ -578,6 +583,10 @@ class Term(aclgenerator.Term):
           config.Append('next-ip %s;' % str(self.term.next_ip[0]))
         else:
           config.Append('next-ip6 %s;' % str(self.term.next_ip[0]))
+        config.Append('}')
+      elif current_action == 'encapsulate':
+        config.Append('then {')
+        config.Append('encapsulate %s;' % str(self.term.encapsulate))
         config.Append('}')
       else:
         config.Append('then %s;' % current_action)
@@ -620,6 +629,8 @@ class Term(aclgenerator.Term):
           config.Append('next-ip %s;' % str(self.term.next_ip[0]))
         else:
           config.Append('next-ip6 %s;' % str(self.term.next_ip[0]))
+      if self.term.encapsulate:
+        config.Append('encapsulate %s;' % str(self.term.encapsulate))
       for action in self.extra_actions:
         config.Append(action + ';')
 
@@ -649,6 +660,17 @@ class Term(aclgenerator.Term):
     if next_ip[0].num_addresses > 1:
       raise JuniperNextIpError('The following term has a subnet '
                                'instead of a host: %s' % term_name)
+
+  def CheckTerminatingAction(self):
+    action = set(self.term.action)
+    if self.term.encapsulate:
+      action.add(self.term.encapsulate)
+    if self.term.routing_instance:
+      action.add(self.term.routing_instance)
+    if len(action) > 1:
+      raise JuniperMultipleTerminatingActionError(
+          'The following term has multiple terminating actions: %s' %
+          self.term.name)
 
   def _MinimizePrefixes(self, include, exclude):
     """Calculate a minimal set of prefixes for Juniper match conditions.
@@ -851,6 +873,7 @@ class Juniper(aclgenerator.ACLGenerator):
                          'dscp_except',
                          'dscp_match',
                          'dscp_set',
+                         'encapsulate',
                          'ether_type',
                          'flexible_match_range',
                          'forwarding_class',

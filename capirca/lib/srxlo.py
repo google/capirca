@@ -57,5 +57,6 @@ class SRXlo(juniper.Juniper):
     supported_tokens, supported_sub_tokens = super(SRXlo, self)._BuildTokens()
     # flexible match is MX/Trio only
     supported_tokens.remove('flexible_match_range')
-
+    # currently only support 'encapsulate' in juniper
+    supported_tokens.remove('encapsulate')
     return supported_tokens, supported_sub_tokens

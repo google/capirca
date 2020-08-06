@@ -144,6 +144,10 @@ class Counter(Field):
   """A counter field."""
 
 
+class Encapsulate(Field):
+  """An encapsulate field."""
+
+
 class DestinationAddress(Address):
   """A destination-address field."""
 
@@ -373,6 +377,7 @@ field_map = {
     'traffic-type': TrafficType,
     'verbatim': Verbatim,
     'vpn': Vpn,
+    'encapsulate': Encapsulate,
 }
 
 
