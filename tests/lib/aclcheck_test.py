@@ -22,8 +22,8 @@ from __future__ import unicode_literals
 import unittest
 
 from capirca.lib import aclcheck
-from capirca.lib import naming
-from capirca.lib import policy
+from capirca.parsing import naming
+from capirca.parsing import policy
 from capirca.lib import port
 
 

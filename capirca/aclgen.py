@@ -30,8 +30,8 @@ import sys
 from absl import app
 from absl import flags
 from absl import logging
-from capirca.lib import naming
-from capirca.lib import policy
+from capirca.parsing import naming
+from capirca.parsing import policy
 from capirca.utils.platutils import LoadExportedPlatforms
 
 
@@ -175,12 +175,12 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
   header_platforms = set()
   for header in pol.headers:
     header_platforms.update(header.platforms)
-  
+
   exported_platforms = LoadExportedPlatforms()
 
   if not output_directory.endswith('/'):
     output_directory += '/'
-  
+
   try:
     for platform in exported_platforms:
       if platform.PLATFORM in header_platforms:
@@ -191,7 +191,7 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
 
         RenderACL(str(acl_obj), acl_suffix, output_directory,
                   input_file, write_files)
-  
+
   # TODO(robankeny) add additional errors.
   except (juniper.Error, junipersrx.Error, cisco.Error, ipset.Error,
           iptables.Error, speedway.Error, pcap.Error,

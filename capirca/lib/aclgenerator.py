@@ -25,7 +25,7 @@ import logging
 import re
 import string
 
-from capirca.lib import policy
+from capirca.parsing import policy
 import six
 from six.moves import range
 

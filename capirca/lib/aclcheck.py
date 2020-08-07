@@ -22,7 +22,7 @@ from __future__ import unicode_literals
 
 import logging
 from capirca.lib import nacaddr
-from capirca.lib import policy
+from capirca.parsing import policy
 from capirca.lib import port
 
 

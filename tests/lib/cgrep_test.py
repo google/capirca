@@ -29,7 +29,7 @@ import argparse
 import unittest
 
 from capirca.lib import nacaddr
-from capirca.lib import naming
+from capirca.parsing import naming
 from tools import cgrep
 
 

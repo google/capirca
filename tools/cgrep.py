@@ -50,7 +50,7 @@ import sys
 from absl import app
 from absl import logging
 from capirca.lib import nacaddr
-from capirca.lib import naming
+from capirca.parsing import naming
 
 
 def is_valid_ip(arg):
