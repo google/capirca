@@ -1,7 +1,5 @@
 """A module of utilities to work with IP addresses in a faster way."""
 
-from __future__ import google_type_annotations
-
 import ipaddress
 
 
