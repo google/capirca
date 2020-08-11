@@ -835,8 +835,8 @@ class CiscoTest(unittest.TestCase):
     self.assertIn('permit udp any any range 1024 65535', str(acl),
                   str(acl))
 
-  def testFragments_01(self):
-    """Test policy term using 'fragments' (ref Github issue #187)"""
+  def testFragments01(self):
+    """Test policy term using 'fragments' (ref Github issue #187)."""
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/24')]
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_20,
                                          self.naming), EXP_INFO)
@@ -846,8 +846,8 @@ class CiscoTest(unittest.TestCase):
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
                                              mock.call('SOME_HOST')])
 
-  def testFragments_02(self):
-    """Test policy term using 'is-fragment' (ref Github issue #187)"""
+  def testFragments02(self):
+    """Test policy term using 'is-fragment' (ref Github issue #187)."""
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/24')]
     acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_22,
                                          self.naming), EXP_INFO)

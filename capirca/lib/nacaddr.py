@@ -25,6 +25,8 @@ import ipaddress
 import itertools
 from typing import Union
 
+import capirca.utils.iputils as iputils
+
 
 def IP(ip, comment='', token='', strict=True):
   """Take an ip string and return an object of the correct type.
@@ -41,7 +43,10 @@ def IP(ip, comment='', token='', strict=True):
   Raises:
     ValueError: if the string passed isn't either a v4 or a v6 address.
   """
-  imprecise_ip = ipaddress.ip_network(ip, strict=strict)
+  if isinstance(ip, ipaddress._BaseNetwork):  # pylint disable=protected-access
+    imprecise_ip = ip
+  else:
+    imprecise_ip = ipaddress.ip_network(ip, strict=strict)
   if imprecise_ip.version == 4:
     return IPv4(ip, comment, token, strict=strict)
   elif imprecise_ip.version == 6:
@@ -410,7 +415,7 @@ def RemoveAddressFromList(superset, exclude):
     elif exclude.version == addr.version and exclude.subnet_of(addr):
       # this could be optimized except that one group uses this
       # code with ipaddrs (instead of nacaddrs).
-      ret_array.extend([IP(x) for x in addr.address_exclude(exclude)])
+      ret_array.extend(IP(x) for x in iputils.exclude_address(addr, exclude))
     else:
       ret_array.append(addr)
   return sorted(ret_array)
