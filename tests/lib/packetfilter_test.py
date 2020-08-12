@@ -94,6 +94,14 @@ term good-term-icmpv6 {
 }
 """
 
+GOOD_TERM_ICMPV6_TYPES = """
+term good-term-icmpv6-types {
+  protocol:: icmpv6
+  icmp-type:: echo-reply
+  action:: deny
+}
+"""
+
 BAD_TERM_ICMP = """
 term test-icmp {
   icmp-type:: echo-request echo-reply
@@ -434,13 +442,24 @@ class PacketFilterTest(unittest.TestCase):
   def testIcmpTypes(self):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
         GOOD_HEADER + GOOD_TERM_ICMP_TYPES, self.naming), EXP_INFO)
+    acl_v6_header = packetfilter.PacketFilter(policy.ParsePolicy(
+        GOOD_HEADER_INET6 + GOOD_TERM_ICMP_TYPES, self.naming), EXP_INFO)
     result = str(acl)
+    result_v6_header = str(acl_v6_header)
     self.assertIn('# term good-term-icmp-types', result,
                   'did not find comment for good-term-icmp-types')
+    self.assertIn('# term good-term-icmp-types', result_v6_header,
+                  'did not find comment for good-term-icmp-types'
+                  'in V6 header')
     self.assertIn(
         'block drop quick proto { icmp } from { any } to { any } '
         'icmp-type { 0, 3, 11 }', result,
         'did not find actual term for good-term-icmp-types')
+    self.assertIn(
+        'block drop quick proto { icmp } from { any } to { any } '
+        'icmp-type { 0, 3, 11 }', result,
+        'did not find actual term for good-term-icmp-types'
+        'in the acl with V6 header')
 
   def testIcmpv6(self):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
@@ -452,6 +471,17 @@ class PacketFilterTest(unittest.TestCase):
         'pass quick proto { ipv6-icmp } from { any } to { any } keep state\n',
         result,
         'did not find actual term for good-term-icmpv6')
+
+  def testIcmpv6Types(self):
+    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+        GOOD_HEADER + GOOD_TERM_ICMPV6_TYPES, self.naming), EXP_INFO)
+    result = str(acl)
+    self.assertIn('# term good-term-icmpv6-types', result,
+                  'did not find comment for good-term-icmpv6-types')
+    self.assertIn(
+        'block drop quick proto { ipv6-icmp } from { any } to { any } '
+        'icmp6-type { 129 }', result,
+        'did not find actual term for good-term-icmpv6-types')
 
   def testBadIcmp(self):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(

@@ -186,9 +186,7 @@ class Term(aclgenerator.Term):
     # icmp-type
     icmp_types = ['']
     if self.term.icmp_type:
-      if self.af != 'mixed':
-        af = self.af
-      elif protocol == ['icmp']:
+      if protocol == ['icmp']:
         af = 'inet'
       elif protocol == ['icmpv6']:
         af = 'inet6'
@@ -196,8 +194,7 @@ class Term(aclgenerator.Term):
         raise aclgenerator.UnsupportedFilterError('%s %s %s' % (
             '\n', self.term.name,
             'icmp protocol is not defined or not supported.'))
-      icmp_types = self.NormalizeIcmpTypes(
-          self.term.icmp_type, protocol, af)
+      icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type, protocol, af)
 
     # options
     tcp_flags_set = []
@@ -317,6 +314,12 @@ class Term(aclgenerator.Term):
       type_strs = ', '.join(type_strs)
       if type_strs:
         line.append('icmp-type { %s }' % type_strs)
+
+    if 'icmpv6' in proto and icmp_types:
+      type_strs = [str(icmp_type) for icmp_type in icmp_types]
+      type_strs = ', '.join(type_strs)
+      if type_strs:
+        line.append('icmp6-type { %s }' % type_strs)
 
     if options:
       line.extend(options)
