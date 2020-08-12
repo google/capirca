@@ -168,18 +168,16 @@ class Term(aclgenerator.Term):
     # icmp-type
     icmp_types = ['']
     if self.term.icmp_type:
-      if self.af != 'mixed':
-        af = self.af
-      elif self.term.protocol == ['icmp']:
+      if self.term.protocol == ['icmp']:
         af = 'inet'
-      elif self.term.protocol == ['icmp6']:
+      elif self.term.protocol == ['icmpv6']:
         af = 'inet6'
       else:
-        raise aclgenerator.UnsupportedFilterError('%s %s %s' % (
-            '\n', self.term.name,
-            'icmp protocol is not defined or not supported.'))
-      icmp_types = self.NormalizeIcmpTypes(
-          self.term.icmp_type, self.term.protocol, af)
+        raise aclgenerator.UnsupportedFilterError(
+            '%s %s %s' % ('\n', self.term.name,
+                          'icmp protocol is not defined or not supported.'))
+      icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type,
+                                           self.term.protocol, af)
 
       if 'icmp' in self.term.protocol:
         conditions.append(self._GenerateIcmpType(icmp_types,
