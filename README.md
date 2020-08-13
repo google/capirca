@@ -9,6 +9,31 @@ To install the dev environment in machines that support bash files, run the `dev
 $ dev-install
 ```
 
+
+## Configuring Capirca with YAML files
+Capirca's `aclgen` can be configured with one or more yaml files. These files will be prioritized from left to right, meaning any duplicate configurations will be overriden, not merged.
+
+Command line flags can still be used when running `aclgen` with configuration files, and are treated as higher priority than configuration files.
+
+The default capirca configurations for `aclgen` can be expressed in a YAML file as follows:
+
+```yaml
+base_directory: ./policies
+definitions_directory: ./def
+output_directory: ./
+optimize: false
+recursive: true
+debug: false
+verbose: false
+ignore_directories:
+  - DEPRECATED
+  - def
+max_renderers: 10
+shade_check: true
+exp_info: 2
+```
+
+
 ## Community
 Capirca has a channel on the [NetworkToCode slack](https://networktocode.slack.com/).
 
