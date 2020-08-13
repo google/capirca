@@ -47,5 +47,12 @@ setup(
         'Topic :: Security',
         'Topic :: System :: Networking :: Firewalls',
     ],
-    install_requires=['absl-py', 'ply', 'ipaddress>=1.0.22', 'six']
+    install_requires=[
+        'absl-py',
+        'ply',
+        'ipaddress>=1.0.22',
+        'mock',
+        'six',
+        'PyYAML',
+    ]
 )
