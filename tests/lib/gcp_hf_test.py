@@ -269,6 +269,16 @@ BAD_TERM_NO_DEST_IP = """
 }
 """
 
+BAD_TERM_SOURCE_PORT = """
+term allow-traffic-from-port {
+  comment:: "Generic description"
+  destination-address:: INTERNAL
+  protocol:: tcp
+  source-port:: PORT
+  action:: next
+}
+"""
+
 BAD_TERM_NON_VALID_PROJECT_ID = """
 term default-deny-ingress-on-target {
   comment:: "Generic description"
@@ -616,6 +626,7 @@ SUPPORTED_TOKENS = frozenset({
     'name',
     'protocol',
     'source_address',
+    'source_port',
     'source_tag',
     'target_resources',
     'translated',
@@ -789,6 +800,17 @@ class GcpHfTest(parameterized.TestCase):
     with self.assertRaises(gcp.TermError):
       gcp_hf.HierarchicalFirewall(
           policy.ParsePolicy(HEADER_OPTION_EGRESS + BAD_TERM_NO_DEST_IP,
+                             self.naming),
+          EXP_INFO)
+
+  def testRaisesTermErrorOnTermWithSourcePort(self):
+    """Test that a term with a source port raises Term error."""
+    self.naming.GetNetAddr.return_value = TEST_IP
+    self.naming.GetServiceByProto.side_effect = [['53']]
+
+    with self.assertRaises(gcp.TermError):
+      gcp_hf.HierarchicalFirewall(
+          policy.ParsePolicy(HEADER_NO_OPTIONS + BAD_TERM_SOURCE_PORT,
                              self.naming),
           EXP_INFO)
 

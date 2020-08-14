@@ -59,6 +59,9 @@ class Term(gcp.Term):
         raise gcp.TermError('VPC name "%s" must start with a lowercase letter '
                             'followed by up to 62 lowercase letters, numbers, '
                             'or hyphens, and cannot end with a hyphen.')
+    if self.term.source_port:
+      raise gcp.TermError('Hierarchical firewall does not support source port '
+                          'restrictions.')
 
   def ConvertToDict(self, priority_index):
     """Converts term to dict representation of SecurityPolicy.Rule JSON format.
@@ -158,7 +161,6 @@ class HierarchicalFirewall(gcp.GCP):
                          'platform',
                          'platform_exclude',
                          'source_address_exclude',
-                         'source_port',
                          'verbatim'}
 
     supported_sub_tokens = {'action': {'accept', 'deny', 'next'}}
