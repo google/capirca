@@ -156,7 +156,6 @@ class HierarchicalFirewall(gcp.GCP):
     supported_tokens -= {'destination_address_exclude',
                          'expiration',
                          'icmp_type',
-                         'stateless_reply',
                          'option',
                          'platform',
                          'platform_exclude',
@@ -237,6 +236,8 @@ class HierarchicalFirewall(gcp.GCP):
             (str(filter_options), filter_name))
 
       for term in terms:
+        if term.stateless_reply:
+          continue
         total_cost += GetCost(term)
         if total_cost > max_cost:
           raise ExceededCostError('Policy cost (%d) reached the maximum (%d)'
