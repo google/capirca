@@ -62,6 +62,9 @@ class Term(gcp.Term):
     if self.term.source_port:
       raise gcp.TermError('Hierarchical firewall does not support source port '
                           'restrictions.')
+    if self.term.option:
+      raise gcp.TermError('Hierarchical firewall does not support the '
+                          'TCP_ESTABLISHED option.')
 
   def ConvertToDict(self, priority_index):
     """Converts term to dict representation of SecurityPolicy.Rule JSON format.
@@ -156,7 +159,6 @@ class HierarchicalFirewall(gcp.GCP):
     supported_tokens -= {'destination_address_exclude',
                          'expiration',
                          'icmp_type',
-                         'option',
                          'platform',
                          'platform_exclude',
                          'source_address_exclude',

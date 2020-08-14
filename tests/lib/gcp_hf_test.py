@@ -279,6 +279,15 @@ term allow-traffic-from-port {
 }
 """
 
+BAD_TERM_OPTIONS = """
+term term-with-options {
+  comment:: "Generic description"
+  destination-address:: INTERNAL
+  option:: TCP_ESTABLISHED
+  action:: next
+}
+"""
+
 BAD_TERM_NON_VALID_PROJECT_ID = """
 term default-deny-ingress-on-target {
   comment:: "Generic description"
@@ -624,6 +633,7 @@ SUPPORTED_TOKENS = frozenset({
     'destination_tag',
     'logging',
     'name',
+    'option',
     'protocol',
     'source_address',
     'source_port',
@@ -812,6 +822,16 @@ class GcpHfTest(parameterized.TestCase):
     with self.assertRaises(gcp.TermError):
       gcp_hf.HierarchicalFirewall(
           policy.ParsePolicy(HEADER_NO_OPTIONS + BAD_TERM_SOURCE_PORT,
+                             self.naming),
+          EXP_INFO)
+
+  def testRaisesTermErrorOnTermWithOptions(self):
+    """Test that a term with a source port raises Term error."""
+    self.naming.GetNetAddr.return_value = TEST_IP
+
+    with self.assertRaises(gcp.TermError):
+      gcp_hf.HierarchicalFirewall(
+          policy.ParsePolicy(HEADER_NO_OPTIONS + BAD_TERM_OPTIONS,
                              self.naming),
           EXP_INFO)
 
