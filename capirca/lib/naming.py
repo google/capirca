@@ -136,8 +136,8 @@ class Naming(object):
                               re.IGNORECASE|re.DOTALL)
     if naming_file and naming_type:
       filename = os.path.sep.join([naming_dir, naming_file])
-      file_handle = open(filename, 'r')
-      self._ParseFile(file_handle, naming_type)
+      with open(filename, 'r') as file_handle:
+        self._ParseFile(file_handle, naming_type)
     elif naming_dir:
       self._Parse(naming_dir, 'services')
       self._CheckUnseen('services')
@@ -525,8 +525,8 @@ class Naming(object):
 
     for current_file in file_names:
       try:
-        file_handle = open(current_file, 'r')
-        self._ParseFile(file_handle, def_type)
+        with open(current_file, 'r') as file_handle:
+          self._ParseFile(file_handle, def_type)
       except IOError as error_info:
         raise NoDefinitionsError('%s' % error_info)
 
