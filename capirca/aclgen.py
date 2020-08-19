@@ -420,8 +420,7 @@ def DescendDirectory(input_dirname):
     definitions: naming.Naming object.
 
   Returns:
-    a list of dictionaries which include the input file,
-    the output directory, and the definitions object
+    a list of input file paths
   """
   input_dir = pathlib.Path(input_dirname)
 
