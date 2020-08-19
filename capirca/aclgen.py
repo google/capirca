@@ -23,7 +23,6 @@ from __future__ import unicode_literals
 
 import copy
 import multiprocessing
-import os
 import pathlib
 import sys
 
@@ -141,23 +140,14 @@ class ACLParserError(Error):
   """Raised when the ACL parser fails."""
 
 
-def SkipLines(text, skip_line_func=False):
-  """Difflib has problems with the junkline func. fix it.
-
-  Args:
-    text: list of the first text to scan
-    skip_line_func: function to use to check if we should skip a line
-
-  Returns:
-    ret_text: text(list) minus the skipped lines
-  """
-  if not skip_line_func:
-    return text
-  return [x for x in text if not skip_line_func(x)]
-
-
-def RenderFile(base_directory, input_file, output_directory, definitions,
-               exp_info, write_files):
+def RenderFile(
+  base_directory,
+  input_file,
+  output_directory,
+  definitions,
+  exp_info,
+  write_files
+):
   """Render a single file.
 
   Args:
@@ -169,8 +159,15 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
               in that many weeks.
     write_files: a list of file tuples, (output_file, acl_text), to write
   """
-  logging.debug('rendering file: %s into %s', input_file,
-                output_directory)
+  output_relative = input_file.relative_to(base_directory).parent.parent
+  output_directory = output_directory / output_relative
+
+  logging.debug(
+    'rendering file: %s into %s',
+    input_file,
+    output_directory
+  )
+
   pol = None
   jcl = False
   acl = False
@@ -258,9 +255,6 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
     paloalto = copy.deepcopy(pol)
   if 'cloudarmor' in platforms:
     gca = copy.deepcopy(pol)
-
-  if not output_directory.endswith('/'):
-    output_directory += '/'
 
   try:
     if jcl:
@@ -356,8 +350,14 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
         'Error generating target ACL for %s:\n%s' % (input_file, e))
 
 
-def RenderACL(acl_text, acl_suffix, output_directory, input_file, write_files,
-              binary=False):
+def RenderACL(
+  acl_text,
+  acl_suffix,
+  output_directory,
+  input_file,
+  write_files,
+  binary=False
+):
   """Write the ACL string out to file if appropriate.
 
   Args:
@@ -368,8 +368,8 @@ def RenderACL(acl_text, acl_suffix, output_directory, input_file, write_files,
     write_files: A list of file tuples, (output_file, acl_text), to write.
     binary: Boolean if the rendered ACL is in binary format.
   """
-  output_file = os.path.join(output_directory, '%s%s') % (
-      os.path.splitext(os.path.basename(input_file))[0], acl_suffix)
+  input_filename = input_file.with_suffix(acl_suffix).name
+  output_file = output_directory / input_filename
 
   if FilesUpdated(output_file, acl_text, binary):
     logging.info('file changed: %s', output_file)
@@ -388,13 +388,13 @@ def FilesUpdated(file_name, new_text, binary):
   Returns:
     Boolean if config does not equal new text.
   """
+  if binary:
+    readmode = 'rb'
+  else:
+    readmode = 'r'
   try:
-    if binary:
-      with open(file_name, 'rb') as f:
-        conf = f.read()
-    else:
-      with open(file_name) as f:
-        conf = f.read()
+    with open(file_name, readmode) as f:
+      conf = f.read()
   except IOError:
     return True
   if not binary:
@@ -402,56 +402,47 @@ def FilesUpdated(file_name, new_text, binary):
     p4_date = '$Da te:'.replace(' ', '')
     p4_revision = '$Rev ision:'.replace(' ', '')
 
-    p4_tags = lambda x: p4_id in x or p4_date in x or p4_revision in x
+    def p4_tags(text):
+      return p4_id in text or p4_date in text or p4_revision in text
 
-    conf = SkipLines(conf.split('\n'), skip_line_func=p4_tags)
-    new_text = SkipLines(new_text.split('\n'), skip_line_func=p4_tags)
+    conf = filter(p4_tags, conf.split('\n'))
+    new_text = filter(p4_tags, new_text.split('\n'))
 
-  return conf != new_text
+  return list(conf) != list(new_text)
 
 
-def DescendRecursively(input_dirname, output_dirname, definitions, depth=1):
-  """Recursively descend from input_dirname looking for policy files to render.
+def DescendDirectory(input_dirname):
+  """Descend from input_dirname looking for policy files to render.
 
   Args:
     input_dirname: the base directory.
     output_dirname: where to place the rendered files.
     definitions: naming.Naming object.
-    depth: integer, for outputting '---> rendering prod/corp-backbone.jcl'.
 
   Returns:
-    the files that were found
+    a list of dictionaries which include the input file,
+    the output directory, and the definitions object
   """
-  # p4 complains if you try to edit a file like ./corp//corp-isp.jcl
-  input_dirname = input_dirname.rstrip('/')
-  output_dirname = output_dirname.rstrip('/')
+  input_dir = pathlib.Path(input_dirname)
 
-  files = []
-  # calling all directories
-  for curdir in [x for x in os.listdir(input_dirname) if
-                 os.path.isdir(input_dirname + '/' + x)]:
-    # be on the lookout for a policy directory
-    if curdir == 'pol':
-      for input_file in [x for x in os.listdir(input_dirname + '/pol')
-                         if x.endswith('.pol')]:
-        files.append({'in_file': os.path.join(input_dirname, 'pol', input_file),
-                      'out_dir': output_dirname,
-                      'defs': definitions})
-    else:
-      # so we don't have a policy directory, we should check if this new
-      # directory has a policy directory
-      if curdir in FLAGS.ignore_directories:
-        continue
-      logging.warning('-' * (2 * depth) + '> %s' % (
-          input_dirname + '/' + curdir))
-      files_found = DescendRecursively(input_dirname + '/' + curdir,
-                                       output_dirname + '/' + curdir,
-                                       definitions, depth + 1)
-      logging.warning('-' * (2 * depth) + '> %s (%d pol files found)' % (
-          input_dirname + '/' + curdir, len(files_found)))
-      files.extend(files_found)
+  policy_files = []
+  policy_directories = filter(lambda path: path.is_dir(), input_dir.glob('**/pol'))
+  for ignored_directory in FLAGS.ignore_directories:
+    policy_directories = filter(
+      lambda path: not path.match('%s/**/pol' % ignored_directory),
+      policy_directories
+    )
 
-  return files
+  for directory in policy_directories:
+    directory_policies = list(directory.glob('*.pol'))
+    depth = len(directory.parents) - 1
+    logging.warning(
+      '-' * (2 * depth) + '> %s (%d pol files found)'
+      % (directory, len(directory_policies))
+    )
+    policy_files.extend(filter(lambda path: path.is_file(), directory_policies))
+
+  return policy_files
 
 
 def WriteFiles(write_files):
@@ -481,21 +472,13 @@ def _WriteFile(output_file, file_string):
     raise
 
 
-def DiscoverAllPolicies(base_directory, output_directory, definitions):
-  logging.info('finding policies...')
-  pols = []
-  pols.extend(
-      DescendRecursively(
-          base_directory,
-          output_directory,
-          definitions
-      )
-  )
-  return pols
-
-
-def Run(base_directory, definitions_directory, policy_file, output_directory,
-        context):
+def Run(
+  base_directory,
+  definitions_directory,
+  policy_file,
+  output_directory,
+  context
+):
   definitions = None
   try:
     definitions = naming.Naming(definitions_directory)
@@ -508,6 +491,7 @@ def Run(base_directory, definitions_directory, policy_file, output_directory,
   write_files = manager.list()
 
   with_errors = False
+  logging.info('finding policies...')
   if policy_file:
     # render just one file
     logging.info('rendering one file')
@@ -515,27 +499,19 @@ def Run(base_directory, definitions_directory, policy_file, output_directory,
                FLAGS.exp_info, write_files)
   elif FLAGS.max_renderers == 1:
     # If only one process, run it sequentially
-    policies = DiscoverAllPolicies(
-        base_directory,
-        output_directory,
-        definitions
-    )
+    policies = DescendDirectory(base_directory)
     for pol in policies:
       RenderFile(
-          base_directory,
-          pol.get('in_file'),
-          pol.get('out_dir'),
-          definitions,
-          FLAGS.exp_info,
-          write_files
+        base_directory,
+        pol,
+        output_directory,
+        definitions,
+        FLAGS.exp_info,
+        write_files
       )
   else:
     # render all files in parallel
-    policies = DiscoverAllPolicies(
-        base_directory,
-        output_directory,
-        definitions
-    )
+    policies = DescendDirectory(base_directory)
     pool = context.Pool(processes=FLAGS.max_renderers)
     results = []
     for pol in policies:
@@ -544,8 +520,8 @@ def Run(base_directory, definitions_directory, policy_file, output_directory,
               RenderFile,
               args=(
                   base_directory,
-                  pol.get('in_file'),
-                  pol.get('out_dir'),
+                  pol,
+                  output_directory,
                   definitions,
                   FLAGS.exp_info,
                   write_files
@@ -560,8 +536,10 @@ def Run(base_directory, definitions_directory, policy_file, output_directory,
         result.get()
       except (ACLParserError, ACLGeneratorError) as e:
         with_errors = True
-        logging.warning('\n\nerror encountered in rendering '
-                        'process:\n%s\n\n', e)
+        logging.warning(
+          '\n\nerror encountered in rendering process:\n%s\n\n',
+          e
+        )
 
   # actually write files to disk
   WriteFiles(write_files)

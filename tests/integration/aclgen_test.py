@@ -19,6 +19,7 @@ from __future__ import unicode_literals
 
 import multiprocessing
 import os
+import pathlib
 import shutil
 import sys
 import tempfile
@@ -42,8 +43,8 @@ class TestAclGenDemo(unittest.TestCase):
   def setUp(self):
     super(TestAclGenDemo, self).setUp()
     self.test_subdirectory = tempfile.mkdtemp()
-    self.def_dir = os.path.join(self.test_subdirectory, 'def')
-    self.pol_dir = os.path.join(self.test_subdirectory, 'policies')
+    self.def_dir = str(pathlib.Path(self.test_subdirectory, 'def'))
+    self.pol_dir = str(pathlib.Path(self.test_subdirectory, 'policies'))
     shutil.rmtree(self.test_subdirectory, ignore_errors=True)
     os.mkdir(self.test_subdirectory)
     shutil.copytree('def', self.def_dir)
@@ -52,8 +53,12 @@ class TestAclGenDemo(unittest.TestCase):
 
   @mock.patch.object(aclgen, '_WriteFile', autospec=True)
   def test_smoke_test_generates_successfully(self, mock_writer):
-    aclgen.Run(self.pol_dir, self.def_dir, None, self.test_subdirectory,
-               self.context)
+    aclgen.Run(
+      self.pol_dir,
+      self.def_dir, None,
+      self.test_subdirectory,
+      self.context
+    )
     files = ['sample_cisco_lab.acl', 'sample_cloudarmor.gca', 'sample_gce.gce',
              'sample_ipset.ips', 'sample_juniper_loopback.jcl',
              'sample_multitarget.acl', 'sample_multitarget.asa',
@@ -62,18 +67,30 @@ class TestAclGenDemo(unittest.TestCase):
              'sample_multitarget.xacl', 'sample_nsxv.nsx',
              'sample_packetfilter.pf', 'sample_speedway.ipt', 'sample_srx.srx',
              'sample_paloalto.xml']
-    expected = [mock.call(
-        os.path.join(self.test_subdirectory, f), mock.ANY) for f in files]
+    expected = [
+      mock.call(
+        pathlib.Path(self.test_subdirectory, f), mock.ANY
+      ) for f in files
+    ]
     mock_writer.assert_has_calls(expected, any_order=True)
 
   @mock.patch.object(aclgen, '_WriteFile', autospec=True)
   def test_generate_single_policy(self, mock_writer):
-    policy_file = os.path.join(self.test_subdirectory,
-                               'policies/pol/sample_cisco_lab.pol')
-    aclgen.Run(self.pol_dir, self.def_dir, policy_file,
-               self.test_subdirectory, self.context)
+    policy_file = pathlib.Path(
+      self.test_subdirectory,
+      'policies/pol/sample_cisco_lab.pol'
+    )
+    aclgen.Run(
+      self.pol_dir,
+      self.def_dir,
+      policy_file,
+      self.test_subdirectory,
+      self.context
+    )
     mock_writer.assert_called_with(
-        os.path.join(self.test_subdirectory, 'sample_cisco_lab.acl'), mock.ANY)
+      pathlib.Path(self.test_subdirectory, 'sample_cisco_lab.acl'),
+      mock.ANY
+    )
 
   # Test to ensure existence of the entry point function for installed script.
   @mock.patch.object(aclgen, 'SetupFlags', autospec=True)
