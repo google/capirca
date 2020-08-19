@@ -23,6 +23,9 @@ from __future__ import unicode_literals
 
 import copy
 import multiprocessing
+import multiprocessing.context as contexts
+import multiprocessing.managers as managers
+from multiprocessing.pool import AsyncResult
 import pathlib
 import sys
 
@@ -53,8 +56,15 @@ from capirca.lib import speedway
 from capirca.lib import srxlo
 from capirca.lib import windows_advfirewall
 
+from typing import (
+  Iterator,
+  List,
+  Tuple,
+)
+
 
 FLAGS = flags.FLAGS
+WriteList = List[Tuple[pathlib.Path, str]]
 
 
 def SetupFlags():
@@ -141,12 +151,12 @@ class ACLParserError(Error):
 
 
 def RenderFile(
-  base_directory,
-  input_file,
-  output_directory,
-  definitions,
-  exp_info,
-  write_files
+  base_directory: str,
+  input_file: pathlib.Path,
+  output_directory: pathlib.Path,
+  definitions: naming.Naming,
+  exp_info: int,
+  write_files: list
 ):
   """Render a single file.
 
@@ -256,6 +266,8 @@ def RenderFile(
   if 'cloudarmor' in platforms:
     gca = copy.deepcopy(pol)
 
+  acl_obj: aclgenerator.ACLGenerator
+
   try:
     if jcl:
       acl_obj = juniper.Juniper(jcl, exp_info)
@@ -351,12 +363,12 @@ def RenderFile(
 
 
 def RenderACL(
-  acl_text,
-  acl_suffix,
-  output_directory,
-  input_file,
-  write_files,
-  binary=False
+  acl_text: str,
+  acl_suffix: str,
+  output_directory: pathlib.Path,
+  input_file: pathlib.Path,
+  write_files: List[Tuple[pathlib.Path, str]],
+  binary: bool = False
 ):
   """Write the ACL string out to file if appropriate.
 
@@ -378,7 +390,7 @@ def RenderACL(
     logging.debug('file not changed: %s', output_file)
 
 
-def FilesUpdated(file_name, new_text, binary):
+def FilesUpdated(file_name: pathlib.Path, new_text: str, binary: bool) -> bool:
   """Diff the rendered acl with what's already on disk.
 
   Args:
@@ -394,7 +406,7 @@ def FilesUpdated(file_name, new_text, binary):
     readmode = 'r'
   try:
     with open(file_name, readmode) as f:
-      conf = f.read()
+      conf: str = f.read()
   except IOError:
     return True
   if not binary:
@@ -402,30 +414,27 @@ def FilesUpdated(file_name, new_text, binary):
     p4_date = '$Da te:'.replace(' ', '')
     p4_revision = '$Rev ision:'.replace(' ', '')
 
-    def p4_tags(text):
+    def p4_tags(text: str) -> bool:
       return p4_id in text or p4_date in text or p4_revision in text
+    filtered_conf = filter(p4_tags, conf.split('\n'))
+    filtered_text = filter(p4_tags, new_text.split('\n'))
+    return list(filtered_conf) != list(filtered_text)
+  return conf != new_text
 
-    conf = filter(p4_tags, conf.split('\n'))
-    new_text = filter(p4_tags, new_text.split('\n'))
 
-  return list(conf) != list(new_text)
-
-
-def DescendDirectory(input_dirname):
+def DescendDirectory(input_dirname: str) -> List[pathlib.Path]:
   """Descend from input_dirname looking for policy files to render.
 
   Args:
     input_dirname: the base directory.
-    output_dirname: where to place the rendered files.
-    definitions: naming.Naming object.
 
   Returns:
     a list of input file paths
   """
   input_dir = pathlib.Path(input_dirname)
 
-  policy_files = []
-  policy_directories = filter(lambda path: path.is_dir(), input_dir.glob('**/pol'))
+  policy_files: List[pathlib.Path] = []
+  policy_directories: Iterator[pathlib.Path] = filter(lambda path: path.is_dir(), input_dir.glob('**/pol'))
   for ignored in FLAGS.ignore_directories:
     policy_directories = filter(
       lambda path: not path.match('%s/**/pol' % ignored) and not path.match('%s/pol' % ignored),
@@ -444,7 +453,7 @@ def DescendDirectory(input_dirname):
   return policy_files
 
 
-def WriteFiles(write_files):
+def WriteFiles(write_files: WriteList):
   """Writes files to disk.
 
   Args:
@@ -454,29 +463,29 @@ def WriteFiles(write_files):
     logging.info('writing %d files to disk...', len(write_files))
   else:
     logging.info('no files changed, not writing to disk')
-  for output_file, file_string in write_files:
-    _WriteFile(output_file, file_string)
+  for output_file, file_contents in write_files:
+    _WriteFile(output_file, file_contents)
 
 
-def _WriteFile(output_file, file_string):
+def _WriteFile(output_file: pathlib.Path, file_contents: str):
   try:
     parent_path = pathlib.Path(output_file).parent
     if not parent_path.is_dir():
       parent_path.mkdir(parents=True, exist_ok=True)
     with open(output_file, 'w') as output:
       logging.info('writing file: %s', output_file)
-      output.write(file_string)
+      output.write(file_contents)
   except IOError:
     logging.warning('error while writing file: %s', output_file)
     raise
 
 
 def Run(
-  base_directory,
-  definitions_directory,
-  policy_file,
-  output_directory,
-  context
+  base_directory: str,
+  definitions_directory: str,
+  policy_file: str,
+  output_directory: str,
+  context: contexts.BaseContext
 ):
   definitions = None
   try:
@@ -484,18 +493,25 @@ def Run(
   except naming.NoDefinitionsError:
     err_msg = 'bad definitions directory: %s' % definitions_directory
     logging.fatal(err_msg)
+    return  # static type analyzer not detecting that logging.fatal exits program
 
   # thead-safe list for storing files to write
-  manager = context.Manager()
-  write_files = manager.list()
+  manager: managers.SyncManager = context.Manager()
+  write_files: WriteList = manager.list()
 
   with_errors = False
   logging.info('finding policies...')
   if policy_file:
     # render just one file
     logging.info('rendering one file')
-    RenderFile(base_directory, policy_file, output_directory, definitions,
-               FLAGS.exp_info, write_files)
+    RenderFile(
+      base_directory,
+      pathlib.Path(policy_file),
+      pathlib.Path(output_directory),
+      definitions,
+      FLAGS.exp_info,
+      write_files
+    )
   elif FLAGS.max_renderers == 1:
     # If only one process, run it sequentially
     policies = DescendDirectory(base_directory)
@@ -503,7 +519,7 @@ def Run(
       RenderFile(
         base_directory,
         pol,
-        output_directory,
+        pathlib.Path(output_directory),
         definitions,
         FLAGS.exp_info,
         write_files
@@ -512,7 +528,7 @@ def Run(
     # render all files in parallel
     policies = DescendDirectory(base_directory)
     pool = context.Pool(processes=FLAGS.max_renderers)
-    results = []
+    results: List[AsyncResult] = []
     for pol in policies:
       results.append(
           pool.apply_async(
