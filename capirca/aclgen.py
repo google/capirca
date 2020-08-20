@@ -24,6 +24,7 @@ from __future__ import unicode_literals
 import copy
 import multiprocessing
 import os
+import pathlib
 import sys
 
 from absl import app
@@ -469,6 +470,9 @@ def WriteFiles(write_files):
 
 def _WriteFile(output_file, file_string):
   try:
+    parent_path = pathlib.Path(output_file).parent
+    if not parent_path.is_dir():
+      parent_path.mkdir(parents=True, exist_ok=True)
     with open(output_file, 'w') as output:
       logging.info('writing file: %s', output_file)
       output.write(file_string)
@@ -592,6 +596,7 @@ def main(argv):
 def entry_point():
   SetupFlags()
   app.run(main)
+
 
 if __name__ == '__main__':
   entry_point()

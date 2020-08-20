@@ -1,0 +1,37 @@
+name: Docker Publish
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  IMAGE_NAME: capirca
+
+jobs:
+  build:
+    name: "Build Capirca container"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Log into registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+
+      - name: Build and tag the image
+        run: docker build . --tag $IMAGE_NAME
+
+      - name: Push the image to the container registry
+        run: |
+          IMAGE_ID="docker.pkg.github.com/${{ github.repository }}/$IMAGE_NAME"
+
+          # Change all uppercase to lowercase
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+
+          VERSION=$(cat VERSION)
+
+          docker tag $IMAGE_NAME $IMAGE_ID:latest
+          docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+
+          docker push $IMAGE_ID:latest
+          docker push $IMAGE_ID:$VERSION
