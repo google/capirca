@@ -25,11 +25,7 @@ with open('README.md') as f:
 
 setup(
     name='capirca',
-<<<<<<< HEAD
     version=version,
-=======
-    version='2.0',
->>>>>>> 66a0854... new: restructuring of Capirca package
     description='Capirca',
     long_description=long_description,
     long_description_content_type='text/markdown',
