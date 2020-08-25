@@ -116,8 +116,13 @@ def SetupFlags():
     % str(config.defaults['shade_check']).lower())
   flags.DEFINE_integer(
     'exp_info',
-    2,
-    'Print a info message when a term is set to expire in that many weeks.')
+    None,
+    'Print a info message when a term is set to expire in that many weeks.\n(default: \'%s\')'
+    % str(config.defaults['exp_info']))
+  flags.DEFINE_multi_string(
+    'config_file',
+    None,
+    'A yaml file with the configuration options for capirca')
 
 
 class Error(Exception):
