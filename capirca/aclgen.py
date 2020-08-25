@@ -54,6 +54,8 @@ from capirca.lib import speedway
 from capirca.lib import srxlo
 from capirca.lib import windows_advfirewall
 
+from capirca.utils import config
+
 
 FLAGS = flags.FLAGS
 
@@ -61,68 +63,68 @@ FLAGS = flags.FLAGS
 def SetupFlags():
   flags.DEFINE_string(
       'base_directory',
-      './policies',
+      None,
       'The base directory to look for acls; '
-      'typically where you\'d find ./corp and ./prod')
+      'typically where you\'d find ./corp and ./prod\n(default: \'%s\')'
+      % config.defaults['base_directory'])
   flags.DEFINE_string(
       'definitions_directory',
-      './def',
-      'Directory where the definitions can be found.')
+      None,
+      'Directory where the definitions can be found.\n(default: \'%s\')'
+      % config.defaults['definitions_directory'])
   flags.DEFINE_string(
       'policy_file',
       None,
       'Individual policy file to generate.')
   flags.DEFINE_string(
       'output_directory',
-      './',
-      'Directory to output the rendered acls.')
+      None,
+      'Directory to output the rendered acls.\n(default: \'%s\')'
+      % config.defaults['output_directory'])
   flags.DEFINE_boolean(
       'optimize',
-      False,
-      'Turn on optimization.',
+      None,
+      'Turn on optimization.\n(default: \'%s\')' % config.defaults['optimize'],
       short_name='o')
   flags.DEFINE_boolean(
       'recursive',
-      True,
-      'Descend recursively from the base directory rendering acls')
+      None,
+      'Descend recursively from the base directory rendering acls\n(default: \'%s\')'
+      % str(config.defaults['recursive']).lower())
   flags.DEFINE_boolean(
       'debug',
-      False,
-      'Debug messages')
+      None,
+      'Debug messages\n(default: \'%s\')' %
+      str(config.defaults['debug']).lower())
   flags.DEFINE_boolean(
       'verbose',
-      False,
-      'Verbose messages')
+      None,
+      'Verbose messages\n(default: \'%s\')' %
+      str(config.defaults['verbose']).lower())
   flags.DEFINE_list(
       'ignore_directories',
-      'DEPRECATED, def',
-      'Don\'t descend into directories that look like this string')
+      None,
+      'Don\'t descend into directories that look like this string\n(default: \'%s\')'
+      % ','.join(config.defaults['ignore_directories']))
   flags.DEFINE_integer(
       'max_renderers',
-      10,
-      'Max number of rendering processes to use.')
+      None,
+      'Max number of rendering processes to use.\n(default: \'%s\')'
+      % config.defaults['max_renderers'])
   flags.DEFINE_boolean(
       'shade_check',
-      False,
-      'Raise an error when a term is completely shaded by a prior term.')
+      None,
+      'Raise an error when a term is completely shaded by a prior term.\n(default: \'%s\')'
+      % str(config.defaults['shade_check']).lower())
   flags.DEFINE_integer(
       'exp_info',
-      2,
-      'Print a info message when a term is set to expire in that many weeks.')
-  flags.DEFINE_boolean(
-      'profile',
-      False,
-      'Run a thread to profile the execution. Implies \'--max_renderers 1\'')
-  flags.DEFINE_integer(
-      'profile_time',
       None,
-      'The duration (seconds) that the profile thread should run for. '
-      'Implies --profile.\n(default: 30)\n(an integer)')
-  flags.DEFINE_string(
-      'pprof_file',
+      'Print a info message when a term is set to expire in that many weeks.\n(default: \'%s\')'
+      % str(config.defaults['exp_info']))
+  flags.DEFINE_multi_string(
+      'config_file',
       None,
-      'The name of the output file for the profile thread. Implies --profile.\n'
-      '(default:  \'profile.pprof\')')
+      'A yaml file with the configuration options for capirca')
 
 
 class Error(Exception):
@@ -410,13 +412,15 @@ def FilesUpdated(file_name, new_text, binary):
   return conf != new_text
 
 
-def DescendRecursively(input_dirname, output_dirname, definitions, depth=1):
+def DescendRecursively(input_dirname, output_dirname, definitions,
+                       ignore_directories, depth=1):
   """Recursively descend from input_dirname looking for policy files to render.
 
   Args:
     input_dirname: the base directory.
     output_dirname: where to place the rendered files.
     definitions: naming.Naming object.
+    ignore_directories: directories to ignore in search
     depth: integer, for outputting '---> rendering prod/corp-backbone.jcl'.
 
   Returns:
@@ -434,19 +438,24 @@ def DescendRecursively(input_dirname, output_dirname, definitions, depth=1):
     if curdir == 'pol':
       for input_file in [x for x in os.listdir(input_dirname + '/pol')
                          if x.endswith('.pol')]:
-        files.append({'in_file': os.path.join(input_dirname, 'pol', input_file),
-                      'out_dir': output_dirname,
-                      'defs': definitions})
+        files.append({
+            'in_file': os.path.join(input_dirname, 'pol', input_file),
+            'out_dir': output_dirname,
+            'defs': definitions})
     else:
       # so we don't have a policy directory, we should check if this new
       # directory has a policy directory
-      if curdir in FLAGS.ignore_directories:
+      if curdir in ignore_directories:
         continue
       logging.warning('-' * (2 * depth) + '> %s' % (
           input_dirname + '/' + curdir))
-      files_found = DescendRecursively(input_dirname + '/' + curdir,
-                                       output_dirname + '/' + curdir,
-                                       definitions, depth + 1)
+      files_found = DescendRecursively(
+          input_dirname + '/' + curdir,
+          output_dirname + '/' + curdir,
+          definitions,
+          ignore_directories,
+          depth + 1
+      )
       logging.warning('-' * (2 * depth) + '> %s (%d pol files found)' % (
           input_dirname + '/' + curdir, len(files_found)))
       files.extend(files_found)
@@ -488,14 +497,23 @@ def DiscoverAllPolicies(base_directory, output_directory, definitions):
       DescendRecursively(
           base_directory,
           output_directory,
-          definitions
+          definitions,
+          list()
       )
   )
   return pols
 
 
-def Run(base_directory, definitions_directory, policy_file, output_directory,
-        context):
+def Run(
+    base_directory,
+    definitions_directory,
+    policy_file,
+    output_directory,
+    exp_info,
+    max_renderers,
+    ignore_directories,
+    context
+):
   definitions = None
   try:
     definitions = naming.Naming(definitions_directory)
@@ -511,34 +529,29 @@ def Run(base_directory, definitions_directory, policy_file, output_directory,
   if policy_file:
     # render just one file
     logging.info('rendering one file')
-    RenderFile(base_directory, policy_file, output_directory, definitions,
-               FLAGS.exp_info, write_files)
-  elif FLAGS.max_renderers == 1:
-    # If only one process, run it sequentially
-    policies = DiscoverAllPolicies(
+    RenderFile(
         base_directory,
+        policy_file,
         output_directory,
-        definitions
-    )
-    for pol in policies:
-      RenderFile(
-          base_directory,
-          pol.get('in_file'),
-          pol.get('out_dir'),
-          definitions,
-          FLAGS.exp_info,
-          write_files
-      )
+        definitions,
+        exp_info,
+        write_files)
   else:
     # render all files in parallel
-    policies = DiscoverAllPolicies(
-        base_directory,
-        output_directory,
-        definitions
+    logging.info('finding policies...')
+    pols = []
+    pols.extend(
+        DescendRecursively(
+            base_directory,
+            output_directory,
+            definitions,
+            ignore_directories
+        )
     )
-    pool = context.Pool(processes=FLAGS.max_renderers)
+
+    pool = context.Pool(processes=max_renderers)
     results = []
-    for pol in policies:
+    for pol in pols:
       results.append(
           pool.apply_async(
               RenderFile,
@@ -547,7 +560,7 @@ def Run(base_directory, definitions_directory, policy_file, output_directory,
                   pol.get('in_file'),
                   pol.get('out_dir'),
                   definitions,
-                  FLAGS.exp_info,
+                  exp_info,
                   write_files
               )
           )
@@ -576,21 +589,34 @@ def Run(base_directory, definitions_directory, policy_file, output_directory,
 def main(argv):
   del argv  # Unused.
 
-  if FLAGS.verbose:
+  configs = config.generate_configs(FLAGS)
+
+  if configs['verbose']:
     logging.set_verbosity(logging.INFO)
-  if FLAGS.debug:
+  if configs['debug']:
     logging.set_verbosity(logging.DEBUG)
-  logging.debug('binary: %s\noptimize: %d\nbase_directory: %s\n'
-                'policy_file: %s\nrendered_acl_directory: %s',
-                str(sys.argv[0]),
-                int(FLAGS.optimize),
-                str(FLAGS.base_directory),
-                str(FLAGS.policy_file),
-                str(FLAGS.output_directory))
+  logging.debug(
+      'binary: %s\noptimize: %d\nbase_directory: %s\n'
+      'policy_file: %s\nrendered_acl_directory: %s',
+      str(sys.argv[0]),
+      int(configs['optimize']),
+      str(configs['base_directory']),
+      str(configs['policy_file']),
+      str(configs['output_directory'])
+  )
+  logging.debug('capirca configurations: %s', configs)
 
   context = multiprocessing.get_context()
-  Run(FLAGS.base_directory, FLAGS.definitions_directory, FLAGS.policy_file,
-      FLAGS.output_directory, context)
+  Run(
+      configs['base_directory'],
+      configs['definitions_directory'],
+      configs['policy_file'],
+      configs['output_directory'],
+      configs['exp_info'],
+      configs['max_renderers'],
+      configs['ignore_directories'],
+      context
+  )
 
 
 def entry_point():
