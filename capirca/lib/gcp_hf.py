@@ -19,10 +19,7 @@ class ExceededCostError(gcp.Error):
 class Term(gcp.Term):
   """Used to create an individual term."""
 
-  ACTION_MAP = {
-      'accept': 'allow',
-      'next': 'goto_next'
-  }
+  ACTION_MAP = {'accept': 'allow', 'next': 'goto_next'}
 
   _MAX_TERM_COMMENT_LENGTH = 64
 
@@ -52,13 +49,14 @@ class Term(gcp.Term):
 
     for proj, vpc in self.term.target_resources:
       if not gcp.IsProjectIDValid(proj):
-        raise gcp.TermError('Project ID "%s" must have lowercase letters, '
-                            'digits, or hyphens. It must start with a '
-                            'lowercase letter and end with a letter or number.')
+        raise gcp.TermError(
+            'Project ID "%s" must be 6 to 30 lowercase letters, digits, or hyphens.'
+            ' It must start with a letter. Trailing hyphens are prohibited.' %
+            proj)
       if not gcp.IsVPCNameValid(vpc):
         raise gcp.TermError('VPC name "%s" must start with a lowercase letter '
                             'followed by up to 62 lowercase letters, numbers, '
-                            'or hyphens, and cannot end with a hyphen.')
+                            'or hyphens, and cannot end with a hyphen.' % vpc)
     if self.term.source_port:
       raise gcp.TermError('Hierarchical firewall does not support source port '
                           'restrictions.')
@@ -114,9 +112,7 @@ class Term(gcp.Term):
       }
     protocols_and_ports = []
     for proto in self.term.protocol:
-      proto_ports = {
-          'ipProtocol': proto
-      }
+      proto_ports = {'ipProtocol': proto}
       if self.term.destination_port:
         ports = self._GetPorts()
         if ports:  # Only set when non-empty.
@@ -135,7 +131,7 @@ class Term(gcp.Term):
 class HierarchicalFirewall(gcp.GCP):
   """A GCP Hierarchical Firewall policy."""
 
-  SUFFIX = '.gchf'
+  SUFFIX = '.gcphf'
   _ANY = [nacaddr.IP('0.0.0.0/0')]
   _PLATFORM = 'gcp_hf'
   _SUPPORTED_AF = frozenset(['inet'])
@@ -149,20 +145,15 @@ class HierarchicalFirewall(gcp.GCP):
     """
     supported_tokens, _ = super(HierarchicalFirewall, self)._BuildTokens()
 
-    supported_tokens |= {'destination_tag',
-                         'expiration',
-                         'source_tag',
-                         'translated',
-                         'target_resources',
-                         'logging'}
+    supported_tokens |= {
+        'destination_tag', 'expiration', 'source_tag', 'translated',
+        'target_resources', 'logging'
+    }
 
-    supported_tokens -= {'destination_address_exclude',
-                         'expiration',
-                         'icmp_type',
-                         'platform',
-                         'platform_exclude',
-                         'source_address_exclude',
-                         'verbatim'}
+    supported_tokens -= {
+        'destination_address_exclude', 'expiration', 'icmp_type', 'platform',
+        'platform_exclude', 'source_address_exclude', 'verbatim'
+    }
 
     supported_sub_tokens = {'action': {'accept', 'deny', 'next'}}
     return supported_tokens, supported_sub_tokens
@@ -189,9 +180,7 @@ class HierarchicalFirewall(gcp.GCP):
       counter = 1
       total_cost = 0
 
-      policy = {
-          'rules': []
-      }
+      policy = {'rules': []}
 
       if self._PLATFORM not in header.platforms:
         continue
@@ -242,8 +231,8 @@ class HierarchicalFirewall(gcp.GCP):
           continue
         total_cost += GetCost(term)
         if total_cost > max_cost:
-          raise ExceededCostError('Policy cost (%d) reached the maximum (%d)'
-                                  % (total_cost, max_cost))
+          raise ExceededCostError('Policy cost (%d) reached the maximum (%d)' %
+                                  (total_cost, max_cost))
         if gcp.IsDefaultDeny(term):
           if direction == 'EGRESS':
             term.destination_address = self._ANY
@@ -251,8 +240,9 @@ class HierarchicalFirewall(gcp.GCP):
             term.source_address = self._ANY
         term.name = self.FixTermLength(term.name)
         term.direction = direction
-        dict_term = Term(term, address_family=address_family).ConvertToDict(
-            priority_index=counter)
+        dict_term = Term(
+            term,
+            address_family=address_family).ConvertToDict(priority_index=counter)
         counter += 1
         policy['rules'].append(dict_term)
 

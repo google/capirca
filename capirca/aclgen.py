@@ -39,6 +39,7 @@ from capirca.lib import ciscoasa
 from capirca.lib import ciscoxr
 from capirca.lib import cloudarmor
 from capirca.lib import gce
+from capirca.lib import gcp_hf
 from capirca.lib import ipset
 from capirca.lib import iptables
 from capirca.lib import juniper
@@ -182,6 +183,7 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
   eacl = False
   gca = False
   gcefw = False
+  gcphf = False
   ips = False
   ipt = False
   spd = False
@@ -256,6 +258,8 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
     nft = copy.deepcopy(pol)
   if 'gce' in platforms:
     gcefw = copy.deepcopy(pol)
+  if 'gcp_hf' in platforms:
+    gcphf = copy.deepcopy(pol)
   if 'paloalto' in platforms:
     paloalto = copy.deepcopy(pol)
   if 'cloudarmor' in platforms:
@@ -341,6 +345,11 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
       acl_obj = gce.GCE(gcefw, exp_info)
       RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
                 input_file, write_files)
+    if gcphf:
+      acl_obj = gcp_hf.HierarchicalFirewall(gcphf, exp_info)
+      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
+                input_file, write_files)
+
     if paloalto:
       acl_obj = paloaltofw.PaloAltoFW(paloalto, exp_info)
       RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
