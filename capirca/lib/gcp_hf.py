@@ -176,11 +176,13 @@ class HierarchicalFirewall(gcp.GCP):
           invalid.
     """
     self.policies = []
+    policy = {
+        'rules': []
+    }
+    is_policy_modified = False
+    counter = 1
+    total_cost = 0
     for header, terms in pol.filters:
-      counter = 1
-      total_cost = 0
-
-      policy = {'rules': []}
 
       if self._PLATFORM not in header.platforms:
         continue
@@ -190,7 +192,13 @@ class HierarchicalFirewall(gcp.GCP):
       # Get the policy name.
       filter_name = header.FilterName(self._PLATFORM)
       filter_options.remove(filter_name)
-      policy['display_name'] = filter_name
+      if 'display_name' in policy:
+        policy['display_name'] += '_' + filter_name
+      else:
+        policy['display_name'] = filter_name
+      # display_name cannot be more than 63 characters long.
+      policy['display_name'] = policy['display_name'][:63]
+      is_policy_modified = True
 
       # Get term direction if set.
       direction = 'INGRESS'
@@ -246,7 +254,10 @@ class HierarchicalFirewall(gcp.GCP):
         counter += 1
         policy['rules'].append(dict_term)
 
-      self.policies.append(policy)
+    self.policies.append(policy)
+    # Do not render an empty rules if no policies have been evaluated.
+    if not is_policy_modified:
+      self.policies = []
 
 
 def GetCost(term):

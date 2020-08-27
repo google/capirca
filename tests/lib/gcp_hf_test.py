@@ -575,6 +575,86 @@ EXPECTED_DENY_INGRESS_ON_TARGET = """
 ]
 """
 
+EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
+[
+  {
+    "display_name": "displayname_displayname",
+    "rules": [
+      {
+        "action": "goto_next",
+        "description": "Generic description",
+        "direction": "INGRESS",
+        "match": {
+          "config": {
+            "layer4Config": [
+              {
+                "ipProtocol": "tcp"
+              },
+              {
+                "ipProtocol": "icmp"
+              },
+              {
+                "ipProtocol": "udp"
+              }
+            ],
+            "srcIpRange": ["10.0.0.0/8"]
+          }
+        },
+        "priority": 1,
+        "enableLogging": false
+      },
+      {
+        "action": "deny",
+        "description": "Generic description",
+        "direction": "INGRESS",
+        "match": {
+          "config": {
+            "srcIpRange": ["10.0.0.0/8"]
+          }
+        },
+        "priority": 2,
+        "enableLogging": false
+      },
+      {
+        "action": "goto_next",
+        "description": "Generic description",
+        "direction": "EGRESS",
+        "match": {
+          "config": {
+            "layer4Config": [
+              {
+                "ipProtocol": "tcp"
+              },
+              {
+                "ipProtocol": "icmp"
+              },
+              {
+                "ipProtocol": "udp"
+              }
+            ],
+            "destIpRange": ["10.0.0.0/8"]
+          }
+        },
+        "priority": 3,
+        "enableLogging": false
+      },
+      {
+        "action": "deny",
+        "description": "Generic description",
+        "direction": "EGRESS",
+        "match": {
+          "config": {
+            "destIpRange": ["10.0.0.0/8"]
+          }
+        },
+        "priority": 4,
+        "enableLogging": false
+      }
+    ]
+  }
+]
+"""
+
 EXPECTED_DENY_EGRESS = """
 [
   {
@@ -907,6 +987,20 @@ class GcpHfTest(parameterized.TestCase):
                            self.naming),
         EXP_INFO)
     expected = json.loads(EXPECTED_DENY_INGRESS_ON_TARGET)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testMultiplePolicies(self):
+    """Tests that both ingress and egress rules are included in one policy."""
+    self.maxDiff = None
+    self.naming.GetNetAddr.return_value = TEST_IP
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_ALLOW_ALL_INTERNAL +
+                           TERM_DENY_INGRESS + HEADER_OPTION_EGRESS +
+                           TERM_RESTRICT_EGRESS + TERM_DENY_EGRESS,
+                           self.naming),
+        EXP_INFO)
+    expected = json.loads(EXPECTED_INGRESS_AND_EGRESS_W_DENY)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testPortRange(self):
