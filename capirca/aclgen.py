@@ -447,9 +447,10 @@ def DescendDirectory(input_dirname: str, ignore_directories: List[str]) -> List[
   policy_files: List[pathlib.Path] = []
   policy_directories: Iterator[pathlib.Path] = filter(lambda path: path.is_dir(), input_dir.glob('**/pol'))
   for ignored_directory in ignore_directories:
+    def filtering(path, ignored=ignored_directory):
+      return not path.match('%s/**/pol' % ignored) and not path.match('%s/pol' % ignored)
     policy_directories = filter(
-      def filter_(path, ignored=ignored_directory):
-        return not path.match('%s/**/pol' % ignored) and not path.match('%s/pol' % ignored),
+      filtering,
       policy_directories
     )
 

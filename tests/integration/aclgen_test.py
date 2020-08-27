@@ -65,7 +65,7 @@ class TestAclGenDemo(unittest.TestCase):
         self.max_renderers,
         self.ignore_directories,
         False,
-        True,
+        False,
         self.context
     )
     files = ['sample_cisco_lab.acl', 'sample_cloudarmor.gca', 'sample_gce.gce',
@@ -98,7 +98,7 @@ class TestAclGenDemo(unittest.TestCase):
         self.max_renderers,
         self.ignore_directories,
         False,
-        True,
+        False,
         self.context
     )
     mock_writer.assert_called_with(
