@@ -53,6 +53,8 @@ import glob
 import os
 import re
 
+from absl import logging
+
 from capirca.lib import nacaddr
 from capirca.lib import port as portlib
 
@@ -133,7 +135,8 @@ class Naming(object):
     self.unseen_services = {}
     self.unseen_networks = {}
     self.port_re = re.compile(r'(^\d+-\d+|^\d+)\/\w+$|^[\w\d-]+$',
-                              re.IGNORECASE|re.DOTALL)
+                              re.IGNORECASE | re.DOTALL)
+    self.token_re = re.compile(r'(^[-_A-Z0-9]+$)', re.IGNORECASE)
     if naming_file and naming_type:
       filename = os.path.sep.join([naming_dir, naming_file])
       with open(filename, 'r') as file_handle:
@@ -170,7 +173,7 @@ class Naming(object):
     recursive_parents = []
     # convert string to nacaddr, if arg is ipaddr then convert str() to nacaddr
     if (not isinstance(query, nacaddr.IPv4) and
-        not isinstance(query, nacaddr.IPv6)):
+       not isinstance(query, nacaddr.IPv6)):
       if query[:1].isdigit():
         query = nacaddr.IP(query)
     # Get parent token for an IP
@@ -482,17 +485,21 @@ class Naming(object):
         (net, comment) = i.split('#', 1)
       else:
         net = i
-      try:
-        net = net.strip()
-        # TODO(robankeny): Fix using error to continue processing.
-        addr = nacaddr.IP(net, strict=False)
-        addr.text = comment.lstrip()
-        addr.token = token
-        returnlist.append(addr)
-      except ValueError:
-        # if net was something like 'FOO', or the name of another token which
-        # needs to be dereferenced, nacaddr.IP() will return a ValueError
+
+      net = net.strip()
+      if self.token_re.match(net):
         returnlist.extend(self.GetNet(net))
+      else:
+        try:
+          # TODO(robankeny): Fix using error to continue processing.
+          addr = nacaddr.IP(net, strict=False)
+          addr.text = comment.lstrip()
+          addr.token = token
+          returnlist.append(addr)
+        except ValueError:
+          # if net was something like 'FOO', or the name of another token which
+          # needs to be dereferenced, nacaddr.IP() will return a ValueError
+          returnlist.extend(self.GetNet(net))
     for i in returnlist:
       i.parent_token = token
     return returnlist
@@ -589,7 +596,10 @@ class Naming(object):
     # the value field still has the comment at this point
     # If there was '=', then do var and value
     if len(line_parts) > 1:
-      self.current_symbol = line_parts[0].strip()  # varname left of '='
+      current_symbol = line_parts[0].strip()  # varname left of '='
+      if not self.token_re.match(current_symbol):
+        logging.info('\nService name does not match recommended criteria: %s\nOnly A-Z, a-z, 0-9, -, and _ allowed' % current_symbol)
+      self.current_symbol = current_symbol
       if definition_type == 'services':
         for port in line_parts[1].strip().split():
           if not self.port_re.match(port):

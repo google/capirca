@@ -50,14 +50,23 @@ class TestAclGenDemo(unittest.TestCase):
     shutil.copytree('def', self.def_dir)
     shutil.copytree('policies', self.pol_dir)
     self.context = multiprocessing.get_context()
+    self.max_renderers = 10
+    self.exp_info = 2
+    self.ignore_directories = ['DEPRECATED', 'def']
 
   @mock.patch.object(aclgen, '_WriteFile', autospec=True)
   def test_smoke_test_generates_successfully(self, mock_writer):
     aclgen.Run(
-      self.pol_dir,
-      self.def_dir, None,
-      self.test_subdirectory,
-      self.context
+        self.pol_dir,
+        self.def_dir,
+        None,
+        self.test_subdirectory,
+        self.exp_info,
+        self.max_renderers,
+        self.ignore_directories,
+        False,
+        True,
+        self.context
     )
     files = ['sample_cisco_lab.acl', 'sample_cloudarmor.gca', 'sample_gce.gce',
              'sample_ipset.ips', 'sample_juniper_loopback.jcl',
@@ -81,11 +90,16 @@ class TestAclGenDemo(unittest.TestCase):
       'policies/pol/sample_cisco_lab.pol'
     )
     aclgen.Run(
-      self.pol_dir,
-      self.def_dir,
-      policy_file,
-      self.test_subdirectory,
-      self.context
+        self.pol_dir,
+        self.def_dir,
+        policy_file,
+        self.test_subdirectory,
+        self.exp_info,
+        self.max_renderers,
+        self.ignore_directories,
+        False,
+        True,
+        self.context
     )
     mock_writer.assert_called_with(
       pathlib.Path(self.test_subdirectory, 'sample_cisco_lab.acl'),

@@ -15,13 +15,14 @@
 # limitations under the License.
 
 
-from setuptools import setup, find_packages
+from setuptools import find_packages
+from setuptools import setup
 
 with open('VERSION') as f:
-    version = f.read()
+  version = f.read()
 
 with open('README.md') as f:
-    long_description = f.read()
+  long_description = f.read()
 
 setup(
     name='capirca',
@@ -33,7 +34,7 @@ setup(
     url='https://github.com/google/capirca/',
     maintainer='Rob Ankeny',
     maintainer_email='robankeny@google.com',
-    packages=find_packages(exclude=["tests*"]),
+    packages=find_packages(exclude=['tests*']),
     zip_safe=False,
     entry_points={
         'console_scripts': ['aclgen = capirca.aclgen:entry_point'],
@@ -47,5 +48,12 @@ setup(
         'Topic :: Security',
         'Topic :: System :: Networking :: Firewalls',
     ],
-    install_requires=['absl-py', 'ply', 'ipaddress>=1.0.22', 'six']
+    install_requires=[
+        'absl-py',
+        'ply',
+        'ipaddress>=1.0.22',
+        'mock',
+        'six',
+        'PyYAML',
+    ]
 )

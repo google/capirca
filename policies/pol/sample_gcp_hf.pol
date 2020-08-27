@@ -1,0 +1,43 @@
+header {
+  comment:: "This is sample policy for GCP HF"
+  target:: gcp_hf testhf_ingress INGRESS inet 200
+}
+
+term folder-ssh{
+  comment:: "Allow SSH into folder-test"
+  source-address:: PUBLIC_NAT
+  protocol:: tcp
+  destination-port:: SSH
+  action:: next
+}
+
+term folder-rdp {
+  comment:: "Allow RDP to targetResources"
+  source-address:: PUBLIC_NAT
+  protocol:: tcp
+  destination-port:: RDP
+  target-resources:: ('proj-1','vpc1')
+  action:: next
+}
+
+header {
+  comment:: "This is sample policy for GCP HF"
+  target:: gcp_hf testhf_egress EGRESS inet 200
+}
+
+term folder-smtp{
+  comment:: "Allow egress to mail servers"
+  protocol:: tcp
+  destination-port:: SMTP
+  destination-address:: MAIL_SERVERS
+  action:: next
+}
+
+term folder-ssh-nat{
+  comment:: "Allow egress ssh to RFC1918"
+  protocol:: tcp
+  destination-port:: SSH
+  destination-address:: PUBLIC_NAT
+  target-resources:: ('proj-2','vpc2')
+  action:: next
+}
