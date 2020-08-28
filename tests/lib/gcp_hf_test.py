@@ -315,7 +315,7 @@ EXPECTED_ONE_RULE_INGRESS = """
     "rules": [
       {
         "action": "goto_next",
-        "description": "Generic description",
+        "description": "allow-internal-traffic: Generic description",
         "direction": "INGRESS",
         "match": {
           "config": {
@@ -348,7 +348,7 @@ EXPECTED_ONE_RULE_INGRESS_W_LOGGING = """
     "rules": [
       {
         "action": "allow",
-        "description": "Generic description",
+        "description": "term-with-logging: Generic description",
         "direction": "INGRESS",
         "match": {
           "config": {
@@ -375,7 +375,7 @@ EXPECTED_ONE_RULE_EGRESS = """
     "rules": [
       {
         "action": "goto_next",
-        "description": "Generic description",
+        "description": "restrict_egress: Generic description",
         "direction": "EGRESS",
         "match": {
           "config": {
@@ -408,7 +408,7 @@ EXPECTED_MULTIPLE_RULE_INGRESS = """
     "rules": [
       {
         "action": "goto_next",
-        "description": "Generic description",
+        "description": "allow-internal-traffic: Generic description",
         "direction": "INGRESS",
         "enableLogging": false,
         "match": {
@@ -431,7 +431,7 @@ EXPECTED_MULTIPLE_RULE_INGRESS = """
       },
       {
         "action": "goto_next",
-        "description": "Generic description",
+        "description": "allow-dns-traffic: Generic description",
         "direction": "INGRESS",
         "enableLogging": false,
         "match": {
@@ -508,7 +508,7 @@ EXPECTED_PORT_RANGE_INGRESS = """
     "rules": [
       {
         "action": "goto_next",
-        "description": "Generic description",
+        "description": "allow-port-range: Generic description",
         "direction": "INGRESS",
         "match": {
           "config": {
@@ -536,7 +536,7 @@ EXPECTED_DENY_INGRESS = """
     "rules": [
       {
         "action": "deny",
-        "description": "Generic description",
+        "description": "default-deny-ingress: Generic description",
         "direction": "INGRESS",
         "match": {
           "config": {
@@ -558,7 +558,7 @@ EXPECTED_DENY_INGRESS_ON_TARGET = """
     "rules": [
       {
         "action": "deny",
-        "description": "Generic description",
+        "description": "default-deny-ingress-on-target: Generic description",
         "direction": "INGRESS",
         "match": {
           "config": {
@@ -582,7 +582,7 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
     "rules": [
       {
         "action": "goto_next",
-        "description": "Generic description",
+        "description": "allow-internal-traffic: Generic description",
         "direction": "INGRESS",
         "match": {
           "config": {
@@ -605,7 +605,7 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
       },
       {
         "action": "deny",
-        "description": "Generic description",
+        "description": "default-deny-ingress: Generic description",
         "direction": "INGRESS",
         "match": {
           "config": {
@@ -617,7 +617,7 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
       },
       {
         "action": "goto_next",
-        "description": "Generic description",
+        "description": "restrict_egress: Generic description",
         "direction": "EGRESS",
         "match": {
           "config": {
@@ -640,7 +640,7 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
       },
       {
         "action": "deny",
-        "description": "Generic description",
+        "description": "default-deny-egress: Generic description",
         "direction": "EGRESS",
         "match": {
           "config": {
@@ -662,7 +662,7 @@ EXPECTED_DENY_EGRESS = """
     "rules": [
       {
         "action": "deny",
-        "description": "Generic description",
+        "description": "default-deny-egress: Generic description",
         "direction": "EGRESS",
         "match": {
           "config": {
@@ -684,7 +684,7 @@ EXPECTED_COST_OF_ONE = """
     "rules": [
       {
         "action": "goto_next",
-        "description": "Generic description",
+        "description": "allow-traffic-to-port: Generic description",
         "direction": "INGRESS",
         "enableLogging": false,
         "match": {
@@ -1016,7 +1016,7 @@ class GcpHfTest(parameterized.TestCase):
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testTermLongComment(self):
-    """Test that a term's long comment gets truncated."""
+    """Test that a term's long comment gets truncated and prefixed with term name."""
     self.naming.GetNetAddr.return_value = TEST_IP
 
     acl = gcp_hf.HierarchicalFirewall(
@@ -1025,7 +1025,7 @@ class GcpHfTest(parameterized.TestCase):
         EXP_INFO)
     comment_truncated = EXPECTED_ONE_RULE_INGRESS.replace(
         'Generic description',
-        'This is a very long description, it is longer than sixty-four ch')
+        'This is a very long description, it is l')
     expected = json.loads(comment_truncated)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 

@@ -92,8 +92,10 @@ class Term(gcp.Term):
 
     term_dict['enableLogging'] = self._GetLoggingSetting()
 
-    term_dict['description'] = self._TruncateComment(
-        self._MAX_TERM_COMMENT_LENGTH)
+    # This combo provides ability to identify the rule.
+    raw_descirption = self.term.name + ': ' + ' '.join(self.term.comment)
+    term_dict['description'] = gcp.TruncateString(raw_descirption,
+                                                  self._MAX_TERM_COMMENT_LENGTH)
 
     ip_version = self.AF_MAP[self.address_family]
     if self.term.direction == 'EGRESS':
@@ -176,9 +178,7 @@ class HierarchicalFirewall(gcp.GCP):
           invalid.
     """
     self.policies = []
-    policy = {
-        'rules': []
-    }
+    policy = {'rules': []}
     is_policy_modified = False
     counter = 1
     total_cost = 0
@@ -197,7 +197,7 @@ class HierarchicalFirewall(gcp.GCP):
       else:
         policy['display_name'] = filter_name
       # display_name cannot be more than 63 characters long.
-      policy['display_name'] = policy['display_name'][:63]
+      policy['display_name'] = gcp.TruncateString(policy['display_name'], 63)
       is_policy_modified = True
 
       # Get term direction if set.

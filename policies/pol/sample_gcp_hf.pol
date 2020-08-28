@@ -12,11 +12,11 @@ term folder-ssh{
 }
 
 term folder-rdp {
-  comment:: "Allow RDP to targetResources"
+  comment:: "Allow RDP to targetResources. Making long comment to show truncation."
   source-address:: PUBLIC_NAT
   protocol:: tcp
   destination-port:: RDP
-  target-resources:: ('proj-1','vpc1')
+  target-resources:: (proj-1,vpc1)
   action:: next
 }
 
@@ -38,6 +38,6 @@ term folder-ssh-nat{
   protocol:: tcp
   destination-port:: SSH
   destination-address:: PUBLIC_NAT
-  target-resources:: ('proj-2','vpc2')
+  target-resources:: (proj-2,vpc2)
   action:: next
 }

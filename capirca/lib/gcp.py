@@ -36,13 +36,6 @@ class UnsupportedFilterTypeError(Error):
 class Term(aclgenerator.Term):
   """A Term object."""
 
-  def _TruncateComment(self, max_length):
-    """Truncate comment."""
-    raw_comment = ' '.join(self.term.comment)
-    if len(raw_comment) > max_length:
-      return raw_comment[:max_length]
-    return raw_comment
-
   def _GetPorts(self):
     """Return a port or port range in string format."""
     ports = []
@@ -71,23 +64,29 @@ class GCP(aclgenerator.ACLGenerator):
   def __str__(self):
     """Return the JSON blob for a GCP object."""
     out = '%s\n\n' % (
-        json.dumps(self.policies, indent=2,
-                   separators=(six.ensure_str(','), six.ensure_str(': ')),
-                   sort_keys=True))
+        json.dumps(
+            self.policies,
+            indent=2,
+            separators=(six.ensure_str(','), six.ensure_str(': ')),
+            sort_keys=True))
     return out
 
 
 def IsDefaultDeny(term):
   """Return true if a term is a default deny without IPs, ports, etc."""
-  skip_attrs = ['flattened', 'flattened_addr', 'flattened_saddr',
-                'flattened_daddr', 'action', 'comment', 'name']
+  skip_attrs = [
+      'flattened', 'flattened_addr', 'flattened_saddr', 'flattened_daddr',
+      'action', 'comment', 'name'
+  ]
   if 'deny' not in term.action:
     return False
   # This lc will look through all methods and attributes of the object.
   # It returns only the attributes that need to be looked at to determine if
   # this is a default deny.
-  for i in [a for a in dir(term) if not a.startswith('__') and
-            a.islower() and not callable(getattr(term, a))]:
+  for i in [
+      a for a in dir(term) if not a.startswith('__') and a.islower() and
+      not callable(getattr(term, a))
+  ]:
     if i in skip_attrs:
       continue
     v = getattr(term, i)
@@ -136,3 +135,18 @@ def IsVPCNameValid(vpc):
   if len(vpc) < 1 or len(vpc) > 63:
     return False
   return bool(re.match('^[a-z]$|^[a-z][a-z0-9-]*[a-z0-9]$', vpc))
+
+
+def TruncateString(raw_string, max_length):
+  """Returns truncated raw_string based on max length.
+
+  Args:
+    raw_string: String to be truncated.
+    max_length: max length of string.
+
+  Returns:
+    string: The truncated string.
+  """
+  if len(raw_string) > max_length:
+    return raw_string[:max_length]
+  return raw_string
