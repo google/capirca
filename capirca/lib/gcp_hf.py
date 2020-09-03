@@ -102,14 +102,14 @@ class Term(gcp.Term):
       daddrs = self.term.GetAddressOfVersion('destination_address', ip_version)
       term_dict['match'] = {
           'config': {
-              'destIpRange': [daddr.with_prefixlen for daddr in daddrs]
+              'destIpRanges': [daddr.with_prefixlen for daddr in daddrs]
           }
       }
     else:
       saddrs = self.term.GetAddressOfVersion('source_address', ip_version)
       term_dict['match'] = {
           'config': {
-              'srcIpRange': [saddr.with_prefixlen for saddr in saddrs]
+              'srcIpRanges': [saddr.with_prefixlen for saddr in saddrs]
           }
       }
     protocols_and_ports = []
@@ -178,7 +178,10 @@ class HierarchicalFirewall(gcp.GCP):
           invalid.
     """
     self.policies = []
-    policy = {'rules': []}
+    policy = {
+        'rules': [],
+        'type': 'FIREWALL'
+    }
     is_policy_modified = False
     counter = 1
     total_cost = 0
@@ -192,12 +195,12 @@ class HierarchicalFirewall(gcp.GCP):
       # Get the policy name.
       filter_name = header.FilterName(self._PLATFORM)
       filter_options.remove(filter_name)
-      if 'display_name' in policy:
-        policy['display_name'] += '_' + filter_name
+      if 'displayName' in policy:
+        policy['displayName'] += '_' + filter_name
       else:
-        policy['display_name'] = filter_name
-      # display_name cannot be more than 63 characters long.
-      policy['display_name'] = gcp.TruncateString(policy['display_name'], 63)
+        policy['displayName'] = filter_name
+      # displayName cannot be more than 63 characters long.
+      policy['displayName'] = gcp.TruncateString(policy['displayName'], 63)
       is_policy_modified = True
 
       # Get term direction if set.

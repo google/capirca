@@ -311,7 +311,8 @@ term default-deny-ingress-on-target {
 EXPECTED_ONE_RULE_INGRESS = """
 [
   {
-    "display_name": "displayname",
+    "displayName": "displayname",
+    "type": "FIREWALL",
     "rules": [
       {
         "action": "goto_next",
@@ -330,7 +331,7 @@ EXPECTED_ONE_RULE_INGRESS = """
                 "ipProtocol": "udp"
               }
             ],
-            "srcIpRange": ["10.0.0.0/8"]
+            "srcIpRanges": ["10.0.0.0/8"]
           }
         },
         "priority": 1,
@@ -344,7 +345,8 @@ EXPECTED_ONE_RULE_INGRESS = """
 EXPECTED_ONE_RULE_INGRESS_W_LOGGING = """
 [
   {
-    "display_name": "displayname",
+    "displayName": "displayname",
+    "type": "FIREWALL",
     "rules": [
       {
         "action": "allow",
@@ -357,7 +359,7 @@ EXPECTED_ONE_RULE_INGRESS_W_LOGGING = """
                 "ipProtocol": "tcp"
               }
             ],
-            "srcIpRange": ["10.0.0.0/8"]
+            "srcIpRanges": ["10.0.0.0/8"]
           }
         },
         "priority": 1,
@@ -371,7 +373,8 @@ EXPECTED_ONE_RULE_INGRESS_W_LOGGING = """
 EXPECTED_ONE_RULE_EGRESS = """
 [
   {
-    "display_name": "displayname",
+    "displayName": "displayname",
+    "type": "FIREWALL",
     "rules": [
       {
         "action": "goto_next",
@@ -390,7 +393,7 @@ EXPECTED_ONE_RULE_EGRESS = """
                 "ipProtocol": "udp"
               }
             ],
-            "destIpRange": ["10.0.0.0/8"]
+            "destIpRanges": ["10.0.0.0/8"]
           }
         },
         "priority": 1,
@@ -404,7 +407,8 @@ EXPECTED_ONE_RULE_EGRESS = """
 EXPECTED_MULTIPLE_RULE_INGRESS = """
 [
   {
-    "display_name": "displayname",
+    "displayName": "displayname",
+    "type": "FIREWALL",
     "rules": [
       {
         "action": "goto_next",
@@ -424,7 +428,7 @@ EXPECTED_MULTIPLE_RULE_INGRESS = """
                 "ipProtocol": "udp"
               }
             ],
-            "srcIpRange": ["10.0.0.0/8"]
+            "srcIpRanges": ["10.0.0.0/8"]
           }
         },
         "priority": 1
@@ -446,7 +450,7 @@ EXPECTED_MULTIPLE_RULE_INGRESS = """
                 "ports": ["53"]
               }
             ],
-            "srcIpRange": ["10.0.0.0/8"]
+            "srcIpRanges": ["10.0.0.0/8"]
           }
         },
         "priority": 2
@@ -459,7 +463,8 @@ EXPECTED_MULTIPLE_RULE_INGRESS = """
 EXPECTED_MULTIPLE_RULE_INGRESS_W_DENY = """
 [
   {
-    "display_name": "displayname",
+    "displayName": "displayname",
+    "type": "FIREWALL",
     "rules": [
       {
         "action": "goto_next",
@@ -478,7 +483,7 @@ EXPECTED_MULTIPLE_RULE_INGRESS_W_DENY = """
                 "ipProtocol": "udp"
               }
             ],
-            "srcIpRange": ["10.0.0.0/8"]
+            "srcIpRanges": ["10.0.0.0/8"]
           }
         },
         "priority": 1,
@@ -490,7 +495,7 @@ EXPECTED_MULTIPLE_RULE_INGRESS_W_DENY = """
         "direction": "INGRESS",
         "match": {
           "config": {
-            "srcIpRange": ["0.0.0.0/0"]
+            "srcIpRanges": ["0.0.0.0/0"]
           }
         },
         "priority": 2,
@@ -504,7 +509,8 @@ EXPECTED_MULTIPLE_RULE_INGRESS_W_DENY = """
 EXPECTED_PORT_RANGE_INGRESS = """
 [
   {
-    "display_name": "displayname",
+    "displayName": "displayname",
+    "type": "FIREWALL",
     "rules": [
       {
         "action": "goto_next",
@@ -518,7 +524,7 @@ EXPECTED_PORT_RANGE_INGRESS = """
                 "ports": ["8000-9000"]
               }
             ],
-            "srcIpRange": ["10.0.0.0/8"]
+            "srcIpRanges": ["10.0.0.0/8"]
           }
         },
         "priority": 1,
@@ -532,7 +538,8 @@ EXPECTED_PORT_RANGE_INGRESS = """
 EXPECTED_DENY_INGRESS = """
 [
   {
-    "display_name": "displayname",
+    "displayName": "displayname",
+    "type": "FIREWALL",
     "rules": [
       {
         "action": "deny",
@@ -540,7 +547,7 @@ EXPECTED_DENY_INGRESS = """
         "direction": "INGRESS",
         "match": {
           "config": {
-            "srcIpRange": ["0.0.0.0/0"]
+            "srcIpRanges": ["0.0.0.0/0"]
           }
         },
         "priority": 1,
@@ -554,7 +561,8 @@ EXPECTED_DENY_INGRESS = """
 EXPECTED_DENY_INGRESS_ON_TARGET = """
 [
   {
-    "display_name": "displayname",
+    "displayName": "displayname",
+    "type": "FIREWALL",
     "rules": [
       {
         "action": "deny",
@@ -562,7 +570,7 @@ EXPECTED_DENY_INGRESS_ON_TARGET = """
         "direction": "INGRESS",
         "match": {
           "config": {
-            "srcIpRange": ["0.0.0.0/0"]
+            "srcIpRanges": ["0.0.0.0/0"]
           }
         },
         "priority": 1,
@@ -578,7 +586,8 @@ EXPECTED_DENY_INGRESS_ON_TARGET = """
 EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
 [
   {
-    "display_name": "displayname_displayname",
+    "displayName": "displayname_displayname",
+    "type": "FIREWALL",
     "rules": [
       {
         "action": "goto_next",
@@ -597,7 +606,7 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
                 "ipProtocol": "udp"
               }
             ],
-            "srcIpRange": ["10.0.0.0/8"]
+            "srcIpRanges": ["10.0.0.0/8"]
           }
         },
         "priority": 1,
@@ -609,7 +618,7 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
         "direction": "INGRESS",
         "match": {
           "config": {
-            "srcIpRange": ["10.0.0.0/8"]
+            "srcIpRanges": ["10.0.0.0/8"]
           }
         },
         "priority": 2,
@@ -632,7 +641,7 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
                 "ipProtocol": "udp"
               }
             ],
-            "destIpRange": ["10.0.0.0/8"]
+            "destIpRanges": ["10.0.0.0/8"]
           }
         },
         "priority": 3,
@@ -644,7 +653,7 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
         "direction": "EGRESS",
         "match": {
           "config": {
-            "destIpRange": ["10.0.0.0/8"]
+            "destIpRanges": ["10.0.0.0/8"]
           }
         },
         "priority": 4,
@@ -658,7 +667,8 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
 EXPECTED_DENY_EGRESS = """
 [
   {
-    "display_name": "displayname",
+    "displayName": "displayname",
+    "type": "FIREWALL",
     "rules": [
       {
         "action": "deny",
@@ -666,7 +676,7 @@ EXPECTED_DENY_EGRESS = """
         "direction": "EGRESS",
         "match": {
           "config": {
-            "destIpRange": ["0.0.0.0/0"]
+            "destIpRanges": ["0.0.0.0/0"]
           }
         },
         "priority": 1,
@@ -680,7 +690,8 @@ EXPECTED_DENY_EGRESS = """
 EXPECTED_COST_OF_ONE = """
 [
   {
-    "display_name": "displayname",
+    "displayName": "displayname",
+    "type": "FIREWALL",
     "rules": [
       {
         "action": "goto_next",
@@ -695,7 +706,7 @@ EXPECTED_COST_OF_ONE = """
                 "ports": ["80"]
               }
             ],
-            "srcIpRange": ["10.1.1.0/24"]
+            "srcIpRanges": ["10.1.1.0/24"]
           }
         },
         "priority": 1
