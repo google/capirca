@@ -122,7 +122,12 @@ class Term(gcp.Term):
       protocols_and_ports.append(proto_ports)
 
     if protocols_and_ports:  # Only set when non-empty.
-      term_dict['match']['config']['layer4Config'] = protocols_and_ports
+      term_dict['match']['config']['layer4Configs'] = protocols_and_ports
+
+    # match needs a field called versionedExpr with value FIREWALL
+    # See documentation:
+    # https://cloud.google.com/compute/docs/reference/rest/beta/organizationSecurityPolicies/addRule
+    term_dict['match']['versionedExpr'] = 'FIREWALL'
 
     return term_dict
 

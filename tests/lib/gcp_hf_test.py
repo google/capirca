@@ -320,7 +320,7 @@ EXPECTED_ONE_RULE_INGRESS = """
         "direction": "INGRESS",
         "match": {
           "config": {
-            "layer4Config": [
+            "layer4Configs": [
               {
                 "ipProtocol": "tcp"
               },
@@ -332,7 +332,8 @@ EXPECTED_ONE_RULE_INGRESS = """
               }
             ],
             "srcIpRanges": ["10.0.0.0/8"]
-          }
+          },
+          "versionedExpr": "FIREWALL"
         },
         "priority": 1,
         "enableLogging": false
@@ -354,13 +355,14 @@ EXPECTED_ONE_RULE_INGRESS_W_LOGGING = """
         "direction": "INGRESS",
         "match": {
           "config": {
-            "layer4Config": [
+            "layer4Configs": [
               {
                 "ipProtocol": "tcp"
               }
             ],
             "srcIpRanges": ["10.0.0.0/8"]
-          }
+          },
+          "versionedExpr": "FIREWALL"
         },
         "priority": 1,
         "enableLogging": true
@@ -382,7 +384,7 @@ EXPECTED_ONE_RULE_EGRESS = """
         "direction": "EGRESS",
         "match": {
           "config": {
-            "layer4Config": [
+            "layer4Configs": [
               {
                 "ipProtocol": "tcp"
               },
@@ -394,7 +396,8 @@ EXPECTED_ONE_RULE_EGRESS = """
               }
             ],
             "destIpRanges": ["10.0.0.0/8"]
-          }
+          },
+          "versionedExpr": "FIREWALL"
         },
         "priority": 1,
         "enableLogging": false
@@ -417,7 +420,7 @@ EXPECTED_MULTIPLE_RULE_INGRESS = """
         "enableLogging": false,
         "match": {
           "config": {
-            "layer4Config": [
+            "layer4Configs": [
               {
                 "ipProtocol": "tcp"
               },
@@ -429,7 +432,8 @@ EXPECTED_MULTIPLE_RULE_INGRESS = """
               }
             ],
             "srcIpRanges": ["10.0.0.0/8"]
-          }
+          },
+          "versionedExpr": "FIREWALL"
         },
         "priority": 1
       },
@@ -440,7 +444,7 @@ EXPECTED_MULTIPLE_RULE_INGRESS = """
         "enableLogging": false,
         "match": {
           "config": {
-            "layer4Config": [
+            "layer4Configs": [
               {
                 "ipProtocol": "tcp",
                 "ports": ["53"]
@@ -451,7 +455,8 @@ EXPECTED_MULTIPLE_RULE_INGRESS = """
               }
             ],
             "srcIpRanges": ["10.0.0.0/8"]
-          }
+          },
+          "versionedExpr": "FIREWALL"
         },
         "priority": 2
       }
@@ -472,7 +477,7 @@ EXPECTED_MULTIPLE_RULE_INGRESS_W_DENY = """
         "direction": "INGRESS",
         "match": {
           "config": {
-            "layer4Config": [
+            "layer4Configs": [
               {
                 "ipProtocol": "tcp"
               },
@@ -484,7 +489,8 @@ EXPECTED_MULTIPLE_RULE_INGRESS_W_DENY = """
               }
             ],
             "srcIpRanges": ["10.0.0.0/8"]
-          }
+          },
+          "versionedExpr": "FIREWALL"
         },
         "priority": 1,
         "enableLogging": false
@@ -496,7 +502,8 @@ EXPECTED_MULTIPLE_RULE_INGRESS_W_DENY = """
         "match": {
           "config": {
             "srcIpRanges": ["0.0.0.0/0"]
-          }
+          },
+          "versionedExpr": "FIREWALL"
         },
         "priority": 2,
         "enableLogging": false
@@ -518,14 +525,15 @@ EXPECTED_PORT_RANGE_INGRESS = """
         "direction": "INGRESS",
         "match": {
           "config": {
-            "layer4Config": [
+            "layer4Configs": [
               {
                 "ipProtocol": "tcp",
                 "ports": ["8000-9000"]
               }
             ],
             "srcIpRanges": ["10.0.0.0/8"]
-          }
+          },
+          "versionedExpr": "FIREWALL"
         },
         "priority": 1,
         "enableLogging": false
@@ -548,7 +556,8 @@ EXPECTED_DENY_INGRESS = """
         "match": {
           "config": {
             "srcIpRanges": ["0.0.0.0/0"]
-          }
+          },
+          "versionedExpr": "FIREWALL"
         },
         "priority": 1,
         "enableLogging": false
@@ -571,7 +580,8 @@ EXPECTED_DENY_INGRESS_ON_TARGET = """
         "match": {
           "config": {
             "srcIpRanges": ["0.0.0.0/0"]
-          }
+          },
+          "versionedExpr": "FIREWALL"
         },
         "priority": 1,
         "enableLogging": false,
@@ -595,7 +605,7 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
         "direction": "INGRESS",
         "match": {
           "config": {
-            "layer4Config": [
+            "layer4Configs": [
               {
                 "ipProtocol": "tcp"
               },
@@ -607,7 +617,8 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
               }
             ],
             "srcIpRanges": ["10.0.0.0/8"]
-          }
+          },
+          "versionedExpr": "FIREWALL"
         },
         "priority": 1,
         "enableLogging": false
@@ -619,7 +630,8 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
         "match": {
           "config": {
             "srcIpRanges": ["10.0.0.0/8"]
-          }
+          },
+          "versionedExpr": "FIREWALL"
         },
         "priority": 2,
         "enableLogging": false
@@ -630,7 +642,7 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
         "direction": "EGRESS",
         "match": {
           "config": {
-            "layer4Config": [
+            "layer4Configs": [
               {
                 "ipProtocol": "tcp"
               },
@@ -642,7 +654,8 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
               }
             ],
             "destIpRanges": ["10.0.0.0/8"]
-          }
+          },
+          "versionedExpr": "FIREWALL"
         },
         "priority": 3,
         "enableLogging": false
@@ -654,7 +667,8 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
         "match": {
           "config": {
             "destIpRanges": ["10.0.0.0/8"]
-          }
+          },
+          "versionedExpr": "FIREWALL"
         },
         "priority": 4,
         "enableLogging": false
@@ -677,7 +691,8 @@ EXPECTED_DENY_EGRESS = """
         "match": {
           "config": {
             "destIpRanges": ["0.0.0.0/0"]
-          }
+          },
+          "versionedExpr": "FIREWALL"
         },
         "priority": 1,
         "enableLogging": false
@@ -700,14 +715,15 @@ EXPECTED_COST_OF_ONE = """
         "enableLogging": false,
         "match": {
           "config": {
-            "layer4Config": [
+            "layer4Configs": [
               {
                 "ipProtocol": "tcp",
                 "ports": ["80"]
               }
             ],
             "srcIpRanges": ["10.1.1.0/24"]
-          }
+          },
+          "versionedExpr": "FIREWALL"
         },
         "priority": 1
       }
