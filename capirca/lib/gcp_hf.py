@@ -248,8 +248,9 @@ class HierarchicalFirewall(gcp.GCP):
           continue
         total_cost += GetCost(term)
         if total_cost > max_cost:
-          raise ExceededCostError('Policy cost (%d) reached the maximum (%d)' %
-                                  (total_cost, max_cost))
+          raise ExceededCostError('Policy cost (%d) for %s reached the maximum '
+                                  '(%d)' % (total_cost, policy['displayName'],
+                                            max_cost))
         if gcp.IsDefaultDeny(term):
           if direction == 'EGRESS':
             term.destination_address = self._ANY
