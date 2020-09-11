@@ -132,6 +132,10 @@ class InvalidTermTTLValue(Error):
 class MixedPortandNonPortProtos(Error):
   """Error when TCP or UDP are used with protocols that do not use ports."""
 
+class UnknownIPVersionError(Error):
+  """Error when an unknown IP version is provided."""
+
+
 
 def TranslatePorts(ports, protocols, term_name):
   """Return all ports of all protocols requested.
@@ -1020,6 +1024,29 @@ class Term(object):
       return getattr(self, addr_type)
 
     return [x for x in getattr(self, addr_type) if x.version == af]
+
+  def GetProtocolsOfVersion(self, ip_version):
+    """Returns only the protocols that go with the IP version.
+
+    Args:
+      af: int, either 4 for IPv4 or 6 for IPv6.
+
+    Returns:
+      list of protocols of the correct family.
+
+    Raises:
+      UnknownIPVersionError: if ip_version is not 4 or 6.
+    """
+    ipv6_exclusive = ['icmpv6']
+    ipv4_exclusive = ['icmp']
+
+    if ip_version == 4:
+      return [x for x in getattr(self, 'protocol') if x not in ipv6_exclusive]
+
+    if ip_version == 6:
+      return [x for x in getattr(self, 'protocol') if x not in ipv4_exclusive]
+
+    raise UnknownIPVersionError('unknown IP version: %s', ip_version)
 
   def AddObject(self, obj):
     """Add an object of unknown type to this term.

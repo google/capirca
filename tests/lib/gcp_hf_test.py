@@ -231,6 +231,15 @@ BAD_TERM_PROTO = """
 }
 """
 
+BAD_TERM_WRONG_IP_VERSION = """
+  term bad-term-with-icmpv6 {
+  comment:: "Generic description"
+  source-address:: PUBLIC_NAT
+  protocol:: icmp icmpv6
+  action:: next
+}
+"""
+
 BAD_TERM_USING_SOURCE_TAG = """
   term bad-term-with-tag {
   comment:: "Generic description"
@@ -732,6 +741,35 @@ EXPECTED_COST_OF_ONE = """
 ]
 """
 
+EXPECTED_ICMP_ONLY = """
+[
+  {
+    "displayName": "displayname",
+    "type": "FIREWALL",
+    "rules": [
+      {
+        "action": "goto_next",
+        "description": "bad-term-with-icmpv6: Generic description",
+        "direction": "INGRESS",
+        "enableLogging": false,
+        "match": {
+          "config": {
+            "layer4Configs": [
+              {
+                "ipProtocol": "icmp"
+              }
+            ],
+            "srcIpRanges": ["10.0.0.0/8"]
+          },
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 1
+      }
+    ]
+  }
+]
+"""
+
 SUPPORTED_TOKENS = frozenset({
     'action',
     'comment',
@@ -1040,6 +1078,17 @@ class GcpHfTest(parameterized.TestCase):
                            self.naming),
         EXP_INFO)
     expected = json.loads(EXPECTED_PORT_RANGE_INGRESS)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testDropIcmpV6(self):
+    """Test that a term with icmp and icmpv6 can ignore icmpv6."""
+    self.naming.GetNetAddr.return_value = TEST_IP
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_NO_OPTIONS + BAD_TERM_WRONG_IP_VERSION,
+                           self.naming),
+        EXP_INFO)
+    expected = json.loads(EXPECTED_ICMP_ONLY)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testTermLongComment(self):

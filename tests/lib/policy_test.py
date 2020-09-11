@@ -1685,6 +1685,35 @@ class PolicyTest(unittest.TestCase):
                                  ('proj3', 'vpc3'), ('proj4', 'vpc4')]
     self.assertListEqual(expected_target_resources, terms[0].target_resources)
 
+  def testGetProtocolsOfVersion(self):
+    term = """
+    term with-two-versions-of-icmp {
+      action:: deny
+      protocol:: icmp icmpv6
+    }"""
+    pol = HEADER + term
+    p = policy.ParsePolicy(pol, self.naming)
+    self.assertIsInstance(p, policy.Policy)
+
+    _, terms = p.filters[0]
+    self.assertListEqual(['icmp'], terms[0].GetProtocolsOfVersion(4))
+    self.assertListEqual(['icmpv6'], terms[0].GetProtocolsOfVersion(6))
+
+  def testGetProtocolsOfVersionRaisesError(self):
+    term = """
+    term just-icmp {
+      action:: deny
+      protocol:: icmp
+    }"""
+    pol = HEADER + term
+    p = policy.ParsePolicy(pol, self.naming)
+    self.assertIsInstance(p, policy.Policy)
+
+    _, terms = p.filters[0]
+
+    with self.assertRaises(policy.UnknownIPVersionError):
+      terms[0].GetProtocolsOfVersion(5)
+
 
 if __name__ == '__main__':
   unittest.main()
