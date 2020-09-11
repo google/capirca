@@ -36,8 +36,7 @@ class Term(gcp.Term):
       raise gcp.TermError('Hierarchical Firewall does not support tags')
 
     if self.term.protocol:
-      for protocol in self.term.GetProtocolsOfVersion(
-          self.AF_MAP[self.address_family]):
+      for protocol in self.term.protocol:
         if protocol not in self._ALLOW_PROTO_NAME:
           raise gcp.TermError('Protocol %s is not supported' % protocol)
 
@@ -114,7 +113,7 @@ class Term(gcp.Term):
           }
       }
     protocols_and_ports = []
-    for proto in self.term.GetProtocolsOfVersion(ip_version):
+    for proto in self.term.protocol:
       proto_ports = {'ipProtocol': proto}
       if self.term.destination_port:
         ports = self._GetPorts()
