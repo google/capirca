@@ -1094,48 +1094,78 @@ class GcpHfTest(parameterized.TestCase):
                              + TERM_ALLOW_ALL_INTERNAL, self.naming),
           EXP_INFO)
 
-  def testCostIsCorrectlyCalculatedWhenPassingACollapsableIPRange(self):
-    """Test GetCost works as-expected with a term using collapsable IP range."""
-    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.0/25'),
-                                           nacaddr.IP('10.1.1.128/25')]
-    self.naming.GetServiceByProto.side_effect = [['80']]
-    # Notice that:
-    # - EXPECTED_COST_OF_ONE has 10.1.1.0/24 as source IP instead of
-    # 10.1.1.0/25 and 10.1.1.128/25.
-    # - HEADER_VERY_LOW_DEFAULT_MAX allows a maximum cost of 1, and that if the
-    # IP ranges were not compressed, the total cost of the term TERM_ALLOW_PORT
-    # would be 2 and this test would raise ExceededCostError.
-    acl = gcp_hf.HierarchicalFirewall(
-        policy.ParsePolicy(HEADER_VERY_LOW_DEFAULT_MAX + TERM_ALLOW_PORT,
-                           self.naming),
-        EXP_INFO)
-    expected = json.loads(EXPECTED_COST_OF_ONE)
-    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
-
   @parameterized.named_parameters(
-      ('all fields unset', [], [], [], 1),
-      ('all fields set once', [nacaddr.IP('1.2.3.4/32')], ['TCP'], [80], 1),
-      ('0 IPs set', [], ['TCP'], [80], 1),
-      ('2 IPs set', [nacaddr.IP('1.2.3.4/32'),
-                     nacaddr.IP('1.2.3.5/32')], ['TCP'], [80], 2),
-      ('0 protocols set', [nacaddr.IP('1.2.3.4/32')], [], [80], 1),
-      ('2 protocols set', [nacaddr.IP('1.2.3.4/32')], ['TCP', 'UDP'], [80], 2),
-      ('0 ports set', [nacaddr.IP('1.2.3.4/32')], ['TCP'], [], 1),
-      ('2 ports set', [nacaddr.IP('1.2.3.4/32')], ['TCP'], [80, 443], 2)
+      ('1 ip, 2 protocols',
+       {'match': {
+           'config': {
+               'destIpRanges': ['0.0.0.0/0'],
+               'layer4Configs': [
+                   {'ipProtocol': 'tcp'},
+                   {'ipProtocol': 'icmp'}
+               ]
+           }
+       }}, 2),
+      ('1 ip, 3 protocols, ',
+       {'match': {
+           'config': {
+               'srcIpRanges': ['0.0.0.0/0'],
+               'layer4Configs': [
+                   {'ipProtocol': 'tcp'},
+                   {'ipProtocol': 'icmp'},
+                   {'ipProtocol': 'udp'}
+               ]
+           }
+       }}, 3),
+      ('1 ip, 1 protocol with 1 port',
+       {'match': {
+           'config': {
+               'srcIpRanges': ['0.0.0.0/0'],
+               'layer4Configs': [
+                   {'ipProtocol': 'tcp', 'ports': ['22']}
+               ]
+           }
+       }}, 1),
+      ('1 ip, 2 protocols with 2 ports each',
+       {'match': {
+           'config': {
+               'srcIpRanges': ['0.0.0.0/0'],
+               'layer4Configs': [
+                   {'ipProtocol': 'tcp', 'ports': ['22']},
+                   {'ipProtocol': 'udp', 'ports': ['22']}
+               ]
+           }
+       }}, 2),
+      ('1 ip, 1 protocol with 2 ports',
+       {'match': {
+           'config': {
+               'srcIpRanges': ['0.0.0.0/0'],
+               'layer4Configs': [
+                   {'ipProtocol': 'tcp', 'ports': ['22', '23']}
+               ]
+           }
+       }}, 2),
+      ('2 ips, 1 protocol with 2 ports',
+       {'match': {
+           'config': {
+               'srcIpRanges': ['1.4.6.8/10', '1.2.3.4/5'],
+               'layer4Configs': [
+                   {'ipProtocol': 'tcp', 'ports': ['22', '23']}
+               ]
+           }
+       }}, 4),
+      ('2 ips, 2 protocols with 2 ports each',
+       {'match': {
+           'config': {
+               'srcIpRanges': ['1.4.6.8/10', '1.2.3.4/5'],
+               'layer4Configs': [
+                   {'ipProtocol': 'tcp', 'ports': ['22', '23']},
+                   {'ipProtocol': 'udp', 'ports': ['22', '23']}
+               ]
+           }
+       }}, 8)
   )
-  @mock.patch.object(policy, 'DEFINITIONS')
-  def testGetCost(self, ips, protocols, ports, expected, mock_naming):
-    mock_naming.GetNetAddr.side_effect = ips
-    t = []
-    for i in ips:
-      t.append(policy.VarType(3, i))
-    for p in protocols:
-      t.append(policy.VarType(10, p))
-    for p in ports:
-      t.append(policy.VarType(7, p))
-    term = policy.Term(t)
-
-    self.assertEqual(gcp_hf.GetCost(term), expected)
+  def testGetCost(self, dict_term, expected):
+    self.assertEqual(gcp_hf.GetCost(dict_term), expected)
 
 
 if __name__ == '__main__':

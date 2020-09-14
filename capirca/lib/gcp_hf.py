@@ -8,6 +8,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+from typing import Dict, Text, Any
+
 from capirca.lib import gcp
 from capirca.lib import nacaddr
 
@@ -204,6 +206,7 @@ class HierarchicalFirewall(gcp.GCP):
         policy['displayName'] += '_' + filter_name
       else:
         policy['displayName'] = filter_name
+
       # displayName cannot be more than 63 characters long.
       policy['displayName'] = gcp.TruncateString(policy['displayName'], 63)
       is_policy_modified = True
@@ -245,11 +248,7 @@ class HierarchicalFirewall(gcp.GCP):
       for term in terms:
         if term.stateless_reply:
           continue
-        total_cost += GetCost(term)
-        if total_cost > max_cost:
-          raise ExceededCostError('Policy cost (%d) for %s reached the maximum '
-                                  '(%d)' % (total_cost, policy['displayName'],
-                                            max_cost))
+
         if gcp.IsDefaultDeny(term):
           if direction == 'EGRESS':
             term.destination_address = self._ANY
@@ -261,16 +260,23 @@ class HierarchicalFirewall(gcp.GCP):
             term,
             address_family=address_family).ConvertToDict(priority_index=counter)
         counter += 1
+        total_cost += GetCost(dict_term)
+
+        if total_cost > max_cost:
+          raise ExceededCostError('Policy cost (%d) for %s reached the maximum '
+                                  '(%d)' % (total_cost, policy['displayName'],
+                                            max_cost))
         policy['rules'].append(dict_term)
 
     self.policies.append(policy)
+
     # Do not render an empty rules if no policies have been evaluated.
     if not is_policy_modified:
       self.policies = []
 
 
-def GetCost(term):
-  """Calculate the cost of a term.
+def GetCost(dict_term: Dict[Text, Any]):
+  """Calculate the cost of a term in its dictionary form.
 
   Quota is charged based on how complex the rules are rather than simply
   limiting the number of rules.
@@ -279,18 +285,22 @@ def GetCost(term):
   port defined as a matching condition in a firewall rule. And the cost of a
   firewall rule tuple is the total number of elements within it.
 
+  Note: The goal of this function is not to determine if a term is valid, but
+      to calculate its cost/quota regardless of correctness.
+
   Args:
-    term: A Term object.
+    dict_term: A dict object.
 
   Returns:
     int: The cost of the term.
   """
-  protocols = len(term.protocol) or 1
-  ports = len(term.destination_port) or 1
+  config = dict_term.get('match', {}).get('config', {})
 
-  if term.destination_address:
-    addresses = len(term.destination_address) or 1
-  else:
-    addresses = len(term.source_address) or 1
+  addresses = (len(config.get('destIpRanges', []))
+               or len(config.get('srcIpRanges', [])))
+  proto_ports = 0
 
-  return addresses * protocols * ports
+  for l4config in config.get('layer4Configs', []):
+    proto_ports += len(l4config.get('ports', [])) or 1
+
+  return (addresses or 1) * (proto_ports or 1)
