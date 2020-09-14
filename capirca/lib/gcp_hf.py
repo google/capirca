@@ -25,13 +25,32 @@ class Term(gcp.Term):
 
   _MAX_TERM_COMMENT_LENGTH = 64
 
-  _ALLOW_PROTO_NAME = ['tcp', 'udp', 'icmp', 'esp', 'ah', 'sctp']
+  _PROTO_NAMES = ['tcp', 'udp', 'icmp', 'icmpv6', 'esp', 'ah', 'sctp']
 
   def __init__(self, term, address_family='inet'):
     super(Term, self).__init__(term)
     self.address_family = address_family
     self.term = term
+    self.skip = False
     self._ValidateTerm()
+
+    # Don't render icmp protocol terms under inet6.
+    if self.address_family == 'inet6':
+      if ['icmp'] == self.term.protocol:
+        # Skip term if its only protocol is icmp to prevent an empty list,
+        # which is equivalent to any protocol.
+        self.skip = True
+      elif 'icmp' in self.term.protocol:
+        self.term.protocol.remove('icmp')
+
+    # Don't render icmpv6 protocol terms under inet.
+    if self.address_family == 'inet':
+      # Skip term if its only protocol is icmpv6 to prevent an empty list,
+      # which is equivalent to any protocol.
+      if ['icmpv6'] == self.term.protocol:
+        self.skip = True
+      elif 'icmpv6' in self.term.protocol:
+        self.term.protocol.remove('icmpv6')
 
   def _ValidateTerm(self):
     if self.term.destination_tag or self.term.source_tag:
@@ -39,7 +58,7 @@ class Term(gcp.Term):
 
     if self.term.protocol:
       for protocol in self.term.protocol:
-        if protocol not in self._ALLOW_PROTO_NAME:
+        if protocol not in self._PROTO_NAMES:
           raise gcp.TermError('Protocol %s is not supported' % protocol)
 
     if self.term.direction == 'INGRESS':
@@ -79,6 +98,9 @@ class Term(gcp.Term):
     Returns:
       A dict term.
     """
+    if self.skip:
+      return {}
+
     term_dict = {
         'action': self.ACTION_MAP.get(self.term.action[0], self.term.action[0]),
         'direction': self.term.direction,

@@ -279,6 +279,15 @@ term allow-traffic-from-port {
 }
 """
 
+BAD_TERM_IP_VERSION_MISMATCH = """
+term icmpv6-in-inet-term {
+  comment:: "Generic description"
+  source-address:: INTERNAL
+  protocol:: icmpv6
+  action:: next
+}
+"""
+
 BAD_TERM_OPTIONS = """
 term term-with-options {
   comment:: "Generic description"
@@ -970,6 +979,18 @@ class GcpHfTest(parameterized.TestCase):
                            self.naming),
         EXP_INFO)
     self.assertEqual([], json.loads(self._StripAclHeaders(str(acl))))
+
+  def testIgnoreTermWithICMPv6(self):
+    """Test that a term with only an icmpv6 protocol is not rendered."""
+    self.naming.GetNetAddr.return_value = TEST_IP
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_AF
+                           + BAD_TERM_IP_VERSION_MISMATCH,
+                           self.naming),
+        EXP_INFO)
+    exp = [{'displayName': 'displayname', 'rules': [{}], 'type': 'FIREWALL'}]
+    self.assertEqual(exp, json.loads(self._StripAclHeaders(str(acl))))
 
   def testPriority(self):
     """Test that priority is set based on terms' ordering."""
