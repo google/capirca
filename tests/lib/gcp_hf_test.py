@@ -564,6 +564,11 @@ EXPECTED_DENY_INGRESS = """
         "direction": "INGRESS",
         "match": {
           "config": {
+            "layer4Configs": [
+              {
+                "ipProtocol": "all"
+              }
+            ],
             "srcIpRanges": ["0.0.0.0/0"]
           },
           "versionedExpr": "FIREWALL"
@@ -588,6 +593,11 @@ EXPECTED_DENY_INGRESS_ON_TARGET = """
         "direction": "INGRESS",
         "match": {
           "config": {
+            "layer4Configs": [
+              {
+                "ipProtocol": "all"
+              }
+            ],
             "srcIpRanges": ["0.0.0.0/0"]
           },
           "versionedExpr": "FIREWALL"
@@ -638,6 +648,11 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
         "direction": "INGRESS",
         "match": {
           "config": {
+            "layer4Configs": [
+              {
+                "ipProtocol": "all"
+              }
+            ],
             "srcIpRanges": ["10.0.0.0/8"]
           },
           "versionedExpr": "FIREWALL"
@@ -675,7 +690,12 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
         "direction": "EGRESS",
         "match": {
           "config": {
-            "destIpRanges": ["10.0.0.0/8"]
+            "destIpRanges": ["10.0.0.0/8"],
+            "layer4Configs": [
+              {
+                "ipProtocol": "all"
+              }
+            ]
           },
           "versionedExpr": "FIREWALL"
         },
@@ -699,7 +719,12 @@ EXPECTED_DENY_EGRESS = """
         "direction": "EGRESS",
         "match": {
           "config": {
-            "destIpRanges": ["0.0.0.0/0"]
+            "destIpRanges": ["0.0.0.0/0"],
+            "layer4Configs": [
+              {
+                "ipProtocol": "all"
+              }
+            ]
           },
           "versionedExpr": "FIREWALL"
         },
@@ -768,6 +793,7 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 TEST_IP = [nacaddr.IP('10.0.0.0/8')]
+ALL_IPS = [nacaddr.IP('0.0.0.0/0')]
 
 
 class GcpHfTest(parameterized.TestCase):
@@ -1079,6 +1105,8 @@ class GcpHfTest(parameterized.TestCase):
 
   def testDefaultDenyIngressCreation(self):
     """Test that the correct IP is correctly set on a deny all ingress term."""
+    self.naming.GetNetAddr.return_value = ALL_IPS
+
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_DENY_INGRESS, self.naming),
         EXP_INFO)
@@ -1087,6 +1115,8 @@ class GcpHfTest(parameterized.TestCase):
 
   def testDefaultDenyEgressCreation(self):
     """Test that the correct IP is correctly set on a deny all egress term."""
+    self.naming.GetNetAddr.return_value = ALL_IPS
+
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_OPTION_EGRESS + TERM_DENY_EGRESS,
                            self.naming),

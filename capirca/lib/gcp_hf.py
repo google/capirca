@@ -136,17 +136,22 @@ class Term(gcp.Term):
               'srcIpRanges': [saddr.with_prefixlen for saddr in saddrs]
           }
       }
-    protocols_and_ports = []
-    for proto in self.term.protocol:
-      proto_ports = {'ipProtocol': proto}
-      if self.term.destination_port:
-        ports = self._GetPorts()
-        if ports:  # Only set when non-empty.
-          proto_ports['ports'] = ports
-      protocols_and_ports.append(proto_ports)
 
-    if protocols_and_ports:  # Only set when non-empty.
-      term_dict['match']['config']['layer4Configs'] = protocols_and_ports
+    protocols_and_ports = []
+    if not self.term.protocol:
+      # Empty protocol list means any protocol, but any protocol in HF is
+      # represented as "all"
+      protocols_and_ports = [{'ipProtocol': 'all'}]
+    else:
+      for proto in self.term.protocol:
+        proto_ports = {'ipProtocol': proto}
+        if self.term.destination_port:
+          ports = self._GetPorts()
+          if ports:  # Only set when non-empty.
+            proto_ports['ports'] = ports
+        protocols_and_ports.append(proto_ports)
+
+    term_dict['match']['config']['layer4Configs'] = protocols_and_ports
 
     # match needs a field called versionedExpr with value FIREWALL
     # See documentation:
