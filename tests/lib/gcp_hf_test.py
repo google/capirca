@@ -106,7 +106,6 @@ header {
 TERM_ALLOW_ALL_INTERNAL = """
 term allow-internal-traffic {
   comment:: "Generic description"
-  source-address:: INTERNAL
   protocol:: tcp icmp udp
   action:: next
 }
@@ -154,7 +153,6 @@ term restrict_egress {
 TERM_DENY_INGRESS = """
 term default-deny-ingress {
   comment:: "Generic description"
-  source-address:: ANY
   action:: deny
 }
 """
@@ -162,7 +160,6 @@ term default-deny-ingress {
 TERM_DENY_EGRESS = """
 term default-deny-egress {
   comment:: "Generic description"
-  destination-address:: ANY
   action:: deny
 }
 """
@@ -213,15 +210,6 @@ term allow-internal-traffic {
 }
 """
 
-BAD_TERM_NO_SOURCE_IP = """
-  term bad-term-missing-source-ip {
-  comment:: "Generic description"
-  protocol:: udp
-  destination-port:: DNS
-  action:: accept
-}
-"""
-
 BAD_TERM_PROTO = """
   term bad-term-unsupp-proto {
   comment:: "Generic description"
@@ -248,24 +236,6 @@ BAD_TERM_USING_DEST_TAG = """
   destination-tag:: a-tag
   protocol:: tcp icmp udp
   action:: next
-}
-"""
-
-BAD_TERM_NO_SOURCE_IP = """
-  term bad-term-missing-source-ip {
-  comment:: "Generic description"
-  protocol:: udp
-  destination-port:: DNS
-  action:: accept
-}
-"""
-
-BAD_TERM_NO_DEST_IP = """
-  term bad-term-missing-dest-ip {
-  comment:: "Generic description"
-  protocol:: udp
-  destination-address:: PUBLIC_NAT
-  action:: accept
 }
 """
 
@@ -340,7 +310,7 @@ EXPECTED_ONE_RULE_INGRESS = """
                 "ipProtocol": "udp"
               }
             ],
-            "srcIpRanges": ["10.0.0.0/8"]
+            "srcIpRanges": ["0.0.0.0/0"]
           },
           "versionedExpr": "FIREWALL"
         },
@@ -440,7 +410,7 @@ EXPECTED_MULTIPLE_RULE_INGRESS = """
                 "ipProtocol": "udp"
               }
             ],
-            "srcIpRanges": ["10.0.0.0/8"]
+            "srcIpRanges": ["0.0.0.0/0"]
           },
           "versionedExpr": "FIREWALL"
         },
@@ -463,7 +433,7 @@ EXPECTED_MULTIPLE_RULE_INGRESS = """
                 "ports": ["53"]
               }
             ],
-            "srcIpRanges": ["10.0.0.0/8"]
+            "srcIpRanges": ["0.0.0.0/0"]
           },
           "versionedExpr": "FIREWALL"
         },
@@ -635,7 +605,7 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
                 "ipProtocol": "udp"
               }
             ],
-            "srcIpRanges": ["10.0.0.0/8"]
+            "srcIpRanges": ["0.0.0.0/0"]
           },
           "versionedExpr": "FIREWALL"
         },
@@ -653,7 +623,7 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
                 "ipProtocol": "all"
               }
             ],
-            "srcIpRanges": ["10.0.0.0/8"]
+            "srcIpRanges": ["0.0.0.0/0"]
           },
           "versionedExpr": "FIREWALL"
         },
@@ -677,7 +647,7 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
                 "ipProtocol": "udp"
               }
             ],
-            "destIpRanges": ["10.0.0.0/8"]
+            "destIpRanges": ["0.0.0.0/0"]
           },
           "versionedExpr": "FIREWALL"
         },
@@ -690,7 +660,7 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
         "direction": "EGRESS",
         "match": {
           "config": {
-            "destIpRanges": ["10.0.0.0/8"],
+            "destIpRanges": ["0.0.0.0/0"],
             "layer4Configs": [
               {
                 "ipProtocol": "all"
@@ -808,7 +778,7 @@ class GcpHfTest(parameterized.TestCase):
 
   def testDefaultHeader(self):
     """Test that a header without options is accepted."""
-    self.naming.GetNetAddr.return_value = TEST_IP
+    self.naming.GetNetAddr.return_value = ALL_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_ALLOW_ALL_INTERNAL,
@@ -819,7 +789,7 @@ class GcpHfTest(parameterized.TestCase):
 
   def testOptionMaxHeader(self):
     """Test that a header with a default maximum cost is accepted."""
-    self.naming.GetNetAddr.return_value = TEST_IP
+    self.naming.GetNetAddr.return_value = ALL_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_OPTION_MAX + TERM_ALLOW_ALL_INTERNAL,
@@ -841,7 +811,7 @@ class GcpHfTest(parameterized.TestCase):
 
   def testOptionAFHeader(self):
     """Test that a header with address family is accepted."""
-    self.naming.GetNetAddr.return_value = TEST_IP
+    self.naming.GetNetAddr.return_value = ALL_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_OPTION_AF + TERM_ALLOW_ALL_INTERNAL,
@@ -874,7 +844,7 @@ class GcpHfTest(parameterized.TestCase):
 
   def testOptionMaxAndAF(self):
     """Test a header with default maximum cost & address family is accepted."""
-    self.naming.GetNetAddr.return_value = TEST_IP
+    self.naming.GetNetAddr.return_value = ALL_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_OPTION_MAX_AND_AF + TERM_ALLOW_ALL_INTERNAL,
@@ -937,23 +907,6 @@ class GcpHfTest(parameterized.TestCase):
     with self.assertRaises(gcp.TermError):
       gcp_hf.HierarchicalFirewall(
           policy.ParsePolicy(HEADER_NO_OPTIONS + BAD_TERM_PROTO, self.naming),
-          EXP_INFO)
-
-  def testRaisesTermErrorOnIngressTermMissingSourceIP(self):
-    """Test that an ingress term without a source IP raises an error."""
-    self.naming.GetServiceByProto.side_effect = [['53']]
-    with self.assertRaises(gcp.TermError):
-      gcp_hf.HierarchicalFirewall(
-          policy.ParsePolicy(HEADER_NO_OPTIONS + BAD_TERM_NO_SOURCE_IP,
-                             self.naming),
-          EXP_INFO)
-
-  def testRaisesTermErrorOnEgressTermMissingDestIP(self):
-    """Test that an egress term without a destination IP raises an error."""
-    with self.assertRaises(gcp.TermError):
-      gcp_hf.HierarchicalFirewall(
-          policy.ParsePolicy(HEADER_OPTION_EGRESS + BAD_TERM_NO_DEST_IP,
-                             self.naming),
           EXP_INFO)
 
   def testRaisesTermErrorOnTermWithSourcePort(self):
@@ -1020,7 +973,7 @@ class GcpHfTest(parameterized.TestCase):
 
   def testPriority(self):
     """Test that priority is set based on terms' ordering."""
-    self.naming.GetNetAddr.return_value = TEST_IP
+    self.naming.GetNetAddr.return_value = ALL_IPS
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
 
     acl = gcp_hf.HierarchicalFirewall(
@@ -1066,7 +1019,7 @@ class GcpHfTest(parameterized.TestCase):
   def testMultiplePolicies(self):
     """Tests that both ingress and egress rules are included in one policy."""
     self.maxDiff = None
-    self.naming.GetNetAddr.return_value = TEST_IP
+    self.naming.GetNetAddr.return_value = ALL_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_ALLOW_ALL_INTERNAL +
@@ -1091,7 +1044,7 @@ class GcpHfTest(parameterized.TestCase):
 
   def testTermLongComment(self):
     """Test that a term's long comment gets truncated and prefixed with term name."""
-    self.naming.GetNetAddr.return_value = TEST_IP
+    self.naming.GetNetAddr.return_value = ALL_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_LONG_COMMENT,

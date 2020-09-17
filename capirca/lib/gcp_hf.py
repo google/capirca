@@ -61,13 +61,6 @@ class Term(gcp.Term):
         if protocol not in self._PROTO_NAMES:
           raise gcp.TermError('Protocol %s is not supported' % protocol)
 
-    if self.term.direction == 'INGRESS':
-      if not self.term.source_address:
-        raise gcp.TermError('Ingress rule missing source address')
-    elif self.term.direction == 'EGRESS':
-      if not self.term.destination_address:
-        raise gcp.TermError('Egress rule missing destination address')
-
     for proj, vpc in self.term.target_resources:
       if not gcp.IsProjectIDValid(proj):
         raise gcp.TermError(
@@ -122,8 +115,15 @@ class Term(gcp.Term):
                                                   self._MAX_TERM_COMMENT_LENGTH)
 
     ip_version = self.AF_MAP[self.address_family]
+    if ip_version == 4:
+      any_ip = [nacaddr.IP('0.0.0.0/0')]
+    else:
+      any_ip = [nacaddr.IPv6('::/0')]
+
     if self.term.direction == 'EGRESS':
       daddrs = self.term.GetAddressOfVersion('destination_address', ip_version)
+      if not daddrs:
+        daddrs = any_ip
       term_dict['match'] = {
           'config': {
               'destIpRanges': [daddr.with_prefixlen for daddr in daddrs]
@@ -131,6 +131,8 @@ class Term(gcp.Term):
       }
     else:
       saddrs = self.term.GetAddressOfVersion('source_address', ip_version)
+      if not saddrs:
+        saddrs = any_ip
       term_dict['match'] = {
           'config': {
               'srcIpRanges': [saddr.with_prefixlen for saddr in saddrs]
