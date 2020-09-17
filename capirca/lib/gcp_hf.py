@@ -8,6 +8,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import re
+
 from typing import Dict, Text, Any
 
 from capirca.lib import gcp
@@ -229,16 +231,26 @@ class HierarchicalFirewall(gcp.GCP):
       filter_options = header.FilterOptions(self._PLATFORM)
 
       # Get the policy name.
+      # TODO(pwilthew): Refactor the following code and ensure all headers in
+      # the same policy have the same policy name and use that as "displayName".
       filter_name = header.FilterName(self._PLATFORM)
       filter_options.remove(filter_name)
       if 'displayName' in policy:
-        policy['displayName'] += '_' + filter_name
+        policy['displayName'] += '-' + filter_name
       else:
         policy['displayName'] = filter_name
 
       # displayName cannot be more than 63 characters long.
       policy['displayName'] = gcp.TruncateString(policy['displayName'], 63)
       is_policy_modified = True
+
+      if not bool(re.match('^[a-z]([-a-z0-9]*[a-z0-9])?$',
+                           policy['displayName'])):
+        raise gcp.HeaderError(
+            'Invalid string for displayName, "%s"; the first character must be '
+            'a lowercase letter, and all following characters must be a dash, '
+            'lowercase letter, or digit, except the last character, which '
+            'cannot be a dash.' % (policy['displayName']))
 
       # Get term direction if set.
       direction = 'INGRESS'

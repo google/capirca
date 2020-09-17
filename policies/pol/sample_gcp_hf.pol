@@ -1,6 +1,6 @@
 header {
   comment:: "This is sample policy for GCP HF"
-  target:: gcp_hf testhf_ingress INGRESS inet 200
+  target:: gcp_hf testhf-ingress INGRESS inet 200
 }
 
 term folder-ssh{
@@ -22,7 +22,7 @@ term folder-rdp {
 
 header {
   comment:: "This is sample policy for GCP HF"
-  target:: gcp_hf testhf_egress EGRESS inet 200
+  target:: gcp_hf testhf-egress EGRESS inet 200
 }
 
 term folder-smtp{

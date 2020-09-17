@@ -74,6 +74,27 @@ header {
 }
 """
 
+BAD_HEADER_INVALID_DISPLAYNAME_1 = """
+header {
+  comment:: "Using a display name with an upper case letter."
+  target:: gcp_hf Displayname
+}
+"""
+
+BAD_HEADER_INVALID_DISPLAYNAME_2 = """
+header {
+  comment:: "Using a display name with an underscore character."
+  target:: gcp_hf display_name
+}
+"""
+
+BAD_HEADER_INVALID_DISPLAYNAME_3 = """
+header {
+  comment:: "Using a display name that ends in a dash."
+  target:: gcp_hf displayname-
+}
+"""
+
 BAD_HEADER_UNKNOWN_OPTION = """
 header {
   comment:: "The general policy comment."
@@ -585,7 +606,7 @@ EXPECTED_DENY_INGRESS_ON_TARGET = """
 EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
 [
   {
-    "displayName": "displayname_displayname",
+    "displayName": "displayname-displayname",
     "type": "FIREWALL",
     "rules": [
       {
@@ -876,6 +897,33 @@ class GcpHfTest(parameterized.TestCase):
     with self.assertRaises(gcp.HeaderError):
       gcp_hf.HierarchicalFirewall(
           policy.ParsePolicy(BAD_HEADER_INVALID_MAX_COST
+                             + TERM_ALLOW_ALL_INTERNAL,
+                             self.naming),
+          EXP_INFO)
+
+  def testRaisesHeaderErrorOnIncorrectDisplayName1(self):
+    """Test that an invalid displayName raises a HeaderError."""
+    with self.assertRaises(gcp.HeaderError):
+      gcp_hf.HierarchicalFirewall(
+          policy.ParsePolicy(BAD_HEADER_INVALID_DISPLAYNAME_1
+                             + TERM_ALLOW_ALL_INTERNAL,
+                             self.naming),
+          EXP_INFO)
+
+  def testRaisesHeaderErrorOnIncorrectDisplayName2(self):
+    """Test that an invalid displayName raises a HeaderError."""
+    with self.assertRaises(gcp.HeaderError):
+      gcp_hf.HierarchicalFirewall(
+          policy.ParsePolicy(BAD_HEADER_INVALID_DISPLAYNAME_2
+                             + TERM_ALLOW_ALL_INTERNAL,
+                             self.naming),
+          EXP_INFO)
+
+  def testRaisesHeaderErrorOnIncorrectDisplayName3(self):
+    """Test that an invalid displayName raises a HeaderError."""
+    with self.assertRaises(gcp.HeaderError):
+      gcp_hf.HierarchicalFirewall(
+          policy.ParsePolicy(BAD_HEADER_INVALID_DISPLAYNAME_3
                              + TERM_ALLOW_ALL_INTERNAL,
                              self.naming),
           EXP_INFO)
