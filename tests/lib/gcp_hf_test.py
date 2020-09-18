@@ -39,6 +39,13 @@ header {
 }
 """
 
+HEADER_OPTION_EGRESS_2 = """
+header {
+  comment:: "The general policy comment."
+  target:: gcp_hf displayname2 EGRESS
+}
+"""
+
 HEADER_OPTION_AF = """
 header {
   comment:: "The general policy comment."
@@ -606,7 +613,7 @@ EXPECTED_DENY_INGRESS_ON_TARGET = """
 EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
 [
   {
-    "displayName": "displayname-displayname",
+    "displayName": "displayname",
     "type": "FIREWALL",
     "rules": [
       {
@@ -995,6 +1002,15 @@ class GcpHfTest(parameterized.TestCase):
     with self.assertRaises(gcp.TermError):
       gcp_hf.HierarchicalFirewall(
           policy.ParsePolicy(HEADER_NO_OPTIONS + BAD_TERM_NON_VALID_VPC_NAME,
+                             self.naming),
+          EXP_INFO)
+
+  def testRaisesDifferentPolicyNameErrorWhenDifferentPolicyNames(self):
+    """Test that different policy names raises DifferentPolicyNameError."""
+    with self.assertRaises(gcp_hf.DifferentPolicyNameError):
+      gcp_hf.HierarchicalFirewall(
+          policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_DENY_INGRESS
+                             + HEADER_OPTION_EGRESS_2 + TERM_DENY_EGRESS,
                              self.naming),
           EXP_INFO)
 

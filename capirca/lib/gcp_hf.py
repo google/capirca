@@ -20,6 +20,10 @@ class ExceededCostError(gcp.Error):
   """Raised when the total cost of a policy is above the maximum."""
 
 
+class DifferentPolicyNameError(gcp.Error):
+  """Raised when headers in the same policy have a different policy name."""
+
+
 class Term(gcp.Term):
   """Used to create an individual term."""
 
@@ -214,6 +218,8 @@ class HierarchicalFirewall(gcp.GCP):
           maximum cost.
       HeaderError: Raised when the header cannot be parsed or a header option is
           invalid.
+      DifferentPolicyNameError: Raised when a header policy name differs from
+          other in the same policy.
     """
     self.policies = []
     policy = {
@@ -229,28 +235,27 @@ class HierarchicalFirewall(gcp.GCP):
         continue
 
       filter_options = header.FilterOptions(self._PLATFORM)
-
-      # Get the policy name.
-      # TODO(pwilthew): Refactor the following code and ensure all headers in
-      # the same policy have the same policy name and use that as "displayName".
       filter_name = header.FilterName(self._PLATFORM)
       filter_options.remove(filter_name)
-      if 'displayName' in policy:
-        policy['displayName'] += '-' + filter_name
-      else:
-        policy['displayName'] = filter_name
 
-      # displayName cannot be more than 63 characters long.
-      policy['displayName'] = gcp.TruncateString(policy['displayName'], 63)
-      is_policy_modified = True
-
-      if not bool(re.match('^[a-z]([-a-z0-9]*[a-z0-9])?$',
-                           policy['displayName'])):
+      # Truncate policy name and validate it to meet displayName requirements.
+      policy_name = gcp.TruncateString(filter_name, 63)
+      if not bool(re.match('^[a-z]([-a-z0-9]*[a-z0-9])?$', policy_name)):
         raise gcp.HeaderError(
             'Invalid string for displayName, "%s"; the first character must be '
             'a lowercase letter, and all following characters must be a dash, '
             'lowercase letter, or digit, except the last character, which '
-            'cannot be a dash.' % (policy['displayName']))
+            'cannot be a dash.' % (policy_name))
+
+      if 'displayName' in policy and policy['displayName'] != policy_name:
+        raise DifferentPolicyNameError(
+            'policy names that are from the same policy are expected to be '
+            'equal, but %s is different to %s' %
+            (policy['displayName'], policy_name))
+
+      policy['displayName'] = policy_name
+
+      is_policy_modified = True
 
       # Get term direction if set.
       direction = 'INGRESS'
