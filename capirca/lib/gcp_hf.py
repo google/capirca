@@ -235,25 +235,6 @@ class HierarchicalFirewall(gcp.GCP):
         continue
 
       filter_options = header.FilterOptions(self._PLATFORM)
-      filter_name = header.FilterName(self._PLATFORM)
-      filter_options.remove(filter_name)
-
-      # Truncate policy name and validate it to meet displayName requirements.
-      policy_name = gcp.TruncateString(filter_name, 63)
-      if not bool(re.match('^[a-z]([-a-z0-9]*[a-z0-9])?$', policy_name)):
-        raise gcp.HeaderError(
-            'Invalid string for displayName, "%s"; the first character must be '
-            'a lowercase letter, and all following characters must be a dash, '
-            'lowercase letter, or digit, except the last character, which '
-            'cannot be a dash.' % (policy_name))
-
-      if 'displayName' in policy and policy['displayName'] != policy_name:
-        raise DifferentPolicyNameError(
-            'policy names that are from the same policy are expected to be '
-            'equal, but %s is different to %s' %
-            (policy['displayName'], policy_name))
-
-      policy['displayName'] = policy_name
 
       is_policy_modified = True
 
@@ -285,11 +266,34 @@ class HierarchicalFirewall(gcp.GCP):
         raise gcp.HeaderError(
             'Default maximum cost cannot be higher than 65536')
 
+      # Get policy name and validate it to meet displayName requirements.
+      policy_name = header.FilterName(self._PLATFORM)
+      if not policy_name:
+        raise gcp.HeaderError(
+            'Policy name was not specified in header')
+      filter_options.remove(policy_name)
+      if len(policy_name) > 63:
+        raise gcp.HeaderError(
+            'Policy name "%s" is too long; the maximum number of characters '
+            'allowed is 63' % (policy_name))
+      if not bool(re.match('^[a-z]([-a-z0-9]*[a-z0-9])?$', policy_name)):
+        raise gcp.HeaderError(
+            'Invalid string for displayName, "%s"; the first character must be '
+            'a lowercase letter, and all following characters must be a dash, '
+            'lowercase letter, or digit, except the last character, which '
+            'cannot be a dash.' % (policy_name))
+      if 'displayName' in policy and policy['displayName'] != policy_name:
+        raise DifferentPolicyNameError(
+            'Policy names that are from the same policy are expected to be '
+            'equal, but %s is different to %s' %
+            (policy['displayName'], policy_name))
+      policy['displayName'] = policy_name
+
       # If there are remaining options, they are unknown/unsupported options.
       if filter_options:
         raise gcp.HeaderError(
             'Unsupported or unknown filter options %s in policy %s ' %
-            (str(filter_options), filter_name))
+            (str(filter_options), policy_name))
 
       for term in terms:
         if term.stateless_reply:

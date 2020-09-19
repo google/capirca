@@ -81,6 +81,20 @@ header {
 }
 """
 
+BAD_HEADER_NO_DISPLAYNAME = """
+header {
+  comment:: "Header without a policy name."
+  target:: gcp_hf
+}
+"""
+
+BAD_HEADER_LONG_DISPLAYNAME = """
+header {
+  comment:: "Using a display name with 64 characters."
+  target:: gcp_hf this-is-a-very-very-long-policy-name-which-is-over-63-characters
+}
+"""
+
 BAD_HEADER_INVALID_DISPLAYNAME_1 = """
 header {
   comment:: "Using a display name with an upper case letter."
@@ -906,6 +920,23 @@ class GcpHfTest(parameterized.TestCase):
           policy.ParsePolicy(BAD_HEADER_INVALID_MAX_COST
                              + TERM_ALLOW_ALL_INTERNAL,
                              self.naming),
+          EXP_INFO)
+
+  def testRaisesHeaderErrorOnLongDisplayName(self):
+    """Test that a long displayName raises a HeaderError."""
+    with self.assertRaises(gcp.HeaderError):
+      gcp_hf.HierarchicalFirewall(
+          policy.ParsePolicy(BAD_HEADER_LONG_DISPLAYNAME
+                             + TERM_ALLOW_ALL_INTERNAL,
+                             self.naming),
+          EXP_INFO)
+
+  def testRaisesHeaderErrorOnHeaderWithoutDisplayName(self):
+    """Test that a header without a policy name raises a HeaderError."""
+    with self.assertRaises(gcp.HeaderError):
+      gcp_hf.HierarchicalFirewall(
+          policy.ParsePolicy(BAD_HEADER_NO_DISPLAYNAME
+                             + TERM_ALLOW_ALL_INTERNAL, self.naming),
           EXP_INFO)
 
   def testRaisesHeaderErrorOnIncorrectDisplayName1(self):
