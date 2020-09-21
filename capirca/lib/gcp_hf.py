@@ -12,6 +12,7 @@ import re
 
 from typing import Dict, Text, Any
 
+from absl import logging
 from capirca.lib import gcp
 from capirca.lib import nacaddr
 
@@ -323,6 +324,10 @@ class HierarchicalFirewall(gcp.GCP):
     # Do not render an empty rules if no policies have been evaluated.
     if not is_policy_modified:
       self.policies = []
+
+    if total_cost > 0:
+      logging.info('Policy %s quota cost: %d',
+                   policy['displayName'], total_cost)
 
 
 def GetCost(dict_term: Dict[Text, Any]):
