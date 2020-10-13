@@ -928,11 +928,14 @@ class Juniper(aclgenerator.ACLGenerator):
       interface_specific = 'not-interface-specific' not in filter_options[1:]
       enable_dsmo = 'enable_dsmo' in filter_options[1:]
       noverbose = 'noverbose' in filter_options[1:]
+      no_repository_tags = 'no-repository-tags' in filter_options[1:]
 
       if not interface_specific:
         filter_options.remove('not-interface-specific')
       if enable_dsmo:
         filter_options.remove('enable_dsmo')
+      if no_repository_tags:
+        filter_options.remove('no-repository-tags')
 
       # default to inet4 filters
       filter_type = 'inet'
@@ -973,13 +976,14 @@ class Juniper(aclgenerator.ACLGenerator):
 
         new_terms.append(self._TERM(term, filter_type, enable_dsmo, noverbose))
 
-      self.juniper_policies.append((header, filter_name, filter_type,
-                                    interface_specific, new_terms))
+      self.juniper_policies.append((header, filter_name,
+                                    filter_type, interface_specific,
+                                    no_repository_tags, new_terms))
 
   def __str__(self):
     config = Config()
 
-    for (header, filter_name, filter_type, interface_specific, terms
+    for (header, filter_name, filter_type, interface_specific, no_repository_tags, terms
         ) in self.juniper_policies:
       # add the header information
       config.Append('firewall {')
@@ -991,9 +995,10 @@ class Juniper(aclgenerator.ACLGenerator):
       # the tags here when we submit the generator, so we have to trick
       # p4 into not knowing these words.  like taking c-a-n-d-y from a
       # baby.
-      for line in aclgenerator.AddRepositoryTags('** '):
-        config.Append(line)
-      config.Append('**')
+      if not no_repository_tags:
+        for line in aclgenerator.AddRepositoryTags('** '):
+          config.Append(line)
+        config.Append('**')
 
       for comment in header.comment:
         for line in comment.split('\n'):
