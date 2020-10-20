@@ -1,0 +1,171 @@
+header {
+  comment:: "this is a sample edge input filter that generates"
+  comment:: "msmpc output formats."
+  target:: msmpc edge-inbound mixed ingress
+}
+
+#include 'includes/untrusted-networks-blocking.inc'
+
+term permit-mail-services {
+  destination-address:: MAIL_SERVERS
+  protocol:: tcp
+  destination-port:: MAIL_SERVICES
+  action:: accept
+}
+
+term permit-web-services {
+  destination-address:: WEB_SERVERS
+  protocol:: tcp
+  destination-port:: WEB_SERVICES
+  action:: accept
+}
+
+term permit-tcp-established {
+  destination-address:: MAIL_SERVERS WEB_SERVERS PUBLIC_NAT
+  protocol:: tcp
+  option:: tcp-established
+  action:: accept
+}
+
+term permit-udp-established {
+  destination-address:: MAIL_SERVERS WEB_SERVERS PUBLIC_NAT
+  protocol:: udp
+  source-port:: HIGH_PORTS
+  action:: accept
+}
+
+term default-deny {
+  action:: deny
+  logging:: true
+}
+
+header {
+  comment:: "this is a sample inet edge input filter that generates"
+  comment:: "msmpc output formats."
+  target:: msmpc edge-inbound-ipv4 inet ingress
+}
+
+#include 'includes/untrusted-networks-blocking.inc'
+
+term permit-mail-services {
+  destination-address:: MAIL_SERVERS
+  protocol:: tcp
+  destination-port:: MAIL_SERVICES
+  action:: accept
+}
+
+term permit-web-services {
+  destination-address:: WEB_SERVERS
+  protocol:: tcp
+  destination-port:: WEB_SERVICES
+  action:: accept
+}
+
+term permit-tcp-established {
+  destination-address:: MAIL_SERVERS WEB_SERVERS PUBLIC_NAT
+  protocol:: tcp
+  option:: tcp-established
+  action:: accept
+}
+
+term permit-udp-established {
+  destination-address:: MAIL_SERVERS WEB_SERVERS PUBLIC_NAT
+  protocol:: udp
+  source-port:: HIGH_PORTS
+  action:: accept
+}
+
+term default-deny {
+  action:: deny
+  logging:: true
+}
+
+header {
+  comment:: "this is a sample inet6 edge input filter that generates"
+  comment:: "msmpc output formats."
+  target:: msmpc edge-inbound-ipv6 inet6 ingress
+}
+
+#include 'includes/untrusted-networks-blocking.inc'
+
+term permit-mail-services {
+  destination-address:: MAIL_SERVERS
+  protocol:: tcp
+  destination-port:: MAIL_SERVICES
+  action:: accept
+}
+
+term permit-web-services {
+  destination-address:: WEB_SERVERS
+  protocol:: tcp
+  destination-port:: WEB_SERVICES
+  action:: accept
+}
+
+term permit-tcp-established {
+  destination-address:: MAIL_SERVERS WEB_SERVERS PUBLIC_NAT
+  protocol:: tcp
+  option:: tcp-established
+  action:: accept
+}
+
+term permit-udp-established {
+  destination-address:: MAIL_SERVERS WEB_SERVERS PUBLIC_NAT
+  protocol:: udp
+  source-port:: HIGH_PORTS
+  action:: accept
+}
+
+term default-deny {
+  action:: deny
+  logging:: true
+}
+
+header {
+  comment:: "this is a sample msmpc output filter"
+  target:: msmpc edge-outbound mixed egress
+}
+
+term deny-to-bad-destinations {
+  destination-address:: RFC1918 BOGON RESERVED
+  action:: deny
+}
+
+term default-accept {
+  action:: accept
+}
+
+header {
+  comment:: "this is a sample msmpc input-output filter"
+  target:: msmpc edge-outbound mixed
+}
+
+term deny-to-bad-destinations {
+  destination-address:: RFC1918 BOGON RESERVED
+  action:: deny
+}
+
+term permit-mail-services {
+  destination-address:: MAIL_SERVERS
+  protocol:: tcp
+  destination-port:: MAIL_SERVICES
+  action:: accept
+}
+
+term permit-web-services {
+  destination-address:: WEB_SERVERS
+  protocol:: tcp
+  destination-port:: WEB_SERVICES
+  action:: accept
+}
+
+term permit-mail-outbound {
+  source-address:: MAIL_SERVERS WEB_SERVERS PUBLIC_NAT
+  protocol:: tcp udp
+  action:: accept
+}
+
+term default-deny {
+  action:: deny
+  logging:: true
+}

@@ -70,8 +70,9 @@ class TestAclGenDemo(unittest.TestCase):
              'sample_multitarget.acl', 'sample_multitarget.asa',
              'sample_multitarget.bacl', 'sample_multitarget.eacl',
              'sample_multitarget.ipt', 'sample_multitarget.jcl',
-             'sample_multitarget.xacl', 'sample_nsxv.nsx',
-             'sample_packetfilter.pf', 'sample_speedway.ipt', 'sample_srx.srx',
+             'sample_multitarget.msmpc', 'sample_multitarget.xacl',
+             'sample_nsxv.nsx', 'sample_packetfilter.pf',
+             'sample_speedway.ipt', 'sample_srx.srx',
              'sample_paloalto.xml']
     expected = [mock.call(
         os.path.join(self.test_subdirectory, f), mock.ANY) for f in files]
