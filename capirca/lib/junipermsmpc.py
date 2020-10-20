@@ -328,11 +328,11 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
           else:
             timeout = 60
           num_terms = len(app['protocol']) * len(app['icmp-type'])
-          target.append('application-set ' + app['name'] + '-app {')
+          apps_set_list.append('application-set ' + app['name'] + '-app {')
           for i in range(num_terms):
-            target.append('application ' + app['name'] + '-app%d' % (i + 1) +
-                          ';')
-          target.append('}')  # application-set {...}
+            apps_set_list.append('application ' + app['name'] + '-app%d' %
+                                 (i + 1) + ';')
+          apps_set_list.append('}')  # application-set {...}
 
           term_counter = 0
           for i, code in enumerate(app['icmp-type']):
@@ -344,10 +344,10 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
               target.append('protocol %s;' % proto)
               target.append('%s-type %s;' % (proto, str(code)))
               if app['icmp-code']:
-                target.append('%s-code %s' %
+                target.append('%s-code %s;' %
                               (proto, self._Group(app['icmp-code'])))
               if int(timeout):
-                target.append('inactivity-timeout %s' % int(timeout))
+                target.append('inactivity-timeout %s;' % int(timeout))
               target.append('}')  # application {...}
               term_counter += 1
         # generate non-ICMP statements

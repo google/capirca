@@ -486,9 +486,9 @@ class JuniperMSMPCTest(parameterized.TestCase):
   def testCommentShrinking(self):
     long_comment = ' this is a very descriptive comment ' * 10
     expected = (' ' * 32 + '/* this is a very descriptive comment  this\n' +
-                ' ' * 32 + '** is a very descriptive comment  this is a\n' +
-                ' ' * 32 + '** very descriptive comment  this is a very\n' +
-                ' ' * 32 + '** descript */')
+                ' ' * 33 + '** is a very descriptive comment  this is a\n' +
+                ' ' * 33 + '** very descriptive comment  this is a very\n' +
+                ' ' * 33 + '** descript */')
     self.naming.GetNetAddr.return_value = ([
         nacaddr.IPv4('10.0.0.0/8', comment=long_comment)
     ])
@@ -748,8 +748,8 @@ class JuniperMSMPCTest(parameterized.TestCase):
     output = str(msmpc)
     self.assertIn(
         '                    /*\n'
-        '                    ** Owner: foo@google.com\n'
-        '                    */', output, output)
+        '                     ** Owner: foo@google.com\n'
+        '                     */', output, output)
 
   def testOwnerNoVerboseTerm(self):
     msmpc = junipermsmpc.JuniperMSMPC(
