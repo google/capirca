@@ -337,6 +337,7 @@ class Term(object):
     policer: VarType.POLICER
     priority: VarType.PRIORITY
     vpn: VarType.VPN
+    application-id: VarType.APPLICATION_ID
   """
   ICMP_TYPE = {4: {'echo-reply': 0,
                    'unreachable': 3,
@@ -476,6 +477,8 @@ class Term(object):
     self.flattened_saddr = None
     self.flattened_daddr = None
     self.stateless_reply = False
+    # fortigate specific
+    self.application_id = []
 
     # AddObject touches variables which might not have been initialized
     # further up so this has to be at the end.
@@ -783,7 +786,9 @@ class Term(object):
                        (vpn_name, pair_policy))
       else:
         ret_str.append('  vpn: name = %s' % vpn_name)
-
+    if self.application_id:
+      ret_str.append('  application_id: %s' % self.application_id)
+ 
     return '\n'.join(ret_str)
 
   def __repr__(self):
@@ -882,6 +887,8 @@ class Term(object):
     if sorted(self.ether_type) != sorted(other.ether_type):
       return False
     if sorted(self.traffic_type) != sorted(other.traffic_type):
+      return False
+    if sorted(self.application_id) != sorted(other.application_id):
       return False
 
     # vpn
@@ -1115,6 +1122,8 @@ class Term(object):
           self.target_resources.append(x.value)
         elif x.var_type is VarType.TARGET_SERVICE_ACCOUNTS:
           self.target_service_accounts.append(x.value)
+        elif x.var_type is VarType.APPLICATION_ID:
+          self.application_id.append(x.value)
         else:
           raise TermObjectTypeError(
               '%s isn\'t a type I know how to deal with (contains \'%s\')' % (
@@ -1196,6 +1205,8 @@ class Term(object):
         self.target_resources.append(obj.value)
       elif obj.var_type is VarType.TARGET_SERVICE_ACCOUNTS:
         self.target_service_accounts.append(obj.value)
+      elif obj.var_type is VarType.APPLICATION_ID:
+        self.application_id.append(obj.value)
       else:
         raise TermObjectTypeError(
             '%s isn\'t a type I know how to deal with' % (type(obj)))
@@ -1500,6 +1511,7 @@ class VarType(object):
   TARGET_RESOURCES = 59
   TARGET_SERVICE_ACCOUNTS = 60
   ENCAPSULATE = 61
+  APPLICATION_ID = 62
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1729,6 +1741,7 @@ tokens = (
     'TTL',
     'VERBATIM',
     'VPN',
+    'APPLICATION_ID',
 )
 
 literals = r':{},-/'
@@ -1804,6 +1817,7 @@ reserved = {
     'ttl': 'TTL',
     'verbatim': 'VERBATIM',
     'vpn': 'VPN',
+    'application-id': 'APPLICATION_ID',
 }
 
 # disable linting warnings for lexx/yacc code
@@ -1972,6 +1986,7 @@ def p_term_spec(p):
                 | term_spec traffic_type_spec
                 | term_spec verbatim_spec
                 | term_spec vpn_spec
+                | term_spec application_id_spec
                 | """
   if len(p) > 1:
     if type(p[1]) == Term:
@@ -2330,6 +2345,13 @@ def p_pan_application_spec(p):
   p[0] = []
   for apps in p[4]:
     p[0].append(VarType(VarType.PAN_APPLICATION, apps))
+
+
+def p_application_id_spec(p):
+  """ application_id_spec : APPLICATION_ID ':' ':' one_or_more_ints """
+  p[0] = []
+  for apps in p[4]:
+    p[0].append(VarType(VarType.APPLICATION_ID, apps))
 
 
 def p_interface_spec(p):

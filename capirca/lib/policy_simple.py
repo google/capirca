@@ -324,6 +324,10 @@ class Vpn(Field):
   """A vpn field."""
 
 
+class ApplicationID(Field):
+  """A application id field."""
+
+
 destination_address_fields = (DestinationAddress, DestinationExclude,
                               DestinationPrefix)
 
@@ -378,6 +382,7 @@ field_map = {
     'verbatim': Verbatim,
     'vpn': Vpn,
     'encapsulate': Encapsulate,
+    'application-id': ApplicationID,
 }
 
 
