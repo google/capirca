@@ -71,6 +71,10 @@ EXP_INFO = 2
 
 
 class CustomFormatter(string.Formatter):
+  """
+  Checks the custom formatter for fortigate output.
+
+  """
   DEFAULT_VALUES = {
       'src_interface': 'wan1',
       'dest_interface': 'wan2',
@@ -108,6 +112,10 @@ class CustomFormatter(string.Formatter):
 
 
 class FortigateTest(unittest.TestCase):
+  """
+  Fortigate test class.
+
+  """
   def setUp(self):
     self.naming = mock.create_autospec(naming.Naming)
 
@@ -133,6 +141,10 @@ class FortigateTest(unittest.TestCase):
     self.fmt = CustomFormatter()
 
   def testGoodHeader(self):
+    """
+    Tests a good header value.
+
+    """
     term = self.fmt.format(TERM_TEMPLATE)
     acl = fortigate.Fortigate(policy.ParsePolicy(GOOD_HEADER + term,
                                                  self.naming), EXP_INFO)
@@ -147,6 +159,10 @@ class FortigateTest(unittest.TestCase):
     self.naming.GetServiceByProto.assert_has_calls(get_server_by_proto_calls)
 
   def testBadHeader(self):
+    """
+    Tests a bad header value.
+
+    """
     term = self.fmt.format(TERM_TEMPLATE)
     parsed_p = policy.ParsePolicy(BAD_HEADER + term,
                                   self.naming)
@@ -157,6 +173,10 @@ class FortigateTest(unittest.TestCase):
                       EXP_INFO)
 
   def testAction(self):
+    """
+    Tests the action detection.
+
+    """
     accept_term = self.fmt.format(TERM_TEMPLATE, action='accept')
     deny_term = self.fmt.format(TERM_TEMPLATE, action='deny')
     reject_term = self.fmt.format(TERM_TEMPLATE, action='reject')
@@ -189,6 +209,10 @@ class FortigateTest(unittest.TestCase):
         '[%s]' % str(reject_acl))
 
   def testAddresses(self):
+    """
+    Tests an address object.
+
+    """
     diff_addr_term = self.fmt.format(TERM_TEMPLATE,
                                      src_addr='SOME_HOST',
                                      dest_addr='SOME_HOST2')
@@ -201,8 +225,8 @@ class FortigateTest(unittest.TestCase):
                                     remove_fields=('dest_addr',))
     # testing for IPv6
     same_addr6_term = self.fmt.format(TERM_TEMPLATE,
-                                     src_addr='SOME_HOST6',
-                                     dest_addr='SOME_HOST6')
+                                      src_addr='SOME_HOST6',
+                                      dest_addr='SOME_HOST6')
 
     diff_addr_acl = fortigate.Fortigate(
         policy.ParsePolicy(GOOD_HEADER + diff_addr_term,
@@ -242,16 +266,21 @@ class FortigateTest(unittest.TestCase):
     self.assertIn(
         any_dest_sig, str(any_dest_acl), '[%s]' % str(any_dest_acl))
     self.assertTrue(
-        src_sig_v6 in str(same_addr6_acl) and dest_sig_v6 in str(same_addr6_acl),
+        src_sig_v6 in str(same_addr6_acl)
+        and dest_sig_v6 in str(same_addr6_acl),
         '[%s]' % str(same_addr6_acl))
 
   def testServices(self):
+    """
+    Tests services objects.
+
+    """
     dest_only_term = self.fmt.format(TERM_TEMPLATE,
-                                    dest_port='HTTP',
-                                    remove_fields=('src_port',))
+                                     dest_port='HTTP',
+                                     remove_fields=('src_port',))
     diff_port_term = self.fmt.format(TERM_TEMPLATE,
-                                    dest_port='HTTP HTTPS',
-                                    remove_fields=('src_port',))
+                                     dest_port='HTTP HTTPS',
+                                     remove_fields=('src_port',))
     dup_port_term = self.fmt.format(TERM_TEMPLATE,
                                     src_port='HTTP',
                                     dest_port='HTTP')
@@ -305,11 +334,15 @@ class FortigateTest(unittest.TestCase):
     self.assertIn(
         icmp_sig, str(icmp_acl), '[%s]' % str(icmp_acl))
     self.assertIn(
-        ip_sig , str(ip_acl), '[%s]' % str(ip_acl))
+        ip_sig, str(ip_acl), '[%s]' % str(ip_acl))
     self.assertIn(
         custom_port_sig, str(custom_port_acl), '[%s]' % str(custom_port_acl))
 
   def testInterfaces(self):
+    """
+    Tests interfaces.
+
+    """
     no_interfaces_term = self.fmt.format(TERM_TEMPLATE,
                                          remove_fields=('src_interface',
                                                         'dest_interface'))
@@ -322,7 +355,7 @@ class FortigateTest(unittest.TestCase):
                                          remove_fields=('src_interface',))
     both_interfaces_term = self.fmt.format(TERM_TEMPLATE,
                                            src_interface='wan1',
-                                           dest_interface='wan2', )
+                                           dest_interface='wan2',)
 
     no_interfaces_acl = fortigate.Fortigate(
         policy.ParsePolicy(GOOD_HEADER + no_interfaces_term,
@@ -356,10 +389,16 @@ class FortigateTest(unittest.TestCase):
         '[%s]' % str(both_interfaces_acl))
 
   def testExpiration(self):
+    """
+    Tests expiration / schedule object.
+
+    """
     no_expiration_term = self.fmt.format(TERM_TEMPLATE)
     expiration_term = self.fmt.format(TERM_TEMPLATE,
-                                      add_fields={'expiration': '2022-12-31',
-                                                  'comment': '"test expiration"'})
+                                      add_fields={'expiration':
+                                                  '2022-12-31',
+                                                  'comment':
+                                                  '"test expiration"'})
 
     no_expiration_acl = fortigate.Fortigate(
         policy.ParsePolicy(GOOD_HEADER + no_expiration_term,
@@ -371,22 +410,27 @@ class FortigateTest(unittest.TestCase):
     no_expiration_sig = 'set schedule always'
     expiration_sig = 'set schedule 2022/12/31_00:00'
     expiration_config_sig = ('config firewall schedule onetime\n' +
-                      _SP + 'edit 2022/12/31_00:00\n' +
-                      _SP*2 + 'set end 00:00 2022/12/31\n' +
-                      _SP + 'next\n' +
-                      'end\n')
+                             _SP + 'edit 2022/12/31_00:00\n' +
+                             _SP*2 + 'set end 00:00 2022/12/31\n' +
+                             _SP + 'next\n' +
+                             'end\n')
 
     self.assertIn(
         no_expiration_sig, str(no_expiration_acl),
         '[%s]' % str(no_expiration_acl))
     self.assertTrue(
-        expiration_config_sig in str(expiration_acl) and expiration_sig in str(expiration_acl),
+        expiration_config_sig in str(expiration_acl)
+        and expiration_sig in str(expiration_acl),
         '[%s]' % str(expiration_acl))
 
   def testApplication_ID(self):
+    """
+    Tests an application ID being used.
+
+    """
     application_term = self.fmt.format(TERM_TEMPLATE,
-                                      add_fields={'application-id': '15816'},
-                                      remove_fields=('src_addr', 'src_port'))
+                                       add_fields={'application-id': '15816'},
+                                       remove_fields=('src_addr', 'src_port'))
 
     application_acl = fortigate.Fortigate(
         policy.ParsePolicy(GOOD_HEADER_1 + application_term,
@@ -399,6 +443,10 @@ class FortigateTest(unittest.TestCase):
         '[%s]' % str(application_acl))
 
   def testLogging(self):
+    """
+    Tests logger input.
+
+    """
     log_term = self.fmt.format(TERM_TEMPLATE,
                                logging='true')
     no_log_term = self.fmt.format(TERM_TEMPLATE,
@@ -419,6 +467,10 @@ class FortigateTest(unittest.TestCase):
         log_sig, str(no_log_term), '[%s]' % str(no_log_acl))
 
   def testDuplicateTermError(self):
+    """
+    Tests for duplicate term detection.
+
+    """
     term = self.fmt.format(TERM_TEMPLATE, logging='true')
     duplicate_terms = term + term
     parsed_p = policy.ParsePolicy(GOOD_HEADER + duplicate_terms,
@@ -430,6 +482,10 @@ class FortigateTest(unittest.TestCase):
                       EXP_INFO)
 
   def testPortMap(self):
+    """
+    Tests port map object.
+
+    """
     port_map = fortigate.FortigatePortMap()
     self.assertEqual('SSH', port_map.get_protocol('tcp', 22))
     self.assertRaises(fortigate.FortiGatePortDoesNotExistError,
