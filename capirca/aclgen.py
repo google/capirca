@@ -40,6 +40,7 @@ from capirca.lib import ciscoxr
 from capirca.lib import cloudarmor
 from capirca.lib import gce
 from capirca.lib import gcp_hf
+from capirca.lib import fortigate
 from capirca.lib import ipset
 from capirca.lib import iptables
 from capirca.lib import juniper
@@ -199,6 +200,7 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
   win_afw = False
   xacl = False
   paloalto = False
+  fcl = False
 
   try:
     with open(input_file) as f:
@@ -268,6 +270,8 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
     paloalto = copy.deepcopy(pol)
   if 'cloudarmor' in platforms:
     gca = copy.deepcopy(pol)
+  if 'fortigate' in platforms:
+    fcl = copy.deepcopy(pol)
 
   if not output_directory.endswith('/'):
     output_directory += '/'
@@ -366,11 +370,17 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
       acl_obj = cloudarmor.CloudArmor(gca, exp_info)
       RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
                 input_file, write_files)
+
+    if fcl:
+      acl_obj = fortigate.Fortigate(fcl, exp_info)
+      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
+                input_file, write_files)
+
   # TODO(robankeny) add additional errors.
   except (juniper.Error, junipermsmpc.Error, junipersrx.Error, cisco.Error,
           ipset.Error, iptables.Error, speedway.Error, pcap.Error,
           aclgenerator.Error, aruba.Error, nftables.Error, gce.Error,
-          cloudarmor.Error) as e:
+          cloudarmor.Error, fortigate.Error) as e:
     raise ACLGeneratorError(
         'Error generating target ACL for %s:\n%s' % (input_file, e))
 
