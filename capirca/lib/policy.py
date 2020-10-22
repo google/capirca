@@ -788,7 +788,7 @@ class Term(object):
         ret_str.append('  vpn: name = %s' % vpn_name)
     if self.application_id:
       ret_str.append('  application_id: %s' % self.application_id)
- 
+
     return '\n'.join(ret_str)
 
   def __repr__(self):
