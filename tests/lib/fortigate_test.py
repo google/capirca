@@ -32,14 +32,14 @@ import mock
 
 GOOD_HEADER = """
 header {
-  comment:: "this is a test acl"  
+  comment:: "this is a test acl"
   target:: fortigate from-id 2
 }
 """
 
 GOOD_HEADER_1 = """
 header {
-  comment:: "this is a test acl"  
+  comment:: "this is a test acl"
   target:: fortigate ngfw-mode policy-based
 }
 """
