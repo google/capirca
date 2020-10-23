@@ -616,8 +616,8 @@ EXPECTED_DENY_INGRESS_ON_TARGET = """
         },
         "priority": 1,
         "enableLogging": false,
-        "targetResources": ["projects/project1/networks/vpc1",
-                            "projects/project2/networks/vpc2"]
+        "targetResources": ["https://www.googleapis.com/compute/v1/projects/project1/global/networks/vpc1",
+                            "https://www.googleapis.com/compute/v1/projects/project2/global/networks/vpc2"]
       }
     ]
   }

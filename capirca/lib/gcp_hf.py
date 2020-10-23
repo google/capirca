@@ -34,6 +34,8 @@ class Term(gcp.Term):
 
   _PROTO_NAMES = ['tcp', 'udp', 'icmp', 'icmpv6', 'esp', 'ah', 'sctp']
 
+  _TARGET_RESOURCE_FORMAT = 'https://www.googleapis.com/compute/v1/projects/{}/global/networks/{}'
+
   def __init__(self, term, address_family='inet'):
     super(Term, self).__init__(term)
     self.address_family = address_family
@@ -109,7 +111,7 @@ class Term(gcp.Term):
 
     target_resources = []
     for proj, vpc in self.term.target_resources:
-      target_resources.append('projects/{}/networks/{}'.format(proj, vpc))
+      target_resources.append(self._TARGET_RESOURCE_FORMAT.format(proj, vpc))
 
     if target_resources:  # Only set when non-empty.
       term_dict['targetResources'] = target_resources
