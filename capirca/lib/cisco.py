@@ -127,7 +127,7 @@ class TermStandard(object):
       for next_verbatim in self.term.verbatim:
         if next_verbatim[0] == self.platform:
           ret_str.append(str(next_verbatim[1]))
-        return '\n'.join(ret_str)
+      return '\n'.join(ret_str)
 
     v4_addresses = [x for x in self.term.address if
                     not isinstance(x, nacaddr.IPv6)]
@@ -509,7 +509,7 @@ class Term(aclgenerator.Term):
       for next_verbatim in self.term.verbatim:
         if next_verbatim[0] == self.platform:
           ret_str.append(str(next_verbatim[1]))
-        return '\n'.join(ret_str)
+      return '\n'.join(ret_str)
 
     # protocol
     if not self.term.protocol:
@@ -828,7 +828,7 @@ class ObjectGroupTerm(Term):
       for next_verbatim in self.term.verbatim:
         if next_verbatim[0] == self.platform:
           ret_str.append(str(next_verbatim[1]))
-        return '\n'.join(ret_str)
+      return '\n'.join(ret_str)
 
     # protocol
     if not self.term.protocol:
