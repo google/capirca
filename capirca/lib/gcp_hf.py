@@ -312,13 +312,17 @@ class HierarchicalFirewall(gcp.GCP):
         dict_term = Term(
             term,
             address_family=address_family).ConvertToDict(priority_index=counter)
-        counter += 1
+
+        if not dict_term:
+          continue
+
         total_cost += GetCost(dict_term)
 
         if total_cost > max_cost:
           raise ExceededCostError('Policy cost (%d) for %s reached the maximum '
                                   '(%d)' % (total_cost, policy['displayName'],
                                             max_cost))
+        counter += 1
         policy['rules'].append(dict_term)
 
     self.policies.append(policy)

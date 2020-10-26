@@ -1063,7 +1063,7 @@ class GcpHfTest(parameterized.TestCase):
                            + BAD_TERM_IP_VERSION_MISMATCH,
                            self.naming),
         EXP_INFO)
-    exp = [{'displayName': 'displayname', 'rules': [{}], 'type': 'FIREWALL'}]
+    exp = [{'displayName': 'displayname', 'rules': [], 'type': 'FIREWALL'}]
     self.assertEqual(exp, json.loads(self._StripAclHeaders(str(acl))))
 
   def testPriority(self):
