@@ -1534,7 +1534,7 @@ class GcpHfTest(parameterized.TestCase):
                    {'ipProtocol': 'icmp'}
                ]
            }
-       }}, 2),
+       }}, 3),
       ('1 ip, 3 protocols, ',
        {'match': {
            'config': {
@@ -1545,7 +1545,7 @@ class GcpHfTest(parameterized.TestCase):
                    {'ipProtocol': 'udp'}
                ]
            }
-       }}, 3),
+       }}, 4),
       ('1 ip, 1 protocol with 1 port',
        {'match': {
            'config': {
@@ -1554,7 +1554,7 @@ class GcpHfTest(parameterized.TestCase):
                    {'ipProtocol': 'tcp', 'ports': ['22']}
                ]
            }
-       }}, 1),
+       }}, 2),
       ('1 ip, 2 protocols with 2 ports each',
        {'match': {
            'config': {
@@ -1564,7 +1564,7 @@ class GcpHfTest(parameterized.TestCase):
                    {'ipProtocol': 'udp', 'ports': ['22']}
                ]
            }
-       }}, 2),
+       }}, 3),
       ('1 ip, 1 protocol with 2 ports',
        {'match': {
            'config': {
@@ -1573,7 +1573,7 @@ class GcpHfTest(parameterized.TestCase):
                    {'ipProtocol': 'tcp', 'ports': ['22', '23']}
                ]
            }
-       }}, 2),
+       }}, 3),
       ('2 ips, 1 protocol with 2 ports',
        {'match': {
            'config': {
@@ -1592,7 +1592,7 @@ class GcpHfTest(parameterized.TestCase):
                    {'ipProtocol': 'udp', 'ports': ['22', '23']}
                ]
            }
-       }}, 8)
+       }}, 6)
   )
   def testGetCost(self, dict_term, expected):
     self.assertEqual(gcp_hf.GetCost(dict_term), expected)

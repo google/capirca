@@ -365,9 +365,8 @@ def GetCost(dict_term: Dict[Text, Any]):
   Quota is charged based on how complex the rules are rather than simply
   limiting the number of rules.
 
-  A firewall rule tuple is the unique combination of IP range, protocol, and
-  port defined as a matching condition in a firewall rule. And the cost of a
-  firewall rule tuple is the total number of elements within it.
+  The cost of a rule is the number of distinct protocol:port combinations plus
+  the number of IP addresses.
 
   Note: The goal of this function is not to determine if a term is valid, but
       to calculate its cost/quota regardless of correctness.
@@ -387,4 +386,4 @@ def GetCost(dict_term: Dict[Text, Any]):
   for l4config in config.get('layer4Configs', []):
     proto_ports += len(l4config.get('ports', [])) or 1
 
-  return (addresses or 1) * (proto_ports or 1)
+  return addresses + proto_ports
