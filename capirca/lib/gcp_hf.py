@@ -8,6 +8,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import copy
 import re
 
 from typing import Dict, Text, Any
@@ -35,6 +36,8 @@ class Term(gcp.Term):
   _PROTO_NAMES = ['tcp', 'udp', 'icmp', 'icmpv6', 'esp', 'ah', 'sctp']
 
   _TARGET_RESOURCE_FORMAT = 'https://www.googleapis.com/compute/v1/projects/{}/global/networks/{}'
+
+  _TERM_ADDRESS_LIMIT = 256
 
   def __init__(self, term, address_family='inet'):
     super(Term, self).__init__(term)
@@ -103,6 +106,8 @@ class Term(gcp.Term):
     if self.skip:
       return {}
 
+    rules = []
+
     term_dict = {
         'action': self.ACTION_MAP.get(self.term.action[0], self.term.action[0]),
         'direction': self.term.direction,
@@ -123,31 +128,6 @@ class Term(gcp.Term):
     term_dict['description'] = gcp.TruncateString(raw_descirption,
                                                   self._MAX_TERM_COMMENT_LENGTH)
 
-    ip_version = self.AF_MAP[self.address_family]
-    if ip_version == 4:
-      any_ip = [nacaddr.IP('0.0.0.0/0')]
-    else:
-      any_ip = [nacaddr.IPv6('::/0')]
-
-    if self.term.direction == 'EGRESS':
-      daddrs = self.term.GetAddressOfVersion('destination_address', ip_version)
-      if not daddrs:
-        daddrs = any_ip
-      term_dict['match'] = {
-          'config': {
-              'destIpRanges': [daddr.with_prefixlen for daddr in daddrs]
-          }
-      }
-    else:
-      saddrs = self.term.GetAddressOfVersion('source_address', ip_version)
-      if not saddrs:
-        saddrs = any_ip
-      term_dict['match'] = {
-          'config': {
-              'srcIpRanges': [saddr.with_prefixlen for saddr in saddrs]
-          }
-      }
-
     protocols_and_ports = []
     if not self.term.protocol:
       # Empty protocol list means any protocol, but any protocol in HF is
@@ -162,14 +142,58 @@ class Term(gcp.Term):
             proto_ports['ports'] = ports
         protocols_and_ports.append(proto_ports)
 
-    term_dict['match']['config']['layer4Configs'] = protocols_and_ports
+    term_dict['match'] = {
+        'config': {
+            'layer4Configs': protocols_and_ports
+        }
+    }
 
     # match needs a field called versionedExpr with value FIREWALL
     # See documentation:
     # https://cloud.google.com/compute/docs/reference/rest/beta/organizationSecurityPolicies/addRule
     term_dict['match']['versionedExpr'] = 'FIREWALL'
 
-    return term_dict
+    ip_version = self.AF_MAP[self.address_family]
+    if ip_version == 4:
+      any_ip = [nacaddr.IP('0.0.0.0/0')]
+    else:
+      any_ip = [nacaddr.IPv6('::/0')]
+
+    if self.term.direction == 'EGRESS':
+      daddrs = self.term.GetAddressOfVersion('destination_address',
+                                             ip_version)
+      if not daddrs:
+        daddrs = any_ip
+
+      destination_address_chunks = [
+          daddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in
+          range(0, len(daddrs), self._TERM_ADDRESS_LIMIT)]
+
+      for daddr_chunk in destination_address_chunks:
+        rule = copy.deepcopy(term_dict)
+        rule['match']['config']['destIpRanges'] = [daddr.with_prefixlen for
+                                                   daddr in daddr_chunk]
+        rule['priority'] = priority_index
+        rules.append(rule)
+        priority_index += 1
+    else:
+      saddrs = self.term.GetAddressOfVersion('source_address', ip_version)
+
+      if not saddrs:
+        saddrs = any_ip
+
+      source_address_chunks = [
+          saddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in
+          range(0, len(saddrs), self._TERM_ADDRESS_LIMIT)]
+      for saddr_chunk in source_address_chunks:
+        rule = copy.deepcopy(term_dict)
+        rule['match']['config']['srcIpRanges'] = [saddr.with_prefixlen for
+                                                  saddr in saddr_chunk]
+        rule['priority'] = priority_index
+        rules.append(rule)
+        priority_index += 1
+
+    return rules
 
   def __str__(self):
     return ''
@@ -309,21 +333,20 @@ class HierarchicalFirewall(gcp.GCP):
             term.source_address = self._ANY
         term.name = self.FixTermLength(term.name)
         term.direction = direction
-        dict_term = Term(
-            term,
-            address_family=address_family).ConvertToDict(priority_index=counter)
 
-        if not dict_term:
+        rules = Term(term, address_family=address_family).ConvertToDict(
+            priority_index=counter)
+        if not rules:
           continue
-
-        total_cost += GetCost(dict_term)
-
-        if total_cost > max_cost:
-          raise ExceededCostError('Policy cost (%d) for %s reached the maximum '
-                                  '(%d)' % (total_cost, policy['displayName'],
-                                            max_cost))
-        counter += 1
-        policy['rules'].append(dict_term)
+        for dict_term in rules:
+          total_cost += GetCost(dict_term)
+          if total_cost > max_cost:
+            raise ExceededCostError('Policy cost (%d) for %s reached the '
+                                    'maximum (%d)' % (
+                                        total_cost, policy['displayName'],
+                                        max_cost))
+          policy['rules'].append(dict_term)
+        counter += len(rules)
 
     self.policies.append(policy)
 
