@@ -522,7 +522,7 @@ class Term(aclgenerator.Term):
     elif self.term.protocol == ['hopopt']:
       protocol = ['hbh']
     elif self.proto_int:
-      protocol = [proto if proto in self.ALLOWED_PROTO_STRINGS
+      protocol = [proto if proto in self.ALLOWED_PROTO_STRINGS or proto.isnumeric()
                   else self.PROTO_MAP.get(proto)
                   for proto in self.term.protocol]
     else:
@@ -835,7 +835,7 @@ class ObjectGroupTerm(Term):
       protocol = ['ip']
 
     else:
-      protocol = [proto if proto in self.ALLOWED_PROTO_STRINGS
+      protocol = [proto if proto in self.ALLOWED_PROTO_STRINGS or proto.isnumeric()
                   else self.PROTO_MAP.get(proto)
                   for proto in self.term.protocol]
 
