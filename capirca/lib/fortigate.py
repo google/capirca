@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Version 1.1.12
+# Version 1.1.13
 
 """Fortigate generator."""
 
@@ -71,58 +71,62 @@ class FortiGateScheduleDateError(Error):
 class FortigatePortMap(object):
   """Map port numbers to service names."""
   _PORTS_TCP = {
-      179: 'BGP',
-      53: 'DNS',
-      7: 'PING',
-      79: 'FINGER',
-      21: 'FTP',
-      70: 'GOPHER',
-      443: 'HTTPS',
-      194: 'IRC',
-      2049: 'NFS',
-      119: 'NNTP',
-      110: 'POP3',
-      1723: 'PPTP',
-      25: 'SMTP',
-      22: 'SSH',
-      517: 'TALK',
-      23: 'TELNET',
-      540: 'UUCP',
-      80: 'HTTP',
-      993: 'IMAPS',
-      3389: 'RDP',
-      3306: 'MYSQL',
-      1433: 'MS-SQL',
-      1812: 'RADIUS',
-      995: 'POP3S',
-      465: 'SMTPS',
-      389: 'LDAP',
-      69: 'TFTP'
+      '179': 'BGP',
+      '53': 'DNS',
+      '7': 'PING',
+      '79': 'FINGER',
+      '21': 'FTP',
+      '70': 'GOPHER',
+      '443': 'HTTPS',
+      '194': 'IRC',
+      '2049': 'NFS',
+      '119': 'NNTP',
+      '110': 'POP3',
+      '1723': 'PPTP',
+      '25': 'SMTP',
+      '22': 'SSH',
+      '517': 'TALK',
+      '23': 'TELNET',
+      '540': 'UUCP',
+      '80': 'HTTP',
+      '993': 'IMAPS',
+      '3389': 'RDP',
+      '3306': 'MYSQL',
+      '1433': 'MS-SQL',
+      '1812': 'RADIUS',
+      '995': 'POP3S',
+      '465': 'SMTPS',
+      '389': 'LDAP',
+      '69': 'TFTP',
+      'all': 'ALL_TCP'
   }
   _PORTS_UDP = {
-      53: 'DNS',
-      7: 'PING',
-      500: 'IKE',
-      2049: 'NFS',
-      123: 'NTP',
-      520: 'RIP',
-      161: 'SNMP',
-      162: 'snmptrap',
-      514: 'SYSLOG',
-      517: 'TALK',
-      69: 'TFTP',
-      37: 'TIMESTAMP',
-      1812: 'RADIUS',
-      67: 'DHCP'
+      '53': 'DNS',
+      '7': 'PING',
+      '500': 'IKE',
+      '2049': 'NFS',
+      '123': 'NTP',
+      '520': 'RIP',
+      '161': 'SNMP',
+      '162': 'snmptrap',
+      '514': 'SYSLOG',
+      '517': 'TALK',
+      '69': 'TFTP',
+      '37': 'TIMESTAMP',
+      '1812': 'RADIUS',
+      '67': 'DHCP',
+      'all': 'ALL_UDP'
   }
   _PORTS_SCTP = {
-      53: 'DNS',
-      7: 'PING',
+      #'53': 'DNS',
+      #'7': 'PING',
+      'all': 'ALL_SCTP'
   }
   _PROTO_MAP = {
       'icmp': 'ALL_ICMP',
-      'gre': 'GRE',
-      'ip': 'ALL',
+      'icmpv6': 'ALL_ICMP6',
+      #'gre': 'GRE',
+      #'ip': 'ALL',
       'tcp': _PORTS_TCP,
       'udp': _PORTS_UDP,
       'sctp': _PORTS_SCTP
@@ -246,6 +250,18 @@ class ObjectsContainer(object):
 
     return addrgrps
 
+  def get_port_range(self, port):
+    port_range = ''
+    if len(port) == 1:
+      port_range = str(port[0])
+    elif len(port) > 1:
+      port_range = str(port[0])
+      if port[0] != port[1]:
+        port_range = str(min(port[0], port[1])) + '-' + \
+                     str(max(port[0], port[1]))
+
+    return port_range
+
   def get_fw_services(self):
     """Returns the collected services."""
     fw_services = []
@@ -349,10 +365,10 @@ class ObjectsContainer(object):
 
     return addrgrp_name
 
-  def get_defined_service(self, protocol, dest_port):
+  def get_defined_service(self, protocol, port):
     """return service if find service in defined map."""
     try:
-      service = FortigatePortMap.get_protocol(protocol, dest_port)
+      service = FortigatePortMap.get_protocol(protocol, port)
       return service
     except FortiGatePortDoesNotExistError:
       pass
@@ -456,22 +472,37 @@ class Term(aclgenerator.Term):
   Returns:
     string (all services separated by spaces).
   """
-    if not protocols:
-      raise FortiGateFindServiceError('protocol not found')
+    #if not protocols:
+    #  raise FortiGateFindServiceError('protocol not found')
 
     ports = set()
-    for destination_port in destination_ports:
-      if source_ports:
-        for source_port in source_ports:
-          ports.add(
-              str(destination_port[0]) + ':' + str(source_port[0]))
-      else:
-        ports.add(destination_port[0])
+    # fortigate does not allow empty destination_ports
+    if not len(destination_ports) and len(source_ports):
+      # source ports only, to set destination ports = 1-65535
+      destination_ports.append((1, 65535))
+
+    if len(destination_ports):
+      for destination_port in destination_ports:
+        dest_port_range = self._obj_container.get_port_range(destination_port)
+        if source_ports:
+          for source_port in source_ports:
+            src_port_range = self._obj_container.get_port_range(source_port)
+            ports.add(dest_port_range + ':' + src_port_range)
+        else:
+          ports.add(dest_port_range)
+
+    if not len(ports):
+      ports.add('all')
+
     ports = sorted(ports)
 
     services = set()
     portranges = {}
     for protocol in protocols:
+      if FortigatePortMap._PROTO_MAP.get(protocol, None) is None:
+        raise FortiGateValueError(
+          'fortigate does not support %r protocol' % protocol)
+
       if protocol == 'icmp' or protocol == 'icmpv6':
         ip_v = 4 if protocol == 'icmp' else 6
         icmp_type_dict = {}
@@ -508,7 +539,12 @@ class Term(aclgenerator.Term):
         for port in ports:
           service = self._obj_container.get_defined_service(protocol, port)
           if service:
-            services.add(service)
+            if service == 'ALL_SCTP':
+              if protocol not in portranges:
+                portranges[protocol] = set()
+              portranges[protocol].add('1-65535')
+            else:
+              services.add(service)
           else:
             if protocol not in portranges:
               portranges[protocol] = set()
