@@ -39,6 +39,10 @@ class Term(gcp.Term):
 
   _TERM_ADDRESS_LIMIT = 256
 
+  _TERM_TARGET_RESOURCES_LIMIT = 256
+
+  _TERM_DESTINATION_PORTS_LIMIT = 256
+
   def __init__(self, term, address_family='inet'):
     super(Term, self).__init__(term)
     self.address_family = address_family
@@ -73,6 +77,12 @@ class Term(gcp.Term):
         if protocol not in self._PROTO_NAMES:
           raise gcp.TermError('Protocol %s is not supported' % protocol)
 
+    if len(self.term.target_resources) > self._TERM_TARGET_RESOURCES_LIMIT:
+      raise gcp.TermError(
+          'Term: %s  target_resources field contains %s resources. It should not contain more than "%s".'
+          % (self.term.name, str(len(
+              self.term.target_resources)), self._TERM_TARGET_RESOURCES_LIMIT))
+
     for proj, vpc in self.term.target_resources:
       if not gcp.IsProjectIDValid(proj):
         raise gcp.TermError(
@@ -89,6 +99,12 @@ class Term(gcp.Term):
     if self.term.option:
       raise gcp.TermError('Hierarchical firewall does not support the '
                           'TCP_ESTABLISHED option.')
+
+    if len(self.term.destination_port) > self._TERM_DESTINATION_PORTS_LIMIT:
+      raise gcp.TermError(
+          'Term: %s destination_port field contains %s ports. It should not contain more than "%s".'
+          % (self.term.name, str(len(
+              self.term.destination_port)), self._TERM_DESTINATION_PORTS_LIMIT))
 
   def ConvertToDict(self, priority_index):
     """Converts term to dict representation of SecurityPolicy.Rule JSON format.
