@@ -713,8 +713,8 @@ class JuniperTest(unittest.TestCase):
     long_comment = ' this is a very descriptive comment ' * 10
     expected = (
         ' ' * 24 + '/* this is a very descriptive comment  this is a\n' +
-        ' ' * 24 + '** very descriptive comment  this is a very\n' +
-        ' ' * 24 + '** descriptive comment  this is a very descript */'
+        ' ' * 25 + '** very descriptive comment  this is a very\n' +
+        ' ' * 25 + '** descriptive comment  this is a very descript */'
     )
     self.naming.GetNetAddr.return_value = (
         [nacaddr.IPv4('10.0.0.0/8', comment=long_comment)])
@@ -1204,8 +1204,8 @@ class JuniperTest(unittest.TestCase):
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.assertIn('            /*\n'
-                  '            ** Owner: foo@google.com\n'
-                  '            */', output, output)
+                  '             ** Owner: foo@google.com\n'
+                  '             */', output, output)
 
   def testAddressExclude(self):
     big = nacaddr.IPv4('0.0.0.0/1')

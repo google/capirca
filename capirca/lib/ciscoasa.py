@@ -364,4 +364,5 @@ class CiscoASA(aclgenerator.ACLGenerator):
         target.append(str(term))
 
       # end for header, filter_name, filter_type...
-      return '\n'.join(target)
+
+    return '\n'.join(target)

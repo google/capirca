@@ -8,6 +8,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import copy
 import re
 
 from typing import Dict, Text, Any
@@ -33,6 +34,14 @@ class Term(gcp.Term):
   _MAX_TERM_COMMENT_LENGTH = 64
 
   _PROTO_NAMES = ['tcp', 'udp', 'icmp', 'icmpv6', 'esp', 'ah', 'sctp']
+
+  _TARGET_RESOURCE_FORMAT = 'https://www.googleapis.com/compute/v1/projects/{}/global/networks/{}'
+
+  _TERM_ADDRESS_LIMIT = 256
+
+  _TERM_TARGET_RESOURCES_LIMIT = 256
+
+  _TERM_DESTINATION_PORTS_LIMIT = 256
 
   def __init__(self, term, address_family='inet'):
     super(Term, self).__init__(term)
@@ -68,6 +77,12 @@ class Term(gcp.Term):
         if protocol not in self._PROTO_NAMES:
           raise gcp.TermError('Protocol %s is not supported' % protocol)
 
+    if len(self.term.target_resources) > self._TERM_TARGET_RESOURCES_LIMIT:
+      raise gcp.TermError(
+          'Term: %s  target_resources field contains %s resources. It should not contain more than "%s".'
+          % (self.term.name, str(len(
+              self.term.target_resources)), self._TERM_TARGET_RESOURCES_LIMIT))
+
     for proj, vpc in self.term.target_resources:
       if not gcp.IsProjectIDValid(proj):
         raise gcp.TermError(
@@ -85,6 +100,12 @@ class Term(gcp.Term):
       raise gcp.TermError('Hierarchical firewall does not support the '
                           'TCP_ESTABLISHED option.')
 
+    if len(self.term.destination_port) > self._TERM_DESTINATION_PORTS_LIMIT:
+      raise gcp.TermError(
+          'Term: %s destination_port field contains %s ports. It should not contain more than "%s".'
+          % (self.term.name, str(len(
+              self.term.destination_port)), self._TERM_DESTINATION_PORTS_LIMIT))
+
   def ConvertToDict(self, priority_index):
     """Converts term to dict representation of SecurityPolicy.Rule JSON format.
 
@@ -101,6 +122,8 @@ class Term(gcp.Term):
     if self.skip:
       return {}
 
+    rules = []
+
     term_dict = {
         'action': self.ACTION_MAP.get(self.term.action[0], self.term.action[0]),
         'direction': self.term.direction,
@@ -109,7 +132,7 @@ class Term(gcp.Term):
 
     target_resources = []
     for proj, vpc in self.term.target_resources:
-      target_resources.append('projects/{}/networks/{}'.format(proj, vpc))
+      target_resources.append(self._TARGET_RESOURCE_FORMAT.format(proj, vpc))
 
     if target_resources:  # Only set when non-empty.
       term_dict['targetResources'] = target_resources
@@ -120,31 +143,6 @@ class Term(gcp.Term):
     raw_descirption = self.term.name + ': ' + ' '.join(self.term.comment)
     term_dict['description'] = gcp.TruncateString(raw_descirption,
                                                   self._MAX_TERM_COMMENT_LENGTH)
-
-    ip_version = self.AF_MAP[self.address_family]
-    if ip_version == 4:
-      any_ip = [nacaddr.IP('0.0.0.0/0')]
-    else:
-      any_ip = [nacaddr.IPv6('::/0')]
-
-    if self.term.direction == 'EGRESS':
-      daddrs = self.term.GetAddressOfVersion('destination_address', ip_version)
-      if not daddrs:
-        daddrs = any_ip
-      term_dict['match'] = {
-          'config': {
-              'destIpRanges': [daddr.with_prefixlen for daddr in daddrs]
-          }
-      }
-    else:
-      saddrs = self.term.GetAddressOfVersion('source_address', ip_version)
-      if not saddrs:
-        saddrs = any_ip
-      term_dict['match'] = {
-          'config': {
-              'srcIpRanges': [saddr.with_prefixlen for saddr in saddrs]
-          }
-      }
 
     protocols_and_ports = []
     if not self.term.protocol:
@@ -160,14 +158,58 @@ class Term(gcp.Term):
             proto_ports['ports'] = ports
         protocols_and_ports.append(proto_ports)
 
-    term_dict['match']['config']['layer4Configs'] = protocols_and_ports
+    term_dict['match'] = {
+        'config': {
+            'layer4Configs': protocols_and_ports
+        }
+    }
 
     # match needs a field called versionedExpr with value FIREWALL
     # See documentation:
     # https://cloud.google.com/compute/docs/reference/rest/beta/organizationSecurityPolicies/addRule
     term_dict['match']['versionedExpr'] = 'FIREWALL'
 
-    return term_dict
+    ip_version = self.AF_MAP[self.address_family]
+    if ip_version == 4:
+      any_ip = [nacaddr.IP('0.0.0.0/0')]
+    else:
+      any_ip = [nacaddr.IPv6('::/0')]
+
+    if self.term.direction == 'EGRESS':
+      daddrs = self.term.GetAddressOfVersion('destination_address',
+                                             ip_version)
+      if not daddrs:
+        daddrs = any_ip
+
+      destination_address_chunks = [
+          daddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in
+          range(0, len(daddrs), self._TERM_ADDRESS_LIMIT)]
+
+      for daddr_chunk in destination_address_chunks:
+        rule = copy.deepcopy(term_dict)
+        rule['match']['config']['destIpRanges'] = [daddr.with_prefixlen for
+                                                   daddr in daddr_chunk]
+        rule['priority'] = priority_index
+        rules.append(rule)
+        priority_index += 1
+    else:
+      saddrs = self.term.GetAddressOfVersion('source_address', ip_version)
+
+      if not saddrs:
+        saddrs = any_ip
+
+      source_address_chunks = [
+          saddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in
+          range(0, len(saddrs), self._TERM_ADDRESS_LIMIT)]
+      for saddr_chunk in source_address_chunks:
+        rule = copy.deepcopy(term_dict)
+        rule['match']['config']['srcIpRanges'] = [saddr.with_prefixlen for
+                                                  saddr in saddr_chunk]
+        rule['priority'] = priority_index
+        rules.append(rule)
+        priority_index += 1
+
+    return rules
 
   def __str__(self):
     return ''
@@ -307,17 +349,20 @@ class HierarchicalFirewall(gcp.GCP):
             term.source_address = self._ANY
         term.name = self.FixTermLength(term.name)
         term.direction = direction
-        dict_term = Term(
-            term,
-            address_family=address_family).ConvertToDict(priority_index=counter)
-        counter += 1
-        total_cost += GetCost(dict_term)
 
-        if total_cost > max_cost:
-          raise ExceededCostError('Policy cost (%d) for %s reached the maximum '
-                                  '(%d)' % (total_cost, policy['displayName'],
-                                            max_cost))
-        policy['rules'].append(dict_term)
+        rules = Term(term, address_family=address_family).ConvertToDict(
+            priority_index=counter)
+        if not rules:
+          continue
+        for dict_term in rules:
+          total_cost += GetCost(dict_term)
+          if total_cost > max_cost:
+            raise ExceededCostError('Policy cost (%d) for %s reached the '
+                                    'maximum (%d)' % (
+                                        total_cost, policy['displayName'],
+                                        max_cost))
+          policy['rules'].append(dict_term)
+        counter += len(rules)
 
     self.policies.append(policy)
 
@@ -336,9 +381,8 @@ def GetCost(dict_term: Dict[Text, Any]):
   Quota is charged based on how complex the rules are rather than simply
   limiting the number of rules.
 
-  A firewall rule tuple is the unique combination of IP range, protocol, and
-  port defined as a matching condition in a firewall rule. And the cost of a
-  firewall rule tuple is the total number of elements within it.
+  The cost of a rule is the number of distinct protocol:port combinations plus
+  the number of IP addresses.
 
   Note: The goal of this function is not to determine if a term is valid, but
       to calculate its cost/quota regardless of correctness.
@@ -358,4 +402,4 @@ def GetCost(dict_term: Dict[Text, Any]):
   for l4config in config.get('layer4Configs', []):
     proto_ports += len(l4config.get('ports', [])) or 1
 
-  return (addresses or 1) * (proto_ports or 1)
+  return addresses + proto_ports
