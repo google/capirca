@@ -355,7 +355,7 @@ class HierarchicalFirewall(gcp.GCP):
         if not rules:
           continue
         for dict_term in rules:
-          total_cost += GetCost(dict_term)
+          total_cost += GetRuleTupleCount(dict_term)
           if total_cost > max_cost:
             raise ExceededCostError('Policy cost (%d) for %s reached the '
                                     'maximum (%d)' % (
@@ -375,31 +375,34 @@ class HierarchicalFirewall(gcp.GCP):
                    policy['displayName'], total_cost)
 
 
-def GetCost(dict_term: Dict[Text, Any]):
-  """Calculate the cost of a term in its dictionary form.
+def GetRuleTupleCount(dict_term: Dict[Text, Any]):
+  """Calculate the tuple count of a rule in its dictionary form.
 
   Quota is charged based on how complex the rules are rather than simply
   limiting the number of rules.
 
   The cost of a rule is the number of distinct protocol:port combinations plus
-  the number of IP addresses.
+  the number of IP addresses plus the number of targets.
 
-  Note: The goal of this function is not to determine if a term is valid, but
-      to calculate its cost/quota regardless of correctness.
+  Note: The goal of this function is not to determine if a rule is valid, but
+      to calculate its tuple count regardless of correctness.
 
   Args:
     dict_term: A dict object.
 
   Returns:
-    int: The cost of the term.
+    int: The tuple count of the rule.
   """
   config = dict_term.get('match', {}).get('config', {})
-
-  addresses = (len(config.get('destIpRanges', []))
-               or len(config.get('srcIpRanges', [])))
-  proto_ports = 0
+  addresses_count = len(
+      config.get('destIpRanges', []) + config.get('srcIpRanges', []))
+  layer4_count = 0
+  targets_count = len(dict_term.get('targetResources', []))
 
   for l4config in config.get('layer4Configs', []):
-    proto_ports += len(l4config.get('ports', [])) or 1
+    for _ in l4config.get('ports', []):
+      layer4_count += 1
+    if l4config.get('ipProtocol'):
+      layer4_count += +1
 
-  return addresses + proto_ports
+  return addresses_count + layer4_count + targets_count

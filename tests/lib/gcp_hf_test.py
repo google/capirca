@@ -2451,7 +2451,7 @@ class GcpHfTest(parameterized.TestCase):
                    {'ipProtocol': 'tcp', 'ports': ['22']}
                ]
            }
-       }}, 2),
+       }}, 3),
       ('1 ip, 2 protocols with 2 ports each',
        {'match': {
            'config': {
@@ -2461,7 +2461,7 @@ class GcpHfTest(parameterized.TestCase):
                    {'ipProtocol': 'udp', 'ports': ['22']}
                ]
            }
-       }}, 3),
+       }}, 5),
       ('1 ip, 1 protocol with 2 ports',
        {'match': {
            'config': {
@@ -2470,7 +2470,7 @@ class GcpHfTest(parameterized.TestCase):
                    {'ipProtocol': 'tcp', 'ports': ['22', '23']}
                ]
            }
-       }}, 3),
+       }}, 4),
       ('2 ips, 1 protocol with 2 ports',
        {'match': {
            'config': {
@@ -2479,7 +2479,7 @@ class GcpHfTest(parameterized.TestCase):
                    {'ipProtocol': 'tcp', 'ports': ['22', '23']}
                ]
            }
-       }}, 4),
+       }}, 5),
       ('2 ips, 2 protocols with 2 ports each',
        {'match': {
            'config': {
@@ -2489,10 +2489,22 @@ class GcpHfTest(parameterized.TestCase):
                    {'ipProtocol': 'udp', 'ports': ['22', '23']}
                ]
            }
-       }}, 6)
+       }}, 8),
+      ('1 ip, 2 protocols, 2 targets',
+       {'match': {
+           'config': {
+               'destIpRanges': ['0.0.0.0/0'],
+               'layer4Configs': [
+                   {'ipProtocol': 'tcp'},
+                   {'ipProtocol': 'icmp'}
+               ]
+           }
+       },
+        'targetResources': ['target1', 'target2']
+       }, 5),
   )
-  def testGetCost(self, dict_term, expected):
-    self.assertEqual(gcp_hf.GetCost(dict_term), expected)
+  def testGetRuleTupleCount(self, dict_term, expected):
+    self.assertEqual(gcp_hf.GetRuleTupleCount(dict_term), expected)
 
 
 if __name__ == '__main__':
