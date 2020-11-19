@@ -280,6 +280,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
         "protocol",
         "source_address",
         "source_port",
+        "stateless_reply",
         "timeout",
         "pan_application",
         "translated"
@@ -337,6 +338,12 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       term_dup_check = set()
       new_terms = []
       for term in terms:
+        if term.stateless_reply:
+          logging.warning(
+              "WARNING: Term %s in policy %s>%s is a stateless reply "
+              "term and will not be rendered.", term.name, self.from_zone,
+              self.to_zone)
+          continue
         term.name = self.FixTermLength(term.name)
         if term.name in term_dup_check:
           raise PaloAltoFWDuplicateTermError("You have a duplicate term: %s" %
