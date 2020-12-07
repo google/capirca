@@ -511,11 +511,34 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                 term.source_address = ips
               if term.destination_address == ips:
                 term.destination_address = ips
-        for addr in term.source_address:
-          if addr.version in self._AF_MAP[filter_type]:
+
+        # Filter source_address based on filter_type & add to address book
+        if term.source_address:
+          valid_addrs = []
+          for addr in term.source_address:
+            if addr.version in self._AF_MAP[filter_type]:
+              valid_addrs.append(addr)
+          if not valid_addrs:
+            logging.warning(
+                'WARNING: Term %s has 0 valid source IPs, skipping.', term.name)
+            continue
+          term.source_address = valid_addrs
+          for addr in term.source_address:
             self._BuildAddressBook(self.from_zone, addr)
-        for addr in term.destination_address:
-          if addr.version in self._AF_MAP[filter_type]:
+
+        # Filter destination_address based on filter_type & add to address book
+        if term.destination_address:
+          valid_addrs = []
+          for addr in term.destination_address:
+            if addr.version in self._AF_MAP[filter_type]:
+              valid_addrs.append(addr)
+          if not valid_addrs:
+            logging.warning(
+                'WARNING: Term %s has 0 valid destination IPs, skipping.',
+                term.name)
+            continue
+          term.destination_address = valid_addrs
+          for addr in term.destination_address:
             self._BuildAddressBook(self.to_zone, addr)
 
         new_term = Term(term, self.from_zone, self.to_zone, self.expresspath,

@@ -319,6 +319,14 @@ term good_term_20 {
   action:: accept
 }
 """
+GOOD_TERM_21 = """
+term good_term_21 {
+  destination-address:: UDON
+  destination-port:: HTTP
+  protocol:: tcp
+  action:: accept
+}
+"""
 
 GOOD_TERM_21 = """
 term good_term_21 {
@@ -1364,6 +1372,436 @@ class JuniperSRXTest(unittest.TestCase):
     self.assertNotIn('This is a test acl with a comment', str(srx))
     self.assertNotIn('very very very', str(srx))
 
+  def testDropUndefinedAddressbookTermsV4ForV6Render(self):
+    # V4-only term should be dropped when rendering ACL as V6 - b/172933068
+    udon = [nacaddr.IP('10.0.0.2/32', token='UDON')]
+    self.naming.GetServiceByProto.side_effect = [['25', '25']]
+    self.naming.GetNetAddr.side_effect = [udon]
+
+    # GOOD_HEADER_4 specifies V6 rendering
+    pol = policy.ParsePolicy(GOOD_HEADER_4 + GOOD_TERM_21, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    self.assertNotIn('good_term_21', output)
+
+  def testDeleteV4AddressEntriesForV6Render(self):
+    # Confirm V4 address book entries are not generated when rendering as V6
+    udon = [nacaddr.IP('10.0.0.2/32', token='UDON')]
+    self.naming.GetServiceByProto.side_effect = [['25', '25']]
+    self.naming.GetNetAddr.side_effect = [udon]
+
+    # GOOD_HEADER_4 specifies V6 rendering
+    pol = policy.ParsePolicy(GOOD_HEADER_4 + GOOD_TERM_21, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    self.assertNotIn('10.0.0.2/32', output)
+
+  def testDropUndefinedAddressbookTermsV6ForV4Render(self):
+    # V6-only term should be dropped when rendering ACL as V4 - b/172933068
+    udon = [nacaddr.IP('2001:4860:8000::5/128', token='UDON')]
+    self.naming.GetServiceByProto.side_effect = [['25', '25']]
+    self.naming.GetNetAddr.side_effect = [udon]
+
+    # GOOD_HEADER_3 specifies V4 rendering
+    pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_21, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    self.assertNotIn('good_term_21', output)
+
+  def testDeleteV6AddressEntriesForV4Render(self):
+    # Confirm V6 address book entries are not generated when rendering as V4
+    udon = [nacaddr.IP('2001:4860:8000::5/128', token='UDON')]
+    self.naming.GetServiceByProto.side_effect = [['25', '25']]
+    self.naming.GetNetAddr.side_effect = [udon]
+
+    # GOOD_HEADER_3 specifies V4 rendering
+    pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_21, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    self.assertNotIn('2001:4860:8000::5/128', output)
+
+  def testCreateV6AddressEntriesForMixedRender(self):
+    # V6-only 1024+ IPs; MIXED rendering
+    # Confirm that address set names used in policy are also created in
+    # address book
+
+    # TODO(nitb) Move multiple IP networks generation logic to separate method
+    # and reuse in other tests
+    overflow_ips = [
+        nacaddr.IP('2001:4860:8000::5/128'),
+        nacaddr.IP('3051:abd2:5400::9/128'),
+        nacaddr.IP('aee2:37ba:3cc0::3/128'),
+        nacaddr.IP('6f5d:abd2:1403::1/128'),
+        nacaddr.IP('577e:5400:3051::6/128'),
+        nacaddr.IP('af22:32d2:3f00::2/128')
+    ]
+
+    ips = list(
+        nacaddr.IP('2620:0:1000:3103:eca0:2c09:6b32:e000/117').subnets(
+            new_prefix=128))
+    mo_ips = []
+    counter = 0
+    for ip in ips:
+      if counter % 2 == 0:
+        mo_ips.append(nacaddr.IP(ip))
+      counter += 1
+
+    self.naming.GetServiceByProto.side_effect = [['25', '25']]
+    self.naming.GetNetAddr.side_effect = [overflow_ips+mo_ips]
+
+    # GOOD_HEADER = MIXED rendering
+    pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_21, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+
+    # extract address-set-names referenced in policy blocks
+    partial_pruned_acl = output.split('replace: policies')[1].split(
+        'destination-address [ ')[1:]
+
+    # verify that there are exactly 9 terms in the ACL by checking if
+    # partial_pruned_acl contains exactly 9 elements
+    self.assertEqual(len(partial_pruned_acl), 9)
+
+    for text in partial_pruned_acl:
+      address_set_name = text.split(' ];')[0]
+
+      if address_set_name:
+        address_set_count = output.count(address_set_name)
+        # check if each addresssetname referenced in policy occurs more than
+        # once i.e. is defined in the address book
+        self.assertGreater(address_set_count, 1)
+
+  def testCreateV6AddressEntriesForV6Render(self):
+    # V6-only 1024+ IPs; V6 rendering
+    overflow_ips = [
+        nacaddr.IP('2001:4860:8000::5/128'),
+        nacaddr.IP('3051:abd2:5400::9/128'),
+        nacaddr.IP('aee2:37ba:3cc0::3/128'),
+        nacaddr.IP('6f5d:abd2:1403::1/128'),
+        nacaddr.IP('577e:5400:3051::6/128'),
+        nacaddr.IP('af22:32d2:3f00::2/128')
+    ]
+
+    ips = list(
+        nacaddr.IP('2620:0:1000:3103:eca0:2c09:6b32:e000/117').subnets(
+            new_prefix=128))
+    mo_ips = []
+    counter = 0
+    for ip in ips:
+      if counter % 2 == 0:
+        mo_ips.append(nacaddr.IP(ip))
+      counter += 1
+
+    self.naming.GetServiceByProto.side_effect = [['25', '25']]
+    self.naming.GetNetAddr.side_effect = [overflow_ips+mo_ips]
+
+    # GOOD_HEADER_4 = V6 rendering
+    pol = policy.ParsePolicy(GOOD_HEADER_4 + GOOD_TERM_21, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+
+    # extract address-set-names referenced in policy blocks
+    partial_pruned_acl = output.split('replace: policies')[1].split(
+        'destination-address [ ')[1:]
+
+    # verify that there are exactly 9 terms in the ACL by checking if
+    # partial_pruned_acl contains exactly 9 elements
+    self.assertEqual(len(partial_pruned_acl), 9)
+
+    for text in partial_pruned_acl:
+      address_set_name = text.split(' ];')[0]
+
+      if address_set_name:
+        address_set_count = output.count(address_set_name)
+        # check if each addresssetname referenced in policy occurs more than
+        # once i.e. is defined in the address book
+        self.assertGreater(address_set_count, 1)
+
+  def testEmptyACLEmptyAddressBookV6IpsV4Render(self):
+    # V6-only 1024+ IPs; V4 rendering
+    overflow_ips = [
+        nacaddr.IP('2001:4860:8000::5/128'),
+        nacaddr.IP('3051:abd2:5400::9/128'),
+        nacaddr.IP('aee2:37ba:3cc0::3/128'),
+        nacaddr.IP('6f5d:abd2:1403::1/128'),
+        nacaddr.IP('577e:5400:3051::6/128'),
+        nacaddr.IP('af22:32d2:3f00::2/128')
+    ]
+
+    ips = list(
+        nacaddr.IP('2620:0:1000:3103:eca0:2c09:6b32:e000/117').subnets(
+            new_prefix=128))
+    mo_ips = []
+    counter = 0
+    for ip in ips:
+      if counter % 2 == 0:
+        mo_ips.append(nacaddr.IP(ip))
+      counter += 1
+
+    self.naming.GetServiceByProto.side_effect = [['25', '25']]
+    self.naming.GetNetAddr.side_effect = [overflow_ips+mo_ips]
+
+    # GOOD_HEADER_3 = V4 rendering
+    pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_21, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    address_set_count = output.count('address')
+
+    # verify acl is empty
+    self.assertNotIn('policy', output)
+
+    # verify address book is empty
+    self.assertEqual(address_set_count, 1)
+
+  def testCreateV4AddressEntriesForMixedRender(self):
+    # V4-only 1024+ IPs; MIXED rendering
+    overflow_ips = [
+        nacaddr.IP('23.2.3.3/32'),
+        nacaddr.IP('54.2.3.4/32'),
+        nacaddr.IP('76.2.3.5/32'),
+        nacaddr.IP('132.2.3.6/32'),
+        nacaddr.IP('197.2.3.7/32')
+    ]
+
+    ips = list(nacaddr.IP('10.0.8.0/21').subnets(new_prefix=32))
+    mo_ips = []
+    counter = 0
+    for ip in ips:
+      if counter % 2 == 0:
+        mo_ips.append(nacaddr.IP(ip))
+      counter += 1
+
+    self.naming.GetServiceByProto.side_effect = [['25', '25']]
+    self.naming.GetNetAddr.side_effect = [overflow_ips+mo_ips]
+
+    # GOOD_HEADER = MIXED rendering
+    pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_21, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+
+    # extract address-set-names referenced in policy blocks
+    partial_pruned_acl = output.split('replace: policies')[1].split(
+        'destination-address [ ')[1:]
+
+    # verify that there are exactly 3 terms in the ACL by checking if
+    # partial_pruned_acl contains exactly 3 elements
+    self.assertEqual(len(partial_pruned_acl), 3)
+
+    for text in partial_pruned_acl:
+      address_set_name = text.split(' ];')[0]
+
+      if address_set_name:
+        address_set_count = output.count(address_set_name)
+        # check if each addresssetname referenced in policy occurs more than
+        # once i.e. is defined in the address book
+        self.assertGreater(address_set_count, 1)
+
+  def testEmptyACLEmptyAddressBookV4IpsV6Render(self):
+    # V4-only 1024+ IPs; V6 rendering
+    overflow_ips = [
+        nacaddr.IP('23.2.3.3/32'),
+        nacaddr.IP('54.2.3.4/32'),
+        nacaddr.IP('76.2.3.5/32'),
+        nacaddr.IP('132.2.3.6/32'),
+        nacaddr.IP('197.2.3.7/32')
+    ]
+
+    ips = list(nacaddr.IP('10.0.8.0/21').subnets(new_prefix=32))
+    mo_ips = []
+    counter = 0
+    for ip in ips:
+      if counter % 2 == 0:
+        mo_ips.append(nacaddr.IP(ip))
+      counter += 1
+
+    self.naming.GetServiceByProto.side_effect = [['25', '25']]
+    self.naming.GetNetAddr.side_effect = [overflow_ips+mo_ips]
+
+    # GOOD_HEADER_4 = V6 rendering
+    pol = policy.ParsePolicy(GOOD_HEADER_4 + GOOD_TERM_21, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    address_set_count = output.count('address')
+
+    # verify acl is empty
+    self.assertNotIn('policy', output)
+
+    # verify address book is empty
+    self.assertEqual(address_set_count, 1)
+
+  def testCreateV4AddressEntriesForV4Render(self):
+    # V4-only 1024+ IPs; V4 rendering
+    overflow_ips = [
+        nacaddr.IP('23.2.3.3/32'),
+        nacaddr.IP('54.2.3.4/32'),
+        nacaddr.IP('76.2.3.5/32'),
+        nacaddr.IP('132.2.3.6/32'),
+        nacaddr.IP('197.2.3.7/32')
+    ]
+
+    ips = list(nacaddr.IP('10.0.8.0/21').subnets(new_prefix=32))
+    mo_ips = []
+    counter = 0
+    for ip in ips:
+      if counter % 2 == 0:
+        mo_ips.append(nacaddr.IP(ip))
+      counter += 1
+
+    self.naming.GetServiceByProto.side_effect = [['25', '25']]
+    self.naming.GetNetAddr.side_effect = [overflow_ips+mo_ips]
+
+    # GOOD_HEADER_3 = V4 rendering
+    pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_21, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+
+    # extract address-set-names referenced in policy blocks
+    partial_pruned_acl = output.split('replace: policies')[1].split(
+        'destination-address [ ')[1:]
+
+    # verify that there are exactly 3 terms in the ACL by checking if
+    # partial_pruned_acl contains exactly 3 elements
+    self.assertEqual(len(partial_pruned_acl), 3)
+
+    for text in partial_pruned_acl:
+      address_set_name = text.split(' ];')[0]
+
+      if address_set_name:
+        address_set_count = output.count(address_set_name)
+        # check if each addresssetname referenced in policy occurs more than
+        # once i.e. is defined in the address book
+        self.assertGreater(address_set_count, 1)
+
+  def testCreateMixedAddressEntriesForMixedRender(self):
+    # 513V6 and 512V4 IPs; MIXED rendering
+    overflow_ips = [
+        nacaddr.IP('2001:4860:8000::5/128')
+    ]
+
+    ips = list(nacaddr.IP('10.0.8.0/22').subnets(new_prefix=32))
+    v4_ips = []
+    counter = 0
+    for ip in ips:
+      if counter % 2 == 0:
+        v4_ips.append(nacaddr.IP(ip))
+      counter += 1
+
+    ips = list(
+        nacaddr.IP('2620:0:1000:3103:eca0:2c09:6b32:e000/118').subnets(
+            new_prefix=128))
+    v6_ips = []
+    counter = 0
+    for ip in ips:
+      if counter % 2 == 0:
+        v6_ips.append(nacaddr.IP(ip))
+      counter += 1
+
+    self.naming.GetServiceByProto.side_effect = [['25', '25']]
+    self.naming.GetNetAddr.side_effect = [overflow_ips + v4_ips + v6_ips]
+
+    # GOOD_HEADER = MIXED rendering
+    pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_21, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+
+    # extract address-set-names referenced in policy blocks
+    partial_pruned_acl = output.split('replace: policies')[1].split(
+        'destination-address [ ')[1:]
+
+    # verify that there are exactly 6 terms in the ACL by checking if
+    # partial_pruned_acl contains exactly 6 elements
+    self.assertEqual(len(partial_pruned_acl), 6)
+
+    for text in partial_pruned_acl:
+      address_set_name = text.split(' ];')[0]
+
+      if address_set_name:
+        address_set_count = output.count(address_set_name)
+        # check if each addresssetname referenced in policy occurs more than
+        # once i.e. is defined in the address book
+        self.assertGreater(address_set_count, 1)
+
+  def testCreateV6AddressEntriesForV6Render2(self):
+    # 513V6 and 512V4 IPs; V6 rendering
+    overflow_ips = [
+        nacaddr.IP('2001:4860:8000::5/128')
+    ]
+
+    ips = list(nacaddr.IP('10.0.8.0/22').subnets(new_prefix=32))
+    v4_ips = []
+    counter = 0
+    for ip in ips:
+      if counter % 2 == 0:
+        v4_ips.append(nacaddr.IP(ip))
+      counter += 1
+
+    ips = list(nacaddr.IP('2620:0:1000:3103:eca0:2c09:6b32:e000/118').subnets(new_prefix=128))
+    v6_ips = []
+    counter = 0
+    for ip in ips:
+      if counter % 2 == 0:
+        v6_ips.append(nacaddr.IP(ip))
+      counter += 1
+
+    self.naming.GetServiceByProto.side_effect = [['25', '25']]
+    self.naming.GetNetAddr.side_effect = [overflow_ips + v4_ips + v6_ips]
+
+    # GOOD_HEADER_4 = V6 rendering
+    pol = policy.ParsePolicy(GOOD_HEADER_4 + GOOD_TERM_21, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+
+    # extract address-set-names referenced in policy blocks
+    partial_pruned_acl = output.split('replace: policies')[1].split(
+        'destination-address [ ')[1:]
+
+    # verify that there are exactly 5 terms in the ACL by checking if
+    # partial_pruned_acl contains exactly 5 elements
+    self.assertEqual(len(partial_pruned_acl), 5)
+
+    for text in partial_pruned_acl:
+      address_set_name = text.split(' ];')[0]
+
+      if address_set_name:
+        address_set_count = output.count(address_set_name)
+        # check if each addresssetname referenced in policy occurs more than
+        # once i.e. is defined in the address book
+        self.assertGreater(address_set_count, 1)
+
+  def testCreateV4AddressEntriesForV4Render2(self):
+    # 513V6 and 512V4 IPs; V4 rendering
+    overflow_ips = [
+        nacaddr.IP('2001:4860:8000::5/128')
+    ]
+
+    ips = list(nacaddr.IP('10.0.8.0/22').subnets(new_prefix=32))
+    v4_ips = []
+    counter = 0
+    for ip in ips:
+      if counter % 2 == 0:
+        v4_ips.append(nacaddr.IP(ip))
+      counter += 1
+
+    ips = list(nacaddr.IP('2620:0:1000:3103:eca0:2c09:6b32:e000/118').subnets(new_prefix=128))
+    v6_ips = []
+    counter = 0
+    for ip in ips:
+      if counter % 2 == 0:
+        v6_ips.append(nacaddr.IP(ip))
+      counter += 1
+
+    self.naming.GetServiceByProto.side_effect = [['25', '25']]
+    self.naming.GetNetAddr.side_effect = [overflow_ips + v4_ips + v6_ips]
+
+    # GOOD_HEADER_3 = V4 rendering
+    pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_21, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+
+    # extract address-set-names referenced in policy blocks
+
+    partial_pruned_acl = output.split('replace: policies')[1].split(
+        'destination-address [ ')[1:]
+
+    # verify that there is only one term in the ACL by checking if
+    # partial_pruned_acl contains only one element
+    self.assertEqual(len(partial_pruned_acl), 1)
+
+    for text in partial_pruned_acl:
+      address_set_name = text.split(' ];')[0]
+
+      if address_set_name:
+        address_set_count = output.count(address_set_name)
+        # check if each addresssetname referenced in policy occurs more than
+        # once i.e. is defined in the address book
+        self.assertGreater(address_set_count, 1)
 
 if __name__ == '__main__':
   unittest.main()
