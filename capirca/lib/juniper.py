@@ -114,6 +114,12 @@ class Config(object):
         raise JuniperIndentationError('Too many close braces.')
     spaces = ' ' * self.indent
     self.lines.append(spaces + line.strip())
+    if not line.find('/*') >= 0 and line.find('*/') >= 0:
+      self.indent -= 1
+      if self.indent < self._initial_indent:
+        raise JuniperIndentationError('Too many close comments.')
+    if not line.find('*/') >= 0 and line.find('/*') >= 0:
+      self.indent += 1
     if line.endswith(' {'):
       self.indent += self.tabstop
 

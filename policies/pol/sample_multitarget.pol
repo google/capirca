@@ -8,6 +8,7 @@ header {
   # '$ iptables' cmd, while Speedway produces stateful iptables filters
   # compatible with iptables-restore (most people will prefer speedway)
   target:: juniper edge-inbound inet
+  target:: msmpc edge-inbound mixed ingress
   target:: cisco edge-inbound mixed
   target:: speedway INPUT
   target:: ciscoasa asa_in
@@ -55,6 +56,7 @@ term default-deny {
 header {
   comment:: "this is a sample output filter"
   target:: juniper edge-outbound
+  target:: msmpc edge-outbound mixed egress
   target:: cisco edge-outbound mixed
   target:: speedway OUTPUT
   target:: ciscoasa asa_out

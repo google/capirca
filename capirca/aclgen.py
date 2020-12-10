@@ -44,6 +44,7 @@ from capirca.lib import fortigate
 from capirca.lib import ipset
 from capirca.lib import iptables
 from capirca.lib import juniper
+from capirca.lib import junipermsmpc
 from capirca.lib import junipersrx
 from capirca.lib import naming
 from capirca.lib import nftables
@@ -187,6 +188,7 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
   gcphf = False
   ips = False
   ipt = False
+  msmpc = False
   spd = False
   nsx = False
   pcap_accept = False
@@ -239,6 +241,8 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
     ips = copy.deepcopy(pol)
   if 'iptables' in platforms:
     ipt = copy.deepcopy(pol)
+  if 'msmpc' in platforms:
+    msmpc = copy.deepcopy(pol)
   if 'nsxv' in platforms:
     nsx = copy.deepcopy(pol)
   if 'packetfilter' in platforms:
@@ -275,6 +279,10 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
   try:
     if jcl:
       acl_obj = juniper.Juniper(jcl, exp_info)
+      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
+                input_file, write_files)
+    if msmpc:
+      acl_obj = junipermsmpc.JuniperMSMPC(msmpc, exp_info)
       RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
                 input_file, write_files)
     if srx:
@@ -369,8 +377,8 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
                 input_file, write_files)
 
   # TODO(robankeny) add additional errors.
-  except (juniper.Error, junipersrx.Error, cisco.Error, ipset.Error,
-          iptables.Error, speedway.Error, pcap.Error,
+  except (juniper.Error, junipermsmpc.Error, junipersrx.Error, cisco.Error,
+          ipset.Error, iptables.Error, speedway.Error, pcap.Error,
           aclgenerator.Error, aruba.Error, nftables.Error, gce.Error,
           cloudarmor.Error, fortigate.Error) as e:
     raise ACLGeneratorError(
