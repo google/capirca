@@ -32,6 +32,8 @@ import json
 import logging
 import re
 
+from typing import Dict, Text, Any
+
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 import six
@@ -44,6 +46,10 @@ class Error(Exception):
 
 class GceFirewallError(Error):
   """Raised with problems in formatting for GCE firewall."""
+
+
+class ExceededAttributeCountError(Error):
+  """Raised when the total attribute count of a policy is above the maximum."""
 
 
 def IsDefaultDeny(term):
@@ -303,6 +309,9 @@ class GCE(aclgenerator.ACLGenerator):
 
   def _TranslatePolicy(self, pol, exp_info):
     self.gce_policies = []
+    max_attribute_count = 0
+    total_attribute_count = 0
+    total_rule_count = 0
 
     current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
@@ -321,6 +330,16 @@ class GCE(aclgenerator.ACLGenerator):
           if i in filter_options:
             direction = i
             filter_options.remove(i)
+
+      for opt in filter_options:
+        try:
+          max_attribute_count = int(opt)
+          logging.info(
+              'Checking policy for max attribute count %d', max_attribute_count)
+          filter_options.remove(opt)
+          break
+        except ValueError:
+          continue
 
       if filter_options:
         network = filter_options[0]
@@ -369,7 +388,22 @@ class GCE(aclgenerator.ACLGenerator):
           raise GceFirewallError(
               'GCE firewall does not support term options.')
 
+        for tmp_term in Term(term).ConvertToDict():
+          logging.debug('Attribute count of rule %s is: %d', term.name,
+                        GetAttributeCount(tmp_term))
+          total_attribute_count += GetAttributeCount(tmp_term)
+          total_rule_count += 1
+          if max_attribute_count and total_attribute_count > max_attribute_count:
+            # Stop processing rules as soon as the attribute count is over the
+            # limit.
+            raise ExceededAttributeCountError(
+                'Attribute count (%d) for %s exceeded the maximum (%d)' % (
+                    total_attribute_count, filter_name, max_attribute_count))
         self.gce_policies.append(Term(term))
+    logging.info('Total rule count of policy %s is: %d', filter_name,
+                 total_rule_count)
+    logging.info('Total attribute count of policy %s is: %d', filter_name,
+                 total_attribute_count)
 
   def __str__(self):
     target = []
@@ -383,3 +417,40 @@ class GCE(aclgenerator.ACLGenerator):
                                  sort_keys=True))
 
     return out
+
+
+def GetAttributeCount(dict_term: Dict[Text, Any]) -> int:
+  """Calculate the attribute count of a term in its dictionary form.
+
+  The attribute count of a rule is the sum of the number of ports, protocols, IP
+  ranges, tags and target service account.
+
+  Note: The goal of this function is not to determine if a term is valid, but
+      to calculate its attribute count regardless of correctness.
+
+  Args:
+    dict_term: A dict object.
+
+  Returns:
+    int: The attribute count of the term.
+  """
+  addresses = (len(dict_term.get('destinationRanges', []))
+               or len(dict_term.get('sourceRanges', [])))
+
+  proto_ports = 0
+  for allowed in dict_term.get('allowed', []):
+    proto_ports += len(allowed.get('ports', [])) + 1  # 1 for ipProtocol
+  for denied in dict_term.get('denied', []):
+    proto_ports += len(denied.get('ports', [])) + 1  # 1 for ipProtocol
+
+  tags = 0
+  for _ in dict_term.get('sourceTags', []):
+    tags += 1
+  for _ in dict_term.get('targetTags', []):
+    tags += 1
+
+  service_accounts = 0
+  for _ in dict_term.get('targetServiceAccount', []):
+    service_accounts += 1
+
+  return addresses + proto_ports + tags + service_accounts
