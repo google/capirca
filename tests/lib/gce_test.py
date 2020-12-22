@@ -66,6 +66,20 @@ header {
 }
 """
 
+GOOD_HEADER_INET = """
+header {
+  comment:: "The general policy comment."
+  target:: gce INGRESS inet
+}
+"""
+
+GOOD_HEADER_INET6 = """
+header {
+  comment:: "The general policy comment."
+  target:: gce INGRESS inet6
+}
+"""
+
 GOOD_TERM = """
 term good-term-1 {
   comment:: "DNS access from corp."
@@ -260,6 +274,18 @@ term %s {
 }
 """
 
+GOOD_TERM_OWNERS = """
+term good-term-owners {
+  comment:: "DNS access from corp."
+  source-address:: CORP_EXTERNAL
+  destination-tag:: dns-servers
+  destination-port:: DNS
+  protocol:: udp tcp
+  owner:: test-owner
+  action:: accept
+}
+"""
+
 BAD_TERM_NO_SOURCE = """
 term bad-term-no-source {
   comment:: "Management access from corp."
@@ -435,6 +461,24 @@ GOOD_TERM_DENY_EXPECTED = """[
 ]
 """
 
+GOOD_TERM_ICMP = """
+term good-term-5 {
+  comment:: "Good term."
+  source-address:: CORP_EXTERNAL
+  protocol:: icmp icmpv6
+  action:: accept
+}
+"""
+
+GOOD_TERM_ONLY_ICMPV6 = """
+term good-term-5 {
+  comment:: "Good term."
+  source-address:: CORP_EXTERNAL
+  protocol:: icmpv6
+  action:: accept
+}
+"""
+
 VALID_TERM_NAMES = [
     'icmp',
     'gcp-to-gcp',
@@ -494,6 +538,10 @@ TEST_EXCLUDE_IPS = [nacaddr.IP('10.4.3.2/32')]
 TEST_INCLUDE_RANGE = [nacaddr.IP('10.128.0.0/9')]
 
 TEST_EXCLUDE_RANGE = [nacaddr.IP('10.240.0.0/16')]
+
+ANY_IPS = [nacaddr.IP('0.0.0.0/0'), nacaddr.IP('::/0')]
+
+TEST_ONLY_IPV4 = [nacaddr.IP('10.2.3.4/32')]
 
 
 class GCETest(parameterized.TestCase):
@@ -755,6 +803,52 @@ class GCETest(parameterized.TestCase):
     expected = json.loads(GOOD_TERM_DENY_EXPECTED)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
+  def testInet(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER_INET + GOOD_TERM, self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertIn('10.2.3.4/32', str(acl))
+    self.assertNotIn('2001:4860:8000::5/128', str(acl))
+
+  def testInet6(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER_INET6 + GOOD_TERM, self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertIn('2001:4860:8000::5/128', str(acl))
+    self.assertNotIn('10.2.3.4/32', str(acl))
+
+  def testIcmpInet(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER_INET + GOOD_TERM + GOOD_TERM_ICMP,
+                           self.naming), EXP_INFO)
+    self.assertIn('icmp', str(acl))
+    self.assertNotIn('58', str(acl))
+
+  def testIcmpInet6(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER_INET6 + GOOD_TERM + GOOD_TERM_ICMP,
+                           self.naming), EXP_INFO)
+    self.assertIn('58', str(acl))
+    self.assertNotIn('icmp', str(acl))
+
+  def testIcmpTermDropped(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER_INET + GOOD_TERM_ONLY_ICMPV6,
+                           self.naming), EXP_INFO)
+    self.assertNotIn('Good term.', str(acl))
+
   def testIngress(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
@@ -880,6 +974,7 @@ class GCETest(parameterized.TestCase):
     acl = gce.GCE(policy.ParsePolicy(GOOD_HEADER_EGRESS + GOOD_TERM_EGRESS +
                                      DEFAULT_DENY, self.naming), EXP_INFO)
     self.assertIn('"priority": 65534', str(acl))
+    self.assertIn('0.0.0.0/0', str(acl))
 
   def testDefaultDenyIngressCreation(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
@@ -888,6 +983,15 @@ class GCETest(parameterized.TestCase):
                                      GOOD_TERM_INGRESS_SOURCETAG +
                                      DEFAULT_DENY, self.naming), EXP_INFO)
     self.assertIn('"priority": 65534', str(acl))
+    self.assertIn('0.0.0.0/0', str(acl))
+
+  def testDefaultDenyInet6(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(GOOD_HEADER_INET6 + GOOD_TERM +
+                                     DEFAULT_DENY, self.naming), EXP_INFO)
+    self.assertIn('::/0', str(acl))
+    self.assertNotIn('0.0.0.0/0', str(acl))
 
   def testValidTermNames(self):
     for name in VALID_TERM_NAMES:
@@ -897,6 +1001,17 @@ class GCETest(parameterized.TestCase):
                                self.naming)
       acl = gce.GCE(pol, EXP_INFO)
       self.assertIsNotNone(str(acl))
+
+  def testTermOwners(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_OWNERS, self.naming),
+        EXP_INFO)
+    rendered_acl = json.loads(str(acl))[0]
+    self.assertEqual(rendered_acl['description'],
+                     'DNS access from corp. Owner: test-owner')
 
   def testMaxAttributeExceeded(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
@@ -911,7 +1026,8 @@ class GCETest(parameterized.TestCase):
 
   def testMaxAttribute(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.2.3.4/32')]
-    pol = policy.ParsePolicy(GOOD_HEADER_MAX_ATTRIBUTE_COUNT + GOOD_TERM_5, self.naming)
+    pol = policy.ParsePolicy(
+        GOOD_HEADER_MAX_ATTRIBUTE_COUNT + GOOD_TERM_5, self.naming)
     acl = gce.GCE(pol, EXP_INFO)
     self.assertIsNotNone(str(acl))
 

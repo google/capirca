@@ -36,6 +36,12 @@ class UnsupportedFilterTypeError(Error):
 class Term(aclgenerator.Term):
   """A Term object."""
 
+  # Protocols allowed by name from:
+  # https://cloud.google.com/vpc/docs/firewalls#protocols_and_ports
+  # For protocol names not supported, protocol numbers are used instead.
+  _ALLOW_PROTOCOL_NAMES = frozenset(
+      ['tcp', 'udp', 'icmp', 'esp', 'ah', 'sctp', 'ipip'])
+
   def _GetPorts(self):
     """Return a port or port range in string format."""
     ports = []
