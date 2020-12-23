@@ -151,6 +151,9 @@ class Term(gcp.Term):
       protocols_and_ports = [{'ipProtocol': 'all'}]
     else:
       for proto in self.term.protocol:
+        # If the protocol name is not supported, use the protocol number.
+        if proto not in self._ALLOW_PROTOCOL_NAMES:
+          proto = self.PROTO_MAP[proto]
         proto_ports = {'ipProtocol': proto}
         if self.term.destination_port:
           ports = self._GetPorts()
@@ -219,9 +222,12 @@ class HierarchicalFirewall(gcp.GCP):
   """A GCP Hierarchical Firewall policy."""
 
   SUFFIX = '.gcphf'
-  _ANY = [nacaddr.IP('0.0.0.0/0')]
+  _ANY_IP = {
+      'inet': [nacaddr.IP('0.0.0.0/0')],
+      'inet6': [nacaddr.IP('::/0')],
+  }
   _PLATFORM = 'gcp_hf'
-  _SUPPORTED_AF = frozenset(['inet'])
+  _SUPPORTED_AF = frozenset(['inet', 'inet6'])
   _DEFAULT_MAXIMUM_COST = 100
 
   def _BuildTokens(self):
@@ -343,10 +349,11 @@ class HierarchicalFirewall(gcp.GCP):
           continue
 
         if gcp.IsDefaultDeny(term):
+          print('address_family:' + address_family)
           if direction == 'EGRESS':
-            term.destination_address = self._ANY
+            term.destination_address = self._ANY_IP[address_family]
           else:
-            term.source_address = self._ANY
+            term.source_address = self._ANY_IP[address_family]
         term.name = self.FixTermLength(term.name)
         term.direction = direction
 
