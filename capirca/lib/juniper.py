@@ -204,7 +204,8 @@ class Term(aclgenerator.Term):
     from_str = []
     # Don't render icmpv6 protocol terms under inet, or icmp under inet6
     if ((self.term_type == 'inet6' and 'icmp' in self.term.protocol) or
-        (self.term_type == 'inet' and 'icmpv6' in self.term.protocol)):
+        (self.term_type == 'inet' and ('icmpv6' in self.term.protocol or
+                                       'icmp6' in self.term.protocol))):
       logging.debug(self.NO_AF_LOG_PROTO.substitute(
           term=self.term.name,
           proto=', '.join(self.term.protocol),
