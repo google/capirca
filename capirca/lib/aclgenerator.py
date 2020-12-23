@@ -128,7 +128,7 @@ class Term(object):
     if term.protocol:
       for protocol in term.protocol:
         if (protocol not in self.PROTO_MAP and
-            protocol not in [str(p) for p in self.PROTO_MAP_BY_NUMBER]):
+            str(protocol) not in [str(p) for p in self.PROTO_MAP_BY_NUMBER]):
           raise UnsupportedFilterError('Protocol(s) %s are not supported.'
                                        % str(term.protocol))
 
