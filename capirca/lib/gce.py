@@ -388,10 +388,10 @@ class GCE(aclgenerator.ACLGenerator):
           raise GceFirewallError(
               'GCE firewall does not support term options.')
 
-        for tmp_term in Term(term).ConvertToDict():
+        for rules in Term(term).ConvertToDict():
           logging.debug('Attribute count of rule %s is: %d', term.name,
-                        GetAttributeCount(tmp_term))
-          total_attribute_count += GetAttributeCount(tmp_term)
+                        GetAttributeCount(rules))
+          total_attribute_count += GetAttributeCount(rules)
           total_rule_count += 1
           if max_attribute_count and total_attribute_count > max_attribute_count:
             # Stop processing rules as soon as the attribute count is over the
@@ -399,19 +399,14 @@ class GCE(aclgenerator.ACLGenerator):
             raise ExceededAttributeCountError(
                 'Attribute count (%d) for %s exceeded the maximum (%d)' % (
                     total_attribute_count, filter_name, max_attribute_count))
-        self.gce_policies.append(Term(term))
+          self.gce_policies.append(rules)
     logging.info('Total rule count of policy %s is: %d', filter_name,
                  total_rule_count)
     logging.info('Total attribute count of policy %s is: %d', filter_name,
                  total_attribute_count)
 
   def __str__(self):
-    target = []
-
-    for term in self.gce_policies:
-      target.extend(term.ConvertToDict())
-
-    out = '%s\n\n' % (json.dumps(target, indent=2,
+    out = '%s\n\n' % (json.dumps(self.gce_policies, indent=2,
                                  separators=(six.ensure_str(','),
                                              six.ensure_str(': ')),
                                  sort_keys=True))

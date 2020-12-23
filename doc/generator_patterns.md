@@ -1,9 +1,5 @@
 # Common Patterns For Generators
 
-<!--* # copybara:strip_begin(internal linter)
-# LINT.IfChange
-# copybara:strip_end *-->
-
 ## Objective
 
 The purpose of this document is to describe common patterns for new Capirca
@@ -359,9 +355,3 @@ span of the vendor syntax, not just a single keyword.
 #### Custom exceptions
 
 All custom exceptions types added must be unit tested.
-
-<!--* # copybara:strip_begin(internal linter)
-# LINT.ThenChange(
-#     //depot/google3/ops/security/miracl/g3doc/capirca_generator_patterns.md
-# )
-# copybara:strip_end *-->
