@@ -865,7 +865,7 @@ class Fortigate(aclgenerator.ACLGenerator):
         if term.stateless_reply:
           logging.warning(
               'WARNING: Term %s in policy %s is a stateless reply '
-              'term and will not be rendered. FortiGates are stateful.',
+              'term and will not be rendered. FortiGates are stateful',
               term.name,
               filter_name)
           continue
