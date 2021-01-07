@@ -63,6 +63,7 @@ term good-term-4 {
   destination-address:: SOME_HOST
   protocol:: tcp
   pan-application:: ssl http
+  pan-security-profile-group:: url-filtering
   action:: accept
 }
 """
@@ -163,6 +164,7 @@ SUPPORTED_TOKENS = {
     'stateless_reply',
     'timeout',
     'pan_application',
+    'pan_security_profile_group',
     'translated'
 }
 
