@@ -194,6 +194,7 @@ class Rule(object):
     self.options["source"] = []
     self.options["destination"] = []
     self.options["application"] = []
+    self.options["security_profile_group"] = []
     self.options["service"] = []
     self.options["logging"] = []
 
@@ -255,6 +256,11 @@ class Rule(object):
     if term.pan_application:
       for pan_app in term.pan_application:
         self.options["application"].append(pan_app)
+
+    if term.pan_security_profile_group:
+      if len(term.pan_security_profile_group) > 1:
+        raise PaloAltoFWOptionError("Only one security profile group allowed")
+      self.options["security_profile_group"].append(term.pan_security_profile_group[0])
 
     if term.source_port or term.destination_port:
       src_ports = pan_ports(term.source_port)
@@ -367,7 +373,8 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
         "stateless_reply",
         "timeout",
         "pan_application",
-        "translated",
+        "pan_security_profile_group",
+        "translated"
     }
 
     supported_sub_tokens.update({
@@ -904,6 +911,14 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
         else:
           for x in options["application"]:
             member = etree.SubElement(app, "member")
+            member.text = x
+
+        # SECURITY PROFILE GROUP
+        if options["security_profile_group"]:
+          profile_setting = etree.SubElement(entry, "profile-setting")
+          profile_setting_group = etree.SubElement(profile_setting, "group")
+          for x in options["security_profile_group"]:
+            member = etree.SubElement(profile_setting_group, "member")
             member.text = x
 
         if tag_name is not None:

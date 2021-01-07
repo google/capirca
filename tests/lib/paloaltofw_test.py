@@ -267,6 +267,14 @@ term test-local-log {
 }
 """
 
+PAN_SECURITY_PROFILE_GROUP = """
+term pan-security-profile-term {
+  protocol:: tcp
+  action:: accept
+  pan-security-profile-group:: url-filtering
+}
+"""
+
 ACTION_ACCEPT_TERM = """
 term test-accept-action {
   comment:: "Testing accept action for tcp."
@@ -377,7 +385,8 @@ SUPPORTED_TOKENS = frozenset({
     'stateless_reply',
     'timeout',
     'pan_application',
-    'translated',
+    'pan_security_profile_group',
+    'translated'
 })
 
 SUPPORTED_SUB_TOKENS = {
@@ -627,6 +636,14 @@ class PaloAltoFWTest(unittest.TestCase):
     x = paloalto.config.findtext(PATH_RULES +
                                  "/entry[@name='test-accept-action']/action")
     self.assertEqual(x, 'allow', output)
+
+  def testPanSecurityProfileGroup(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + PAN_SECURITY_PROFILE_GROUP, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='pan-security-profile-term']/profile-setting/group/member")
+    self.assertIsNotNone(x, output)
 
   def testDenyAction(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + ACTION_DENY_TERM, self.naming)
