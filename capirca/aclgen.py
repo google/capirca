@@ -161,7 +161,7 @@ def SkipLines(text, skip_line_func=False):
 
 
 def RenderFile(base_directory, input_file, output_directory, definitions,
-               exp_info, write_files):
+               exp_info, optimize, shade_check, write_files):
   """Render a single file.
 
   Args:
@@ -171,6 +171,8 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
     definitions: the definitions from naming.Naming().
     exp_info: print a info message when a term is set to expire
               in that many weeks.
+    optimize: a boolean indicating if we should turn on optimization or not.
+    shade_check: should we raise an error if a term is completely shaded
     write_files: a list of file tuples, (output_file, acl_text), to write
   """
   logging.debug('rendering file: %s into %s', input_file,
@@ -210,8 +212,8 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
 
   try:
     pol = policy.ParsePolicy(
-        conf, definitions, optimize=FLAGS.optimize,
-        base_dir=base_directory, shade_check=FLAGS.shade_check)
+        conf, definitions, optimize=optimize,
+        base_dir=base_directory, shade_check=shade_check)
   except policy.ShadingError as e:
     logging.warning('shading errors for %s:\n%s', input_file, e)
     return
@@ -529,6 +531,8 @@ def Run(
     exp_info,
     max_renderers,
     ignore_directories,
+    optimize,
+    shade_check,
     context
 ):
   definitions = None
@@ -552,6 +556,8 @@ def Run(
         output_directory,
         definitions,
         exp_info,
+        optimize,
+        shade_check,
         write_files)
   else:
     # render all files in parallel
@@ -578,6 +584,8 @@ def Run(
                   pol.get('out_dir'),
                   definitions,
                   exp_info,
+                  optimize,
+                  shade_check,
                   write_files
               )
           )
@@ -624,6 +632,7 @@ def main(argv):
   logging.debug('capirca configurations: %s', configs)
 
   context = multiprocessing.get_context()
+
   Run(
       configs['base_directory'],
       configs['definitions_directory'],
@@ -632,6 +641,8 @@ def main(argv):
       configs['exp_info'],
       configs['max_renderers'],
       configs['ignore_directories'],
+      configs['optimize'],
+      configs['shade_check'],
       context
   )
 
