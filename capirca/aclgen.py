@@ -32,6 +32,7 @@ from absl import flags
 from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import arista
+from capirca.lib import arista_tp
 from capirca.lib import aruba
 from capirca.lib import brocade
 from capirca.lib import cisco
@@ -180,6 +181,7 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
   pol = None
   jcl = False
   acl = False
+  atp = False
   asacl = False
   aacl = False
   bacl = False
@@ -235,6 +237,8 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
     bacl = copy.deepcopy(pol)
   if 'arista' in platforms:
     eacl = copy.deepcopy(pol)
+  if 'arista_tp' in platforms:
+    atp = copy.deepcopy(pol)
   if 'aruba' in platforms:
     aacl = copy.deepcopy(pol)
   if 'ipset' in platforms:
@@ -307,6 +311,10 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
       acl_obj = arista.Arista(eacl, exp_info)
       RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
                 input_file, write_files)
+    if atp:
+      acl_obj = arista_tp.AristaTrafficPolicy(atp, exp_info)
+      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
+                input_file, write_files)
     if ips:
       acl_obj = ipset.Ipset(ips, exp_info)
       RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
@@ -372,7 +380,7 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
   except (juniper.Error, junipermsmpc.Error, junipersrx.Error, cisco.Error,
           ipset.Error, iptables.Error, speedway.Error, pcap.Error,
           aclgenerator.Error, aruba.Error, nftables.Error, gce.Error,
-          cloudarmor.Error) as e:
+          cloudarmor.Error, arista_tp.Error) as e:
     raise ACLGeneratorError(
         'Error generating target ACL for %s:\n%s' % (input_file, e))
 
