@@ -260,6 +260,18 @@ term %s {
 }
 """
 
+GOOD_TERM_OWNERS = """
+term good-term-owners {
+  comment:: "DNS access from corp."
+  source-address:: CORP_EXTERNAL
+  destination-tag:: dns-servers
+  destination-port:: DNS
+  protocol:: udp tcp
+  owner:: test-owner
+  action:: accept
+}
+"""
+
 BAD_TERM_NO_SOURCE = """
 term bad-term-no-source {
   comment:: "Management access from corp."
@@ -898,6 +910,17 @@ class GCETest(parameterized.TestCase):
       acl = gce.GCE(pol, EXP_INFO)
       self.assertIsNotNone(str(acl))
 
+  def testTermOwners(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_OWNERS, self.naming),
+        EXP_INFO)
+    rendered_acl = json.loads(str(acl))[0]
+    self.assertEqual(rendered_acl['description'],
+                     'DNS access from corp. Owner: test-owner')
+
   def testMaxAttributeExceeded(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
@@ -911,7 +934,8 @@ class GCETest(parameterized.TestCase):
 
   def testMaxAttribute(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.2.3.4/32')]
-    pol = policy.ParsePolicy(GOOD_HEADER_MAX_ATTRIBUTE_COUNT + GOOD_TERM_5, self.naming)
+    pol = policy.ParsePolicy(
+        GOOD_HEADER_MAX_ATTRIBUTE_COUNT + GOOD_TERM_5, self.naming)
     acl = gce.GCE(pol, EXP_INFO)
     self.assertIsNotNone(str(acl))
 
