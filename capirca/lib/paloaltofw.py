@@ -199,6 +199,9 @@ class Rule(object):
     if term.action:
       self.options["action"] = term.action[0]
 
+    if term.option:
+      self.options["option"] = term.option
+
     if term.pan_application:
       for pan_app in term.pan_application:
         self.options["application"].append(pan_app)
@@ -275,6 +278,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
         "icmp_type",
         "logging",
         "name",
+        "option",
         "owner",
         "platform",
         "protocol",
@@ -288,8 +292,8 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
 
     supported_sub_tokens.update({
         "action": {"accept", "deny", "reject", "count", "log"},
+        "option": {"established", "tcp-established"},
     })
-    del supported_sub_tokens["option"]
     return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):
@@ -341,6 +345,18 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
         if term.stateless_reply:
           logging.warning(
               "WARNING: Term %s in policy %s>%s is a stateless reply "
+              "term and will not be rendered.", term.name, self.from_zone,
+              self.to_zone)
+          continue
+        if "established" in term.option:
+          logging.warning(
+              "WARNING: Term %s in policy %s>%s is a established "
+              "term and will not be rendered.", term.name, self.from_zone,
+              self.to_zone)
+          continue
+        if "tcp-established" in term.option:
+          logging.warning(
+              "WARNING: Term %s in policy %s>%s is a tcp-established "
               "term and will not be rendered.", term.name, self.from_zone,
               self.to_zone)
           continue
