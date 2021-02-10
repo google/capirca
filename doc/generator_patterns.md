@@ -355,3 +355,17 @@ span of the vendor syntax, not just a single keyword.
 #### Custom exceptions
 
 All custom exceptions types added must be unit tested.
+
+### Test Methods
+
+#### Running end-to-end Capirca tests
+
+Create a test .pol file.
+
+Build and run the ACL generator binary with the desired base and output directory.
+The following command simply outputs to the current directory.
+
+```shell
+$ ./capirca/aclgen --base_directory ./
+--output_directory ./ --recursive --optimize --definitions_directory capirca/def --logtostderr --policy_file path/to/test.pol
+```
