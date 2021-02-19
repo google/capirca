@@ -552,8 +552,12 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       service.append(self.INDENT * 8 + "<" + protocol + ">")
       if src_ports:
         service.append(self.INDENT * 9 + "<source-port>" + ','.join(src_ports) + "</source-port>")
+      else:
+        service.append(self.INDENT * 9 + "<source-port>any</source-port>")
       if dst_ports:
         service.append(self.INDENT * 9 + "<port>" + ','.join(dst_ports) + "</port>")
+      else:
+        service.append(self.INDENT * 9 + "<port>any</port>")
       service.append(self.INDENT * 8 + "</" + protocol + ">")
       service.append(self.INDENT * 7 + "</protocol>")
       service.append(self.INDENT * 6 + "</entry>")
