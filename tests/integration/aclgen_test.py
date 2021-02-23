@@ -73,7 +73,11 @@ class TestAclGenDemo(unittest.TestCase):
              'sample_multitarget.msmpc', 'sample_multitarget.xacl',
              'sample_nsxv.nsx', 'sample_packetfilter.pf',
              'sample_speedway.ipt', 'sample_srx.srx',
-             'sample_paloalto.xml']
+             'sample_paloalto.xml', 'sample_stateful_multitarget_simple.xml',
+             'sample_stateful_multitarget_simple.srx',
+             'sample_stateful_multitarget_complex.xml',
+             'sample_stateful_multitarget_complex.srx',
+             ]
     expected = [mock.call(
         os.path.join(self.test_subdirectory, f), mock.ANY) for f in files]
     mock_writer.assert_has_calls(expected, any_order=True)
