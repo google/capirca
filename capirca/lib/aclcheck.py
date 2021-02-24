@@ -184,7 +184,7 @@ class AclCheck(object):
     for match in self.matches:
       if match.action:
         if not match.possibles:
-          if action is 'any' or action in match.action:
+          if action == 'any' or action in match.action:
             match_list.append(match)
     return match_list
 
@@ -249,7 +249,7 @@ class AclCheck(object):
     Returns:
       bool: True of false
     """
-    if addr is 'any': return True   # always true if we match for any addr
+    if addr == 'any': return True   # always true if we match for any addr
     if not addresses: return True   # always true if term has nothing to match
     for ip in addresses:
       # ipaddr can incorrectly report ipv4 as contained with ipv6 addrs
