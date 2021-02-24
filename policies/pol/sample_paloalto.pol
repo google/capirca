@@ -41,6 +41,7 @@ term allow-icmp{
 
 term allow-only-pan-app{
   pan-application:: http
+  pan-security-profile-group:: my-group
   action:: accept
 }
 

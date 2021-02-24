@@ -171,6 +171,7 @@ class Rule(object):
     self.options["source"] = []
     self.options["destination"] = []
     self.options["application"] = []
+    self.options["security_profile_group"] = []
     self.options["service"] = []
     self.options["action"] = "allow"
 
@@ -205,6 +206,11 @@ class Rule(object):
     if term.pan_application:
       for pan_app in term.pan_application:
         self.options["application"].append(pan_app)
+
+    if term.pan_security_profile_group:
+      if len(term.pan_security_profile_group) > 1:
+        raise PaloAltoFWOptionError("Only one security profile group allowed")
+      self.options["security_profile_group"].append(term.pan_security_profile_group[0])
 
     if term.destination_port:
       ports = []
@@ -253,7 +259,6 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     self.pafw_policies = []
     self.addressbook = collections.OrderedDict()
     self.applications = []
-    self.pan_applications = []
     self.ports = []
     self.from_zone = ""
     self.to_zone = ""
@@ -287,6 +292,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
         "stateless_reply",
         "timeout",
         "pan_application",
+        "pan_security_profile_group",
         "translated"
     }
 
@@ -618,6 +624,14 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
         for a in options["application"]:
           rules.append(self.INDENT * 10 + "<member>" + a + "</member>")
       rules.append(self.INDENT * 9 + "</application>")
+
+      if options["security_profile_group"]:
+        rules.append(self.INDENT * 9 + "<profile-setting>")
+        rules.append(self.INDENT * 10 + "<group>")
+        for p in options["security_profile_group"]:
+          rules.append(self.INDENT * 11 + "<member>" + p + "</member>")
+        rules.append(self.INDENT * 10 + "</group>")
+        rules.append(self.INDENT * 9 + "</profile-setting>")
 
       rules.append(self.INDENT * 8 + "</entry>")
 
