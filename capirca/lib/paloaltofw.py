@@ -17,10 +17,16 @@ import collections
 import datetime
 import logging
 
+from absl import flags
+
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
+from capirca.utils import config
+
+
+FLAGS = flags.FLAGS
 
 
 class Error(Exception):
@@ -129,13 +135,19 @@ class Term(aclgenerator.Term):
 class Service(object):
   """Generate PacketFilter policy terms."""
   service_map = {}
-  definitions = naming.Naming(policy.DEFAULT_DEFINITIONS)
+  definitions = None
 
   def __init__(self, src_ports, dst_ports, protocol):
+    if Service.definitions is None:
+      # read the definitions again, since the previously parsed
+      # definitions are not easily accessible through other means.
+      configs = config.generate_configs(FLAGS)
+      Service.definitions = naming.Naming(configs.get('definitions_directory'))
+
     src_service_name = 'ANY' if not src_ports else None
     dst_service_name = 'ANY' if not dst_ports else None
 
-    for svc_name, ports in self.definitions.services.items():
+    for svc_name, ports in Service.definitions.services.items():
       if src_service_name is not None and dst_service_name is not None:
         break
       if src_ports and src_service_name is None and f'{src_ports[0]}/{protocol}' in ports.items:
