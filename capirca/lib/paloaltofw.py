@@ -153,8 +153,6 @@ class Service(object):
 class Rule(object):
   """Extend the Term() class for PaloAlto Firewall Rules."""
 
-  rules = {}
-
   def __init__(self, from_zone, to_zone, terms):
     # Palo Alto Firewall rule keys
     self.options = {}
@@ -228,14 +226,6 @@ class Rule(object):
     if term.protocol:
       if term.protocol[0] == "icmp":
         self.options["application"].append("ping")
-
-    rule_name = term.name
-    if rule_name in self.rules:
-      raise PaloAltoFWDuplicateTermError(
-          "You have a duplicate term. A term named %s already exists."
-          % str(rule_name))
-
-    self.rules[rule_name] = self.options
 
 
 class PaloAltoFW(aclgenerator.ACLGenerator):
@@ -323,8 +313,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           filter_options[2] != "to-zone"):
         raise UnsupportedFilterError(
             "Palo Alto Firewall filter arguments must specify from-zone and "
-            "to-zone."
-        )
+            "to-zone.")
 
       self.from_zone = filter_options[1]
       self.to_zone = filter_options[3]
@@ -410,10 +399,14 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
             "icmp-type": normalized_icmptype,
             "timeout": term.timeout
         })
-      self.pafw_policies.append((header, new_terms, filter_options))
-      # create Palo Alto Firewall Rule object
+
+      ruleset = {}
+
       for term in new_terms:
-        unused_rule = Rule(self.from_zone, self.to_zone, term)
+        current_rule = Rule(self.from_zone, self.to_zone, term)
+        ruleset[term.term.name] = current_rule.options
+
+      self.pafw_policies.append((header, ruleset, filter_options))
 
   def _BuildAddressBook(self, zone, address):
     """Create the address book configuration entries.
@@ -566,61 +559,65 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     rules.append(self.INDENT * 6 + "<security>")
     rules.append(self.INDENT * 7 + "<rules>")
 
-    for name, options in Rule.rules.items():
-      rules.append(self.INDENT * 8 + '<entry name="' + name + '">')
+    # pytype: disable=key-error
+    for (header, pa_rules, filter_options) in self.pafw_policies:
+      for name, options in pa_rules.items():
+        rules.append(self.INDENT * 8 + '<entry name="' + name + '">')
 
-      rules.append(self.INDENT * 9 + "<to>")
-      for tz in options["to_zone"]:
-        rules.append(self.INDENT * 10 + "<member>" + tz + "</member>")
-      rules.append(self.INDENT * 9 + "</to>")
+        rules.append(self.INDENT * 9 + "<to>")
+        for tz in options["to_zone"]:
+          rules.append(self.INDENT * 10 + "<member>" + tz + "</member>")
+        rules.append(self.INDENT * 9 + "</to>")
 
-      rules.append(self.INDENT * 9 + "<from>")
-      for fz in options["from_zone"]:
-        rules.append(self.INDENT * 10 + "<member>" + fz + "</member>")
-      rules.append(self.INDENT * 9 + "</from>")
+        rules.append(self.INDENT * 9 + "<from>")
+        for fz in options["from_zone"]:
+          rules.append(self.INDENT * 10 + "<member>" + fz + "</member>")
+        rules.append(self.INDENT * 9 + "</from>")
 
-      rules.append(self.INDENT * 9 + "<source>")
-      if not options["source"]:
-        rules.append(self.INDENT * 10 + "<member>any</member>")
-      else:
-        for s in options["source"]:
-          rules.append(self.INDENT * 10 + "<member>" + s + "</member>")
-      rules.append(self.INDENT * 9 + "</source>")
+        rules.append(self.INDENT * 9 + "<source>")
+        if not options["source"]:
+          rules.append(self.INDENT * 10 + "<member>any</member>")
+        else:
+          for s in options["source"]:
+            rules.append(self.INDENT * 10 + "<member>" + s + "</member>")
+        rules.append(self.INDENT * 9 + "</source>")
 
-      rules.append(self.INDENT * 9 + "<destination>")
-      if not options["destination"]:
-        rules.append(self.INDENT * 10 + "<member>any</member>")
-      else:
-        for d in options["destination"]:
-          rules.append(self.INDENT * 10 + "<member>" + d + "</member>")
-      rules.append(self.INDENT * 9 + "</destination>")
+        rules.append(self.INDENT * 9 + "<destination>")
+        if not options["destination"]:
+          rules.append(self.INDENT * 10 + "<member>any</member>")
+        else:
+          for d in options["destination"]:
+            rules.append(self.INDENT * 10 + "<member>" + d + "</member>")
+        rules.append(self.INDENT * 9 + "</destination>")
 
-      rules.append(self.INDENT * 9 + "<service>")
-      if not options["service"] and not options["application"]:
-        rules.append(self.INDENT * 10 + "<member>any</member>")
-      elif not options["service"] and options["application"]:
-        rules.append(self.INDENT * 10 + "<member>application-default</member>")
-      else:
-        for s in options["service"]:
-          rules.append(self.INDENT * 10 + "<member>" + s + "</member>")
-      rules.append(self.INDENT * 9 + "</service>")
+        rules.append(self.INDENT * 9 + "<service>")
+        if not options["service"] and not options["application"]:
+          rules.append(self.INDENT * 10 + "<member>any</member>")
+        elif not options["service"] and options["application"]:
+          rules.append(self.INDENT * 10 +
+                       "<member>application-default</member>")
+        else:
+          for s in options["service"]:
+            rules.append(self.INDENT * 10 + "<member>" + s + "</member>")
+        rules.append(self.INDENT * 9 + "</service>")
 
-      rules.append(self.INDENT * 9 + "<action>" + Term.ACTIONS.get(
-          str(options["action"])) + "</action>")
+        rules.append(self.INDENT * 9 + "<action>" + Term.ACTIONS.get(
+            str(options["action"])) + "</action>")
 
-      if fz == tz == "any":
-        rules.append(self.INDENT * 9 + "<rule-type>interzone</rule-type>")
+        if fz == tz == "any":
+          rules.append(self.INDENT * 9 + "<rule-type>interzone</rule-type>")
 
-      rules.append(self.INDENT * 9 + "<application>")
-      if not options["application"]:
-        rules.append(self.INDENT * 10 + "<member>any</member>")
-      else:
-        for a in options["application"]:
-          rules.append(self.INDENT * 10 + "<member>" + a + "</member>")
-      rules.append(self.INDENT * 9 + "</application>")
+        rules.append(self.INDENT * 9 + "<application>")
+        if not options["application"]:
+          rules.append(self.INDENT * 10 + "<member>any</member>")
+        else:
+          for a in options["application"]:
+            rules.append(self.INDENT * 10 + "<member>" + a + "</member>")
+        rules.append(self.INDENT * 9 + "</application>")
 
-      rules.append(self.INDENT * 8 + "</entry>")
+        rules.append(self.INDENT * 8 + "</entry>")
 
+    # pytype: enable=key-error
     rules.append(self.INDENT * 7 + "</rules>")
     rules.append(self.INDENT * 6 + "</security>")
 
