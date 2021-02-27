@@ -562,7 +562,8 @@ class AristaTpTest(unittest.TestCase):
         self.naming.GetServiceByProto.return_value = ["80"]
 
         atp = arista_tp.AristaTrafficPolicy(
-            policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_2, self.naming), EXP_INFO
+            policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_2,
+                               self.naming), EXP_INFO
         )
         output = str(atp)
         self.assertIn("destination port 1024-65535", output, output)
@@ -578,7 +579,8 @@ class AristaTpTest(unittest.TestCase):
         self.naming.GetServiceByProto.return_value = ["25"]
 
         atp = arista_tp.AristaTrafficPolicy(
-            policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1, self.naming), EXP_INFO
+            policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
+                               self.naming), EXP_INFO
         )
         output = str(atp)
         self.assertIn("match good-term-1", output, output)
@@ -607,7 +609,7 @@ class AristaTpTest(unittest.TestCase):
 
         pol = policy.ParsePolicy(GOOD_HEADER + DUPLICATE_TERMS, self.naming)
         self.assertRaises(
-            arista_tp.AristaTpDuplicateTermError,
+            aclgenerator.DuplicateTermError,
             arista_tp.AristaTrafficPolicy,
             pol,
             EXP_INFO,
@@ -617,7 +619,8 @@ class AristaTpTest(unittest.TestCase):
 
     def testCounterCleanup(self):
         atp = arista_tp.AristaTrafficPolicy(
-            policy.ParsePolicy(GOOD_HEADER + COUNTER_CLEANUP_TERM, self.naming),
+            policy.ParsePolicy(
+                GOOD_HEADER + COUNTER_CLEANUP_TERM, self.naming),
             EXP_INFO
         )
         output = str(atp)
@@ -661,7 +664,8 @@ class AristaTpTest(unittest.TestCase):
         self.naming.GetServiceByProto.return_value = ["25"]
 
         atp = arista_tp.AristaTrafficPolicy(
-            policy.ParsePolicy(GOOD_HEADER_INET6 + GOOD_TERM_1_V6, self.naming),
+            policy.ParsePolicy(GOOD_HEADER_INET6 +
+                               GOOD_TERM_1_V6, self.naming),
             EXP_INFO
         )
         output = str(atp)
@@ -959,28 +963,29 @@ class AristaTpTest(unittest.TestCase):
         )
 
     def testAddressExclude(self):
-      big = nacaddr.IPv4('0.0.0.0/1')
-      ip1 = nacaddr.IPv4('10.0.0.0/8')
-      ip2 = nacaddr.IPv4('172.16.0.0/12')
-      terms = (GOOD_TERM_18_SRC, GOOD_TERM_18_DST)
-      self.naming.GetNetAddr.side_effect = [[big, ip1, ip2], [ip1]] * len(terms)
+        big = nacaddr.IPv4('0.0.0.0/1')
+        ip1 = nacaddr.IPv4('10.0.0.0/8')
+        ip2 = nacaddr.IPv4('172.16.0.0/12')
+        terms = (GOOD_TERM_18_SRC, GOOD_TERM_18_DST)
+        self.naming.GetNetAddr.side_effect = [
+            [big, ip1, ip2], [ip1]] * len(terms)
 
-      mock_calls = []
-      for term in terms:
-        atp = arista_tp.AristaTrafficPolicy(
-            policy.ParsePolicy(GOOD_HEADER + term, self.naming),
-            EXP_INFO)
-        output = str(atp)
-        self.assertIn('except 10.0.0.0/8', output, output)
-        # note that the additional spaces are in the following assert to insure
-        # that it's not being rendered w/o the "except"
-        self.assertNotIn('  10.0.0.0/8', output, output)
-        self.assertIn('172.16.0.0/12', output, output)
-        self.assertNotIn('except 172.16.0.0/12', output, output)
-        mock_calls.append(mock.call('INTERNAL'))
-        mock_calls.append(mock.call('SOME_HOST'))
+        mock_calls = []
+        for term in terms:
+            atp = arista_tp.AristaTrafficPolicy(
+                policy.ParsePolicy(GOOD_HEADER + term, self.naming),
+                EXP_INFO)
+            output = str(atp)
+            self.assertIn('except 10.0.0.0/8', output, output)
+            # note that the additional spaces are in the following assert to insure
+            # that it's not being rendered w/o the "except"
+            self.assertNotIn('  10.0.0.0/8', output, output)
+            self.assertIn('172.16.0.0/12', output, output)
+            self.assertNotIn('except 172.16.0.0/12', output, output)
+            mock_calls.append(mock.call('INTERNAL'))
+            mock_calls.append(mock.call('SOME_HOST'))
 
-      self.naming.GetNetAddr.assert_has_calls(mock_calls)
+        self.naming.GetNetAddr.assert_has_calls(mock_calls)
 
     def testMixedInet(self):
         self.naming.GetNetAddr.side_effect = [
@@ -1041,7 +1046,8 @@ class AristaTpTest(unittest.TestCase):
              nacaddr.IP("2001:4860:4860::8888")]
         ]
         atp = arista_tp.AristaTrafficPolicy(
-            policy.ParsePolicy(GOOD_HEADER + INET6_MIXED, self.naming), EXP_INFO
+            policy.ParsePolicy(GOOD_HEADER + INET6_MIXED,
+                               self.naming), EXP_INFO
         )
         output = str(atp)
         self.assertIn("match INET6_MIXED_v6 ipv6", output, output)
@@ -1060,7 +1066,8 @@ class AristaTpTest(unittest.TestCase):
              nacaddr.IP("2001:4860:1337::8888")]
         ]
         atp = arista_tp.AristaTrafficPolicy(
-            policy.ParsePolicy(GOOD_HEADER + MIXED_MIXED, self.naming), EXP_INFO
+            policy.ParsePolicy(GOOD_HEADER + MIXED_MIXED,
+                               self.naming), EXP_INFO
         )
         output = str(atp)
         self.assertIn("match MIXED_MIXED ipv4", output, output)
@@ -1200,7 +1207,8 @@ class AristaTpTest(unittest.TestCase):
         )
         output = str(atp)
         self.assertIn("field-set ipv6 prefix src-FS_INET6_v6", output, output)
-        self.assertIn("source prefix field-set src-FS_INET6_v6", output, output)
+        self.assertIn("source prefix field-set src-FS_INET6_v6",
+                      output, output)
 
     def testSrcFsMixed(self):
         self.naming.GetNetAddr.side_effect = [
@@ -1223,7 +1231,8 @@ class AristaTpTest(unittest.TestCase):
         self.assertIn("field-set ipv4 prefix src-FS_MIXED", output, output)
         self.assertIn("field-set ipv6 prefix src-FS_MIXED_v6", output, output)
         self.assertIn("source prefix field-set src-FS_MIXED", output, output)
-        self.assertIn("source prefix field-set src-FS_MIXED_v6", output, output)
+        self.assertIn("source prefix field-set src-FS_MIXED_v6",
+                      output, output)
 
     def testDstFsInet(self):
         self.naming.GetNetAddr.side_effect = [
@@ -1236,7 +1245,8 @@ class AristaTpTest(unittest.TestCase):
         )
         output = str(atp)
         self.assertIn("field-set ipv4 prefix dst-FS_INET", output, output)
-        self.assertIn("destination prefix field-set dst-FS_INET", output, output)
+        self.assertIn("destination prefix field-set dst-FS_INET",
+                      output, output)
 
     def testDstFsInet6(self):
         self.naming.GetNetAddr.side_effect = [
@@ -1251,7 +1261,8 @@ class AristaTpTest(unittest.TestCase):
         )
         output = str(atp)
         self.assertIn("field-set ipv6 prefix dst-FS_INET6_v6", output, output)
-        self.assertIn("destination prefix field-set dst-FS_INET6_v6", output, output)
+        self.assertIn(
+            "destination prefix field-set dst-FS_INET6_v6", output, output)
 
     def testDstFsMixed(self):
         self.naming.GetNetAddr.side_effect = [
@@ -1273,8 +1284,10 @@ class AristaTpTest(unittest.TestCase):
         output = str(atp)
         self.assertIn("field-set ipv4 prefix dst-FS_MIXED", output, output)
         self.assertIn("field-set ipv6 prefix dst-FS_MIXED_v6", output, output)
-        self.assertIn("destination prefix field-set dst-FS_MIXED", output, output)
-        self.assertIn("destination prefix field-set dst-FS_MIXED_v6", output, output)
+        self.assertIn(
+            "destination prefix field-set dst-FS_MIXED", output, output)
+        self.assertIn(
+            "destination prefix field-set dst-FS_MIXED_v6", output, output)
 
     def testConfigHelper(self):
         MATCH_INDENT = " " * 6
@@ -1301,16 +1314,19 @@ class AristaTpTest(unittest.TestCase):
 
     def testTTL(self):
         atp = arista_tp.AristaTrafficPolicy(
-            policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_21, self.naming), EXP_INFO
+            policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_21,
+                               self.naming), EXP_INFO
         )
         output = str(atp)
         self.assertIn("ttl 10", output)
 
     def testBuildTokens(self):
-        self.naming.GetNetAddr.return_value = [nacaddr.IP("10.1.1.1/26", strict=False)]
+        self.naming.GetNetAddr.return_value = [
+            nacaddr.IP("10.1.1.1/26", strict=False)]
 
         atp = arista_tp.AristaTrafficPolicy(
-            policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_28, self.naming), EXP_INFO
+            policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
+                               self.naming), EXP_INFO
         )
         st, sst = atp._BuildTokens()
         # print(ppr.pprint(st))
@@ -1320,7 +1336,8 @@ class AristaTpTest(unittest.TestCase):
 
     def testBuildWarningTokens(self):
         atp = arista_tp.AristaTrafficPolicy(
-            policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_28, self.naming), EXP_INFO
+            policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_28,
+                               self.naming), EXP_INFO
         )
         st, sst = atp._BuildTokens()
         self.assertEqual(st, SUPPORTED_TOKENS)
@@ -1328,14 +1345,16 @@ class AristaTpTest(unittest.TestCase):
 
     def testHopOptProtocol(self):
         atp = arista_tp.AristaTrafficPolicy(
-            policy.ParsePolicy(GOOD_HEADER + HOPOPT_TERM, self.naming), EXP_INFO
+            policy.ParsePolicy(GOOD_HEADER + HOPOPT_TERM,
+                               self.naming), EXP_INFO
         )
         output = str(atp)
         self.assertIn("protocol 0", output, output)
 
     def testFailIsFragmentInV6(self):
         self.naming.GetServiceByProto.return_value = ["22"]
-        pol = policy.ParsePolicy(GOOD_HEADER_INET6 + OPTION_TERM_1, self.naming)
+        pol = policy.ParsePolicy(
+            GOOD_HEADER_INET6 + OPTION_TERM_1, self.naming)
 
         self.assertRaises(
             arista_tp.AristaTpFragmentInV6Error,
