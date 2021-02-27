@@ -1,4 +1,3 @@
-# Copyright 2020 Arista Networks. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -67,10 +66,6 @@ class TcpEstablishedWithNonTcpError(Error):
     pass
 
 
-class AristaTpDuplicateTermError(Error):
-    pass
-
-
 class AristaTpFragmentInV6Error(Error):
     pass
 
@@ -113,7 +108,7 @@ class Config(object):
 class Term(aclgenerator.Term):
     """represents an individual AristaTrafficPolicy term.
 
-    useful for the __str__() method. wher literally, everything intersting
+    useful for the __str__() method. where literally, everything interesting
     happens.
 
     attributes:
@@ -147,36 +142,9 @@ class Term(aclgenerator.Term):
     _TERM_TYPE = {
         "inet": {
             "addr_fam": "ipv4",
-            "addr": "address",
-            "saddr": "source prefix",
-            "daddr": "destination prefix",
-            "protocol": "protocol",
-            "established": "established",
-            # tcp flags
-            "ack": "ack",
-            "fin": "fin",
-            "initial": "initial",
-            "psh": "syn",
-            "rst": "rst",
-            "syn": "syn",
-            "tcp-est": "established",
-            "urg": "urg",
         },
         "inet6": {
             "addr_fam": "ipv6",
-            "addr": "address",
-            "saddr": "source prefix",
-            "daddr": "destination prefix",
-            "protocol": "protocol",
-            # tcp flags
-            "ack": "ack",
-            "fin": "fin",
-            "initial": "initial",
-            "psh": "syn",
-            "rst": "rst",
-            "syn": "syn",
-            "tcp-est": "established",
-            "urg": "urg",
         },
     }
 
@@ -192,9 +160,8 @@ class Term(aclgenerator.Term):
     def __str__(self):
         # verify platform specific terms. skip the whole term if the platform
         # does not match.
-        if self.term.platform:
-            if self._PLATFORM not in self.term.platform:
-                return ""
+        if self.term.platform and self._PLATFORM not in self.term.platform:
+            return ""
         if self.term.platform_exclude:
             if self._PLATFORM in self.term.platform_exclude:
                 return ""
@@ -389,7 +356,7 @@ class Term(aclgenerator.Term):
             if self.term.icmp_code:
                 protocol_str += icmp_code_str
 
-            # don't render emppty protocol strings.
+            # don't render empty protocol strings.
             if protocol_str != "":
                 term_block.append([MATCH_INDENT, protocol_str, False])
 
@@ -465,19 +432,15 @@ class Term(aclgenerator.Term):
 
     def _processPorts(self, term):
         port_str = ""
-        sport = ""
-        dport = ""
 
         # source port generation
         if term.source_port:
-            sport += " source port %s" % self._Group(term.source_port)
-            port_str += sport
+            port_str += " source port %s" % self._Group(term.source_port)
 
         # destination port
         if term.destination_port:
-            dport += (" destination port %s"
-                      % self._Group(term.destination_port))
-            port_str += dport
+            port_str += (" destination port %s"
+                         % self._Group(term.destination_port))
 
         return port_str
 
@@ -542,9 +505,8 @@ class Term(aclgenerator.Term):
         for p in term.protocol:
             if p not in _ANET_PROTO_MAP[term_type].keys():
                 dirty_prots = True
-                prots.append(p)
-            else:
-                prots.append(p)
+
+            prots.append(p)
 
         if dirty_prots:
             num_prots = []
@@ -557,9 +519,8 @@ class Term(aclgenerator.Term):
         else:
             protocol_str += "protocol %s" % self._Group(prots)
 
-        if prots == ["tcp"]:
-            if len(flags) > 0:
-                protocol_str += " flags " + " ".join(flags)
+        if prots == ["tcp"] and len(flags) > 0:
+            protocol_str += " flags " + " ".join(flags)
 
         return protocol_str
 
@@ -583,10 +544,10 @@ class Term(aclgenerator.Term):
             if 255 > p > ptr:
                 if (p - 1) == ptr:
                     ex_str += str(ptr) + ","
-                    ptr = p + 1
                 else:
                     ex_str += str(ptr) + "-" + str(p - 1) + ","
-                    ptr = p + 1
+
+                ptr = p + 1
             elif p == ptr:
                 ptr = p + 1
 
@@ -606,9 +567,8 @@ class Term(aclgenerator.Term):
             # only append tcp-established for option established when
             # tcp is the only protocol
             if opt.startswith("established"):
-                if self.term.protocol == ["tcp"]:
-                    if "established" not in flags:
-                        flags.append("established")
+                if self.term.protocol == ["tcp"] and "established" not in flags:
+                    flags.append("established")
             # if tcp-established specified, but more than just tcp is
             # included in the protocols, raise an error
             elif opt.startswith("tcp-established"):
@@ -725,6 +685,7 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
             "protocol",
             "protocol_except",
             "source_address",
+            "source_address_exclude",
             "source_port",
             "source_prefix",
             "ttl",
@@ -842,7 +803,7 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
                         term.name = term.name + "_v6"
 
                     if term.name in term_names:
-                        raise AristaTpDuplicateTermError(
+                        raise aclgenerator.DuplicateTermError(
                             "multiple terms named: %s" % term.name
                         )
                     term_names.add(term.name)

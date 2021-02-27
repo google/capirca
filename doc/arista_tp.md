@@ -27,12 +27,20 @@ The following tokens are supported:
  - `verbatim`
 
 
+# documentation
+
+The official documentation for traffic-policies can be found at the following URL.
+ - https://eos.arista.com/eos-4-25-0f/support-for-traffic-policy-on-interfaces/
 
 # filter types
-Traffic-policies are dual-address-family by default (i.e.: mixed).  A term may be either of type ipv4 or ipv6.  If the filter type is defined as mixed (the default), then match/action statements for each address family will be generated.  If the operator wishes to create an ipv4 or ipv6 only filter, the inet and inet6 tokens within the header will be honored and only addresses from the respective address family will be rendered.  However, EOS will still, by default, create an 'ipvX-default-all' term for the alternate address family.  (see below)
+Traffic-policies are dual-address-family by default (i.e.: mixed).  A term may be either of type ipv4 or ipv6.  If the filter type is defined as mixed (the default), then match/action statements for each address family will be generated.
+
+If the operator wishes to create an ipv4 or ipv6 only filter, the inet and inet6 tokens within the header will be honored and only addresses from the respective address family will be rendered.  However, EOS will still, by default, create an 'ipvX-default-all' term for the alternate address family.  (see below)
 
 ## action
 The fully supported actions are: `accept`, and `deny`.  Use of `reject`, or `reject-with-tcp-rst` will result in the generation of deny actions in the rendered traffic policy.
+
+Note, within traffic-policies not configuraing an explicit `deny` action (or `reject` variant) will result in an implicit allow for a term.
 
 ### counters
 - If counters are specified in a term, a traffic-policy named-counter stanza will be generated in the rendered output.
@@ -42,6 +50,13 @@ The fully supported actions are: `accept`, and `deny`.  Use of `reject`, or `rej
 Currently, (as of Jan-2021), EOS does not support the use of 'except' inline within match statements.  If an exclude/except token is used, a traffic-policy field-set will be generated and referenced in the match-term output. This field-set will be named `<direction>-<term.name>` where direction is either **src** or **dst** depending on the direction of the token in use.
 
 If the filter type is mixed, both address-families will have the respective field-sets generated. The field-set for the ipv4 address family will have the field-set generated with no suffix, while the ipv6 field-set will have `_v6` appended.
+
+## ports
+In EOS traffic-policies, ports can be configured using:
+- `source [ all | port-list | field-set ]`
+- `destination [ all | port-list | field-set ]`
+
+Currently, all and field-sets are not supported for ports. Only port-lists are supported.
 
 ## default-terms
 
