@@ -160,11 +160,11 @@ class Term(aclgenerator.Term):
     def __str__(self):
         # verify platform specific terms. skip the whole term if the platform
         # does not match.
-        if self.term.platform and self._PLATFORM not in self.term.platform:
+        if (self.term.platform and self._PLATFORM not in self.term.platform):
             return ""
-        if self.term.platform_exclude:
-            if self._PLATFORM in self.term.platform_exclude:
-                return ""
+        if (self.term.platform_exclude and
+                self._PLATFORM in self.term.platform_exclude):
+            return ""
 
         config = Config()
 
@@ -472,6 +472,7 @@ class Term(aclgenerator.Term):
     def _processProtocol(self, term_type, term, flags):
         _ANET_PROTO_MAP = {
             "inet": {
+                # <1-255> protocol  values(s) or range(s) of protocol  values
                 "ahp": "",
                 "bgp": "",
                 "icmp": "",
@@ -484,7 +485,7 @@ class Term(aclgenerator.Term):
                 "vrrp": "",
             },
             "inet6": {
-                # <0-255>    protocol  values(s) or range(s) of protocol  values
+                # <0-255> protocol  values(s) or range(s) of protocol  values
                 "bgp": "",        # BGP
                 "icmpv6": "",     # ICMPv6 (58)
                 "ospf": "",       # OSPF routing protocol (89)
@@ -525,6 +526,10 @@ class Term(aclgenerator.Term):
         return protocol_str
 
     def _processProtocolExcept(self, term_type, term, flags):
+        # EOS does not have a protocol-except keyword. it does, however, support
+        # lists of protocol-ids. given a term this function will generate the
+        # appropriate list of protocol-id's which *will* be permited. within the
+        # supported range of addaress family protocols.
         protocol_range = {
             "inet": 1,
             "inet6": 0,
@@ -592,11 +597,11 @@ class Term(aclgenerator.Term):
         return flags, misc_options
 
     def _Group(self, group, lc=True):
-        """If 1 item return it, else return [ item1 item2 ].
+        """If 1 item return it, else return [item1 item2].
 
         Args:
-          group: a list.  could be a list of strings (protocols) or a list of
-                 tuples (ports)
+          group: a list.  could be a list of strings(protocols) or a list of
+                 tuples(ports)
           lc: return a lower cased result for text.  Default is True.
 
         Returns:
@@ -608,7 +613,7 @@ class Term(aclgenerator.Term):
             """Return the actual formatting of an individual element.
 
             Args:
-              el: either a string (protocol) or a tuple (ports)
+              el: either a string(protocol) or a tuple(ports)
               lc: return lower cased result for text.  Default is True.
 
             Returns:
@@ -649,6 +654,7 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
     _PLATFORM = "arista_tp"
     _SUPPORTED_AF = set(("inet", "inet6", "mixed"))
     _TERM = Term
+    _LOGGING = set()
 
     SUFFIX = ".atp"
 
@@ -880,8 +886,9 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
                     if (("is-fragment" in term.option or
                          "fragment" in term.option) and term_type == "inet6"):
                         logging.warning(
-                            "WARNING: term %s in mixed policy %s uses fragment "
-                            "the ipv6 version of the term will not be rendered",
+                            "WARNING: term %s in mixed policy %s uses "
+                            "fragment the ipv6 version of the term will not be "
+                            "rendered.",
                             term.name,
                             filter_name,
                         )
