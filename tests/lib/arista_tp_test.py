@@ -836,7 +836,7 @@ class AristaTpTest(unittest.TestCase):
         # isn't rendered for inet6
         mock_warn.assert_any_call(
             "WARNING: term %s in mixed policy %s uses fragment "
-            "the ipv6 version of the term will not be rendered",
+            "the ipv6 version of the term will not be rendered.",
             "option-term_v6",
             "test-filter"
         )
@@ -958,7 +958,7 @@ class AristaTpTest(unittest.TestCase):
         self.assertNotIn("match", output, output)
         mock_warn.has_calls(
             "WARNING: term %s has no valid match criteria and "
-            "will not be rendered",
+            "will not be rendered.",
             "missing-match",
         )
 
@@ -1374,7 +1374,7 @@ class AristaTpTest(unittest.TestCase):
         self.assertNotIn("match option-term_v6 ipv6", output, output)
         mock_warn.assert_any_call(
             "WARNING: term %s in mixed policy %s uses fragment "
-            "the ipv6 version of the term will not be rendered",
+            "the ipv6 version of the term will not be rendered.",
             "option-term_v6",
             "test-filter"
         )
