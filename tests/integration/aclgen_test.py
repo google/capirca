@@ -63,7 +63,9 @@ class TestAclGenDemo(unittest.TestCase):
         self.exp_info,
         self.max_renderers,
         self.ignore_directories,
-        self.context
+        None,
+        None,
+        self.context,
     )
     files = ['sample_cisco_lab.acl', 'sample_cloudarmor.gca', 'sample_gce.gce',
              'sample_ipset.ips', 'sample_juniper_loopback.jcl',
@@ -94,7 +96,9 @@ class TestAclGenDemo(unittest.TestCase):
         self.exp_info,
         self.max_renderers,
         self.ignore_directories,
-        self.context
+        None,
+        None,
+        self.context,
     )
     mock_writer.assert_called_with(
         os.path.join(self.test_subdirectory, 'sample_cisco_lab.acl'), mock.ANY)
