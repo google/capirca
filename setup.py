@@ -14,14 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""capirca installation module."""
 
+from os import path
 from setuptools import find_packages
 from setuptools import setup
 
-with open('VERSION') as f:
+root_dir = path.abspath(path.dirname(__file__))
+
+with open(path.join(root_dir, 'VERSION'), encoding='utf-8') as f:
   version = f.read()
 
-with open('README.md') as f:
+with open(path.join(root_dir, 'README.md'), encoding='utf-8') as f:
   long_description = f.read()
 
 setup(
