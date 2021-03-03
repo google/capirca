@@ -54,8 +54,6 @@ TERM_INDENT = 2 * INDENT_STR
 MATCH_INDENT = 3 * INDENT_STR
 ACTION_INDENT = 4 * INDENT_STR
 
-DEFAULT_TERM_SUFFIX = "-all-default"
-
 
 # generic error class
 class Error(Exception):
@@ -151,7 +149,7 @@ class Term(aclgenerator.Term):
     def __init__(self, term, term_type, noverbose):
         super(Term, self).__init__(term)
         self.term = term
-        self.term_type = term_type   # effectively drives the address-family
+        self.term_type = term_type   # drives the address-family
         self.noverbose = noverbose
 
         if term_type not in self._TERM_TYPE:
@@ -210,13 +208,6 @@ class Term(aclgenerator.Term):
         # helper for per-address-family keywords.
         family_keywords = self._TERM_TYPE.get(self.term_type)
 
-        # if the term name is default-* we will render this into the appropriate
-        # default term name to be used in this filter.
-        default_term = re.match(r"^default\-.*", self.term.name,
-                                re.IGNORECASE)
-        if default_term:
-            self.term.name = family_keywords["addr_fam"] + "-default-all"
-
         term_block.append(
             [TERM_INDENT,
              "match %s %s" % (self.term.name, family_keywords["addr_fam"]),
@@ -250,7 +241,12 @@ class Term(aclgenerator.Term):
             self.term.ttl
         )
 
-        if (not has_match_criteria and not default_term):
+        # if the term name is default-* we will render this into the
+        # appropriate default term name to be used in this filter.
+        is_default_term = re.match(r"^ipv(4|6)\-default\-.*", self.term.name,
+                                   re.IGNORECASE)
+
+        if (not has_match_criteria and not is_default_term):
             # this term doesn't match on anything and isn't a default-term
             logging.warning(
                 "WARNING: term %s has no valid match criteria and "
@@ -413,11 +409,17 @@ class Term(aclgenerator.Term):
             term_block.append([MATCH_INDENT, "actions", False])
 
         if has_extra_actions:
-            # logging
-            if self.term.logging:
+            # logging - only supported on deny actions
+            if self.term.logging and self.term.action != ["accept"]:
                 term_block.append([ACTION_INDENT, "log", False])
+            elif self.term.logging and self.term.action == ["accept"]:
+                logging.warning(
+                    "WARNING: term %s uses logging option but is not a deny "
+                    "action. logging will not be added.",
+                    self.term.name,
+                )
 
-            # counters
+                # counters
             if self.term.counter:
                 term_block.append([ACTION_INDENT,
                                    "count %s" % self.term.counter, False])
@@ -785,10 +787,11 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
             # if the filter_type is mixed, we need to iterate through the
             # supported address families. treat the incoming policy term
             # (pol_term) as a template for the term and override the necessary
-            # of the term for the inet6 evaluation.
+            # elements of the term for the inet6 evaluation.
             #
             # only make a copy of the pol_term if filter_type = "mixed"
             ftypes = []
+
             if filter_type == "mixed":
                 ftypes = ["inet", "inet6"]
             else:
@@ -801,12 +804,18 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
                     else:
                         term = pol_term
 
-                    term_type = ft
-                    term.name = self.FixTermLength(term.name)
+                    # if the term name is default-* we will render this into the
+                    # appropriate default term name to be used in this filter.
+                    default_term = re.match(r"^default\-.*", term.name,
+                                            re.IGNORECASE)
+
                     # TODO(sulrich): if term names become unique to address
                     # families, this can be removed.
-                    if (filter_type == "mixed" and term_type == "inet6"):
-                        term.name = term.name + "_v6"
+                    if (filter_type == "mixed" and ft == "inet6"):
+                        term.name = _AF_MAP_TXT[ft] + '-' + term.name
+
+                    if default_term:
+                        term.name = _AF_MAP_TXT[ft] + "-default-all"
 
                     if term.name in term_names:
                         raise aclgenerator.DuplicateTermError(
@@ -814,7 +823,7 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
                         )
                     term_names.add(term.name)
 
-                    term = self.FixHighPorts(term, af=term_type)
+                    term = self.FixHighPorts(term, af=ft)
                     if not term:
                         continue
 
@@ -884,7 +893,7 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
 
                     # this should error out more gracefully in mixed configs
                     if (("is-fragment" in term.option or
-                         "fragment" in term.option) and term_type == "inet6"):
+                         "fragment" in term.option) and ft == "inet6"):
                         logging.warning(
                             "WARNING: term %s in mixed policy %s uses "
                             "fragment the ipv6 version of the term will not be "
@@ -922,9 +931,9 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
                     # term
                     if term.source_address_exclude:
                         src_addr = term.GetAddressOfVersion(
-                            "source_address", self._AF_MAP[term_type])
+                            "source_address", self._AF_MAP[ft])
                         src_addr_ex = term.GetAddressOfVersion(
-                            "source_address_exclude", self._AF_MAP[term_type])
+                            "source_address_exclude", self._AF_MAP[ft])
                         src_addr, src_addr_ex = self._MinimizePrefixes(src_addr,
                                                                        src_addr_ex)
 
@@ -933,14 +942,14 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
                                                          "%s" % term.name,
                                                          src_addr,
                                                          src_addr_ex,
-                                                         _AF_MAP_TXT[term_type])
+                                                         _AF_MAP_TXT[ft])
                             policy_field_sets.append(fs)
 
                     if term.destination_address_exclude:
                         dst_addr = term.GetAddressOfVersion(
-                            "destination_address", self._AF_MAP[term_type])
+                            "destination_address", self._AF_MAP[ft])
                         dst_addr_ex = term.GetAddressOfVersion(
-                            "destination_address_exclude", self._AF_MAP[term_type])
+                            "destination_address_exclude", self._AF_MAP[ft])
                         dst_addr, dst_addr_ex = self._MinimizePrefixes(dst_addr,
                                                                        dst_addr_ex)
 
@@ -949,7 +958,7 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
                                                          "%s" % term.name,
                                                          term.destination_address,
                                                          term.destination_address_exclude,
-                                                         _AF_MAP_TXT[term_type])
+                                                         _AF_MAP_TXT[ft])
                             policy_field_sets.append(fs)
 
                     # generate the unique list of named counters
@@ -958,7 +967,7 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
                         term.counter = re.sub(r"\.", "-", str(term.counter))
                         policy_counters.add(term.counter)
 
-                    new_terms.append(self._TERM(term, term_type, noverbose))
+                    new_terms.append(self._TERM(term, ft, noverbose))
 
             self.arista_traffic_policies.append(
                 (header,

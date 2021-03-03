@@ -300,12 +300,6 @@ term long-comment-term-1 {
   action:: deny
 }
 """
-LONG_POLICER_TERM_1 = """
-term long-policer-term-1 {
-  policer:: this-is-very-very-very-very-very-very-very-very-very-very-very-very-very-very-very-very-very-very-very-very-very-very-very-very-very-very-very-very-very-very-long
-  action:: deny
-}
-"""
 HOPOPT_TERM = """
 term good-term-1 {
   protocol:: hopopt
@@ -453,6 +447,23 @@ term FS_MIXED {
   destination-address:: INTERNAL
   destination-exclude:: SOME_HOST
   action:: accept
+}
+"""
+
+# this term should not have the logging element rendered
+LOGGING_ACCEPT = """
+term logging-term-1 {
+  protocol:: icmp
+  action:: accept
+  logging:: true
+}
+"""
+# this term _should_ have the logging element rendered
+LOGGING_DENY = """
+term logging-term-1 {
+  protocol:: icmp
+  action:: deny
+  logging:: true
 }
 """
 
@@ -837,9 +848,32 @@ class AristaTpTest(unittest.TestCase):
         mock_warn.assert_any_call(
             "WARNING: term %s in mixed policy %s uses fragment "
             "the ipv6 version of the term will not be rendered.",
-            "option-term_v6",
+            "ipv6-option-term",
             "test-filter"
         )
+
+    @mock.patch.object(arista_tp.logging, "warning")
+    def testLoggingOptionFail(self, mock_warn):
+        atp = arista_tp.AristaTrafficPolicy(
+            policy.ParsePolicy(GOOD_HEADER + LOGGING_ACCEPT, self.naming),
+            EXP_INFO
+        )
+        output = str(atp)
+        self.assertIn("match logging-term-1", output)
+        self.assertNotIn(" log\n", output)  # check for bare 'log' word
+        mock_warn.assert_any_call(
+            "WARNING: term %s uses logging option but is not a deny "
+            "action. logging will not be added.",
+            "logging-term-1",
+        )
+
+    def testLoggingOption(self):
+        atp = arista_tp.AristaTrafficPolicy(
+            policy.ParsePolicy(GOOD_HEADER + LOGGING_DENY, self.naming),
+            EXP_INFO
+        )
+        output = str(atp)
+        self.assertIn(" log\n", output)
 
     @mock.patch.object(arista_tp.logging, "debug")
     def testIcmpv6InetMismatch(self, mock_debug):
@@ -896,7 +930,7 @@ class AristaTpTest(unittest.TestCase):
         str(atp)
 
         mock_debug.assert_called_once_with(
-            "Term icmptype-mismatch_v6 will not be rendered, "
+            "Term ipv6-icmptype-mismatch will not be rendered, "
             "as it has icmp match specified but "
             "the ACL is of inet6 address family."
         )
@@ -917,7 +951,7 @@ class AristaTpTest(unittest.TestCase):
         mock_warn.assert_any_call(
             "WARNING: term %s in policy %s is expired and will "
             "not be rendered.",
-            "is_expired_v6",
+            "ipv6-is_expired",
             "test-filter",
         )
 
@@ -1031,8 +1065,8 @@ class AristaTpTest(unittest.TestCase):
             EXP_INFO
         )
         output = str(atp)
-        # note that the term name will contain the '_v6' suffix
-        self.assertIn("match MIXED_INET6_v6 ipv6", output, output)
+        # note that the term name will contain the 'ipv6-' prefix
+        self.assertIn("match ipv6-MIXED_INET6 ipv6", output, output)
         self.assertIn("source prefix 2001:4860:4860::8844/128",
                       output, output)
         self.assertIn("destination prefix 2001:4860:4860::8844/128",
@@ -1050,7 +1084,7 @@ class AristaTpTest(unittest.TestCase):
                                self.naming), EXP_INFO
         )
         output = str(atp)
-        self.assertIn("match INET6_MIXED_v6 ipv6", output, output)
+        self.assertIn("match ipv6-INET6_MIXED ipv6", output, output)
         self.assertIn("source prefix 2001:4860:4860::8844/128",
                       output, output)
         self.assertIn("destination prefix 2001:4860:4860::8844/128",
@@ -1076,7 +1110,7 @@ class AristaTpTest(unittest.TestCase):
         self.assertIn("destination prefix 4.4.2.2",
                       output, output)
 
-        self.assertIn("match MIXED_MIXED_v6 ipv6", output, output)
+        self.assertIn("match ipv6-MIXED_MIXED ipv6", output, output)
         self.assertIn("source prefix 2001:4860:4860::8844/128",
                       output, output)
         self.assertIn("destination prefix 2001:4860:1337::8844/128",
@@ -1096,7 +1130,7 @@ class AristaTpTest(unittest.TestCase):
         self.assertIn("source prefix 8.8.4.4/32",
                       output, output)
 
-        self.assertIn("match MIXED_ANY_v6 ipv6", output, output)
+        self.assertIn("match ipv6-MIXED_ANY ipv6", output, output)
         self.assertIn("source prefix 2001:4860:4860::8844/128",
                       output, output)
 
@@ -1114,7 +1148,7 @@ class AristaTpTest(unittest.TestCase):
         self.assertIn("destination prefix 8.8.4.4/32",
                       output, output)
 
-        self.assertIn("match ANY_MIXED_v6 ipv6", output, output)
+        self.assertIn("match ipv6-ANY_MIXED ipv6", output, output)
         self.assertIn("destination prefix 2001:4860:4860::8844/128",
                       output, output)
 
@@ -1145,7 +1179,7 @@ class AristaTpTest(unittest.TestCase):
             EXP_INFO
         )
         output = str(atp)
-        self.assertIn("match INET6_INET6_v6 ipv6", output, output)
+        self.assertIn("match ipv6-INET6_INET6 ipv6", output, output)
         self.assertIn("source prefix 2001:4860:4860::8844/128",
                       output, output)
         self.assertIn("destination prefix 2001:4860:1337::8844/128",
@@ -1165,7 +1199,7 @@ class AristaTpTest(unittest.TestCase):
         # we should not generate this term
         # TODO(sulrich): we should, however, throw a warning
         self.assertNotIn("match INET_INET6 ipv4", output, output)
-        self.assertNotIn("match INET_INET6_v6 ipv6", output, output)
+        self.assertNotIn("match ipv6-INET_INET6 ipv6", output, output)
 
     def testInet6Inet(self):
         self.naming.GetNetAddr.side_effect = [
@@ -1179,7 +1213,7 @@ class AristaTpTest(unittest.TestCase):
         )
         output = str(atp)
         self.assertNotIn("match INET6_INET ipv4", output, output)
-        self.assertNotIn("match INET6_INET_v6 ipv6", output, output)
+        self.assertNotIn("match ipv6-INET6_INET ipv6", output, output)
 
     def testSrcFsInet(self):
         self.naming.GetNetAddr.side_effect = [
@@ -1206,8 +1240,9 @@ class AristaTpTest(unittest.TestCase):
             EXP_INFO
         )
         output = str(atp)
-        self.assertIn("field-set ipv6 prefix src-FS_INET6_v6", output, output)
-        self.assertIn("source prefix field-set src-FS_INET6_v6",
+        self.assertIn("field-set ipv6 prefix src-ipv6-FS_INET6",
+                      output, output)
+        self.assertIn("source prefix field-set src-ipv6-FS_INET6",
                       output, output)
 
     def testSrcFsMixed(self):
@@ -1229,9 +1264,10 @@ class AristaTpTest(unittest.TestCase):
         )
         output = str(atp)
         self.assertIn("field-set ipv4 prefix src-FS_MIXED", output, output)
-        self.assertIn("field-set ipv6 prefix src-FS_MIXED_v6", output, output)
+        self.assertIn("field-set ipv6 prefix src-ipv6-FS_MIXED",
+                      output, output)
         self.assertIn("source prefix field-set src-FS_MIXED", output, output)
-        self.assertIn("source prefix field-set src-FS_MIXED_v6",
+        self.assertIn("source prefix field-set src-ipv6-FS_MIXED",
                       output, output)
 
     def testDstFsInet(self):
@@ -1260,9 +1296,10 @@ class AristaTpTest(unittest.TestCase):
             EXP_INFO
         )
         output = str(atp)
-        self.assertIn("field-set ipv6 prefix dst-FS_INET6_v6", output, output)
+        self.assertIn("field-set ipv6 prefix dst-ipv6-FS_INET6",
+                      output, output)
         self.assertIn(
-            "destination prefix field-set dst-FS_INET6_v6", output, output)
+            "destination prefix field-set dst-ipv6-FS_INET6", output, output)
 
     def testDstFsMixed(self):
         self.naming.GetNetAddr.side_effect = [
@@ -1283,11 +1320,12 @@ class AristaTpTest(unittest.TestCase):
         )
         output = str(atp)
         self.assertIn("field-set ipv4 prefix dst-FS_MIXED", output, output)
-        self.assertIn("field-set ipv6 prefix dst-FS_MIXED_v6", output, output)
+        self.assertIn("field-set ipv6 prefix dst-ipv6-FS_MIXED",
+                      output, output)
         self.assertIn(
             "destination prefix field-set dst-FS_MIXED", output, output)
         self.assertIn(
-            "destination prefix field-set dst-FS_MIXED_v6", output, output)
+            "destination prefix field-set dst-ipv6-FS_MIXED", output, output)
 
     def testConfigHelper(self):
         MATCH_INDENT = " " * 6
@@ -1371,11 +1409,11 @@ class AristaTpTest(unittest.TestCase):
             EXP_INFO
         )
         output = str(atp)
-        self.assertNotIn("match option-term_v6 ipv6", output, output)
+        self.assertNotIn("match ipv6-option-term ipv6", output, output)
         mock_warn.assert_any_call(
             "WARNING: term %s in mixed policy %s uses fragment "
             "the ipv6 version of the term will not be rendered.",
-            "option-term_v6",
+            "ipv6-option-term",
             "test-filter"
         )
 
