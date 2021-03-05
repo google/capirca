@@ -59,6 +59,15 @@ term accept-ospf {
   action:: accept
 }
 
+term LONG_MULTI_LINE_COMMENTS {
+  comment:: "this is a sample inet6 edge input filter that has very long comments"
+  comment:: "10 this term has several lines in its output."
+  comment:: "20 this term has several lines in its output."
+  comment:: "30 this term has several lines in its output."
+  protocol:: icmp
+  action:: accept
+}
+
 term allow-vrrp {
   protocol:: vrrp
   counter:: vrrp
