@@ -21,8 +21,9 @@ from __future__ import unicode_literals
 import re
 import datetime
 import copy
-
 import six
+import textwrap
+
 from absl import logging
 from capirca.lib import aclgenerator
 
@@ -31,7 +32,10 @@ from capirca.lib import aclgenerator
 # traffic-policies
 #    traffic-policy foo
 #      match dos-attaqrs-source-ip ipv4    << TERM_INDENT
+#                  1         2         3         4         5         6
+#         123456789012345678901234567890123456789012345678901234567890123456789
 #         !! i am a comment, hear me rawr  << MATCH_INDENT
+#         !!
 #         source prefix field-set          << MATCH_INDENT
 #         !
 #         actions
@@ -53,9 +57,11 @@ INDENT_STR = " " * 3  # 3 spaces
 TERM_INDENT = 2 * INDENT_STR
 MATCH_INDENT = 3 * INDENT_STR
 ACTION_INDENT = 4 * INDENT_STR
-
+MAX_COMMENT_LENGTH = 60
 
 # generic error class
+
+
 class Error(Exception):
     pass
 
@@ -216,13 +222,13 @@ class Term(aclgenerator.Term):
         )
 
         term_af = self.AF_MAP.get(self.term_type)
-        # comment - could use a little formatting love
         if self.term.owner and not self.noverbose:
             self.term.comment.append("owner: %s" % self.term.owner)
         if self.term.comment and not self.noverbose:
-            for comment in self.term.comment:
-                for line in comment.split("\n"):
-                    term_block.append([MATCH_INDENT, "!! " + line, False])
+            reflowed_comments = self._reflowComments(self.term.comment,
+                                                     MAX_COMMENT_LENGTH)
+            for line in reflowed_comments:
+                term_block.append([MATCH_INDENT, "!! " + line, False])
 
         has_match_criteria = (
             self.term.destination_address or
@@ -431,6 +437,33 @@ class Term(aclgenerator.Term):
             config.Append(tindent, tstr, verbatim=tverb)
 
         return str(config)
+
+    def _reflowComments(self, comments, max_length):
+        """ reflows capirca comments to stay within max_length
+
+        parameters:
+          comments (list): list of comment strings
+          max_length (int):
+
+        returns:
+          type: list containing the reflowed text.
+
+        if a comment list entry is > max_length it will be reflowed and appended
+        to the returned comment list
+
+        """
+        flowed_comments = []
+
+        for comment in comments:
+            lines = comment.split('\n')
+            for line in lines:
+                if len(line) > max_length:
+                    line = textwrap.wrap(line, max_length)
+                    flowed_comments.extend(line)
+                else:
+                    flowed_comments.append(line)
+
+        return flowed_comments
 
     def _processPorts(self, term):
         port_str = ""

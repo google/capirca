@@ -300,6 +300,18 @@ term long-comment-term-1 {
   action:: deny
 }
 """
+
+LONG_COMMENT_TERM_ANET = """
+term long-comment-term-1 {
+  comment:: "0 this is very very very very very very very very very very very"
+  comment:: "1 very very very very very very very very very very very"
+  comment:: "2 very very very very very very very very very very very"
+  comment:: "3 very very very very very very very very very very very"
+  comment:: "4 very very very very very very very long comment. "
+  protocol:: icmpv6
+  action:: deny
+}
+"""
 HOPOPT_TERM = """
 term good-term-1 {
   protocol:: hopopt
@@ -834,6 +846,20 @@ class AristaTpTest(unittest.TestCase):
         # ensure an _INET entry for each _TERM_TYPE entry
         self.assertEqual(sorted(arista_tp.Term._TERM_TYPE.keys()),
                          sorted(arista_tp.Term.AF_MAP.keys()))
+
+    def testCommentReflow(self):
+        atp = arista_tp.AristaTrafficPolicy(
+            policy.ParsePolicy(
+                GOOD_HEADER + LONG_COMMENT_TERM_ANET, self.naming),
+            EXP_INFO
+        )
+        output = str(atp)
+        self.assertIn("!! 0 this is v", output, output)
+        self.assertIn("!! very", output, output)
+        self.assertIn("!! 1 very very", output, output)
+        self.assertIn("!! 2 very very", output, output)
+        self.assertIn("!! 3 very very", output, output)
+        self.assertIn("!! 4 very very", output, output)
 
     @mock.patch.object(arista_tp.logging, "warning")
     def testArbitraryOptions(self, mock_warn):
