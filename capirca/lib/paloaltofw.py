@@ -16,6 +16,7 @@
 import collections
 import datetime
 import logging
+import xml.etree.ElementTree as ET
 
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
@@ -466,21 +467,96 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
 
   def __str__(self):
     """Render the output of the PaloAltoFirewall policy into config."""
-    initial = []
-    # INITAL CONFIG
-    initial.append('<?xml version="1.0"?>')
-    initial.append('<config version="7.0.0" urldb="paloaltonetworks">')
-    initial.append(self.INDENT * 1 + "<devices>")
-    initial.append(self.INDENT * 2 + '<entry name="localhost.localdomain">')
-    initial.append(self.INDENT * 3 + "<vsys>")
-    initial.append(self.INDENT * 4 + '<entry name="vsys1">')
-    initial.append(self.INDENT * 5 + "<application/>")
-    initial.append(self.INDENT * 5 + "<application-group/>")
 
-    # ADDRESS
-    address_entries = []
-    address_entries.append(self.INDENT * 5 + "<!-- Addresses -->")
-    address_entries.append(self.INDENT * 5 + "<address>")
+    config = ET.Element("config", {"version": "8.1.0",
+                                   "urldb": "paloaltonetworks"})
+    devices = ET.SubElement(config, "devices")
+    device_entry = ET.SubElement(devices, "entry",
+                                 {"name": "localhost.localdomain"})
+    vsys = ET.SubElement(device_entry, "vsys")
+    vsys_entry = ET.SubElement(vsys, "entry", {"name": "vsys1"})
+    app = ET.SubElement(vsys_entry, "application")
+    app_group = ET.SubElement(vsys_entry, "application-group")
+
+    vsys_entry.append(ET.Comment(" Services "))
+    service = ET.SubElement(vsys_entry, "service")
+
+    for k, v in Service.service_map.items():
+      entry = ET.SubElement(service, "entry", {"name": v["name"]})
+      proto0 = ET.SubElement(entry, "protocol")
+      proto = ET.SubElement(proto0, k[1])
+      port = ET.SubElement(proto, "port")
+      tup = str(k[0])[1:-1]
+      if tup[-1] == ",":
+        tup = tup[:-1]
+      port.text = tup.replace("'", "")
+
+    vsys_entry.append(ET.Comment(" Rules "))
+    rulebase = ET.SubElement(vsys_entry, "rulebase")
+    security = ET.SubElement(rulebase, "security")
+    rules = ET.SubElement(security, "rules")
+
+    # pytype: disable=key-error
+    for (header, pa_rules, filter_options) in self.pafw_policies:
+      for name, options in pa_rules.items():
+        entry = ET.SubElement(rules, "entry", {"name": name})
+
+        to = ET.SubElement(entry, "to")
+        for fz in options["to_zone"]:
+          member = ET.SubElement(to, "member")
+          member.text = fz
+
+        from_ = ET.SubElement(entry, "from")
+        for tz in options["from_zone"]:
+          member = ET.SubElement(from_, "member")
+          member.text = tz
+
+        source = ET.SubElement(entry, "source")
+        if not options["source"]:
+          member = ET.SubElement(source, "member")
+          member.text = "any"
+        else:
+          for x in options["source"]:
+            member = ET.SubElement(source, "member")
+            member.text = x
+
+        dest = ET.SubElement(entry, "destination")
+        if not options["destination"]:
+          member = ET.SubElement(dest, "member")
+          member.text = "any"
+        else:
+          for x in options["destination"]:
+            member = ET.SubElement(dest, "member")
+            member.text = x
+
+        service = ET.SubElement(entry, "service")
+        if not options["service"] and not options["application"]:
+          member = ET.SubElement(service, "member")
+          member.text = "any"
+        elif not options["service"] and options["application"]:
+          member = ET.SubElement(service, "member")
+          member.text = "application-default"
+        else:
+          for x in options["service"]:
+            member = ET.SubElement(service, "member")
+            member.text = x
+
+        action = ET.SubElement(entry, "action")
+        action.text = Term.ACTIONS.get(options["action"])
+
+        # XXX loop vars, > 1 zones case
+        if fz == tz == "any":
+          rule_type = ET.SubElement(entry, "rule-type")
+          rule_type.text = "interzone"
+
+        app = ET.SubElement(entry, "application")
+        if not options["application"]:
+          member = ET.SubElement(app, "member")
+          member.text = "any"
+        else:
+          for x in options["application"]:
+            member = ET.SubElement(app, "member")
+            member.text = x
 
     address_book_names_dict = {}
     address_book_groups_dict = {}
@@ -494,6 +570,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
               continue
           address_book_names_dict[name] = address
 
+        # XXX indent bug: should be dedent 1 level?
         # building individual address-group dictionary
         for group in groups:
           group_names = []
@@ -504,132 +581,34 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       # sort address books and address sets
       address_book_groups_dict = collections.OrderedDict(
           sorted(address_book_groups_dict.items()))
-    address_book_keys = sorted(
-        list(address_book_names_dict.keys()), key=self._SortAddressBookNumCheck)
+    address_book_keys = sorted(list(address_book_names_dict.keys()),
+                               key=self._SortAddressBookNumCheck)
 
-    for name in address_book_keys:
-      address_entries.append(self.INDENT * 6 + '<entry name="' + name + '">')
-      address_entries.append(self.INDENT * 7 + "<description>" + name +
-                             "</description>")
-      address_entries.append(self.INDENT * 7 + "<ip-netmask>" + str(
-          address_book_names_dict[name]) + "</ip-netmask>")
-      address_entries.append(self.INDENT * 6 + "</entry>")
-
-    address_entries.append(self.INDENT * 5 + "</address>")
-
-    address_group_entries = []
-    address_group_entries.append(self.INDENT * 5 + "<!-- Address groups-->")
-    address_group_entries.append(self.INDENT * 5 + "<address-group>")
+    vsys_entry.append(ET.Comment(" Address Groups "))
+    addr_group = ET.SubElement(vsys_entry, "address-group")
 
     for group, address_list in address_book_groups_dict.items():
-      address_group_entries.append(self.INDENT * 6 + '<entry name="' + group +
-                                   '">')
-      address_group_entries.append(self.INDENT * 7 + "<static>")
+      entry = ET.SubElement(addr_group, "entry", {"name": group})
+      static = ET.SubElement(entry, "static")
       for name in address_list:
-        address_group_entries.append(self.INDENT * 8 + "<member>" + name +
-                                     "</member>")
-      address_group_entries.append(self.INDENT * 7 + "</static>")
-      address_group_entries.append(self.INDENT * 7 + "</entry>")
-    address_group_entries.append(self.INDENT * 5 + "</address-group>")
+        member = ET.SubElement(static, "member")
+        member.text = name
 
-    # SERVICES
-    service = []
-    service.append(self.INDENT * 5 + "<!-- Services -->")
+    vsys_entry.append(ET.Comment(" Addresses "))
+    addr = ET.SubElement(vsys_entry, "address")
 
-    service.append(self.INDENT * 5 + "<service>")
-    for k, v in Service.service_map.items():
-      service.append(self.INDENT * 6 + '<entry name="' + v["name"] + '">')
-      service.append(self.INDENT * 7 + "<protocol>")
-      service.append(self.INDENT * 8 + "<" + k[1] + ">")
-      tup = str(k[0])[1:-1]
-      if tup[-1] == ",":
-        tup = tup[:-1]
-      service.append(self.INDENT * 9 + "<port>" + tup.replace("'", "") +
-                     "</port>")
-      service.append(self.INDENT * 8 + "</" + k[1] + ">")
-      service.append(self.INDENT * 7 + "</protocol>")
-      service.append(self.INDENT * 6 + "</entry>")
-    service.append(self.INDENT * 5 + "</service>")
+    for name in address_book_keys:
+      entry = ET.SubElement(addr, "entry", {"name": name})
+      desc = ET.SubElement(entry, "description")
+      desc.text = name
+      ip = ET.SubElement(entry, "ip-netmask")
+      ip.text = str(address_book_names_dict[name])
 
-    # RULES
-    rules = []
-    rules.append(self.INDENT * 5 + "<!-- Rules -->")
+    try:
+      # New in version 3.9.
+      ET.indent(config, " " * 2)
+    except AttributeError:
+      pass
 
-    rules.append(self.INDENT * 5 + "<rulebase>")
-    rules.append(self.INDENT * 6 + "<security>")
-    rules.append(self.INDENT * 7 + "<rules>")
-
-    # pytype: disable=key-error
-    for (header, pa_rules, filter_options) in self.pafw_policies:
-      for name, options in pa_rules.items():
-        rules.append(self.INDENT * 8 + '<entry name="' + name + '">')
-
-        rules.append(self.INDENT * 9 + "<to>")
-        for tz in options["to_zone"]:
-          rules.append(self.INDENT * 10 + "<member>" + tz + "</member>")
-        rules.append(self.INDENT * 9 + "</to>")
-
-        rules.append(self.INDENT * 9 + "<from>")
-        for fz in options["from_zone"]:
-          rules.append(self.INDENT * 10 + "<member>" + fz + "</member>")
-        rules.append(self.INDENT * 9 + "</from>")
-
-        rules.append(self.INDENT * 9 + "<source>")
-        if not options["source"]:
-          rules.append(self.INDENT * 10 + "<member>any</member>")
-        else:
-          for s in options["source"]:
-            rules.append(self.INDENT * 10 + "<member>" + s + "</member>")
-        rules.append(self.INDENT * 9 + "</source>")
-
-        rules.append(self.INDENT * 9 + "<destination>")
-        if not options["destination"]:
-          rules.append(self.INDENT * 10 + "<member>any</member>")
-        else:
-          for d in options["destination"]:
-            rules.append(self.INDENT * 10 + "<member>" + d + "</member>")
-        rules.append(self.INDENT * 9 + "</destination>")
-
-        rules.append(self.INDENT * 9 + "<service>")
-        if not options["service"] and not options["application"]:
-          rules.append(self.INDENT * 10 + "<member>any</member>")
-        elif not options["service"] and options["application"]:
-          rules.append(self.INDENT * 10 +
-                       "<member>application-default</member>")
-        else:
-          for s in options["service"]:
-            rules.append(self.INDENT * 10 + "<member>" + s + "</member>")
-        rules.append(self.INDENT * 9 + "</service>")
-
-        rules.append(self.INDENT * 9 + "<action>" + Term.ACTIONS.get(
-            str(options["action"])) + "</action>")
-
-        if fz == tz == "any":
-          rules.append(self.INDENT * 9 + "<rule-type>interzone</rule-type>")
-
-        rules.append(self.INDENT * 9 + "<application>")
-        if not options["application"]:
-          rules.append(self.INDENT * 10 + "<member>any</member>")
-        else:
-          for a in options["application"]:
-            rules.append(self.INDENT * 10 + "<member>" + a + "</member>")
-        rules.append(self.INDENT * 9 + "</application>")
-
-        rules.append(self.INDENT * 8 + "</entry>")
-
-    # pytype: enable=key-error
-    rules.append(self.INDENT * 7 + "</rules>")
-    rules.append(self.INDENT * 6 + "</security>")
-
-    rules.append(self.INDENT * 5 + "</rulebase>")
-
-    end = []
-    end.append(self.INDENT * 4 + "</entry>")
-    end.append(self.INDENT * 3 + "</vsys>")
-    end.append(self.INDENT * 2 + "</entry>")
-    end.append(self.INDENT * 1 + "</devices>")
-    end.append("</config>\n")
-
-    return ("\n".join(initial) + "\n\n" + "\n".join(service) + "\n\n" +
-            "\n".join(rules) + "\n".join(address_group_entries) +
-            "\n".join(address_entries) + "\n" + "\n".join(end))
+    document = ET.tostring(config, encoding="UTF-8")
+    return document.decode("UTF-8")
