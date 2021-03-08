@@ -991,7 +991,6 @@ class Juniper(aclgenerator.ACLGenerator):
       # add the header information
       config.Append('firewall {')
       config.Append('family %s {' % filter_type)
-      config.Append('replace:')
       config.Append('/*')
 
       # we want the acl to contain id and date tags, but p4 will expand
@@ -1007,7 +1006,7 @@ class Juniper(aclgenerator.ACLGenerator):
           config.Append('** ' + line)
       config.Append('*/')
 
-      config.Append('filter %s {' % filter_name)
+      config.Append('replace: filter %s {' % filter_name)
       if interface_specific:
         config.Append('interface-specific;')
 

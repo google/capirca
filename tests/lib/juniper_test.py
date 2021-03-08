@@ -680,7 +680,7 @@ class JuniperTest(unittest.TestCase):
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.assertIn('term good-term-1 {', output, output)
-    self.assertIn('filter test-filter {', output, output)
+    self.assertIn('replace: filter test-filter {', output, output)
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
