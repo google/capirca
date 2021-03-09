@@ -606,7 +606,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
 
     try:
       # New in version 3.9.
-      ET.indent(config, " " * 2)
+      ET.indent(config, self.INDENT)
     except AttributeError:
       pass
 
