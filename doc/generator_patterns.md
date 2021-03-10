@@ -162,6 +162,9 @@ codes used are valid for the given address family.
 In the future, we hope to refactor the code to allow for general ICMP support,
 but for now this functionality is implemented per-platform in each generator.
 
+Note: In a related requirement, IGMP does not apply to IPv6, and thus rules
+containing IGMP should not be generated with IPv6 addresses.
+
 ### Makes an explicit determination about statefulness
 
 The generator author should check for “Am I stateful?”. It should clearly state
