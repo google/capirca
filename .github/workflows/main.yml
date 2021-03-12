@@ -16,15 +16,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        #python-version: [3.7, 3.8, 3.9]
-        python-version: [3.9]
+        #py-version: [3.7, 3.8, 3.9]
+        py-version: [3.9]
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python ${{ matrix.py-version }}
       uses: actions/setup-python@v2
       with:
-        python-version: ${{ matrix.python-version }}
+        py-version: ${{ matrix.py-version }}
+    - name: Setup environment variables
+      run: echo "WFDT::$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_ENV
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -43,10 +45,11 @@ jobs:
         sudo apt install unzip zip
         aclgen --output_directory ./output/current --logtostderr
         mkdir -p ./output/dist
-        zip -r ./output/dist/capirca.zip ./output/current/
+        cd ./output/current/ && \
+          zip -r ../dist/capirca_output_files_${{ matrix.py-version }}_$WFDT.zip .
         ls -alh *
     - name: Upload generated policies
       uses: actions/upload-artifact@v2
       with:
-        name: generated_policy_files_${{ matrix.python-version }}_${{ steps.date.outputs.date }}
-        path: ./output/dist/capirca.zip
+        name: capirca_output_files_${{ matrix.py-version }}_$WFDT
+        path: ./output/dist/capirca_output_files_${{ matrix.py-version }}_$WFDT.zip
