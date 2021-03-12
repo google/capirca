@@ -317,7 +317,7 @@ class Term(aclgenerator.Term):
       ret_str.append(self._POSTJUMP_FORMAT.substitute(filter=self.filter,
                                                       term=self.term_name))
 
-    return '\n'.join(str(v) for v in ret_str if v is not '')
+    return '\n'.join(str(v) for v in ret_str if v != '')
 
   def _CalculateAddresses(self, term_saddr, exclude_saddr,
                           term_daddr, exclude_daddr):
