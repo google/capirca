@@ -37,6 +37,8 @@ jobs:
       run: |
         env
         pwd
+        ls -alh *
+        find .
         echo "wfdt=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_ENV
     - name: Install dependencies
       run: |
