@@ -401,7 +401,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         address_book_type = set(
             [self._ZONE_ADDR_BOOK,
              self._GLOBAL_ADDR_BOOK]).intersection(extra_options)
-        if len(address_book_type) is 0:
+        if len(address_book_type) == 0:
           address_book_type = {self._GLOBAL_ADDR_BOOK}
         self.addr_book_type.update(address_book_type)
         if len(self.addr_book_type) > 1:
