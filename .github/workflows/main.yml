@@ -35,44 +35,38 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Setup environment variables
       run: |
-        env
-        pwd
-        ls -alh *
-        find .
+        mkdir -p artifacts
         echo "wfdt=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_ENV
     - name: Install dependencies
       run: |
+        sudo apt update
+        sudo apt install unzip zip
         python -m pip install --upgrade pip
         python -m pip install setuptools wheel
         python -m pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         if [ -f test-requirements.txt ]; then pip install -r test-requirements.txt; fi
-    - name: Create package and install it
+    - name: Perform end-to-end testing with current branch or pull request
       run: |
+        cd current
+        git status
         python setup.py sdist bdist_wheel
         python3 -m pip -v install dist/capirca*py3*.whl
-        echo "whereis aclgen"
-    - name: Generate policy output with current version
-      run: |
-        sudo apt update
-        sudo apt install unzip zip
-        aclgen --output_directory ./output/current --logtostderr
-        mkdir -p ./output/dist
-        cd ./output/current/ && \
-          zip -r ../dist/capirca_output_files_${{ matrix.python-version }}_${{ env.wfdt }}.zip .
-        cd
-        ls -alh *
+        aclgen --output_directory ./output --logtostderr
+        cd ./output/ && \
+          zip -r ../../artifacts/capirca_output_${{ env.wfdt }}.zip .
+        cd ..
         python3 -m pip -v uninstall -y capirca
-    - name: Generate policy output with default branch
+    - name: Perform end-to-end testing with master branch
       run: |
-        aclgen --output_directory ./output/current --logtostderr
-        mkdir -p ./output/dist
-        cd ./output/current/ && \
-          zip -r ../dist/capirca_output_files_${{ matrix.python-version }}_${{ env.wfdt }}.zip .
-        ls -alh *
+        cd master
+        git status
+        python setup.py sdist bdist_wheel
+        python3 -m pip -v install dist/capirca*py3*.whl
+        aclgen --output_directory ./output --logtostderr
         python3 -m pip -v uninstall -y capirca
     - name: Upload generated policies
       uses: actions/upload-artifact@v2
       with:
-        name: capirca_output_files_${{ matrix.python-version }}_${{ env.wfdt }}
-        path: ./output/dist/capirca_output_files_${{ matrix.python-version }}_${{ env.wfdt }}.zip
+        name: capirca_output_${{ matrix.python-version }}_${{ env.wfdt }}
+        path: ./artifacts/capirca_output_${{ env.wfdt }}.zip
