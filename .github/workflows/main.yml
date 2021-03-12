@@ -20,13 +20,23 @@ jobs:
         python-version: [3.9]
 
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout branch with changes
+      uses: actions/checkout@v2
+      with:
+        path: current
+    - name: Checkout master branch
+      uses: actions/checkout@v2
+      with:
+        path: master
+        ref: master
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
     - name: Setup environment variables
       run: |
+        env
+        pwd
         echo "wfdt=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_ENV
     - name: Install dependencies
       run: |
@@ -48,7 +58,17 @@ jobs:
         mkdir -p ./output/dist
         cd ./output/current/ && \
           zip -r ../dist/capirca_output_files_${{ matrix.python-version }}_${{ env.wfdt }}.zip .
+        cd
         ls -alh *
+        python3 -m pip -v uninstall -y capirca
+    - name: Generate policy output with default branch
+      run: |
+        aclgen --output_directory ./output/current --logtostderr
+        mkdir -p ./output/dist
+        cd ./output/current/ && \
+          zip -r ../dist/capirca_output_files_${{ matrix.python-version }}_${{ env.wfdt }}.zip .
+        ls -alh *
+        python3 -m pip -v uninstall -y capirca
     - name: Upload generated policies
       uses: actions/upload-artifact@v2
       with:
