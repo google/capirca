@@ -44,3 +44,7 @@ jobs:
         whereis aclgen
         echo "show log"
         cat /tmp/pip.log
+    - name: Generate policy output
+      run: |
+        aclgen
+        ls -alh *
