@@ -177,6 +177,7 @@ SUPPORTED_TOKENS = frozenset({
     'action',
     'comment',
     'destination_address',
+    'destination_address_exclude',
     'destination_port',
     'expiration',
     'icmp_type',
@@ -187,6 +188,7 @@ SUPPORTED_TOKENS = frozenset({
     'platform',
     'protocol',
     'source_address',
+    'source_address_exclude',
     'source_port',
     'stateless_reply',
     'timeout',
@@ -282,17 +284,18 @@ class PaloAltoFWTest(unittest.TestCase):
   def testIcmpTypes(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + ICMP_TYPE_TERM_1, self.naming)
     output = str(paloaltofw.PaloAltoFW(pol, EXP_INFO))
-    self.assertIn('<member>ping</member>', output, output)
+    self.assertIn('<member>icmp-echo-request</member>', output, output)
+    self.assertIn('<member>icmp-echo-reply</member>', output, output)
 
   def testBadICMP(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + BAD_ICMP_TERM_1, self.naming)
-    self.assertRaises(aclgenerator.UnsupportedFilterError,
+    self.assertRaises(paloaltofw.UnsupportedFilterError,
                       paloaltofw.PaloAltoFW, pol, EXP_INFO)
 
   def testICMPProtocolOnly(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + ICMP_ONLY_TERM_1, self.naming)
     output = str(paloaltofw.PaloAltoFW(pol, EXP_INFO))
-    self.assertIn('<member>ping</member>', output, output)
+    self.assertIn('<member>icmp</member>', output, output)
 
   def testSkipStatelessReply(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_4_STATELESS_REPLY,

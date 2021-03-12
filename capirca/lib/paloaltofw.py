@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2017 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,9 +17,12 @@
 import collections
 import datetime
 import logging
-
+import re
+from xml.dom import minidom
+import xml.etree.ElementTree as etree
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
+from capirca.lib import policy
 
 
 class Error(Exception):
@@ -29,11 +33,15 @@ class UnsupportedFilterError(Error):
   pass
 
 
-class UnsupportedHeader(Error):
+class UnsupportedHeaderError(Error):
   pass
 
 
 class PaloAltoFWDuplicateTermError(Error):
+  pass
+
+
+class PaloAltoFWUnsupportedProtocolError(Error):
   pass
 
 
@@ -49,7 +57,11 @@ class PaloAltoFWDuplicateServiceError(Error):
   pass
 
 
-class PaloAltoFWTooLongName(Error):
+class PaloAltoFWNameTooLongError(Error):
+  pass
+
+
+class PaloAltoFWBadIcmpTypeError(Error):
   pass
 
 
@@ -89,8 +101,8 @@ class Term(aclgenerator.Term):
     """If 1 item return it, else return [ item1 item2 ].
 
     Args:
-      group: a list.  could be a list of strings (protocols) or a list of
-             tuples (ports)
+      group: a list.  could be a list of strings (protocols) or a list of tuples
+        (ports)
 
     Returns:
       rval: a string surrounded by '[' and '];' if len(group) > 1
@@ -133,8 +145,7 @@ class Service(object):
     if (ports, protocol) in self.service_map:
       raise PaloAltoFWDuplicateServiceError(
           ("You have a duplicate service. "
-           "A service already exists on port(s): %s")
-          % str(ports))
+           "A service already exists on port(s): %s") % str(ports))
 
     final_service_name = "service-" + service_name + "-" + protocol
 
@@ -145,8 +156,9 @@ class Service(object):
             str(final_service_name))
 
     if len(final_service_name) > 63:
-      raise PaloAltoFWTooLongName("Service name must be 63 characters max: %s" %
-                                  str(final_service_name))
+      raise PaloAltoFWNameTooLongError(
+          "Service name must be 63 characters max: %s" %
+          str(final_service_name))
     self.service_map[(ports, protocol)] = {"name": final_service_name}
 
 
@@ -166,12 +178,15 @@ class Rule(object):
   def ModifyOptions(self, terms):
     """Massage firewall rules into Palo Alto rules format."""
     term = terms.term
+    self.options["description"] = []
     self.options["source"] = []
     self.options["destination"] = []
     self.options["application"] = []
     self.options["service"] = []
-    self.options["action"] = "allow"
 
+    # COMMENT
+    if term.comment:
+      self.options["description"] = term.comment
     # SOURCE-ADDRESS
     if term.source_address:
       saddr_check = set()
@@ -216,16 +231,27 @@ class Rule(object):
       # check to see if this service already exists
       for p in term.protocol:
         if (ports, p) in Service.service_map:
-          self.options["service"].append(Service.service_map[(ports, p)][
-              "name"])
+          self.options["service"].append(Service.service_map[(ports,
+                                                              p)]["name"])
         else:
           # create service
           unused_new_service = Service(ports, term.name, p)
-          self.options["service"].append(Service.service_map[(ports, p)][
-              "name"])
+          self.options["service"].append(Service.service_map[(ports,
+                                                              p)]["name"])
+
     if term.protocol:
-      if term.protocol[0] == "icmp":
-        self.options["application"].append("ping")
+      # Add application "any" to all terms, unless ICMP/ICMPv6
+      for proto_name in term.protocol:
+        if proto_name in ["icmp", "icmpv6"]:
+          continue
+        elif proto_name in ["igmp", "sctp"]:
+          if proto_name not in self.options["application"]:
+            self.options["application"].append(proto_name)
+        elif proto_name in ["tcp", "udp"]:
+          if "any" not in self.options["application"]:
+            self.options["application"].append("any")
+        else:
+          pass
 
 
 class PaloAltoFW(aclgenerator.ACLGenerator):
@@ -236,6 +262,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
   _SUPPORTED_AF = set(("inet", "inet6", "mixed"))
   _AF_MAP = {"inet": (4,), "inet6": (6,), "mixed": (4, 6)}
   _TERM_MAX_LENGTH = 31
+  _SUPPORTED_PROTO_NAMES = ["tcp", "udp", "icmp", "icmpv6", "sctp", "igmp"]
 
   INDENT = "  "
 
@@ -243,6 +270,8 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     self.pafw_policies = []
     self.addressbook = collections.OrderedDict()
     self.applications = []
+    self.application_refs = {}
+    self.application_groups = []
     self.pan_applications = []
     self.ports = []
     self.from_zone = ""
@@ -263,6 +292,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
         "action",
         "comment",
         "destination_address",
+        "destination_address_exclude",
         "destination_port",
         "expiration",
         "icmp_type",
@@ -273,11 +303,12 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
         "platform",
         "protocol",
         "source_address",
+        "source_address_exclude",
         "source_port",
         "stateless_reply",
         "timeout",
         "pan_application",
-        "translated"
+        "translated",
     }
 
     supported_sub_tokens.update({
@@ -291,15 +322,19 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
 
     Args:
       pol: policy.Policy object
-      exp_info: print a info message when a term is set to expire
-                in that many weeks
+      exp_info: print a info message when a term is set to expire in that many
+        weeks
 
     Raises:
       UnsupportedFilterError: An unsupported filter was specified
-      UnsupportedHeader: A header option exists that is not
+      UnsupportedHeaderError: A header option exists that is not
       understood/usable
       PaloAltoFWDuplicateTermError: Two terms were found with same name in
       same filter
+      PaloAltoFWBadIcmpTypeError: The referenced ICMP type is not supported
+      by the policy term.
+      PaloAltoFWUnsupportedProtocolError: The term contains unsupporter protocol
+      name.
     """
     current_date = datetime.date.today()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
@@ -307,6 +342,8 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       if self._PLATFORM not in header.platforms:
         continue
 
+      # The filter_options is a list of options from header, e.g.
+      # ['from-zone', 'internal', 'to-zone', 'external']
       filter_options = header.FilterOptions(self._PLATFORM)
 
       if (len(filter_options) < 4 or filter_options[0] != "from-zone" or
@@ -318,18 +355,22 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       self.from_zone = filter_options[1]
       self.to_zone = filter_options[3]
 
+      # The filter_type values are either inet, inet6, or mixed. Later, the
+      # code analyzes source and destination IP addresses and determines whether
+      # it is an appropriate type for the filter_type value.
       if len(filter_options) > 4:
         filter_type = filter_options[4]
       else:
         filter_type = "inet"
 
       if filter_type not in self._SUPPORTED_AF:
-        raise UnsupportedHeader(
+        raise UnsupportedHeaderError(
             "Palo Alto Firewall Generator currently does not support"
             " %s as a header option" % (filter_type))
 
       term_dup_check = set()
       new_terms = []
+
       for term in terms:
         if term.stateless_reply:
           logging.warning(
@@ -357,13 +398,15 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
 
         if term.expiration:
           if term.expiration <= exp_info_date:
-            logging.info("INFO: Term %s in policy %s>%s expires "
-                         "in less than two weeks.", term.name, self.from_zone,
-                         self.to_zone)
+            logging.info(
+                "INFO: Term %s in policy %s>%s expires "
+                "in less than two weeks.", term.name, self.from_zone,
+                self.to_zone)
           if term.expiration <= current_date:
-            logging.warning("WARNING: Term %s in policy %s>%s is expired and "
-                            "will not be rendered.",
-                            term.name, self.from_zone, self.to_zone)
+            logging.warning(
+                "WARNING: Term %s in policy %s>%s is expired and "
+                "will not be rendered.", term.name, self.from_zone,
+                self.to_zone)
             continue
 
         for i in term.source_address_exclude:
@@ -373,33 +416,201 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           term.destination_address = nacaddr.RemoveAddressFromList(
               term.destination_address, i)
 
+        # Count the number of occurencies of a particular version of the
+        # address family, i.e. v4/v6 in source and destination IP addresses.
+        afc = {
+            4: {
+                "src": 0,
+                "dst": 0
+            },
+            6: {
+                "src": 0,
+                "dst": 0
+            },
+        }
+        # Determine the address families in the source and destination
+        # addresses references in the term. Next, determine IPv4 and IPv6
+        # traffic flow patterns.
+        exclude_address_family = []
+        flows = []
+        src_any = False
+        dst_any = False
+        if not term.source_address:
+          src_any = True
+        if not term.destination_address:
+          dst_any = True
         for addr in term.source_address:
+          afc[addr.version]["src"] += 1
+        for addr in term.destination_address:
+          afc[addr.version]["dst"] += 1
+        for v in [4, 6]:
+          if src_any and dst_any:
+            flows.append("ip%d-ip%d" % (v, v))
+            continue
+          if (afc[v]["src"] == 0 and not src_any) and (afc[v]["dst"] == 0 and
+                                                       not dst_any):
+            continue
+          if (afc[v]["src"] > 0 or src_any) and (afc[v]["dst"] > 0 or dst_any):
+            flows.append("ip%d-ip%d" % (v, v))
+            continue
+          if (afc[v]["src"] > 0 or src_any) and afc[v]["dst"] == 0:
+            flows.append("ip%d-src-only" % v)
+            flows.append("ip%d-only" % v)
+            continue
+          if afc[v]["src"] == 0 and (afc[v]["dst"] > 0 or dst_any):
+            flows.append("ip%d-dst-only" % v)
+            flows.append("ip%d-only" % v)
+
+        if filter_type == "inet":
+          if "icmpv6" in term.protocol:
+            logging.warning(
+                "WARNING: Term %s in policy %s>%s references ICMPv6 protocol, "
+                "term will not be rendered.", term.name, self.from_zone,
+                self.to_zone)
+            continue
+          if "ip4-ip4" not in flows:
+            logging.warning(
+                "WARNING: Term %s in policy %s>%s has one or more invalid "
+                "src-dest combinations %s, term will not be rendered.",
+                term.name, self.from_zone, self.to_zone, flows)
+            continue
+          # exclude IPv6 addresses
+          exclude_address_family.append(6)
+        elif filter_type == "inet6":
+          if "icmp" in term.protocol:
+            logging.warning(
+                "WARNING: Term %s in policy %s>%s references ICMP protocol, "
+                "term and will not be rendered.", term.name, self.from_zone,
+                self.to_zone)
+            continue
+          if "ip6-ip6" not in flows:
+            logging.warning(
+                "WARNING: Term %s in policy %s>%s has one or more invalid "
+                "src-dest combinations %s, term will not be rendered.",
+                term.name, self.from_zone, self.to_zone, flows)
+            continue
+          exclude_address_family.append(4)
+        elif filter_type == "mixed":
+          if "ip4-ip4" in flows and "ip6-ip6" not in flows:
+            exclude_address_family.append(6)
+            pass
+          elif "ip6-ip6" in flows and "ip4-ip4" not in flows:
+            exclude_address_family.append(4)
+            pass
+          elif "ip4-ip4" in flows and "ip6-ip6" in flows:
+            pass
+          elif "ip4-only" in flows and "ip6-only" in flows:
+            logging.warning(
+                "WARNING: Term %s in policy %s>%s has source and destinations "
+                "of different address families %s, term will not be "
+                "rendered.", term.name, self.from_zone, self.to_zone,
+                filter(lambda p: re.search(p, "(src|dst)-only"), flows))
+            continue
+          else:
+            logging.warning(
+                "WARNING: Term %s in policy %s>%s has invalid src-dest "
+                "combinations %s, the term will be rendered without them.",
+                term.name, self.from_zone, self.to_zone,
+                filter(lambda p: re.search(p, "(src|dst)-only"), flows))
+            if "ip4-ip4" in flows:
+              exclude_address_family.append(6)
+            else:
+              exclude_address_family.append(4)
+
+        # Build address book for the addresses referenced in the term.
+        for addr in term.source_address:
+          if addr.version in exclude_address_family:
+            continue
           self._BuildAddressBook(self.from_zone, addr)
         for addr in term.destination_address:
+          if addr.version in exclude_address_family:
+            continue
           self._BuildAddressBook(self.to_zone, addr)
 
+        # Handle ICMP/ICMPv6 terms.
+        if term.icmp_type and ("icmp" not in term.protocol and
+                               "icmpv6" not in term.protocol):
+          raise UnsupportedFilterError(
+              "Palo Alto Firewall filter must have ICMP or ICMPv6 protocol " +
+              "specified when using icmp_type keyword")
+
+        for icmp_version in ["icmp", "icmpv6"]:
+          if ("icmp" not in term.protocol and "icmpv6" not in term.protocol):
+            # the protocol is not ICMP or ICMPv6
+            break
+          if icmp_version == "icmp" and "ip4-ip4" not in flows:
+            # skip if there is no ip4 to ipv4 communication
+            continue
+          if icmp_version == "icmpv6" and "ip6-ip6" not in flows:
+            # skip if there is no ip4 to ipv4 communication
+            continue
+          if icmp_version == "icmp":
+            if filter_type == "inet6":
+              continue
+            if not term.icmp_type:
+              term.pan_application.append("icmp")
+              continue
+            icmp_type_keyword = "ident-by-icmp-type"
+            # The risk level 4 is the default PANOS' risk level for ICMP.
+            risk_level = 4
+          else:
+            if filter_type == "inet":
+              continue
+            if not term.icmp_type:
+              term.pan_application.append("ipv6-icmp")
+              continue
+            icmp_type_keyword = "ident-by-icmp6-type"
+            # The risk level 2 is the default PANOS' risk level for ICMPv6.
+            risk_level = 2
+          # The term contains ICMP types
+          for term_icmp_type_name in term.icmp_type:
+            if icmp_version == "icmp":
+              icmp_app_name = "icmp-%s" % term_icmp_type_name
+              if term_icmp_type_name not in policy.Term.ICMP_TYPE[4]:
+                raise PaloAltoFWBadIcmpTypeError(
+                    "term with bad icmp type: %s, icmp_type: %s" %
+                    (term.name, term_icmp_type_name))
+              term_icmp_type = policy.Term.ICMP_TYPE[4][term_icmp_type_name]
+            else:
+              icmp_app_name = "icmp6-%s" % term_icmp_type_name
+              if term_icmp_type_name not in policy.Term.ICMP_TYPE[6]:
+                raise PaloAltoFWBadIcmpTypeError(
+                    "term with bad icmp type: %s, icmp_type: %s" %
+                    (term.name, term_icmp_type_name))
+              term_icmp_type = policy.Term.ICMP_TYPE[6][term_icmp_type_name]
+            if icmp_app_name in self.application_refs:
+              # the custom icmp application already exists
+              continue
+            app_entry = {
+                "category": "networking",
+                "subcategory": "ip-protocol",
+                "technology": "network-protocol",
+                "description": icmp_app_name,
+                "default": {
+                    icmp_type_keyword: "%d" % term_icmp_type,
+                },
+                "risk": "%d" % risk_level,
+            }
+            self.application_refs[icmp_app_name] = app_entry
+            self.applications.append(icmp_app_name)
+            if icmp_app_name not in term.pan_application:
+              term.pan_application.append(icmp_app_name)
+
+        # Filter out unsupported protocols
+        for proto_name in term.protocol:
+          if proto_name in self._SUPPORTED_PROTO_NAMES:
+            continue
+          raise PaloAltoFWUnsupportedProtocolError(
+              "protocol %s is not supported" % proto_name)
+
+        # Create Term object with the term, address family, and header
+        # parameters, e.g. to/from zone, and add it to a list of
+        # terms that would form a rule.
         new_term = Term(term, filter_type, filter_options)
         new_terms.append(new_term)
-        tmp_icmptype = new_term.NormalizeIcmpTypes(term.icmp_type,
-                                                   term.protocol, filter_type)
-        # NormalizeIcmpTypes returns [''] for empty, convert to [] for
-        # eval
-        normalized_icmptype = tmp_icmptype if tmp_icmptype != [""] else []
-        # rewrites the protocol icmpv6 to icmp6
-        if "icmpv6" in term.protocol:
-          protocol = list(term.protocol)
-          protocol[protocol.index("icmpv6")] = "icmp6"
-        else:
-          protocol = term.protocol
-        self.applications.append({
-            "sport": self._BuildPort(term.source_port),
-            "dport": self._BuildPort(term.destination_port),
-            "name": term.name,
-            "protocol": protocol,
-            "icmp-type": normalized_icmptype,
-            "timeout": term.timeout
-        })
 
+      # Create a ruleset. It contains the rules for the terms defined under
+      # a single header on a particular platform.
       ruleset = {}
 
       for term in new_terms:
@@ -436,7 +647,6 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     Returns:
       returns the characters and number
     """
-
     item_list = item.split("_")
     num = item_list.pop(-1)
     if isinstance(item_list[-1], int):
@@ -474,8 +684,46 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     initial.append(self.INDENT * 2 + '<entry name="localhost.localdomain">')
     initial.append(self.INDENT * 3 + "<vsys>")
     initial.append(self.INDENT * 4 + '<entry name="vsys1">')
-    initial.append(self.INDENT * 5 + "<application/>")
-    initial.append(self.INDENT * 5 + "<application-group/>")
+
+    # APPLICATION
+    app_entries = etree.Element("application")
+    for app_name in self.applications:
+      if app_name not in self.application_refs:
+        # this is not a custom application.
+        continue
+      app = self.application_refs[app_name]
+      app_entry = etree.SubElement(app_entries, "entry", {"name": app_name})
+      for k in self.application_refs[app_name]:
+        if isinstance(app[k], (str)):
+          etree.SubElement(app_entry, k).text = app[k]
+        elif isinstance(app[k], (dict)):
+          if k == "default":
+            default_props = etree.SubElement(app_entry, "default")
+          else:
+            continue
+          for prop in app[k]:
+            if k == "default" and prop in [
+                "ident-by-icmp-type", "ident-by-icmp6-type"
+            ]:
+              icmp_type_props = etree.SubElement(default_props, prop)
+              etree.SubElement(icmp_type_props, "type").text = app[k][prop]
+            else:
+              pass
+
+    lines = minidom.parseString(
+        etree.tostring(app_entries)).toprettyxml(indent="  ")
+    for line in lines.split("\n"):
+      initial.append(self.INDENT * 5 + str(line))
+
+    # APPLICATION GROUPS
+    app_group_entries = []
+    if self.application_groups:
+      app_group_entries.append(self.INDENT * 5 + "<application-group>")
+      for app_group in self.application_groups:
+        app_group_entries.append(self.INDENT * 6 + ("%s" % app_group))
+      app_group_entries.append(self.INDENT * 5 + "</application-group>")
+    else:
+      app_group_entries.append(self.INDENT * 5 + "<application-group/>")
 
     # ADDRESS
     address_entries = []
@@ -495,11 +743,11 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           address_book_names_dict[name] = address
 
         # building individual address-group dictionary
-        for group in groups:
+        for nested_group in groups:
           group_names = []
-          for address, name in self.addressbook[zone][group]:
+          for address, name in self.addressbook[zone][nested_group]:
             group_names.append(name)
-          address_book_groups_dict[group] = group_names
+          address_book_groups_dict[nested_group] = group_names
 
       # sort address books and address sets
       address_book_groups_dict = collections.OrderedDict(
@@ -511,8 +759,9 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       address_entries.append(self.INDENT * 6 + '<entry name="' + name + '">')
       address_entries.append(self.INDENT * 7 + "<description>" + name +
                              "</description>")
-      address_entries.append(self.INDENT * 7 + "<ip-netmask>" + str(
-          address_book_names_dict[name]) + "</ip-netmask>")
+      address_entries.append(self.INDENT * 7 + "<ip-netmask>" +
+                             str(address_book_names_dict[name]) +
+                             "</ip-netmask>")
       address_entries.append(self.INDENT * 6 + "</entry>")
 
     address_entries.append(self.INDENT * 5 + "</address>")
@@ -544,8 +793,8 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       tup = str(k[0])[1:-1]
       if tup[-1] == ",":
         tup = tup[:-1]
-      service.append(self.INDENT * 9 + "<port>" + tup.replace("'", "") +
-                     "</port>")
+      service.append(self.INDENT * 9 + "<port>" +
+                     tup.replace("'", "").replace(", ", ",") + "</port>")
       service.append(self.INDENT * 8 + "</" + k[1] + ">")
       service.append(self.INDENT * 7 + "</protocol>")
       service.append(self.INDENT * 6 + "</entry>")
@@ -560,9 +809,13 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     rules.append(self.INDENT * 7 + "<rules>")
 
     # pytype: disable=key-error
+    # pylint: disable=unused-variable
     for (header, pa_rules, filter_options) in self.pafw_policies:
       for name, options in pa_rules.items():
         rules.append(self.INDENT * 8 + '<entry name="' + name + '">')
+        if options["description"]:
+          rules.append(self.INDENT * 9 + "<description>" +
+                       " ".join(options["description"]) + "</description>")
 
         rules.append(self.INDENT * 9 + "<to>")
         for tz in options["to_zone"]:
@@ -590,23 +843,28 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
             rules.append(self.INDENT * 10 + "<member>" + d + "</member>")
         rules.append(self.INDENT * 9 + "</destination>")
 
+        # service section of a policy rule.
         rules.append(self.INDENT * 9 + "<service>")
         if not options["service"] and not options["application"]:
           rules.append(self.INDENT * 10 + "<member>any</member>")
         elif not options["service"] and options["application"]:
+          # Adds custom applications.
           rules.append(self.INDENT * 10 +
                        "<member>application-default</member>")
         else:
+          # Adds services.
           for s in options["service"]:
             rules.append(self.INDENT * 10 + "<member>" + s + "</member>")
         rules.append(self.INDENT * 9 + "</service>")
 
-        rules.append(self.INDENT * 9 + "<action>" + Term.ACTIONS.get(
-            str(options["action"])) + "</action>")
+        # ACTION
+        rules.append(self.INDENT * 9 + "<action>" +
+                     Term.ACTIONS.get(str(options["action"])) + "</action>")
 
         if fz == tz == "any":
           rules.append(self.INDENT * 9 + "<rule-type>interzone</rule-type>")
 
+        # APPLICATION
         rules.append(self.INDENT * 9 + "<application>")
         if not options["application"]:
           rules.append(self.INDENT * 10 + "<member>any</member>")
@@ -630,6 +888,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     end.append(self.INDENT * 1 + "</devices>")
     end.append("</config>\n")
 
-    return ("\n".join(initial) + "\n\n" + "\n".join(service) + "\n\n" +
-            "\n".join(rules) + "\n".join(address_group_entries) +
+    return ("\n".join(initial) + "\n\n" + "\n".join(app_group_entries) +
+            "\n\n" + "\n".join(service) + "\n\n" + "\n".join(rules) + "\n\n" +
+            "\n".join(address_group_entries) + "\n\n" +
             "\n".join(address_entries) + "\n" + "\n".join(end))
