@@ -39,10 +39,14 @@ jobs:
         echo "whereis aclgen"
     - name: Generate policy output with current version
       run: |
+        sudo apt update
+        sudo apt install unzip zip
         aclgen --output_directory ./output/current --logtostderr
+        mkdir -p ./output/dist
+        zip -r ./output/dist/capirca.zip ./output/current/
         ls -alh *
     - name: Upload generated policies
       uses: actions/upload-artifact@v2
       with:
-        name: my-artifact
-        path: ./output/current/
+        name: generated_policy_files_${{ matrix.python-version }}_${{ steps.date.outputs.date }}
+        path: ./output/dist/capirca.zip
