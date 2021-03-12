@@ -73,9 +73,14 @@ jobs:
       run: |
         sudo npm install -g diff2html diff2html-cli
         diff2html --version
-        diff --color -r current/output master/output
+        diff -r current/output master/output | diff2html --input stdin --file ./artifacts/policy_diff.html
     - name: Upload generated policies
       uses: actions/upload-artifact@v2
       with:
         name: capirca_output_${{ matrix.python-version }}_${{ env.wfdt }}
         path: ./artifacts/capirca_output_${{ env.wfdt }}.zip
+    - name: Upload policy differences
+      uses: actions/upload-artifact@v2
+      with:
+        name: capirca_output_policy_diff
+        path: ./artifacts/policy_diff.html
