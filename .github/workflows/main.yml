@@ -35,16 +35,14 @@ jobs:
     - name: Create package and install it
       run: |
         python setup.py sdist bdist_wheel
-        ls -alh dist/*
-        pwd
-        ls -alh *
-        echo "module install"
-        python3 -m pip -v --log /tmp/pip.log install dist/capirca*py3*.whl
+        python3 -m pip -v install dist/capirca*py3*.whl
         echo "whereis aclgen"
-        whereis aclgen
-        echo "show log"
-        cat /tmp/pip.log
-    - name: Generate policy output
+    - name: Generate policy output with current version
       run: |
-        aclgen
+        aclgen --output_directory ./output/current --logtostderr
         ls -alh *
+    - name: Upload generated policies
+      uses: actions/upload-artifact@v2
+      with:
+        name: my-artifact
+        path: ./output/current/
