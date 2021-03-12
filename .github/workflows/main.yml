@@ -65,6 +65,10 @@ jobs:
         python3 -m pip -v install dist/capirca*py3*.whl
         aclgen --output_directory ./output --logtostderr
         python3 -m pip -v uninstall -y capirca
+    - name: Compare output files between the branches
+      run: |
+        cd master
+        diff --color -r current/output master/output
     - name: Upload generated policies
       uses: actions/upload-artifact@v2
       with:
