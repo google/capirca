@@ -256,7 +256,7 @@ class Term(aclgenerator.Term):
         self.options,
         self.stateful,))
 
-    return '\n'.join(str(v) for v in ret_str if v is not '')
+    return '\n'.join(str(v) for v in ret_str if v != '')
 
   def _CheckAddressAf(self, addrs):
     """Verify that the requested address-family matches the address's family."""
