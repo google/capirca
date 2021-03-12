@@ -148,7 +148,7 @@ class Term(aclgenerator.Term):
                            dst_ports, ret_str)
     self._HandlePreRule(ret_str)
 
-    return '\n'.join(str(v) for v in ret_str if v is not '')
+    return '\n'.join(str(v) for v in ret_str if v != '')
 
   def _HandleIcmpTypes(self, icmp_types, protocols):
     """Perform implementation-specific icmp_type and protocol transforms.
