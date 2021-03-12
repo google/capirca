@@ -32,18 +32,15 @@ jobs:
         python -m pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         if [ -f test-requirements.txt ]; then pip install -r test-requirements.txt; fi
-    - name: Lint with flake8
-      run: |
-        echo "running existing travis checks"
-        flake8 . --count --select=W291,W293,W391 --statistic
-        echo "stop the build if there are Python syntax errors or undefined names"
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        echo "exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide"
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
-      run: |
-        pytest
     - name: Create package and install it
       run: |
         python setup.py sdist bdist_wheel
         ls -alh dist/*
+        pwd
+        ls -alh *
+        echo "module install"
+        python3 -m pip -v --log /tmp/pip.log install dist/capirca*py3*.whl
+        echo "whereis aclgen"
+        whereis aclgen
+        echo "show log"
+        cat /tmp/pip.log
