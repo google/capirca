@@ -188,9 +188,10 @@ class Term(object):
     # check that addr family and protocl are appropriate
     if ((af != 4 and protocols == ['icmp']) or
         (af != 6 and protocols == ['icmpv6'])):
-      raise MismatchIcmpInetError('%s %s' % (
+      raise MismatchIcmpInetError('%s %s, %s: %s, %s: %s' % (
           'ICMP/ICMPv6 mismatch with address family IPv4/IPv6 in term',
-          self.term.name))
+          self.term.name, 'address family', af, 'protocols',
+          ','.join(protocols)))
     # ensure all icmp types are valid
     for icmptype in icmp_types:
       if icmptype not in self.ICMP_TYPE[af]:
@@ -354,7 +355,8 @@ class ACLGenerator(object):
                         'source_address_exclude',
                         'source_port',
                         'translated',  # obj attribute, not token
-                        'verbatim'}
+                        'verbatim',
+                        }
 
     # These keys must be also listed in supported_tokens.
     # Keys should be in undercase form, eg, icmp_type (not icmp-type). Values
@@ -557,11 +559,14 @@ def WrapWords(textlist, size, joiner='\n'):
     list of strings
   """
   # \S{%d}(?!\s|\Z) collets the max size for words that are larger than the max
-  # (?<=\S{%d})\S+ collects the remaining text for overflow words in their own line
-  # \S.{1,%d}(?=\s|\Z)) collects all words and spaces up to max size, breaking at
-  #                     the last space
+  # (?<=\S{%d})\S+ collects the remaining text for overflow words in their own
+  # line
+  # \S.{1,%d}(?=\s|\Z)) collects all words and spaces up to max size, breaking
+  # at the last space
   rval = []
-  linelength_re = re.compile(r'(\S{%d}(?!\s|\Z)|(?<=\S{%d})\S+|\S.{1,%d}(?=\s|\Z))' % (size, size, size-1))
+  linelength_re = re.compile(
+      r'(\S{%d}(?!\s|\Z)|(?<=\S{%d})\S+|\S.{1,%d}(?=\s|\Z))' %
+      (size, size, size - 1))
   for index in range(len(textlist)):
     if len(textlist[index]) > size:
       # insert joiner into the string at appropriate places.
