@@ -29,6 +29,10 @@ jobs:
       with:
         path: master
         ref: master
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14'
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
@@ -67,7 +71,8 @@ jobs:
         python3 -m pip -v uninstall -y capirca
     - name: Compare output files between the branches
       run: |
-        cd master
+        sudo npm install -g diff2html diff2html-cli
+        diff2html --version
         diff --color -r current/output master/output
     - name: Upload generated policies
       uses: actions/upload-artifact@v2
