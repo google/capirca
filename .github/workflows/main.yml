@@ -16,15 +16,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        #py-version: [3.7, 3.8, 3.9]
-        py-version: [3.9]
+        #python-version: [3.7, 3.8, 3.9]
+        python-version: [3.9]
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.py-version }}
+    - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
-        py-version: ${{ matrix.py-version }}
+        python-version: ${{ matrix.python-version }}
     - name: Setup environment variables
       run: |
         echo "wfdt=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_ENV
@@ -47,10 +47,10 @@ jobs:
         aclgen --output_directory ./output/current --logtostderr
         mkdir -p ./output/dist
         cd ./output/current/ && \
-          zip -r ../dist/capirca_output_files_${{ matrix.py-version }}_${{ env.wfdt }}.zip .
+          zip -r ../dist/capirca_output_files_${{ matrix.python-version }}_${{ env.wfdt }}.zip .
         ls -alh *
     - name: Upload generated policies
       uses: actions/upload-artifact@v2
       with:
-        name: capirca_output_files_${{ matrix.py-version }}_${{ env.wfdt }}
-        path: ./output/dist/capirca_output_files_${{ matrix.py-version }}_${{ env.wfdt }}.zip
+        name: capirca_output_files_${{ matrix.python-version }}_${{ env.wfdt }}
+        path: ./output/dist/capirca_output_files_${{ matrix.python-version }}_${{ env.wfdt }}.zip
