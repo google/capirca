@@ -263,6 +263,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
   _AF_MAP = {"inet": (4,), "inet6": (6,), "mixed": (4, 6)}
   _TERM_MAX_LENGTH = 31
   _SUPPORTED_PROTO_NAMES = ["tcp", "udp", "icmp", "icmpv6", "sctp", "igmp"]
+  _MAX_RULE_DESCRIPTION_LENGTH = 1024
 
   INDENT = "  "
 
@@ -712,7 +713,11 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
 
     lines = minidom.parseString(
         etree.tostring(app_entries)).toprettyxml(indent="  ")
-    for line in lines.split("\n"):
+    # TODO(greenpau): currently, the generator relies on xml package only
+    # in the application section. The xml package adds xml header to its
+    # output. At the moment, it needs to be stripped, because the header
+    # already exists.
+    for line in lines.split("\n")[1:]:
       initial.append(self.INDENT * 5 + str(line))
 
     # APPLICATION GROUPS
@@ -785,20 +790,23 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     service = []
     service.append(self.INDENT * 5 + "<!-- Services -->")
 
-    service.append(self.INDENT * 5 + "<service>")
-    for k, v in Service.service_map.items():
-      service.append(self.INDENT * 6 + '<entry name="' + v["name"] + '">')
-      service.append(self.INDENT * 7 + "<protocol>")
-      service.append(self.INDENT * 8 + "<" + k[1] + ">")
-      tup = str(k[0])[1:-1]
-      if tup[-1] == ",":
-        tup = tup[:-1]
-      service.append(self.INDENT * 9 + "<port>" +
-                     tup.replace("'", "").replace(", ", ",") + "</port>")
-      service.append(self.INDENT * 8 + "</" + k[1] + ">")
-      service.append(self.INDENT * 7 + "</protocol>")
-      service.append(self.INDENT * 6 + "</entry>")
-    service.append(self.INDENT * 5 + "</service>")
+    if Service.service_map.items():
+      service.append(self.INDENT * 5 + "<service>")
+      for k, v in Service.service_map.items():
+        service.append(self.INDENT * 6 + '<entry name="' + v["name"] + '">')
+        service.append(self.INDENT * 7 + "<protocol>")
+        service.append(self.INDENT * 8 + "<" + k[1] + ">")
+        tup = str(k[0])[1:-1]
+        if tup[-1] == ",":
+          tup = tup[:-1]
+        service.append(self.INDENT * 9 + "<port>" +
+                       tup.replace("'", "").replace(", ", ",") + "</port>")
+        service.append(self.INDENT * 8 + "</" + k[1] + ">")
+        service.append(self.INDENT * 7 + "</protocol>")
+        service.append(self.INDENT * 6 + "</entry>")
+      service.append(self.INDENT * 5 + "</service>")
+    else:
+      service.append(self.INDENT * 5 + "<service/>")
 
     # RULES
     rules = []
@@ -814,8 +822,11 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       for name, options in pa_rules.items():
         rules.append(self.INDENT * 8 + '<entry name="' + name + '">')
         if options["description"]:
+          descr = " ".join(options["description"])
+          if len(descr) > self._MAX_RULE_DESCRIPTION_LENGTH:
+            descr = descr[:self._MAX_RULE_DESCRIPTION_LENGTH]
           rules.append(self.INDENT * 9 + "<description>" +
-                       " ".join(options["description"]) + "</description>")
+                       descr + "</description>")
 
         rules.append(self.INDENT * 9 + "<to>")
         for tz in options["to_zone"]:
@@ -861,7 +872,10 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
         rules.append(self.INDENT * 9 + "<action>" +
                      Term.ACTIONS.get(str(options["action"])) + "</action>")
 
-        if fz == tz == "any":
+        # check whether the rule is interzone
+        if list(set(options["from_zone"]).difference(options["to_zone"])):
+          rules.append(self.INDENT * 9 + "<rule-type>interzone</rule-type>")
+        elif not options["from_zone"] and not options["to_zone"]:
           rules.append(self.INDENT * 9 + "<rule-type>interzone</rule-type>")
 
         # APPLICATION
