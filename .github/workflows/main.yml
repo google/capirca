@@ -71,11 +71,12 @@ jobs:
         python3 -m pip -v uninstall -y capirca
     - name: Compare output files between the branches
       run: |
+        mkdir -p artifacts-diff
         sudo npm install -g diff2html diff2html-cli
         diff2html --version
-        diff -qr current/output master/output > ./artifacts/policy_output.diff | true
-        cat ./artifacts/policy_output.diff | grep Files | grep differ | cut -d" " -f2 | cut -d "/" -f2 > ./artifacts/files.list
-        while read p; do diff -u master/output/$p current/output/$p | diff2html -i stdin --file ./artifacts/$p.html | true; done < ./artifacts/files.list
+        diff -qr current/output master/output > ./artifacts-diff/policy_output.diff | true
+        cat ./artifacts-diff/policy_output.diff | grep Files | grep differ | cut -d" " -f2 | cut -d "/" -f3 > ./artifacts-diff/files.list
+        while read p; do diff -u master/output/$p current/output/$p | diff2html -i stdin --file ./artifacts-diff/$p.html | true; done < ./artifacts-diff/files.list
     - name: Upload generated policies
       uses: actions/upload-artifact@v2
       with:
@@ -85,4 +86,4 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: capirca_output_policy_diff
-        path: ./artifacts/
+        path: ./artifacts-diff
