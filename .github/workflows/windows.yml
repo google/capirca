@@ -10,6 +10,7 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: true
       matrix:
@@ -43,8 +44,9 @@ jobs:
         python setup.py sdist bdist_wheel
         python -m pip -v install --find-links=dist capirca
         aclgen --output_directory .\output --logtostderr
+        powershell Compress-Archive -Force output\* output.zip
     - name: Upload generated policies
       uses: actions/upload-artifact@v2
       with:
         name: capirca_output_${{ matrix.python-version }}
-        path: ./output/
+        path: ./output.zip
