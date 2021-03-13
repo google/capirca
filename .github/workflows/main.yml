@@ -73,7 +73,8 @@ jobs:
       run: |
         sudo npm install -g diff2html diff2html-cli
         diff2html --version
-        diff -r current/output master/output | diff2html --input stdin --file ./artifacts/policy_diff.html
+        diff -qr current/output master/output > ./artifacts/policy_diff.html
+        # | diff2html --input stdin --file ./artifacts/policy_diff.html
     - name: Upload generated policies
       uses: actions/upload-artifact@v2
       with:
