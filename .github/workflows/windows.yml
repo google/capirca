@@ -41,7 +41,7 @@ jobs:
     - name: Build, install, and run
       run: |
         python setup.py sdist bdist_wheel
-        python -m pip -v install dist\capirca*py3*.whl
+        python -m pip -v install --find-links=dist capirca
         aclgen --output_directory .\output --logtostderr
     - name: Upload generated policies
       uses: actions/upload-artifact@v2
