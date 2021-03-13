@@ -1,6 +1,4 @@
-# This workflow will install Python dependencies, run tests and lint with a
-# variety of Python versions
-
+---
 name: Python package
 
 on:
@@ -11,13 +9,11 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
-        #python-version: [3.7, 3.8, 3.9]
-        python-version: [3.9]
+        python-version: [3.7, 3.8, 3.9]
 
     steps:
     - name: Checkout branch with changes
@@ -50,6 +46,15 @@ jobs:
         python -m pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         if [ -f test-requirements.txt ]; then pip install -r test-requirements.txt; fi
+    - name: Lint with flake8
+      run: |
+        flake8 . --count --select=W291,W293,W391 --statistic
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 \
+          --max-line-length=127 --statistics
+    - name: Test with pytest
+      run: |
+        pytest
     - name: Perform end-to-end testing with current branch or pull request
       run: |
         cd current
@@ -74,9 +79,13 @@ jobs:
         mkdir -p artifacts-diff
         sudo npm install -g diff2html diff2html-cli
         diff2html --version
-        diff -qr current/output master/output > ./artifacts-diff/policy_output.diff | true
-        cat ./artifacts-diff/policy_output.diff | grep Files | grep differ | cut -d" " -f2 | cut -d "/" -f3 > ./artifacts-diff/files.list
-        while read p; do diff -u master/output/$p current/output/$p | diff2html -i stdin --file ./artifacts-diff/$p.html | true; done < ./artifacts-diff/files.list
+        diff -qr current/output master/output > \
+          ./artifacts-diff/policy_output.diff | true
+        cat ./artifacts-diff/policy_output.diff | grep Files | grep differ \
+          | cut -d" " -f2 | cut -d "/" -f3 > ./artifacts-diff/files.list
+        while read p; do diff -u master/output/$p current/output/$p | \
+          diff2html -i stdin --file ./artifacts-diff/$p.html | \
+          true; done < ./artifacts-diff/files.list
     - name: Upload generated policies
       uses: actions/upload-artifact@v2
       with:
