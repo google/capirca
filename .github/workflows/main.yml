@@ -89,7 +89,7 @@ jobs:
         while read p; do diff -u master/output/$p current/output/$p | \
           diff2html -i stdin --file ./artifacts-diff/$p.html | \
           true; done < ./artifacts-diff/files.list
-        sed -i '/Diff to HTML by/d' ./artifacts-diff/*.html
+        sed -i '/Diff to HTML by/d' ./artifacts-diff/*
     - name: Upload generated policies
       uses: actions/upload-artifact@v2
       with:
