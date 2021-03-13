@@ -23,7 +23,7 @@ from setuptools import setup
 root_dir = path.abspath(path.dirname(__file__))
 
 with open(path.join(root_dir, 'VERSION'), encoding='utf-8') as f:
-  version = f.read()
+  version = f.readline().strip()
 
 with open(path.join(root_dir, 'README.md'), encoding='utf-8') as f:
   long_description = f.read()
