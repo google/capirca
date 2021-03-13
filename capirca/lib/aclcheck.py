@@ -34,7 +34,7 @@ class AddressError(Error):
   """Incorrect IP address or format."""
 
 
-class BadPolicy(Error):
+class BadPolicyError(Error):
   """Item is not a valid policy object."""
 
 
@@ -45,19 +45,16 @@ class NoTargetError(Error):
 class AclCheck(object):
   """Check where hosts, ports and protocols match in a NAC policy.
 
-  Args:
-    pol:
-      policy.Policy object
-    src:
-      string, the source address
-    dst:
-      string: the destination address.
-    sport:
-      string, the source port.
-    dport:
-      string, the destination port.
-    proto:
-      string, the protocol.
+  Attributes:
+    pol_obj: policy.Policy object.
+    pol: policy.Policy object.
+    src: A string for the source address.
+    dst: A string for the destination address.
+    sport: A string for the source port.
+    dport: A string for the destination port.
+    proto: A string for the protocol.
+    matches: A list of term-related matches.
+    exact_matches: A list of exact matches.
 
   Returns:
     An AclCheck Object
@@ -112,8 +109,8 @@ class AclCheck(object):
       except ValueError:
         raise AddressError('bad destination address: %s\n' % dst)
 
-    if type(self.pol_obj) is not policy.Policy:
-      raise BadPolicy('Policy object is not valid.')
+    if not isinstance(self.pol_obj, (policy.Policy)):
+      raise BadPolicyError('Policy object is not valid.')
 
     self.matches = []
     self.exact_matches = []
@@ -184,7 +181,7 @@ class AclCheck(object):
     for match in self.matches:
       if match.action:
         if not match.possibles:
-          if action is 'any' or action in match.action:
+          if action == 'any' or action in match.action:
             match_list.append(match)
     return match_list
 
@@ -249,7 +246,7 @@ class AclCheck(object):
     Returns:
       bool: True of false
     """
-    if addr is 'any': return True   # always true if we match for any addr
+    if addr == 'any': return True   # always true if we match for any addr
     if not addresses: return True   # always true if term has nothing to match
     for ip in addresses:
       # ipaddr can incorrectly report ipv4 as contained with ipv6 addrs
