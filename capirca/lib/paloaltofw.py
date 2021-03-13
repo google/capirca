@@ -802,7 +802,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
 
     # RULES
     rules = []
-    rules.append(self.INDENT * 5 + "<!-- Rules -->")
+    #rules.append(self.INDENT * 5 + "<!-- Rules -->")
 
     rules.append(self.INDENT * 5 + "<rulebase>")
     rules.append(self.INDENT * 6 + "<security>")
