@@ -164,11 +164,66 @@ term default-term-1 {
   action:: deny
 }
 """
+
 TIMEOUT_TERM = """
 term timeout-term {
   protocol:: icmp
   icmp-type:: echo-request
   timeout:: 77
+  action:: accept
+}
+"""
+
+LOGGING_DISABLED = """
+term test-disabled-log {
+  comment:: "Testing disabling logging for tcp."
+  protocol:: tcp
+  logging:: disable
+  action:: accept
+}
+"""
+
+LOGGING_BOTH_TERM = """
+term test-log-both {
+  comment:: "Testing enabling log-both for tcp."
+  protocol:: tcp
+  logging:: log-both
+  action:: accept
+}
+"""
+
+LOGGING_TRUE_KEYWORD = """
+term test-true-log {
+  comment:: "Testing enabling logging for udp with true keyword."
+  protocol:: udp
+  logging:: true
+  action:: accept
+}
+"""
+
+LOGGING_PYTRUE_KEYWORD = """
+term test-pytrue-log {
+  comment:: "Testing enabling logging for udp with True keyword."
+  protocol:: udp
+  logging:: True
+  action:: accept
+}
+"""
+
+LOGGING_SYSLOG_KEYWORD = """
+term test-syslog-log {
+  comment:: "Testing enabling logging for udp with syslog keyword."
+  protocol:: udp
+  logging:: syslog
+  action:: accept
+}
+"""
+
+LOGGING_LOCAL_KEYWORD = """
+term test-local-log {
+  comment:: "Testing enabling logging for udp with local keyword."
+  protocol:: udp
+  logging:: local
   action:: accept
 }
 """
@@ -333,6 +388,32 @@ class PaloAltoFWTest(unittest.TestCase):
     self.assertEqual(st, SUPPORTED_TOKENS)
     self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
+  def testLoggingBoth(self):
+    paloalto = paloaltofw.PaloAltoFW(
+        policy.ParsePolicy(GOOD_HEADER_1 + LOGGING_BOTH_TERM,
+                           self.naming), EXP_INFO)
+    output = str(paloalto)
+    self.assertIn('<log-start>yes</log-start>', output, output)
+    self.assertIn('<log-end>yes</log-end>', output, output)
+
+  def testDisableLogging(self):
+    paloalto = paloaltofw.PaloAltoFW(
+        policy.ParsePolicy(GOOD_HEADER_1 + LOGGING_DISABLED,
+                           self.naming), EXP_INFO)
+    output = str(paloalto)
+    self.assertIn('<log-start>no</log-start>', output, output)
+    self.assertIn('<log-end>no</log-end>', output, output)
+
+  def testLogging(self):
+    for term in [
+        LOGGING_SYSLOG_KEYWORD, LOGGING_LOCAL_KEYWORD, LOGGING_PYTRUE_KEYWORD,
+        LOGGING_TRUE_KEYWORD
+    ]:
+      pol = paloaltofw.PaloAltoFW(
+          policy.ParsePolicy(GOOD_HEADER_1 + term, self.naming), EXP_INFO)
+      output = str(pol)
+      self.assertNotIn('<log-start>yes</log-start>', output, output)
+      self.assertIn('<log-end>yes</log-end>', output, output)
 
 if __name__ == '__main__':
   unittest.main()

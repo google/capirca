@@ -183,10 +183,24 @@ class Rule(object):
     self.options["destination"] = []
     self.options["application"] = []
     self.options["service"] = []
+    self.options["logging"] = []
 
     # COMMENT
     if term.comment:
       self.options["description"] = term.comment
+
+    # LOGGING
+    if term.logging:
+      for item in term.logging:
+        if item.value in ["disable"]:
+          self.options["logging"] = ["disable"]
+          break
+        elif item.value in ["log-both"]:
+          self.options["logging"].append("log-start")
+          self.options["logging"].append("log-end")
+        elif item.value in ["True", "true", "syslog", "local"]:
+          self.options["logging"].append("log-end")
+
     # SOURCE-ADDRESS
     if term.source_address:
       saddr_check = set()
@@ -886,6 +900,16 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           for a in options["application"]:
             rules.append(self.INDENT * 10 + "<member>" + a + "</member>")
         rules.append(self.INDENT * 9 + "</application>")
+
+        # LOGGING
+        if options["logging"]:
+          if "disable" in options["logging"]:
+            rules.append(self.INDENT * 9 + "<log-start>no</log-start>")
+            rules.append(self.INDENT * 9 + "<log-end>no</log-end>")
+          if "log-start" in options["logging"]:
+            rules.append(self.INDENT * 9 + "<log-start>yes</log-start>")
+          if "log-end" in options["logging"]:
+            rules.append(self.INDENT * 9 + "<log-end>yes</log-end>")
 
         rules.append(self.INDENT * 8 + "</entry>")
 
