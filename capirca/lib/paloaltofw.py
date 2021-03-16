@@ -79,9 +79,8 @@ class Term(aclgenerator.Term):
   ACTIONS = {
       "accept": "allow",
       "deny": "deny",
-      "reject": "reject",
-      "count": "count",
-      "log": "log"
+      "reject": "reset-client",
+      "reject-with-tcp-rst": "reset-client",
   }
 
   def __init__(self, term, term_type, zones):
@@ -223,6 +222,7 @@ class Rule(object):
     else:
       self.options["destination"].append("any")
 
+    # ACTION
     if term.action:
       self.options["action"] = term.action[0]
 
@@ -327,7 +327,9 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     }
 
     supported_sub_tokens.update({
-        "action": {"accept", "deny", "reject", "count", "log"},
+        "action": {
+            "accept", "deny", "reject", "reject-with-tcp-rst"
+        },
         "option": {"established", "tcp-established"},
     })
     return supported_tokens, supported_sub_tokens
@@ -839,8 +841,8 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           descr = " ".join(options["description"])
           if len(descr) > self._MAX_RULE_DESCRIPTION_LENGTH:
             descr = descr[:self._MAX_RULE_DESCRIPTION_LENGTH]
-          rules.append(self.INDENT * 9 + "<description>" +
-                       descr + "</description>")
+          rules.append(self.INDENT * 9 + "<description>" + descr +
+                       "</description>")
 
         rules.append(self.INDENT * 9 + "<to>")
         for tz in options["to_zone"]:
