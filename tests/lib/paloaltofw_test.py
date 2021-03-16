@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Unit test for Palo Alto Firewalls acl rendering module."""
 
 from __future__ import absolute_import
@@ -27,7 +26,6 @@ from capirca.lib import naming
 from capirca.lib import paloaltofw
 from capirca.lib import policy
 import mock
-
 
 GOOD_HEADER_1 = """
 header {
@@ -228,6 +226,54 @@ term test-local-log {
 }
 """
 
+ACTION_ACCEPT_TERM = """
+term test-accept-action {
+  comment:: "Testing accept action for tcp."
+  protocol:: tcp
+  action:: accept
+}
+"""
+
+ACTION_COUNT_TERM = """
+term test-count-action {
+  comment:: "Testing unsupported count action for tcp."
+  protocol:: tcp
+  action:: count
+}
+"""
+
+ACTION_NEXT_TERM = """
+term test-next-action {
+  comment:: "Testing unsupported next action for tcp."
+  protocol:: tcp
+  action:: next
+}
+"""
+
+ACTION_DENY_TERM = """
+term test-deny-action {
+  comment:: "Testing deny action for tcp."
+  protocol:: tcp
+  action:: deny
+}
+"""
+
+ACTION_REJECT_TERM = """
+term test-reject-action {
+  comment:: "Testing reject action for tcp."
+  protocol:: tcp
+  action:: reject
+}
+"""
+
+ACTION_RESET_TERM = """
+term test-reset-action {
+  comment:: "Testing reset action for tcp."
+  protocol:: tcp
+  action:: reject-with-tcp-rst
+}
+"""
+
 SUPPORTED_TOKENS = frozenset({
     'action',
     'comment',
@@ -248,11 +294,11 @@ SUPPORTED_TOKENS = frozenset({
     'stateless_reply',
     'timeout',
     'pan_application',
-    'translated'
+    'translated',
 })
 
 SUPPORTED_SUB_TOKENS = {
-    'action': {'accept', 'deny', 'reject', 'count', 'log'},
+    'action': {'accept', 'deny', 'reject', 'reject-with-tcp-rst'},
     'option': {'established', 'tcp-established'},
     'icmp_type': {
         'alternate-address',
@@ -304,8 +350,7 @@ SUPPORTED_SUB_TOKENS = {
 # This is normally passed from command line.
 EXP_INFO = 2
 
-_IPSET = [nacaddr.IP('10.0.0.0/8'),
-          nacaddr.IP('2001:4860:8000::/33')]
+_IPSET = [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('2001:4860:8000::/33')]
 _IPSET2 = [nacaddr.IP('10.23.0.0/22'), nacaddr.IP('10.23.0.6/23', strict=False)]
 _IPSET3 = [nacaddr.IP('10.23.0.0/23')]
 
@@ -321,8 +366,7 @@ class PaloAltoFWTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['25']
 
     paloalto = paloaltofw.PaloAltoFW(
-        policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
-                           self.naming), EXP_INFO)
+        policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1, self.naming), EXP_INFO)
     output = str(paloalto)
     self.assertIn('<entry name="good-term-1">', output, output)
 
@@ -331,8 +375,8 @@ class PaloAltoFWTest(unittest.TestCase):
 
   def testDefaultDeny(self):
     paloalto = paloaltofw.PaloAltoFW(
-        policy.ParsePolicy(GOOD_HEADER_1 + DEFAULT_TERM_1,
-                           self.naming), EXP_INFO)
+        policy.ParsePolicy(GOOD_HEADER_1 + DEFAULT_TERM_1, self.naming),
+        EXP_INFO)
     output = str(paloalto)
     self.assertIn('<action>deny</action>', output, output)
 
@@ -344,8 +388,8 @@ class PaloAltoFWTest(unittest.TestCase):
 
   def testBadICMP(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + BAD_ICMP_TERM_1, self.naming)
-    self.assertRaises(paloaltofw.UnsupportedFilterError,
-                      paloaltofw.PaloAltoFW, pol, EXP_INFO)
+    self.assertRaises(paloaltofw.UnsupportedFilterError, paloaltofw.PaloAltoFW,
+                      pol, EXP_INFO)
 
   def testICMPProtocolOnly(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + ICMP_ONLY_TERM_1, self.naming)
@@ -377,29 +421,28 @@ class PaloAltoFWTest(unittest.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + UNSUPPORTED_OPTION_TERM,
                              self.naming)
     self.assertRaises(aclgenerator.UnsupportedFilterError,
-                      paloaltofw.PaloAltoFW,
-                      pol, EXP_INFO)
+                      paloaltofw.PaloAltoFW, pol, EXP_INFO)
 
   def testBuildTokens(self):
     self.naming.GetServiceByProto.side_effect = [['25'], ['26']]
-    pol1 = paloaltofw.PaloAltoFW(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
-                                                    self.naming), EXP_INFO)
+    pol1 = paloaltofw.PaloAltoFW(
+        policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2, self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
     self.assertEqual(st, SUPPORTED_TOKENS)
     self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testLoggingBoth(self):
     paloalto = paloaltofw.PaloAltoFW(
-        policy.ParsePolicy(GOOD_HEADER_1 + LOGGING_BOTH_TERM,
-                           self.naming), EXP_INFO)
+        policy.ParsePolicy(GOOD_HEADER_1 + LOGGING_BOTH_TERM, self.naming),
+        EXP_INFO)
     output = str(paloalto)
     self.assertIn('<log-start>yes</log-start>', output, output)
     self.assertIn('<log-end>yes</log-end>', output, output)
 
   def testDisableLogging(self):
     paloalto = paloaltofw.PaloAltoFW(
-        policy.ParsePolicy(GOOD_HEADER_1 + LOGGING_DISABLED,
-                           self.naming), EXP_INFO)
+        policy.ParsePolicy(GOOD_HEADER_1 + LOGGING_DISABLED, self.naming),
+        EXP_INFO)
     output = str(paloalto)
     self.assertIn('<log-start>no</log-start>', output, output)
     self.assertIn('<log-end>no</log-end>', output, output)
@@ -414,6 +457,37 @@ class PaloAltoFWTest(unittest.TestCase):
       output = str(pol)
       self.assertNotIn('<log-start>yes</log-start>', output, output)
       self.assertIn('<log-end>yes</log-end>', output, output)
+
+  def testAcceptAction(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + ACTION_ACCEPT_TERM, self.naming)
+    output = str(paloaltofw.PaloAltoFW(pol, EXP_INFO))
+    self.assertIn('<action>allow</action>', output, output)
+
+  def testDenyAction(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + ACTION_DENY_TERM, self.naming)
+    output = str(paloaltofw.PaloAltoFW(pol, EXP_INFO))
+    self.assertIn('<action>deny</action>', output, output)
+
+  def testRejectAction(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + ACTION_REJECT_TERM, self.naming)
+    output = str(paloaltofw.PaloAltoFW(pol, EXP_INFO))
+    self.assertIn('<action>reset-client</action>', output, output)
+
+  def testResetAction(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + ACTION_RESET_TERM, self.naming)
+    output = str(paloaltofw.PaloAltoFW(pol, EXP_INFO))
+    self.assertIn('<action>reset-client</action>', output, output)
+
+  def testCountAction(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + ACTION_COUNT_TERM, self.naming)
+    self.assertRaises(aclgenerator.UnsupportedFilterError,
+                      paloaltofw.PaloAltoFW, pol, EXP_INFO)
+
+  def testNextAction(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + ACTION_NEXT_TERM, self.naming)
+    self.assertRaises(aclgenerator.UnsupportedFilterError,
+                      paloaltofw.PaloAltoFW, pol, EXP_INFO)
+
 
 if __name__ == '__main__':
   unittest.main()
