@@ -1061,6 +1061,9 @@ class AristaTpTest(unittest.TestCase):
         self.assertIn("match MIXED_INET ipv4", output, output)
         self.assertIn("source prefix 8.8.4.4/32", output, output)
         self.assertIn("destination prefix 10.0.0.0/8", output, output)
+        self.assertNotIn("match ipv6-MIXED_INET ipv6", output, output)
+        self.assertNotIn("source prefix 2001:4860:4860::8844/128",
+                         output, output)
 
     def testInetMixed(self):
         self.naming.GetNetAddr.side_effect = [
@@ -1078,6 +1081,9 @@ class AristaTpTest(unittest.TestCase):
         self.assertIn("match INET_MIXED ipv4", output, output)
         self.assertIn("source prefix 10.0.0.0/8", output, output)
         self.assertIn("destination prefix 8.8.4.4/32", output, output)
+        self.assertNotIn("match ipv6-INET_MIXED ipv6", output, output)
+        self.assertNotIn("destination prefix 2001:4860:4860::8844/128",
+                         output, output)
 
     def testMixedInet6(self):
         self.naming.GetNetAddr.side_effect = [
@@ -1097,6 +1103,10 @@ class AristaTpTest(unittest.TestCase):
                       output, output)
         self.assertIn("destination prefix 2001:4860:4860::8844/128",
                       output, output)
+        # check to make sure that the IPv4 elements are not rendered
+        self.assertNotIn("match MIXED_INET6 ipv4", output, output)
+        self.assertNotIn("source prefix 8.8.8.8",
+                         output, output)
 
     def testInet6Mixed(self):
         self.naming.GetNetAddr.side_effect = [
@@ -1115,6 +1125,9 @@ class AristaTpTest(unittest.TestCase):
                       output, output)
         self.assertIn("destination prefix 2001:4860:4860::8844/128",
                       output, output)
+        self.assertNotIn("match INET6_MIXED ipv4", output, output)
+        self.assertNotIn("destination prefix 8.8.8.8",
+                         output, output)
 
     def testMixedMixed(self):
         self.naming.GetNetAddr.side_effect = [
