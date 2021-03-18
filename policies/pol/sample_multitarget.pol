@@ -14,6 +14,7 @@ header {
   target:: ciscoasa asa_in
   target:: demo edge-inbound
   target:: arista edge-inbound
+  target:: arista_tp edge-inbound
   target:: brocade edge-inbound
   target:: ciscoxr edge-inbound
 }
@@ -56,6 +57,7 @@ header {
   comment:: "this is a sample output filter"
   target:: juniper edge-outbound
   target:: msmpc edge-outbound mixed egress
+  target:: arista_tp edge-outbound
   target:: cisco edge-outbound mixed
   target:: speedway OUTPUT
   target:: ciscoasa asa_out
