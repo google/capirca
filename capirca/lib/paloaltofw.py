@@ -18,6 +18,7 @@ import collections
 import datetime
 import logging
 import re
+from xml.dom import minidom
 import xml.etree.ElementTree as etree
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
@@ -888,4 +889,6 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       ip.text = str(address_book_names_dict[name])
 
     document = etree.tostring(config, encoding="UTF-8")
-    return document.decode("UTF-8")
+    dom = minidom.parseString(document.decode("UTF-8"))
+
+    return dom.toprettyxml(indent=self.INDENT)
