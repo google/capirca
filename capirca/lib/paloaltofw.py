@@ -278,6 +278,8 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
   _TERM_MAX_LENGTH = 31
   _SUPPORTED_PROTO_NAMES = ["tcp", "udp", "icmp", "icmpv6", "sctp", "igmp"]
   _MAX_RULE_DESCRIPTION_LENGTH = 1024
+  _MAX_TAG_COMMENTS_LENGTH = 1023
+  _TAG_NAME_FORMAT = "{from_zone}_{to_zone}_policy-comment-{num}"
 
   INDENT = "  "
 
@@ -750,10 +752,27 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     rulebase = etree.SubElement(vsys_entry, "rulebase")
     security = etree.SubElement(rulebase, "security")
     rules = etree.SubElement(security, "rules")
+    tag = etree.Element("tag")
+
+    tag_num = 0
 
     # pytype: disable=key-error
     # pylint: disable=unused-variable
     for (header, pa_rules, filter_options) in self.pafw_policies:
+      tag_name = None
+      if header.comment:
+        comment = " ".join(header.comment).strip()
+        if comment:
+          tag_num += 1
+          # max tag len 127, max zone len 31
+          tag_name = self._TAG_NAME_FORMAT.format(
+            from_zone=filter_options[1], to_zone=filter_options[3],
+            num=tag_num)
+          tag_entry = etree.SubElement(tag, "entry",
+                                       {"name": tag_name})
+          comments = etree.SubElement(tag_entry, "comments")
+          comments.text = comment[:self._MAX_TAG_COMMENTS_LENGTH]
+
       for name, options in pa_rules.items():
         entry = etree.SubElement(rules, "entry", {"name": name})
         if options["description"]:
@@ -826,6 +845,11 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
             member = etree.SubElement(app, "member")
             member.text = x
 
+        if tag_name is not None:
+          rules_tag = etree.SubElement(entry, "tag")
+          member = etree.SubElement(rules_tag, "member")
+          member.text = tag_name
+
         # LOGGING
         if options["logging"]:
           if "disable" in options["logging"]:
@@ -887,6 +911,8 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       desc.text = name
       ip = etree.SubElement(entry, "ip-netmask")
       ip.text = str(address_book_names_dict[name])
+
+    vsys_entry.append(tag)
 
     document = etree.tostring(config, encoding="UTF-8")
     dom = minidom.parseString(document.decode("UTF-8"))
