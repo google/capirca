@@ -490,6 +490,11 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
         modified_term_name = filter_name[:(
             (MAX_IDENTIFIER_LEN) // 2)] + term.name[-(
                 (MAX_IDENTIFIER_LEN) // 2):]
+        if term.stateless_reply:
+          logging.warning(
+              "WARNING: Term %s is a stateless reply term and will not be "
+              "rendered.", term.name)
+          continue
         if set(['established', 'tcp-established']).intersection(term.option):
           logging.debug(
               'Skipping established term %s because MSMPC is stateful.',

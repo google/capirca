@@ -661,6 +661,23 @@ class JuniperMSMPCTest(parameterized.TestCase):
 
     self.naming.GetServiceByProto.assert_called_once_with('DNS', 'tcp')
 
+  def testStatelessReply(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.1/32')]
+    self.naming.GetServiceByProto.return_value = ['25']
+
+    ret = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1, self.naming)
+
+    _, terms = ret.filters[0]
+    for term in terms:
+      if term.protocol[0] == 'icmp':
+        term.stateless_reply = True
+
+    msmpc = junipermsmpc.JuniperMSMPC(ret, EXP_INFO)
+
+    output = str(msmpc)
+    self.assertNotIn('term good-term-1 {', output, output)
+    self.assertIn('term good-term-2 {', output, output)
+
   def testNoVerboseV4(self):
     addr_list = list()
     for octet in range(0, 256):

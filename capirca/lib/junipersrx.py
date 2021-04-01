@@ -447,6 +447,12 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       new_terms = []
       self._FixLargePolices(terms, filter_type)
       for term in terms:
+        if term.stateless_reply:
+          logging.warning(
+              "WARNING: Term %s in policy %s>%s is a stateless reply "
+              "term and will not be rendered.", term.name, self.from_zone,
+              self.to_zone)
+          continue
         if set(['established', 'tcp-established']).intersection(term.option):
           logging.debug('Skipping established term %s because SRX is stateful.',
                         term.name)

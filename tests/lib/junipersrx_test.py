@@ -366,6 +366,14 @@ term udp-established-term {
 }
 """
 
+ICMP_RESPONSE_TERM = """
+term icmp_response-term {
+  protocol:: icmp
+  icmp-type:: echo-reply
+  action:: accept
+}
+"""
+
 EXPIRED_TERM_1 = """
 term expired_test {
   expiration:: 2000-1-1
@@ -1363,6 +1371,24 @@ class JuniperSRXTest(unittest.TestCase):
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.assertNotIn('udp-established-term', output)
     self.assertNotIn('tcp-established-term', output)
+
+  def testStatelessReply(self):
+    self.naming.GetNetAddr.return_value = _IPSET
+    self.naming.GetServiceByProto.return_value = ['25']
+
+    ret = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1 + ICMP_RESPONSE_TERM,
+                             self.naming)
+
+    _, terms = ret.filters[0]
+    for term in terms:
+      if term.protocol[0] == 'icmp':
+        term.stateless_reply = True
+
+    srx = junipersrx.JuniperSRX(ret, EXP_INFO)
+
+    output = str(srx)
+    self.assertIn('policy good-term-1 {', output, output)
+    self.assertNotIn('policy icmp_response-term {', output, output)
 
   def testNoVerbose(self):
     self.naming.GetNetAddr.return_value = _IPSET
