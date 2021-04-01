@@ -258,7 +258,7 @@ class Rule(object):
       for proto_name in term.protocol:
         if proto_name in ["icmp", "icmpv6"]:
           continue
-        elif proto_name in ["igmp", "sctp"]:
+        elif proto_name in ["igmp", "sctp", "gre"]:
           if proto_name not in self.options["application"]:
             self.options["application"].append(proto_name)
         elif proto_name in ["tcp", "udp"]:
@@ -276,7 +276,15 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
   _SUPPORTED_AF = set(("inet", "inet6", "mixed"))
   _AF_MAP = {"inet": (4,), "inet6": (6,), "mixed": (4, 6)}
   _TERM_MAX_LENGTH = 31
-  _SUPPORTED_PROTO_NAMES = ["tcp", "udp", "icmp", "icmpv6", "sctp", "igmp"]
+  _SUPPORTED_PROTO_NAMES = [
+      "tcp",
+      "udp",
+      "icmp",
+      "icmpv6",
+      "sctp",
+      "igmp",
+      "gre",
+  ]
   _MAX_RULE_DESCRIPTION_LENGTH = 1024
 
   INDENT = "  "
@@ -327,9 +335,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     }
 
     supported_sub_tokens.update({
-        "action": {
-            "accept", "deny", "reject", "reject-with-tcp-rst"
-        },
+        "action": {"accept", "deny", "reject", "reject-with-tcp-rst"},
         "option": {"established", "tcp-established"},
     })
     return supported_tokens, supported_sub_tokens

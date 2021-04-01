@@ -47,6 +47,15 @@ header {
 }
 """
 
+GRE_PROTO_TERM = """
+term test-gre-protocol {
+  comment:: "allow GRE protocol to FOOBAR"
+  destination-address:: FOOBAR
+  protocol:: gre
+  action:: accept
+}
+"""
+
 GOOD_TERM_1 = """
 term good-term-1 {
   comment:: "This header is very very very very very very very very very very very very very very very very very very very very large"
@@ -55,6 +64,7 @@ term good-term-1 {
   protocol:: tcp
   action:: accept
 }
+
 """
 GOOD_TERM_2 = """
 term good-term-4 {
@@ -488,6 +498,10 @@ class PaloAltoFWTest(unittest.TestCase):
     self.assertRaises(aclgenerator.UnsupportedFilterError,
                       paloaltofw.PaloAltoFW, pol, EXP_INFO)
 
+  def testGreProtoTerm(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + GRE_PROTO_TERM, self.naming)
+    output = str(paloaltofw.PaloAltoFW(pol, EXP_INFO))
+    self.assertIn('<member>gre</member>', output, output)
 
 if __name__ == '__main__':
   unittest.main()
