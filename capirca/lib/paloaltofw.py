@@ -300,6 +300,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     self.from_zone = ""
     self.to_zone = ""
     self.policy_name = ""
+    self.config = None
     super(PaloAltoFW, self).__init__(pol, exp_info)
 
   def _BuildTokens(self):
@@ -894,6 +895,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       ip = etree.SubElement(entry, "ip-netmask")
       ip.text = str(address_book_names_dict[name])
 
+    self.config = config
     document = etree.tostring(config, encoding="UTF-8")
     dom = minidom.parseString(document.decode("UTF-8"))
 
