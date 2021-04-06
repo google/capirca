@@ -364,6 +364,9 @@ _IPSET = [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('2001:4860:8000::/33')]
 _IPSET2 = [nacaddr.IP('10.23.0.0/22'), nacaddr.IP('10.23.0.6/23', strict=False)]
 _IPSET3 = [nacaddr.IP('10.23.0.0/23')]
 
+PATH_VSYS = "./devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']"
+PATH_RULES = PATH_VSYS + '/rulebase/security/rules'
+
 
 class PaloAltoFWTest(unittest.TestCase):
 
@@ -378,7 +381,8 @@ class PaloAltoFWTest(unittest.TestCase):
     paloalto = paloaltofw.PaloAltoFW(
         policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1, self.naming), EXP_INFO)
     output = str(paloalto)
-    self.assertIn('<entry name="good-term-1">', output, output)
+    x = paloalto.config.find(PATH_RULES + "/entry[@name='good-term-1']")
+    self.assertIsNotNone(x, output)
 
     self.naming.GetNetAddr.assert_called_once_with('FOOBAR')
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
@@ -388,13 +392,25 @@ class PaloAltoFWTest(unittest.TestCase):
         policy.ParsePolicy(GOOD_HEADER_1 + DEFAULT_TERM_1, self.naming),
         EXP_INFO)
     output = str(paloalto)
-    self.assertIn('<action>deny</action>', output, output)
+    x = paloalto.config.find(PATH_RULES +
+                             "/entry[@name='default-term-1']/action")
+    self.assertIsNotNone(x, output)
+    self.assertEqual(x.text, 'deny', output)
 
   def testIcmpTypes(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + ICMP_TYPE_TERM_1, self.naming)
-    output = str(paloaltofw.PaloAltoFW(pol, EXP_INFO))
-    self.assertIn('<member>icmp-echo-request</member>', output, output)
-    self.assertIn('<member>icmp-echo-reply</member>', output, output)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.find(PATH_RULES +
+                             "/entry[@name='test-icmp']/application")
+    self.assertIsNotNone(x, output)
+    members = []
+    for node in x:
+      self.assertEqual(node.tag, 'member', output)
+      members.append(node.text)
+
+    self.assertCountEqual(['icmp-echo-reply', 'icmp-echo-request'], members,
+                          output)
 
   def testBadICMP(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + BAD_ICMP_TERM_1, self.naming)
@@ -403,8 +419,17 @@ class PaloAltoFWTest(unittest.TestCase):
 
   def testICMPProtocolOnly(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + ICMP_ONLY_TERM_1, self.naming)
-    output = str(paloaltofw.PaloAltoFW(pol, EXP_INFO))
-    self.assertIn('<member>icmp</member>', output, output)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.find(PATH_RULES +
+                             "/entry[@name='test-icmp-only']/application")
+    self.assertIsNotNone(x, output)
+    members = []
+    for node in x:
+      self.assertEqual(node.tag, 'member', output)
+      members.append(node.text)
+
+    self.assertEqual(['icmp'], members, output)
 
   def testSkipStatelessReply(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_4_STATELESS_REPLY,
@@ -416,16 +441,25 @@ class PaloAltoFWTest(unittest.TestCase):
     for term in terms:
       term.stateless_reply = True
 
-    output = str(paloaltofw.PaloAltoFW(pol, EXP_INFO))
-    self.assertNotIn('good-term-stateless-reply', output, output)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.find(PATH_RULES +
+                             "/entry[@name='good-term-stateless-reply']")
+    self.assertIsNone(x, output)
 
   def testSkipEstablished(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + TCP_ESTABLISHED_TERM, self.naming)
-    output = str(paloaltofw.PaloAltoFW(pol, EXP_INFO))
-    self.assertNotIn('tcp-established', output, output)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.find(PATH_RULES + "/entry[@name='tcp-established']")
+    self.assertIsNone(x, output)
+
     pol = policy.ParsePolicy(GOOD_HEADER_1 + UDP_ESTABLISHED_TERM, self.naming)
-    output = str(paloaltofw.PaloAltoFW(pol, EXP_INFO))
-    self.assertNotIn('udp-established-term', output, output)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.find(PATH_RULES +
+                             "/entry[@name='udp-established-term']")
+    self.assertIsNone(x, output)
 
   def testUnsupportedOptions(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + UNSUPPORTED_OPTION_TERM,
@@ -446,47 +480,73 @@ class PaloAltoFWTest(unittest.TestCase):
         policy.ParsePolicy(GOOD_HEADER_1 + LOGGING_BOTH_TERM, self.naming),
         EXP_INFO)
     output = str(paloalto)
-    self.assertIn('<log-start>yes</log-start>', output, output)
-    self.assertIn('<log-end>yes</log-end>', output, output)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='test-log-both']/log-start")
+    self.assertEqual(x, 'yes', output)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='test-log-both']/log-end")
+    self.assertEqual(x, 'yes', output)
 
   def testDisableLogging(self):
     paloalto = paloaltofw.PaloAltoFW(
         policy.ParsePolicy(GOOD_HEADER_1 + LOGGING_DISABLED, self.naming),
         EXP_INFO)
     output = str(paloalto)
-    self.assertIn('<log-start>no</log-start>', output, output)
-    self.assertIn('<log-end>no</log-end>', output, output)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='test-disabled-log']/log-start")
+    self.assertEqual(x, 'no', output)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='test-disabled-log']/log-end")
+    self.assertEqual(x, 'no', output)
 
   def testLogging(self):
     for term in [
         LOGGING_SYSLOG_KEYWORD, LOGGING_LOCAL_KEYWORD, LOGGING_PYTRUE_KEYWORD,
         LOGGING_TRUE_KEYWORD
     ]:
-      pol = paloaltofw.PaloAltoFW(
+      paloalto = paloaltofw.PaloAltoFW(
           policy.ParsePolicy(GOOD_HEADER_1 + term, self.naming), EXP_INFO)
-      output = str(pol)
-      self.assertNotIn('<log-start>yes</log-start>', output, output)
-      self.assertIn('<log-end>yes</log-end>', output, output)
+      output = str(paloalto)
+
+      # we don't have term name so match all elements with attribute
+      # name at the entry level
+      x = paloalto.config.findall(PATH_RULES + '/entry[@name]/log-start')
+      self.assertEqual(len(x), 0, output)
+      x = paloalto.config.findall(PATH_RULES + '/entry[@name]/log-end')
+      self.assertEqual(len(x), 1, output)
+      self.assertEqual(x[0].text, 'yes', output)
 
   def testAcceptAction(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + ACTION_ACCEPT_TERM, self.naming)
-    output = str(paloaltofw.PaloAltoFW(pol, EXP_INFO))
-    self.assertIn('<action>allow</action>', output, output)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='test-accept-action']/action")
+    self.assertEqual(x, 'allow', output)
 
   def testDenyAction(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + ACTION_DENY_TERM, self.naming)
-    output = str(paloaltofw.PaloAltoFW(pol, EXP_INFO))
-    self.assertIn('<action>deny</action>', output, output)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='test-deny-action']/action")
+    self.assertEqual(x, 'deny', output)
 
   def testRejectAction(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + ACTION_REJECT_TERM, self.naming)
-    output = str(paloaltofw.PaloAltoFW(pol, EXP_INFO))
-    self.assertIn('<action>reset-client</action>', output, output)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='test-reject-action']/action")
+    self.assertEqual(x, 'reset-client', output)
 
   def testResetAction(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + ACTION_RESET_TERM, self.naming)
-    output = str(paloaltofw.PaloAltoFW(pol, EXP_INFO))
-    self.assertIn('<action>reset-client</action>', output, output)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='test-reset-action']/action")
+    self.assertEqual(x, 'reset-client', output)
 
   def testCountAction(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + ACTION_COUNT_TERM, self.naming)
@@ -500,8 +560,15 @@ class PaloAltoFWTest(unittest.TestCase):
 
   def testGreProtoTerm(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + GRE_PROTO_TERM, self.naming)
-    output = str(paloaltofw.PaloAltoFW(pol, EXP_INFO))
-    self.assertIn('<member>gre</member>', output, output)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.find(PATH_RULES +
+                             "/entry[@name='test-gre-protocol']/application")
+    self.assertIsNotNone(x, output)
+    self.assertEqual(len(x), 1, output)
+    self.assertEqual(x[0].tag, 'member', output)
+    self.assertEqual(x[0].text, 'gre', output)
+
 
 if __name__ == '__main__':
   unittest.main()

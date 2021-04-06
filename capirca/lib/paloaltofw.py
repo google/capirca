@@ -302,6 +302,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     self.from_zone = ""
     self.to_zone = ""
     self.policy_name = ""
+    self.config = None
     super(PaloAltoFW, self).__init__(pol, exp_info)
 
   def _BuildTokens(self):
@@ -772,8 +773,8 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           tag_num += 1
           # max tag len 127, max zone len 31
           tag_name = self._TAG_NAME_FORMAT.format(
-            from_zone=filter_options[1], to_zone=filter_options[3],
-            num=tag_num)
+              from_zone=filter_options[1], to_zone=filter_options[3],
+              num=tag_num)
           tag_entry = etree.SubElement(tag, "entry",
                                        {"name": tag_name})
           comments = etree.SubElement(tag_entry, "comments")
@@ -920,6 +921,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
 
     vsys_entry.append(tag)
 
+    self.config = config
     document = etree.tostring(config, encoding="UTF-8")
     dom = minidom.parseString(document.decode("UTF-8"))
 
