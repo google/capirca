@@ -435,7 +435,8 @@ class Term(aclgenerator.Term):
           config.Append(epfx + ' except;')
         config.Append('}')
 
-      if self.term.ttl:
+      # Only generate ttl if inet, inet6 uses hop-limit instead.
+      if self.term.ttl and self.term_type == 'inet':
         config.Append('ttl %s;' % self.term.ttl)
 
       # protocol

@@ -828,6 +828,13 @@ class JuniperTest(unittest.TestCase):
     output = str(jcl)
     self.assertIn('hop-limit 25;', output, output)
 
+  def testHopLimitInet(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER +
+                                             GOOD_TERM_V6_HOP_LIMIT,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.assertNotIn('hop-limit 25;', output, output)
+
   def testProtocolExcept(self):
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_7,
                                              self.naming), EXP_INFO)
@@ -1377,6 +1384,12 @@ class JuniperTest(unittest.TestCase):
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.assertIn('ttl 10;', output)
+
+  def testTTLInet6(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_21,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.assertNotIn('ttl 10;', output)
 
   def testNextIpFormat(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
