@@ -284,6 +284,38 @@ term test-reset-action {
 }
 """
 
+HEADER_COMMENTS = """
+header {
+  comment:: "comment 1"
+  comment:: "comment 2"
+  target:: paloalto from-zone trust to-zone untrust
+}
+term policy-1 {
+  pan-application:: ssh
+  action:: accept
+}
+term policy-2 {
+  pan-application:: web-browsing
+  action:: accept
+}
+header {
+  comment:: "comment 3"
+  target:: paloalto from-zone trust to-zone dmz
+}
+term policy-3 {
+  pan-application:: web-browsing
+  action:: accept
+}
+header {
+  # no comment
+  target:: paloalto from-zone trust to-zone dmz-2
+}
+term policy-4 {
+  pan-application:: web-browsing
+  action:: accept
+}
+"""
+
 SUPPORTED_TOKENS = frozenset({
     'action',
     'comment',
@@ -366,6 +398,7 @@ _IPSET3 = [nacaddr.IP('10.23.0.0/23')]
 
 PATH_VSYS = "./devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']"
 PATH_RULES = PATH_VSYS + '/rulebase/security/rules'
+PATH_TAG = PATH_VSYS + '/tag'
 
 
 class PaloAltoFWTest(unittest.TestCase):
@@ -568,6 +601,39 @@ class PaloAltoFWTest(unittest.TestCase):
     self.assertEqual(len(x), 1, output)
     self.assertEqual(x[0].tag, 'member', output)
     self.assertEqual(x[0].text, 'gre', output)
+
+  def testHeaderComments(self):
+    pol = policy.ParsePolicy(HEADER_COMMENTS, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+
+    tag = "trust_untrust_policy-comment-1"
+    x = paloalto.config.find(PATH_TAG +
+                             "/entry[@name='%s']/comments" % tag)
+    self.assertIsNotNone(x, output)
+    self.assertEqual(x.text, "comment 1 comment 2", output)
+    x = paloalto.config.find(PATH_RULES +
+                             "/entry[@name='policy-2']/tag")
+    self.assertIsNotNone(x, output)
+    self.assertEqual(len(x), 1, output)
+    self.assertEqual(x[0].tag, "member", output)
+    self.assertEqual(x[0].text, tag, output)
+
+    tag = "trust_dmz_policy-comment-2"
+    x = paloalto.config.find(PATH_TAG +
+                             "/entry[@name='%s']/comments" % tag)
+    self.assertIsNotNone(x, output)
+    self.assertEqual(x.text, "comment 3", output)
+    x = paloalto.config.find(PATH_RULES +
+                             "/entry[@name='policy-3']/tag")
+    self.assertIsNotNone(x, output)
+    self.assertEqual(len(x), 1, output)
+    self.assertEqual(x[0].tag, "member", output)
+    self.assertEqual(x[0].text, tag, output)
+
+    x = paloalto.config.find(PATH_RULES +
+                             "/entry[@name='policy-4']/tag")
+    self.assertIsNone(x, output)
 
 
 if __name__ == '__main__':
