@@ -316,6 +316,16 @@ term policy-4 {
 }
 """
 
+ZONE_LEN_ERROR = """
+header {
+  target:: paloalto from-zone %s to-zone %s
+}
+term policy {
+  pan-application:: web-browsing
+  action:: accept
+}
+"""
+
 SUPPORTED_TOKENS = frozenset({
     'action',
     'comment',
@@ -634,6 +644,40 @@ class PaloAltoFWTest(unittest.TestCase):
     x = paloalto.config.find(PATH_RULES +
                              "/entry[@name='policy-4']/tag")
     self.assertIsNone(x, output)
+
+  def testZoneLen(self):
+    ZONE_MAX_LEN = "Z" * 31
+    ZONE_TOO_LONG = "Z" * 32
+
+    # from
+    pol = policy.ParsePolicy(ZONE_LEN_ERROR % (ZONE_MAX_LEN, "dmz"),
+                             self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='policy']/from/member")
+    self.assertEqual(x, ZONE_MAX_LEN, output)
+
+    pol = policy.ParsePolicy(ZONE_LEN_ERROR % (ZONE_TOO_LONG, "dmz"),
+                             self.naming)
+    self.assertRaisesRegex(paloaltofw.PaloAltoFWNameTooLongError,
+                           "^Source zone must be 31 characters max",
+                           paloaltofw.PaloAltoFW, pol, EXP_INFO)
+
+    # to
+    pol = policy.ParsePolicy(ZONE_LEN_ERROR % ("dmz", ZONE_MAX_LEN),
+                             self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='policy']/to/member")
+    self.assertEqual(x, ZONE_MAX_LEN, output)
+
+    pol = policy.ParsePolicy(ZONE_LEN_ERROR % ("dmz", ZONE_TOO_LONG),
+                             self.naming)
+    self.assertRaisesRegex(paloaltofw.PaloAltoFWNameTooLongError,
+                           "^Destination zone must be 31 characters max",
+                           paloaltofw.PaloAltoFW, pol, EXP_INFO)
 
 
 if __name__ == '__main__':
