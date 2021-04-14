@@ -166,12 +166,22 @@ class Rule(object):
 
   def __init__(self, from_zone, to_zone, terms):
     # Palo Alto Firewall rule keys
+    MAX_ZONE_LENGTH = 31
+
+    if not from_zone or not to_zone:
+      raise PaloAltoFWOptionError("Source or destination zone is empty.")
+    if len(from_zone) > MAX_ZONE_LENGTH:
+      x = "Source zone must be %d characters max: %s" % (MAX_ZONE_LENGTH,
+                                                         from_zone)
+      raise PaloAltoFWNameTooLongError(x)
+    if len(to_zone) > MAX_ZONE_LENGTH:
+      x = "Destination zone must be %d characters max: %s" % (MAX_ZONE_LENGTH,
+                                                              to_zone)
+      raise PaloAltoFWNameTooLongError(x)
+
     self.options = {}
     self.options["from_zone"] = [from_zone]
     self.options["to_zone"] = [to_zone]
-    if not from_zone or not to_zone:
-      raise PaloAltoFWOptionError("Source or destination zone is empty.")
-
     self.ModifyOptions(terms)
 
   def ModifyOptions(self, terms):
