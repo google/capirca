@@ -224,6 +224,7 @@ class ACLGenerator(object):
   WARN_IF_UNSUPPORTED = {
       'counter',
       'destination_tag',
+      'filter_term',
       'logging',
       'loss_priority',
       'owner',

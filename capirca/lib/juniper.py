@@ -283,7 +283,13 @@ class Term(aclgenerator.Term):
       term_prefix = ''
 
     # term name
-    config.Append('%s term %s {' %(term_prefix, self.term.name))
+    config.Append('%s term %s {' % (term_prefix, self.term.name))
+
+    # The "filter" keyword is not compatible with from or then
+    if self.term.filter_term:
+      config.Append('filter %s;' % self.term.filter_term)
+      config.Append('}')  # end term accept-foo-to-bar { ... }
+      return str(config)
 
     # a default action term doesn't have any from { clause
     has_match_criteria = (self.term.address or
@@ -449,8 +455,7 @@ class Term(aclgenerator.Term):
       # protocol
       if self.term.protocol_except:
         # same as above
-        config.Append(family_keywords['protocol-except'] + ' '
-                      + self._Group(self.term.protocol_except))
+        config.Append(family_keywords['protocol-except'] + ' ' + self._Group(self.term.protocol_except))
 
       # port
       if self.term.port:
@@ -883,6 +888,7 @@ class Juniper(aclgenerator.ACLGenerator):
                          'dscp_set',
                          'encapsulate',
                          'ether_type',
+                         'filter_term',
                          'flexible_match_range',
                          'forwarding_class',
                          'forwarding_class_except',
@@ -916,7 +922,7 @@ class Juniper(aclgenerator.ACLGenerator):
             'tcp-established',
             'tcp-initial',
             'inactive'}
-        })
+         })
     return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):

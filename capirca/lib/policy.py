@@ -324,6 +324,7 @@ class Term(object):
     dscp-except: VarType.DSCP_EXCEPT
     comments: VarType.COMMENT
     encapsulate: VarType.ENCAPSULATE
+    filter-term: VarType.FILTER_TERM
     flexible-match-range: VarType.FLEXIBLE_MATCH_RANGE
     forwarding-class: VarType.FORWARDING_CLASS
     forwarding-class-except: VarType.FORWARDING_CLASS_EXCEPT
@@ -416,6 +417,7 @@ class Term(object):
     self.destination_address_exclude = []
     self.destination_port = []
     self.destination_prefix = []
+    self.filter_term = None
     self.forwarding_class = []
     self.forwarding_class_except = []
     self.logging = []
@@ -714,6 +716,8 @@ class Term(object):
     if self.destination_prefix_except:
       ret_str.append('  destination_prefix_except: %s' %
                      self.destination_prefix_except)
+    if self.filter_term:
+      ret_str.append('  filter_term: %s' % self.filter_term)
     if self.forwarding_class:
       ret_str.append('  forwarding_class: %s' % self.forwarding_class)
     if self.forwarding_class_except:
@@ -899,6 +903,10 @@ class Term(object):
 
     # precedence
     if self.precedence != other.precedence:
+      return False
+
+    # filter
+    if self.filter_term != other.filter_term:
       return False
 
     # forwarding-class
@@ -1196,6 +1204,8 @@ class Term(object):
         self.target_resources.append(obj.value)
       elif obj.var_type is VarType.TARGET_SERVICE_ACCOUNTS:
         self.target_service_accounts.append(obj.value)
+      elif obj.var_type is VarType.FILTER_TERM:
+        self.filter_term = obj.value
       else:
         raise TermObjectTypeError(
             '%s isn\'t a type I know how to deal with' % (type(obj)))
@@ -1229,8 +1239,11 @@ class Term(object):
         raise ParseError(
             'term "%s" has both verbatim and non-verbatim tokens.' % self.name)
     else:
-      if not self.action and not self.routing_instance and not self.next_ip and not self.encapsulate:
+      if (not self.action and not self.routing_instance and not self.next_ip and
+          not self.encapsulate and not self.filter_term):
         raise TermNoActionError('no action specified for term %s' % self.name)
+      if self.filter_term and self.action:
+        raise InvalidTermActionError('term "%s" has both filter and action tokens.' % self.name)
       # have we specified a port with a protocol that doesn't support ports?
       if self.source_port or self.destination_port or self.port:
         if not any(proto in self.protocol for proto in ['tcp', 'udp', 'sctp']):
@@ -1500,6 +1513,7 @@ class VarType(object):
   TARGET_RESOURCES = 59
   TARGET_SERVICE_ACCOUNTS = 60
   ENCAPSULATE = 61
+  FILTER_TERM = 62
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1676,6 +1690,7 @@ tokens = (
     'ESCAPEDSTRING',
     'ETHER_TYPE',
     'EXPIRATION',
+    'FILTER_TERM',
     'FLEXIBLE_MATCH_RANGE',
     'FORWARDING_CLASS',
     'FORWARDING_CLASS_EXCEPT',
@@ -1757,6 +1772,7 @@ reserved = {
     'encapsulate': 'ENCAPSULATE',
     'ether-type': 'ETHER_TYPE',
     'expiration': 'EXPIRATION',
+    'filter-term': 'FILTER_TERM',
     'flexible-match-range': 'FLEXIBLE_MATCH_RANGE',
     'forwarding-class': 'FORWARDING_CLASS',
     'forwarding-class-except': 'FORWARDING_CLASS_EXCEPT',
@@ -1938,6 +1954,7 @@ def p_term_spec(p):
                 | term_spec ether_type_spec
                 | term_spec exclude_spec
                 | term_spec expiration_spec
+                | term_spec filter_term_spec
                 | term_spec flexible_match_range_spec
                 | term_spec forwarding_class_spec
                 | term_spec forwarding_class_except_spec
@@ -2376,6 +2393,9 @@ def p_ttl_spec(p):
   """ ttl_spec : TTL ':' ':' INTEGER """
   p[0] = VarType(VarType.TTL, p[4])
 
+def p_filter_term_spec(p):
+  """ filter_term_spec : FILTER_TERM ':' ':' STRING """
+  p[0] = VarType(VarType.FILTER_TERM, p[4])
 
 def p_one_or_more_strings(p):
   """ one_or_more_strings : one_or_more_strings STRING
