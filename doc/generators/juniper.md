@@ -45,6 +45,7 @@ The default format is _inet4_, and is implied if not other argument is given.
 * _dscp_set::_ Match a DSCP set.
 * _ether_type::_ Match EtherType field.
 * _expiration::_ stop rendering this term after specified date. [YYYY](YYYY.md)-[MM](MM.md)-[DD](DD.md)
+* _filter-term::_ Include another filter
 * _flexible-match-range Filter based on flexible match options.
 * _forwarding-class::_ Specify the forwarding class to match.
 * _forwarding-class_except::_ Do not match the specified forwarding classes.
@@ -91,4 +92,3 @@ The default format is _inet4_, and is implied if not other argument is given.
 * _sample::_ Samples traffic for netflow.
 * _tcp-established::_ Only match established tcp connections, based on statefull match or TCP flags. Not supported for other protocols.
 * _tcp-initial::_ Only match initial packet for TCP protocol.
-

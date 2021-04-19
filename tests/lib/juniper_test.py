@@ -386,6 +386,12 @@ term good-term-comment {
   action:: accept
 }
 """
+GOOD_TERM_FILTER = """
+term good-term-filter {
+  comment:: "This is a COMMENT"
+  filter-term:: my-filter
+}
+"""
 BAD_TERM_1 = """
 term bad-term-1 {
   protocol:: tcp udp
@@ -538,6 +544,12 @@ term flex-match-term-1 {
   action:: deny
 }
 """
+BAD_TERM_FILTER = """
+term bad_term_filter {
+  filter-term:: my-filter
+  action:: deny
+}
+"""
 
 SUPPORTED_TOKENS = frozenset([
     'action',
@@ -555,6 +567,7 @@ SUPPORTED_TOKENS = frozenset([
     'encapsulate',
     'ether_type',
     'expiration',
+    'filter_term',
     'flexible_match_range',
     'forwarding_class',
     'forwarding_class_except',
@@ -1150,6 +1163,16 @@ class JuniperTest(unittest.TestCase):
     self.assertIn('precedence [ 5 7 ];', output, output)
 
     self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
+
+  def testFilterTerm(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_FILTER,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.assertIn('filter my-filter;', output, output)
+
+  def testFilterActionTerm(self):
+    with self.assertRaises(policy.InvalidTermActionError):
+      policy.ParsePolicy(GOOD_HEADER + BAD_TERM_FILTER, self.naming)
 
   def testArbitraryOptions(self):
     self.naming.GetServiceByProto.return_value = ['22']

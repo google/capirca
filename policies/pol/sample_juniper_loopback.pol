@@ -196,6 +196,10 @@ term reject-imap-requests {
   action:: reject-with-tcp-rst
 }
 
+term next-filter {
+  filter-term:: my-next-filter
+}
+
 term discard-default {
   counter:: discard-default
   action:: deny
