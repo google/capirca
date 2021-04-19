@@ -679,6 +679,20 @@ class PaloAltoFWTest(unittest.TestCase):
                            "^Destination zone must be 31 characters max",
                            paloaltofw.PaloAltoFW, pol, EXP_INFO)
 
+  def test_ZonesRequired(self):
+    BAD_HEADERS = [
+      "header{target::paloalto}",
+      "header{target::paloalto from-zone x}",
+      "header{target::paloalto x x to-zone x}",
+    ]
+
+    msg = ("^Palo Alto Firewall filter arguments "
+           "must specify from-zone and to-zone[.]$")
+    for header in BAD_HEADERS:
+      pol = policy.ParsePolicy(header + GOOD_TERM_3, self.naming)
+      self.assertRaisesRegex(paloaltofw.UnsupportedFilterError,
+                             msg, paloaltofw.PaloAltoFW, pol, EXP_INFO)
+
 
 if __name__ == '__main__':
   unittest.main()
