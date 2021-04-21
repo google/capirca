@@ -788,6 +788,10 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           tag_entry = etree.SubElement(tag, "entry",
                                        {"name": tag_name})
           comments = etree.SubElement(tag_entry, "comments")
+          if len(comment) > self._MAX_TAG_COMMENTS_LENGTH:
+             logging.warning("WARNING: tag %s comments exceeds maximum "
+                            "length %d, truncated.", tag_name,
+                            self._MAX_TAG_COMMENTS_LENGTH)
           comments.text = comment[:self._MAX_TAG_COMMENTS_LENGTH]
 
       for name, options in pa_rules.items():
@@ -795,6 +799,10 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
         if options["description"]:
           descr = etree.SubElement(entry, "description")
           x = " ".join(options["description"])
+          if len(x) > self._MAX_RULE_DESCRIPTION_LENGTH:
+            logging.warning("WARNING: rule %s description exceeds maximum "
+                            "length %d, truncated.", name,
+                            self._MAX_RULE_DESCRIPTION_LENGTH)
           descr.text = x[:self._MAX_RULE_DESCRIPTION_LENGTH]
 
         to = etree.SubElement(entry, "to")
