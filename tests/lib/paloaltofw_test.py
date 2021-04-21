@@ -693,6 +693,61 @@ class PaloAltoFWTest(unittest.TestCase):
       self.assertRaisesRegex(paloaltofw.UnsupportedFilterError,
                              msg, paloaltofw.PaloAltoFW, pol, EXP_INFO)
 
+  def test_LongComments(self):
+    POL = '''
+header {
+  comment:: "%s"
+  target:: paloalto from-zone trust to-zone untrust
+}
+term rule-1 {
+  comment:: "%s"
+  pan-application:: ssl
+  action:: accept
+}'''
+
+    # get maximum lengths
+    pol = policy.ParsePolicy(POL % ("C", "C"),
+                             self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    MAX_TAG_COMMENTS_LENGTH = paloalto._MAX_TAG_COMMENTS_LENGTH
+    MAX_RULE_DESCRIPTION_LENGTH = paloalto._MAX_RULE_DESCRIPTION_LENGTH
+
+    tag = "trust_untrust_policy-comment-1"
+
+    # maximum length
+    pol = policy.ParsePolicy(POL % ("C" * MAX_TAG_COMMENTS_LENGTH,
+                                    "C" * MAX_RULE_DESCRIPTION_LENGTH),
+                             self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+
+    x = paloalto.config.findtext(PATH_TAG +
+                                 "/entry[@name='%s']/comments" % tag)
+    self.assertEqual(x, "C" * MAX_TAG_COMMENTS_LENGTH, output)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='rule-1']/description")
+    self.assertEqual(x, "C" * MAX_RULE_DESCRIPTION_LENGTH, output)
+
+    # maximum length + 1
+    pol = policy.ParsePolicy(POL % ("C" * (MAX_TAG_COMMENTS_LENGTH+1),
+                                    "C" * (MAX_RULE_DESCRIPTION_LENGTH+1)),
+                             self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+
+    # verify warning
+    with self.assertLogs(level='WARN') as log:
+      output = str(paloalto)
+      self.assertEqual(len(log.output), 2, log.output)
+      self.assertIn('comments exceeds maximum length', log.output[0])
+      self.assertIn('description exceeds maximum length', log.output[1])
+
+    x = paloalto.config.findtext(PATH_TAG +
+                                 "/entry[@name='%s']/comments" % tag)
+    self.assertEqual(x, "C" * MAX_TAG_COMMENTS_LENGTH, output)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='rule-1']/description")
+    self.assertEqual(x, "C" * MAX_RULE_DESCRIPTION_LENGTH, output)
+
 
 if __name__ == '__main__':
   unittest.main()
