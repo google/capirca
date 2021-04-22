@@ -748,6 +748,37 @@ term rule-1 {
                                  "/entry[@name='rule-1']/description")
     self.assertEqual(x, "C" * MAX_RULE_DESCRIPTION_LENGTH, output)
 
+  def testTermLen(self):
+    TERM = '''
+term %s {
+  pan-application:: ssl
+  action:: accept
+}
+'''
+
+    # get maximum length
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + TERM % "T",
+                             self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    TERM_MAX_LENGTH = paloalto._TERM_MAX_LENGTH
+
+    # maximum length
+    term = "T" * TERM_MAX_LENGTH
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + TERM % term,
+                             self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.find(PATH_RULES + "/entry[@name='%s']" % term)
+    self.assertIsNotNone(x, output)
+
+    # maximum length + 1
+    term = "T" * (TERM_MAX_LENGTH+1)
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + TERM % term,
+                             self.naming)
+    regex = "^Term .+ is too long[.] Limit is %d characters" % TERM_MAX_LENGTH
+    self.assertRaisesRegex(aclgenerator.TermNameTooLongError,
+                           regex, paloaltofw.PaloAltoFW, pol, EXP_INFO)
+
 
 if __name__ == '__main__':
   unittest.main()
