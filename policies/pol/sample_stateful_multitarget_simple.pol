@@ -26,6 +26,13 @@ term test-udp-log {
   action:: accept
 }
 
+term test-tcp-udp-any {
+  comment:: "Testing any port for tcp, udp,"
+  comment:: "`when destination-port is unspecified."
+  protocol:: tcp udp
+  action:: accept
+}
+
 term accept-honestdns {
   comment:: "Allow name resolution using honestdns."
   destination-address:: GOOGLE_DNS
@@ -49,6 +56,13 @@ term accept-igmp {
   protocol:: igmp
   action:: accept
   logging:: syslog
+}
+
+term accept-traceroute-source-ports {
+  comment:: "Allow traceroute with source port range for udp."
+  protocol:: udp
+  source-port:: TRACEROUTE
+  action:: accept
 }
 
 term deny-to-bad-destinations {
@@ -172,6 +186,21 @@ term test-inet6-webserver-traffic {
   action:: accept
 }
 
+term test-inet6-tcp-icmp-traffic {
+  comment:: "Allow all tcp and icmp traffic."
+  comment:: "The icmp term should not be generated since this is inet6."
+  comment:: "The tcp term should be generated."
+  protocol:: tcp icmp
+  action:: accept
+}
+
+term test-inet6-tcp-icmpv6-traffic {
+  comment:: "Allow all tcp and icmpv6 traffic."
+  comment:: "This should be generated since this has no ports specified."
+  protocol:: tcp icmpv6
+  action:: accept
+}
+
 header {
   comment:: "this is a test policy for a zone based filter that generates"
   comment:: "multiple output formats. It checks inet options for IPv6 rules."
@@ -187,3 +216,19 @@ term test-inet-webserver-traffic {
   protocol:: tcp
   action:: accept
 }
+
+term test-inet-tcp-icmp-traffic {
+  comment:: "Allow all tcp and icmp traffic."
+  comment:: "This should be generated since this has no ports specified."
+  protocol:: tcp icmp
+  action:: accept
+}
+
+term test-inet-tcp-icmpv6-traffic {
+  comment:: "Allow all tcp and icmpv6 traffic."
+  comment:: "The icmpv6 term should not be generated since this is inet."
+  comment:: "The tcp term should be generated."
+  protocol:: icmpv6 tcp
+  action:: accept
+}
+
