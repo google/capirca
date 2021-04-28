@@ -779,6 +779,46 @@ term %s {
     self.assertRaisesRegex(aclgenerator.TermNameTooLongError,
                            regex, paloaltofw.PaloAltoFW, pol, EXP_INFO)
 
+  def testPanApplication(self):
+    POL1 = '''
+header {
+  target:: paloalto from-zone trust to-zone untrust
+}
+term rule-1 {
+  action:: accept
+}'''
+
+    POL2 = '''
+header {
+  target:: paloalto from-zone trust to-zone untrust
+}
+term rule-1 {
+  pan-application:: %s
+  action:: accept
+}'''
+
+    APPS = [
+      {'app1'},
+      {'app1', 'app2'},
+      {'app1', 'app2', 'app3'},
+    ]
+
+    pol = policy.ParsePolicy(POL1, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='rule-1']/application/member")
+    self.assertEqual(x, "any", output)
+
+    for i, app in enumerate(APPS):
+      pol = policy.ParsePolicy(POL2 % " ".join(app), self.naming)
+      paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+      output = str(paloalto)
+      x = paloalto.config.findall(PATH_RULES +
+                                  "/entry[@name='rule-1']/application/member")
+      apps = {elem.text for elem in x}
+      self.assertEqual(APPS[i], apps, output)
+
 
 if __name__ == '__main__':
   unittest.main()
