@@ -66,6 +66,7 @@ term good-term-1 {
 }
 
 """
+
 GOOD_TERM_2 = """
 term good-term-4 {
   destination-address:: SOME_HOST
@@ -74,18 +75,48 @@ term good-term-4 {
   action:: accept
 }
 """
+
 GOOD_TERM_3 = """
 term only-pan-app {
   pan-application:: ssl
   action:: accept
 }
 """
+
 GOOD_TERM_4_STATELESS_REPLY = """
 term good-term-stateless-reply {
   comment:: "ThisIsAStatelessReply"
   destination-address:: SOME_HOST
   protocol:: tcp
   pan-application:: ssl http
+  action:: accept
+}
+"""
+
+SVC_TERM_1 = """
+term ssh-term-1 {
+  comment:: "Allow SSH"
+  destination-address:: FOOBAR
+  destination-port:: SSH
+  protocol:: tcp
+  action:: accept
+}
+
+term smtp-term-1 {
+  comment:: "Allow SMTP"
+  destination-address:: FOOBAR
+  destination-port:: SMTP
+  protocol:: tcp
+  action:: accept
+}
+"""
+
+SVC_TERM_2 = """
+term smtp-term-1 {
+  comment:: "Allow SMTP"
+  destination-address:: FOOBAR
+  destination-port:: SMTP
+  protocol:: tcp
   action:: accept
 }
 """
@@ -430,6 +461,35 @@ class PaloAltoFWTest(unittest.TestCase):
     self.naming.GetNetAddr.assert_called_once_with('FOOBAR')
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
 
+  def testServiceMap(self):
+    definitions = naming.Naming()
+    definitions._ParseLine('SSH = 22/tcp', 'services')
+    definitions._ParseLine('SMTP = 25/tcp', 'services')
+    definitions._ParseLine('FOOBAR = 10.0.0.0/8', 'networks')
+    definitions._ParseLine('         2001:4860:8000::/33', 'networks')
+
+    pol1 = paloaltofw.PaloAltoFW(
+        policy.ParsePolicy(GOOD_HEADER_1 + SVC_TERM_1, definitions), EXP_INFO)
+    self.assertEqual(
+        pol1.service_map.entries, {
+            (('22',), 'tcp'): {
+                'name': 'service-ssh-term-1-tcp'
+            },
+            (('25',), 'tcp'): {
+                'name': 'service-smtp-term-1-tcp'
+            }
+        }, pol1.service_map.entries)
+
+    pol2 = paloaltofw.PaloAltoFW(
+        policy.ParsePolicy(GOOD_HEADER_1 + SVC_TERM_2, definitions), EXP_INFO)
+    # The expectation is that there will be a single port mapped.
+    self.assertEqual(
+        pol2.service_map.entries, {
+            (('25',), 'tcp'): {
+                'name': 'service-smtp-term-1-tcp'
+            }
+        }, pol2.service_map.entries)
+
   def testDefaultDeny(self):
     paloalto = paloaltofw.PaloAltoFW(
         policy.ParsePolicy(GOOD_HEADER_1 + DEFAULT_TERM_1, self.naming),
@@ -617,40 +677,35 @@ class PaloAltoFWTest(unittest.TestCase):
     paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
     output = str(paloalto)
 
-    tag = "trust_untrust_policy-comment-1"
-    x = paloalto.config.find(PATH_TAG +
-                             "/entry[@name='%s']/comments" % tag)
+    tag = 'trust_untrust_policy-comment-1'
+    x = paloalto.config.find(PATH_TAG + "/entry[@name='%s']/comments" % tag)
     self.assertIsNotNone(x, output)
-    self.assertEqual(x.text, "comment 1 comment 2", output)
-    x = paloalto.config.find(PATH_RULES +
-                             "/entry[@name='policy-2']/tag")
+    self.assertEqual(x.text, 'comment 1 comment 2', output)
+    x = paloalto.config.find(PATH_RULES + "/entry[@name='policy-2']/tag")
     self.assertIsNotNone(x, output)
     self.assertEqual(len(x), 1, output)
-    self.assertEqual(x[0].tag, "member", output)
+    self.assertEqual(x[0].tag, 'member', output)
     self.assertEqual(x[0].text, tag, output)
 
-    tag = "trust_dmz_policy-comment-2"
-    x = paloalto.config.find(PATH_TAG +
-                             "/entry[@name='%s']/comments" % tag)
+    tag = 'trust_dmz_policy-comment-2'
+    x = paloalto.config.find(PATH_TAG + "/entry[@name='%s']/comments" % tag)
     self.assertIsNotNone(x, output)
-    self.assertEqual(x.text, "comment 3", output)
-    x = paloalto.config.find(PATH_RULES +
-                             "/entry[@name='policy-3']/tag")
+    self.assertEqual(x.text, 'comment 3', output)
+    x = paloalto.config.find(PATH_RULES + "/entry[@name='policy-3']/tag")
     self.assertIsNotNone(x, output)
     self.assertEqual(len(x), 1, output)
-    self.assertEqual(x[0].tag, "member", output)
+    self.assertEqual(x[0].tag, 'member', output)
     self.assertEqual(x[0].text, tag, output)
 
-    x = paloalto.config.find(PATH_RULES +
-                             "/entry[@name='policy-4']/tag")
+    x = paloalto.config.find(PATH_RULES + "/entry[@name='policy-4']/tag")
     self.assertIsNone(x, output)
 
   def testZoneLen(self):
-    ZONE_MAX_LEN = "Z" * 31
-    ZONE_TOO_LONG = "Z" * 32
+    ZONE_MAX_LEN = 'Z' * 31
+    ZONE_TOO_LONG = 'Z' * 32
 
     # from
-    pol = policy.ParsePolicy(ZONE_LEN_ERROR % (ZONE_MAX_LEN, "dmz"),
+    pol = policy.ParsePolicy(ZONE_LEN_ERROR % (ZONE_MAX_LEN, 'dmz'),
                              self.naming)
     paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
     output = str(paloalto)
@@ -658,14 +713,14 @@ class PaloAltoFWTest(unittest.TestCase):
                                  "/entry[@name='policy']/from/member")
     self.assertEqual(x, ZONE_MAX_LEN, output)
 
-    pol = policy.ParsePolicy(ZONE_LEN_ERROR % (ZONE_TOO_LONG, "dmz"),
+    pol = policy.ParsePolicy(ZONE_LEN_ERROR % (ZONE_TOO_LONG, 'dmz'),
                              self.naming)
     self.assertRaisesRegex(paloaltofw.PaloAltoFWNameTooLongError,
-                           "^Source zone must be 31 characters max",
+                           '^Source zone must be 31 characters max',
                            paloaltofw.PaloAltoFW, pol, EXP_INFO)
 
     # to
-    pol = policy.ParsePolicy(ZONE_LEN_ERROR % ("dmz", ZONE_MAX_LEN),
+    pol = policy.ParsePolicy(ZONE_LEN_ERROR % ('dmz', ZONE_MAX_LEN),
                              self.naming)
     paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
     output = str(paloalto)
@@ -673,28 +728,28 @@ class PaloAltoFWTest(unittest.TestCase):
                                  "/entry[@name='policy']/to/member")
     self.assertEqual(x, ZONE_MAX_LEN, output)
 
-    pol = policy.ParsePolicy(ZONE_LEN_ERROR % ("dmz", ZONE_TOO_LONG),
+    pol = policy.ParsePolicy(ZONE_LEN_ERROR % ('dmz', ZONE_TOO_LONG),
                              self.naming)
     self.assertRaisesRegex(paloaltofw.PaloAltoFWNameTooLongError,
-                           "^Destination zone must be 31 characters max",
+                           '^Destination zone must be 31 characters max',
                            paloaltofw.PaloAltoFW, pol, EXP_INFO)
 
   def test_ZonesRequired(self):
     BAD_HEADERS = [
-      "header{target::paloalto}",
-      "header{target::paloalto from-zone x}",
-      "header{target::paloalto x x to-zone x}",
+        'header{target::paloalto}',
+        'header{target::paloalto from-zone x}',
+        'header{target::paloalto x x to-zone x}',
     ]
 
-    msg = ("^Palo Alto Firewall filter arguments "
-           "must specify from-zone and to-zone[.]$")
+    msg = ('^Palo Alto Firewall filter arguments '
+           'must specify from-zone and to-zone[.]$')
     for header in BAD_HEADERS:
       pol = policy.ParsePolicy(header + GOOD_TERM_3, self.naming)
-      self.assertRaisesRegex(paloaltofw.UnsupportedFilterError,
-                             msg, paloaltofw.PaloAltoFW, pol, EXP_INFO)
+      self.assertRaisesRegex(paloaltofw.UnsupportedFilterError, msg,
+                             paloaltofw.PaloAltoFW, pol, EXP_INFO)
 
   def test_LongComments(self):
-    POL = '''
+    POL = """
 header {
   comment:: "%s"
   target:: paloalto from-zone trust to-zone untrust
@@ -703,35 +758,34 @@ term rule-1 {
   comment:: "%s"
   pan-application:: ssl
   action:: accept
-}'''
+}"""
 
     # get maximum lengths
-    pol = policy.ParsePolicy(POL % ("C", "C"),
-                             self.naming)
+    pol = policy.ParsePolicy(POL % ('C', 'C'), self.naming)
     paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
     MAX_TAG_COMMENTS_LENGTH = paloalto._MAX_TAG_COMMENTS_LENGTH
     MAX_RULE_DESCRIPTION_LENGTH = paloalto._MAX_RULE_DESCRIPTION_LENGTH
 
-    tag = "trust_untrust_policy-comment-1"
+    tag = 'trust_untrust_policy-comment-1'
 
     # maximum length
-    pol = policy.ParsePolicy(POL % ("C" * MAX_TAG_COMMENTS_LENGTH,
-                                    "C" * MAX_RULE_DESCRIPTION_LENGTH),
-                             self.naming)
+    pol = policy.ParsePolicy(
+        POL %
+        ('C' * MAX_TAG_COMMENTS_LENGTH, 'C' * MAX_RULE_DESCRIPTION_LENGTH),
+        self.naming)
     paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
     output = str(paloalto)
 
-    x = paloalto.config.findtext(PATH_TAG +
-                                 "/entry[@name='%s']/comments" % tag)
-    self.assertEqual(x, "C" * MAX_TAG_COMMENTS_LENGTH, output)
+    x = paloalto.config.findtext(PATH_TAG + "/entry[@name='%s']/comments" % tag)
+    self.assertEqual(x, 'C' * MAX_TAG_COMMENTS_LENGTH, output)
     x = paloalto.config.findtext(PATH_RULES +
                                  "/entry[@name='rule-1']/description")
-    self.assertEqual(x, "C" * MAX_RULE_DESCRIPTION_LENGTH, output)
+    self.assertEqual(x, 'C' * MAX_RULE_DESCRIPTION_LENGTH, output)
 
     # maximum length + 1
-    pol = policy.ParsePolicy(POL % ("C" * (MAX_TAG_COMMENTS_LENGTH+1),
-                                    "C" * (MAX_RULE_DESCRIPTION_LENGTH+1)),
-                             self.naming)
+    pol = policy.ParsePolicy(
+        POL % ('C' * (MAX_TAG_COMMENTS_LENGTH + 1), 'C' *
+               (MAX_RULE_DESCRIPTION_LENGTH + 1)), self.naming)
     paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
 
     # verify warning
@@ -741,66 +795,62 @@ term rule-1 {
       self.assertIn('comments exceeds maximum length', log.output[0])
       self.assertIn('description exceeds maximum length', log.output[1])
 
-    x = paloalto.config.findtext(PATH_TAG +
-                                 "/entry[@name='%s']/comments" % tag)
-    self.assertEqual(x, "C" * MAX_TAG_COMMENTS_LENGTH, output)
+    x = paloalto.config.findtext(PATH_TAG + "/entry[@name='%s']/comments" % tag)
+    self.assertEqual(x, 'C' * MAX_TAG_COMMENTS_LENGTH, output)
     x = paloalto.config.findtext(PATH_RULES +
                                  "/entry[@name='rule-1']/description")
-    self.assertEqual(x, "C" * MAX_RULE_DESCRIPTION_LENGTH, output)
+    self.assertEqual(x, 'C' * MAX_RULE_DESCRIPTION_LENGTH, output)
 
   def testTermLen(self):
-    TERM = '''
+    TERM = """
 term %s {
   pan-application:: ssl
   action:: accept
 }
-'''
+"""
 
     # get maximum length
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + TERM % "T",
-                             self.naming)
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + TERM % 'T', self.naming)
     paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
     TERM_MAX_LENGTH = paloalto._TERM_MAX_LENGTH
 
     # maximum length
-    term = "T" * TERM_MAX_LENGTH
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + TERM % term,
-                             self.naming)
+    term = 'T' * TERM_MAX_LENGTH
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + TERM % term, self.naming)
     paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
     output = str(paloalto)
     x = paloalto.config.find(PATH_RULES + "/entry[@name='%s']" % term)
     self.assertIsNotNone(x, output)
 
     # maximum length + 1
-    term = "T" * (TERM_MAX_LENGTH+1)
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + TERM % term,
-                             self.naming)
-    regex = "^Term .+ is too long[.] Limit is %d characters" % TERM_MAX_LENGTH
-    self.assertRaisesRegex(aclgenerator.TermNameTooLongError,
-                           regex, paloaltofw.PaloAltoFW, pol, EXP_INFO)
+    term = 'T' * (TERM_MAX_LENGTH + 1)
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + TERM % term, self.naming)
+    regex = '^Term .+ is too long[.] Limit is %d characters' % TERM_MAX_LENGTH
+    self.assertRaisesRegex(aclgenerator.TermNameTooLongError, regex,
+                           paloaltofw.PaloAltoFW, pol, EXP_INFO)
 
   def testPanApplication(self):
-    POL1 = '''
+    POL1 = """
 header {
   target:: paloalto from-zone trust to-zone untrust
 }
 term rule-1 {
   action:: accept
-}'''
+}"""
 
-    POL2 = '''
+    POL2 = """
 header {
   target:: paloalto from-zone trust to-zone untrust
 }
 term rule-1 {
   pan-application:: %s
   action:: accept
-}'''
+}"""
 
     APPS = [
-      {'app1'},
-      {'app1', 'app2'},
-      {'app1', 'app2', 'app3'},
+        {'app1'},
+        {'app1', 'app2'},
+        {'app1', 'app2', 'app3'},
     ]
 
     pol = policy.ParsePolicy(POL1, self.naming)
@@ -808,10 +858,10 @@ term rule-1 {
     output = str(paloalto)
     x = paloalto.config.findtext(PATH_RULES +
                                  "/entry[@name='rule-1']/application/member")
-    self.assertEqual(x, "any", output)
+    self.assertEqual(x, 'any', output)
 
     for i, app in enumerate(APPS):
-      pol = policy.ParsePolicy(POL2 % " ".join(app), self.naming)
+      pol = policy.ParsePolicy(POL2 % ' '.join(app), self.naming)
       paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
       output = str(paloalto)
       x = paloalto.config.findall(PATH_RULES +

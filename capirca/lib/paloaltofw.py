@@ -135,36 +135,37 @@ class Term(aclgenerator.Term):
     return rval
 
 
-class Service(object):
-  """Generate PacketFilter policy terms."""
-  service_map = {}
+class ServiceMap(object):
+  """Manages service names across a single policy instance."""
 
-  def __init__(self, ports, service_name,
-               protocol):  # ports is a tuple of ports
-    if (ports, protocol) in self.service_map:
-      raise PaloAltoFWDuplicateServiceError(
-          ("You have a duplicate service. "
-           "A service already exists on port(s): %s") % str(ports))
+  def __init__(self):
+    self.entries = {}
 
-    final_service_name = "service-" + service_name + "-" + protocol
+  def get_service_name(self, term_name, ports, protocol):
+    """Returns service name based on the provided ports and protocol."""
+    if (ports, protocol) in self.entries:
+      return self.entries[(ports, protocol)]["name"]
 
-    for unused_k, v in Service.service_map.items():
-      if v["name"] == final_service_name:
+    service_name = "service-%s-%s" % (term_name, protocol)
+
+    if len(service_name) > 63:
+      raise PaloAltoFWNameTooLongError(
+          "Service name must be 63 characters max: %s" % service_name)
+
+    for _, service in self.entries.items():
+      if service["name"] == service_name:
         raise PaloAltoFWDuplicateServiceError(
             "You have a duplicate service. A service named %s already exists." %
-            str(final_service_name))
+            service_name)
 
-    if len(final_service_name) > 63:
-      raise PaloAltoFWNameTooLongError(
-          "Service name must be 63 characters max: %s" %
-          str(final_service_name))
-    self.service_map[(ports, protocol)] = {"name": final_service_name}
+    self.entries[(ports, protocol)] = {"name": service_name}
+    return service_name
 
 
 class Rule(object):
   """Extend the Term() class for PaloAlto Firewall Rules."""
 
-  def __init__(self, from_zone, to_zone, terms):
+  def __init__(self, from_zone, to_zone, terms, service_map):
     # Palo Alto Firewall rule keys
     MAX_ZONE_LENGTH = 31
 
@@ -182,9 +183,9 @@ class Rule(object):
     self.options = {}
     self.options["from_zone"] = [from_zone]
     self.options["to_zone"] = [to_zone]
-    self.ModifyOptions(terms)
+    self.ModifyOptions(terms, service_map)
 
-  def ModifyOptions(self, terms):
+  def ModifyOptions(self, terms, service_map):
     """Massage firewall rules into Palo Alto rules format."""
     term = terms.term
     self.options["description"] = []
@@ -254,14 +255,9 @@ class Rule(object):
 
       # check to see if this service already exists
       for p in term.protocol:
-        if (ports, p) in Service.service_map:
-          self.options["service"].append(Service.service_map[(ports,
-                                                              p)]["name"])
-        else:
-          # create service
-          unused_new_service = Service(ports, term.name, p)
-          self.options["service"].append(Service.service_map[(ports,
-                                                              p)]["name"])
+        service_name = service_map.get_service_name(term.name, ports, p)
+        if service_name not in self.options["service"]:
+          self.options["service"].append(service_name)
 
     if term.protocol:
       # Add application "any" to all terms, unless ICMP/ICMPv6
@@ -313,6 +309,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     self.to_zone = ""
     self.policy_name = ""
     self.config = None
+    self.service_map = ServiceMap()
     super(PaloAltoFW, self).__init__(pol, exp_info)
 
   def _BuildTokens(self):
@@ -650,7 +647,8 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       ruleset = {}
 
       for term in new_terms:
-        current_rule = Rule(self.from_zone, self.to_zone, term)
+        current_rule = Rule(self.from_zone, self.to_zone, term,
+                            self.service_map)
         ruleset[term.term.name] = current_rule.options
 
       self.pafw_policies.append((header, ruleset, filter_options))
@@ -714,8 +712,10 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     """Render the output of the PaloAltoFirewall policy into config."""
 
     # INITAL CONFIG
-    config = etree.Element("config", {"version": "8.1.0",
-                                      "urldb": "paloaltonetworks"})
+    config = etree.Element("config", {
+        "version": "8.1.0",
+        "urldb": "paloaltonetworks"
+    })
     devices = etree.SubElement(config, "devices")
     device_entry = etree.SubElement(devices, "entry",
                                     {"name": "localhost.localdomain"})
@@ -754,7 +754,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     # SERVICES
     vsys_entry.append(etree.Comment(" Services "))
     service = etree.SubElement(vsys_entry, "service")
-    for k, v in Service.service_map.items():
+    for k, v in self.service_map.entries.items():
       entry = etree.SubElement(service, "entry", {"name": v["name"]})
       proto0 = etree.SubElement(entry, "protocol")
       proto = etree.SubElement(proto0, k[1])
@@ -783,15 +783,16 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           tag_num += 1
           # max tag len 127, max zone len 31
           tag_name = self._TAG_NAME_FORMAT.format(
-              from_zone=filter_options[1], to_zone=filter_options[3],
+              from_zone=filter_options[1],
+              to_zone=filter_options[3],
               num=tag_num)
-          tag_entry = etree.SubElement(tag, "entry",
-                                       {"name": tag_name})
+          tag_entry = etree.SubElement(tag, "entry", {"name": tag_name})
           comments = etree.SubElement(tag_entry, "comments")
           if len(comment) > self._MAX_TAG_COMMENTS_LENGTH:
-             logging.warning("WARNING: tag %s comments exceeds maximum "
-                            "length %d, truncated.", tag_name,
-                            self._MAX_TAG_COMMENTS_LENGTH)
+            logging.warning(
+                "WARNING: tag %s comments exceeds maximum "
+                "length %d, truncated.", tag_name,
+                self._MAX_TAG_COMMENTS_LENGTH)
           comments.text = comment[:self._MAX_TAG_COMMENTS_LENGTH]
 
       for name, options in pa_rules.items():
@@ -800,9 +801,10 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           descr = etree.SubElement(entry, "description")
           x = " ".join(options["description"])
           if len(x) > self._MAX_RULE_DESCRIPTION_LENGTH:
-            logging.warning("WARNING: rule %s description exceeds maximum "
-                            "length %d, truncated.", name,
-                            self._MAX_RULE_DESCRIPTION_LENGTH)
+            logging.warning(
+                "WARNING: rule %s description exceeds maximum "
+                "length %d, truncated.", name,
+                self._MAX_RULE_DESCRIPTION_LENGTH)
           descr.text = x[:self._MAX_RULE_DESCRIPTION_LENGTH]
 
         to = etree.SubElement(entry, "to")
