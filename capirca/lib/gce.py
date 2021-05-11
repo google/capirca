@@ -55,7 +55,7 @@ class ExceededAttributeCountError(Error):
 def IsDefaultDeny(term):
   """Returns true if a term is a default deny without IPs, ports, etc."""
   skip_attrs = ['flattened', 'flattened_addr', 'flattened_saddr',
-                'flattened_daddr', 'action', 'comment', 'name']
+                'flattened_daddr', 'action', 'comment', 'name', 'logging']
   if 'deny' not in term.action:
     return False
   # This lc will look through all methods and attributes of the object.
