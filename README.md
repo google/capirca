@@ -441,6 +441,7 @@ generators:
 * [`brocade`](./doc/generators/brocade.md): Brocade
 * [`cisco`](./doc/generators/cisco.md): Cisco
 * [`ciscoasa`](./doc/generators/ciscoasa.md): Cisco ASA
+* [`cisconx`](./doc/generators/cisconx.md): Cisco NX
 * [`ciscoxr`](./doc/generators/ciscoxr.md): Cisco XR
 * [`cloudarmor`](./doc/generators/cloudarmor.md): cloudarmor
 * [`gce`](./doc/generators/gce.md): GCE

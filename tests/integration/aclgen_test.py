@@ -73,6 +73,7 @@ class TestAclGenDemo(unittest.TestCase):
              'sample_multitarget.bacl', 'sample_multitarget.eacl',
              'sample_multitarget.ipt', 'sample_multitarget.jcl',
              'sample_multitarget.msmpc', 'sample_multitarget.xacl',
+             'sample_multitarget.nxacl',
              'sample_nsxv.nsx', 'sample_packetfilter.pf',
              'sample_speedway.ipt', 'sample_srx.srx',
              'sample_paloalto.xml', 'sample_stateful_multitarget_simple.xml',

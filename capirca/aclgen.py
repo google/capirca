@@ -37,6 +37,7 @@ from capirca.lib import aruba
 from capirca.lib import brocade
 from capirca.lib import cisco
 from capirca.lib import ciscoasa
+from capirca.lib import cisconx
 from capirca.lib import ciscoxr
 from capirca.lib import cloudarmor
 from capirca.lib import gce
@@ -201,6 +202,7 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
   jsl = False
   nft = False
   win_afw = False
+  nxacl = False
   xacl = False
   paloalto = False
 
@@ -262,6 +264,8 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
     jsl = copy.deepcopy(pol)
   if 'windows_advfirewall' in platforms:
     win_afw = copy.deepcopy(pol)
+  if 'cisconx' in platforms:
+    nxacl = copy.deepcopy(pol)
   if 'ciscoxr' in platforms:
     xacl = copy.deepcopy(pol)
   if 'nftables' in platforms:
@@ -349,6 +353,10 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
                 input_file, write_files)
     if jsl:
       acl_obj = srxlo.SRXlo(jsl, exp_info)
+      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
+                input_file, write_files)
+    if nxacl:
+      acl_obj = cisconx.CiscoNX(nxacl, exp_info)
       RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
                 input_file, write_files)
     if xacl:

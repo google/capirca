@@ -16,6 +16,7 @@ header {
   target:: arista edge-inbound
   target:: arista_tp edge-inbound
   target:: brocade edge-inbound
+  target:: cisconx edge-inbound
   target:: ciscoxr edge-inbound
 }
 
