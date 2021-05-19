@@ -440,6 +440,7 @@ _IPSET3 = [nacaddr.IP('10.23.0.0/23')]
 PATH_VSYS = "./devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']"
 PATH_RULES = PATH_VSYS + '/rulebase/security/rules'
 PATH_TAG = PATH_VSYS + '/tag'
+PATH_SERVICE = PATH_VSYS + '/service'
 
 
 class PaloAltoFWTest(unittest.TestCase):
@@ -472,10 +473,10 @@ class PaloAltoFWTest(unittest.TestCase):
         policy.ParsePolicy(GOOD_HEADER_1 + SVC_TERM_1, definitions), EXP_INFO)
     self.assertEqual(
         pol1.service_map.entries, {
-            (('22',), 'tcp'): {
+            ((), ('22',), 'tcp'): {
                 'name': 'service-ssh-term-1-tcp'
             },
-            (('25',), 'tcp'): {
+            ((), ('25',), 'tcp'): {
                 'name': 'service-smtp-term-1-tcp'
             }
         }, pol1.service_map.entries)
@@ -485,7 +486,7 @@ class PaloAltoFWTest(unittest.TestCase):
     # The expectation is that there will be a single port mapped.
     self.assertEqual(
         pol2.service_map.entries, {
-            (('25',), 'tcp'): {
+            ((), ('25',), 'tcp'): {
                 'name': 'service-smtp-term-1-tcp'
             }
         }, pol2.service_map.entries)
@@ -868,6 +869,65 @@ term rule-1 {
                                   "/entry[@name='rule-1']/application/member")
       apps = {elem.text for elem in x}
       self.assertEqual(APPS[i], apps, output)
+
+  def testPanPorts(self):
+    POL = """
+header {
+  target:: paloalto from-zone trust to-zone untrust
+}
+term rule-1 {
+%s
+  action:: accept
+}"""
+
+    T = """
+  protocol:: udp
+  destination-port:: NTP
+"""
+
+    pol = policy.ParsePolicy(POL % T)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    name = "service-rule-1-udp"
+    path = "/entry[@name='%s']/protocol/udp/port" % name
+    x = paloalto.config.findtext(PATH_SERVICE + path)
+    self.assertEqual(x, "123", output)
+    path = "/entry[@name='%s']/protocol/udp/source-port" % name
+    x = paloalto.config.findtext(PATH_SERVICE + path)
+    self.assertIsNone(x, output)
+
+    T = """
+  protocol:: udp
+  source-port:: NTP
+"""
+
+    pol = policy.ParsePolicy(POL % T)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    name = "service-rule-1-udp"
+    path = "/entry[@name='%s']/protocol/udp/port" % name
+    x = paloalto.config.findtext(PATH_SERVICE + path)
+    self.assertEqual(x, "0-65535", output)
+    path = "/entry[@name='%s']/protocol/udp/source-port" % name
+    x = paloalto.config.findtext(PATH_SERVICE + path)
+    self.assertEqual(x, "123", output)
+
+    T = """
+  protocol:: tcp
+  source-port:: NTP
+  destination-port:: NTP DNS
+"""
+
+    pol = policy.ParsePolicy(POL % T)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    name = "service-rule-1-tcp"
+    path = "/entry[@name='%s']/protocol/tcp/port" % name
+    x = paloalto.config.findtext(PATH_SERVICE + path)
+    self.assertEqual(x, "53,123", output)
+    path = "/entry[@name='%s']/protocol/tcp/source-port" % name
+    x = paloalto.config.findtext(PATH_SERVICE + path)
+    self.assertEqual(x, "123", output)
 
 
 if __name__ == '__main__':
