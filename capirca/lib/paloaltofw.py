@@ -141,10 +141,10 @@ class ServiceMap(object):
   def __init__(self):
     self.entries = {}
 
-  def get_service_name(self, term_name, ports, protocol):
+  def get_service_name(self, term_name, src_ports, ports, protocol):
     """Returns service name based on the provided ports and protocol."""
-    if (ports, protocol) in self.entries:
-      return self.entries[(ports, protocol)]["name"]
+    if (src_ports, ports, protocol) in self.entries:
+      return self.entries[(src_ports, ports, protocol)]["name"]
 
     service_name = "service-%s-%s" % (term_name, protocol)
 
@@ -158,7 +158,7 @@ class ServiceMap(object):
             "You have a duplicate service. A service named %s already exists." %
             service_name)
 
-    self.entries[(ports, protocol)] = {"name": service_name}
+    self.entries[(src_ports, ports, protocol)] = {"name": service_name}
     return service_name
 
 
@@ -194,6 +194,16 @@ class Rule(object):
     self.options["application"] = []
     self.options["service"] = []
     self.options["logging"] = []
+
+    def pan_ports(ports):
+      x = []
+      for tup in ports:
+        if len(tup) > 1 and tup[0] != tup[1]:
+          x.append(str(tup[0]) + "-" + str(tup[1]))
+        else:
+          x.append(str(tup[0]))
+
+      return tuple(x)
 
     # COMMENT
     if term.comment:
@@ -244,18 +254,17 @@ class Rule(object):
       for pan_app in term.pan_application:
         self.options["application"].append(pan_app)
 
-    if term.destination_port:
-      ports = []
-      for tup in term.destination_port:
-        if len(tup) > 1 and tup[0] != tup[1]:
-          ports.append(str(tup[0]) + "-" + str(tup[1]))
-        else:
-          ports.append(str(tup[0]))
-      ports = tuple(ports)
+    if term.source_port or term.destination_port:
+      src_ports = pan_ports(term.source_port)
+      if term.destination_port:
+        ports = pan_ports(term.destination_port)
+      else:
+        ports = pan_ports([("0", "65535")])
 
       # check to see if this service already exists
       for p in term.protocol:
-        service_name = service_map.get_service_name(term.name, ports, p)
+        service_name = service_map.get_service_name(term.name,
+                                                    src_ports, ports, p)
         if service_name not in self.options["service"]:
           self.options["service"].append(service_name)
 
@@ -757,12 +766,20 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     for k, v in self.service_map.entries.items():
       entry = etree.SubElement(service, "entry", {"name": v["name"]})
       proto0 = etree.SubElement(entry, "protocol")
-      proto = etree.SubElement(proto0, k[1])
+      proto = etree.SubElement(proto0, k[2])
+      # destination port
       port = etree.SubElement(proto, "port")
-      tup = str(k[0])[1:-1]
+      tup = str(k[1])[1:-1]
       if tup[-1] == ",":
         tup = tup[:-1]
       port.text = tup.replace("'", "").replace(", ", ",")
+      # source port
+      if len(k[0]):
+        sport = etree.SubElement(proto, "source-port")
+        tup = str(k[0])[1:-1]
+        if tup[-1] == ",":
+          tup = tup[:-1]
+        sport.text = tup.replace("'", "").replace(", ", ",")
 
     # RULES
     vsys_entry.append(etree.Comment(" Rules "))
