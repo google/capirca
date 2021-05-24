@@ -885,7 +885,11 @@ term rule-1 {
   destination-port:: NTP
 """
 
-    pol = policy.ParsePolicy(POL % T)
+    definitions = naming.Naming()
+    definitions._ParseLine('NTP = 123/tcp 123/udp', 'services')
+    definitions._ParseLine('DNS = 53/tcp 53/udp', 'services')
+
+    pol = policy.ParsePolicy(POL % T, definitions)
     paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
     output = str(paloalto)
     name = "service-rule-1-udp"
@@ -901,7 +905,7 @@ term rule-1 {
   source-port:: NTP
 """
 
-    pol = policy.ParsePolicy(POL % T)
+    pol = policy.ParsePolicy(POL % T, definitions)
     paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
     output = str(paloalto)
     name = "service-rule-1-udp"
@@ -918,7 +922,7 @@ term rule-1 {
   destination-port:: NTP DNS
 """
 
-    pol = policy.ParsePolicy(POL % T)
+    pol = policy.ParsePolicy(POL % T, definitions)
     paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
     output = str(paloalto)
     name = "service-rule-1-tcp"
