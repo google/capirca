@@ -933,6 +933,41 @@ term rule-1 {
     x = paloalto.config.findtext(PATH_SERVICE + path)
     self.assertEqual(x, "123", output)
 
+    T = """
+  protocol:: tcp
+"""
+
+    pol = policy.ParsePolicy(POL % T, definitions)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    name = "any-tcp"
+    path = "/entry[@name='%s']/protocol/tcp/port" % name
+    x = paloalto.config.findtext(PATH_SERVICE + path)
+    self.assertEqual(x, "0-65535", output)
+    path = "/entry[@name='%s']/protocol/tcp/source-port" % name
+    x = paloalto.config.find(PATH_SERVICE + path)
+    self.assertIsNone(x, output)
+
+    T = """
+  protocol:: tcp udp
+"""
+
+    pol = policy.ParsePolicy(POL % T, definitions)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    name = "any-tcp"
+    path = "/entry[@name='%s']/protocol/tcp/port" % name
+    x = paloalto.config.findtext(PATH_SERVICE + path)
+    self.assertEqual(x, "0-65535", output)
+    name = "any-udp"
+    path = "/entry[@name='%s']/protocol/udp/port" % name
+    x = paloalto.config.findtext(PATH_SERVICE + path)
+    self.assertEqual(x, "0-65535", output)
+    x = paloalto.config.findall(PATH_RULES +
+                                "/entry[@name='rule-1']/service/member")
+    services = {elem.text for elem in x}
+    self.assertEqual({"any-tcp", "any-udp"}, services, output)
+
 
 if __name__ == '__main__':
   unittest.main()
