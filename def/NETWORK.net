@@ -88,3 +88,8 @@ NTP_SERVERS = 10.0.0.1/32   # Example NTP server
 
 TACACS_SERVERS = 10.1.0.1/32  # Example tacacs server
                  10.1.0.2/32  # Example tacacs server
+
+PUBLIC_IPV6_SERVERS = 2606:700:e:550:b01a::b00a # Example public web server
+
+WEB_IPV6_SERVERS = 2620:15c:2c4:202:b0e7:158f:6a7a:3188/128 # Example web server
+

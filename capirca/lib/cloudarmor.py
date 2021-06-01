@@ -105,31 +105,36 @@ class Term(aclgenerator.Term):
             'srcIpRanges': saddrs,
         }
     }
-
     # If scrIpRanges within a single term exceed _MAX_IP_RANGES_PER_TERM,
     # split into multiple terms
     source_addr_chunks = [
         saddrs[x:x+self._MAX_IP_RANGES_PER_TERM] for x in range(
             0, len(saddrs), self._MAX_IP_RANGES_PER_TERM)]
 
-    split_rule_count = len(source_addr_chunks)
-
-    for i, chunk in enumerate(source_addr_chunks):
+    if not source_addr_chunks:
       rule = copy.deepcopy(term_dict)
-      if split_rule_count > 1:
-        term_position_suffix = ' [%d/%d]' % (i+1, split_rule_count)
-        desc_limit = self._MAX_TERM_COMMENT_LENGTH - len(term_position_suffix)
-        rule['description'] = (rule.get('description', '')[:desc_limit]
-                               + term_position_suffix)
-
-      rule['priority'] = priority_index + i
-      rule['match'] = {
-          'versionedExpr': 'SRC_IPS_V1',
-          'config': {
-              'srcIpRanges': [str(saddr) for saddr in chunk],
-          }
-      }
+      rule['priority'] = priority_index
+      rule['match']['config']['srcIpRanges'] = ['*']
       rules.append(rule)
+
+    else:
+      split_rule_count = len(source_addr_chunks)
+      for i, chunk in enumerate(source_addr_chunks):
+        rule = copy.deepcopy(term_dict)
+        if split_rule_count > 1:
+          term_position_suffix = ' [%d/%d]' % (i+1, split_rule_count)
+          desc_limit = self._MAX_TERM_COMMENT_LENGTH - len(term_position_suffix)
+          rule['description'] = (rule.get('description', '')[:desc_limit]
+                                 + term_position_suffix)
+
+        rule['priority'] = priority_index + i
+        rule['match'] = {
+            'versionedExpr': 'SRC_IPS_V1',
+            'config': {
+                'srcIpRanges': [str(saddr) for saddr in chunk],
+            }
+        }
+        rules.append(rule)
 
     # TODO(robankeny@): Review this log entry to make it cleaner/more useful.
     # Right now, it prints the entire term which might be huge
@@ -137,7 +142,6 @@ class Term(aclgenerator.Term):
       logging.debug('Current term [%s] was split into %d sub-terms since '
                     '_MAX_IP_RANGES_PER_TERM was exceeded',
                     str(term_dict), len(source_addr_chunks))
-
     return rules
 
 

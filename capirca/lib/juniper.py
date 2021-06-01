@@ -204,7 +204,8 @@ class Term(aclgenerator.Term):
     from_str = []
     # Don't render icmpv6 protocol terms under inet, or icmp under inet6
     if ((self.term_type == 'inet6' and 'icmp' in self.term.protocol) or
-        (self.term_type == 'inet' and 'icmpv6' in self.term.protocol)):
+        (self.term_type == 'inet' and ('icmpv6' in self.term.protocol or
+                                       'icmp6' in self.term.protocol))):
       logging.debug(self.NO_AF_LOG_PROTO.substitute(
           term=self.term.name,
           proto=', '.join(self.term.protocol),
@@ -434,7 +435,8 @@ class Term(aclgenerator.Term):
           config.Append(epfx + ' except;')
         config.Append('}')
 
-      if self.term.ttl:
+      # Only generate ttl if inet, inet6 uses hop-limit instead.
+      if self.term.ttl and self.term_type == 'inet':
         config.Append('ttl %s;' % self.term.ttl)
 
       # protocol
@@ -990,7 +992,6 @@ class Juniper(aclgenerator.ACLGenerator):
       # add the header information
       config.Append('firewall {')
       config.Append('family %s {' % filter_type)
-      config.Append('replace:')
       config.Append('/*')
 
       # we want the acl to contain id and date tags, but p4 will expand
@@ -1006,7 +1007,7 @@ class Juniper(aclgenerator.ACLGenerator):
           config.Append('** ' + line)
       config.Append('*/')
 
-      config.Append('filter %s {' % filter_name)
+      config.Append('replace: filter %s {' % filter_name)
       if interface_specific:
         config.Append('interface-specific;')
 

@@ -401,7 +401,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         address_book_type = set(
             [self._ZONE_ADDR_BOOK,
              self._GLOBAL_ADDR_BOOK]).intersection(extra_options)
-        if len(address_book_type) is 0:
+        if not address_book_type:
           address_book_type = {self._GLOBAL_ADDR_BOOK}
         self.addr_book_type.update(address_book_type)
         if len(self.addr_book_type) > 1:
@@ -447,6 +447,12 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       new_terms = []
       self._FixLargePolices(terms, filter_type)
       for term in terms:
+        if term.stateless_reply:
+          logging.warning(
+              "WARNING: Term %s in policy %s>%s is a stateless reply "
+              "term and will not be rendered.", term.name, self.from_zone,
+              self.to_zone)
+          continue
         if set(['established', 'tcp-established']).intersection(term.option):
           logging.debug('Skipping established term %s because SRX is stateful.',
                         term.name)
@@ -511,11 +517,34 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                 term.source_address = ips
               if term.destination_address == ips:
                 term.destination_address = ips
-        for addr in term.source_address:
-          if addr.version in self._AF_MAP[filter_type]:
+
+        # Filter source_address based on filter_type & add to address book
+        if term.source_address:
+          valid_addrs = []
+          for addr in term.source_address:
+            if addr.version in self._AF_MAP[filter_type]:
+              valid_addrs.append(addr)
+          if not valid_addrs:
+            logging.warning(
+                'WARNING: Term %s has 0 valid source IPs, skipping.', term.name)
+            continue
+          term.source_address = valid_addrs
+          for addr in term.source_address:
             self._BuildAddressBook(self.from_zone, addr)
-        for addr in term.destination_address:
-          if addr.version in self._AF_MAP[filter_type]:
+
+        # Filter destination_address based on filter_type & add to address book
+        if term.destination_address:
+          valid_addrs = []
+          for addr in term.destination_address:
+            if addr.version in self._AF_MAP[filter_type]:
+              valid_addrs.append(addr)
+          if not valid_addrs:
+            logging.warning(
+                'WARNING: Term %s has 0 valid destination IPs, skipping.',
+                term.name)
+            continue
+          term.destination_address = valid_addrs
+          for addr in term.destination_address:
             self._BuildAddressBook(self.to_zone, addr)
 
         new_term = Term(term, self.from_zone, self.to_zone, self.expresspath,

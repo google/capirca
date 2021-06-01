@@ -76,7 +76,7 @@ def IsDefaultDeny(term):
   """Return true if a term is a default deny without IPs, ports, etc."""
   skip_attrs = [
       'flattened', 'flattened_addr', 'flattened_saddr', 'flattened_daddr',
-      'action', 'comment', 'name'
+      'action', 'comment', 'name', 'logging'
   ]
   if 'deny' not in term.action:
     return False

@@ -1,5 +1,6 @@
 # Generated files
 filters/sample_*
+sample_*
 def/AUTOGEN.net
 tests/characterization_data/filters_actual
 tools/new_lint_errors.txt

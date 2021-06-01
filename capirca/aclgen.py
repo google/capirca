@@ -32,10 +32,12 @@ from absl import flags
 from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import arista
+from capirca.lib import arista_tp
 from capirca.lib import aruba
 from capirca.lib import brocade
 from capirca.lib import cisco
 from capirca.lib import ciscoasa
+from capirca.lib import cisconx
 from capirca.lib import ciscoxr
 from capirca.lib import cloudarmor
 from capirca.lib import gce
@@ -161,7 +163,7 @@ def SkipLines(text, skip_line_func=False):
 
 
 def RenderFile(base_directory, input_file, output_directory, definitions,
-               exp_info, write_files):
+               exp_info, optimize, shade_check, write_files):
   """Render a single file.
 
   Args:
@@ -171,6 +173,8 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
     definitions: the definitions from naming.Naming().
     exp_info: print a info message when a term is set to expire
               in that many weeks.
+    optimize: a boolean indicating if we should turn on optimization or not.
+    shade_check: should we raise an error if a term is completely shaded
     write_files: a list of file tuples, (output_file, acl_text), to write
   """
   logging.debug('rendering file: %s into %s', input_file,
@@ -178,6 +182,7 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
   pol = None
   jcl = False
   acl = False
+  atp = False
   asacl = False
   aacl = False
   bacl = False
@@ -197,6 +202,7 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
   jsl = False
   nft = False
   win_afw = False
+  nxacl = False
   xacl = False
   paloalto = False
 
@@ -210,8 +216,8 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
 
   try:
     pol = policy.ParsePolicy(
-        conf, definitions, optimize=FLAGS.optimize,
-        base_dir=base_directory, shade_check=FLAGS.shade_check)
+        conf, definitions, optimize=optimize,
+        base_dir=base_directory, shade_check=shade_check)
   except policy.ShadingError as e:
     logging.warning('shading errors for %s:\n%s', input_file, e)
     return
@@ -233,6 +239,8 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
     bacl = copy.deepcopy(pol)
   if 'arista' in platforms:
     eacl = copy.deepcopy(pol)
+  if 'arista_tp' in platforms:
+    atp = copy.deepcopy(pol)
   if 'aruba' in platforms:
     aacl = copy.deepcopy(pol)
   if 'ipset' in platforms:
@@ -256,6 +264,8 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
     jsl = copy.deepcopy(pol)
   if 'windows_advfirewall' in platforms:
     win_afw = copy.deepcopy(pol)
+  if 'cisconx' in platforms:
+    nxacl = copy.deepcopy(pol)
   if 'ciscoxr' in platforms:
     xacl = copy.deepcopy(pol)
   if 'nftables' in platforms:
@@ -305,6 +315,10 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
       acl_obj = arista.Arista(eacl, exp_info)
       RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
                 input_file, write_files)
+    if atp:
+      acl_obj = arista_tp.AristaTrafficPolicy(atp, exp_info)
+      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
+                input_file, write_files)
     if ips:
       acl_obj = ipset.Ipset(ips, exp_info)
       RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
@@ -339,6 +353,10 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
                 input_file, write_files)
     if jsl:
       acl_obj = srxlo.SRXlo(jsl, exp_info)
+      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
+                input_file, write_files)
+    if nxacl:
+      acl_obj = cisconx.CiscoNX(nxacl, exp_info)
       RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
                 input_file, write_files)
     if xacl:
@@ -529,6 +547,8 @@ def Run(
     exp_info,
     max_renderers,
     ignore_directories,
+    optimize,
+    shade_check,
     context
 ):
   definitions = None
@@ -552,6 +572,8 @@ def Run(
         output_directory,
         definitions,
         exp_info,
+        optimize,
+        shade_check,
         write_files)
   else:
     # render all files in parallel
@@ -578,6 +600,8 @@ def Run(
                   pol.get('out_dir'),
                   definitions,
                   exp_info,
+                  optimize,
+                  shade_check,
                   write_files
               )
           )
@@ -624,6 +648,7 @@ def main(argv):
   logging.debug('capirca configurations: %s', configs)
 
   context = multiprocessing.get_context()
+
   Run(
       configs['base_directory'],
       configs['definitions_directory'],
@@ -632,6 +657,8 @@ def main(argv):
       configs['exp_info'],
       configs['max_renderers'],
       configs['ignore_directories'],
+      configs['optimize'],
+      configs['shade_check'],
       context
   )
 

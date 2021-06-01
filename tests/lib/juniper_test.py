@@ -680,7 +680,7 @@ class JuniperTest(unittest.TestCase):
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.assertIn('term good-term-1 {', output, output)
-    self.assertIn('filter test-filter {', output, output)
+    self.assertIn('replace: filter test-filter {', output, output)
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
@@ -827,6 +827,13 @@ class JuniperTest(unittest.TestCase):
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.assertIn('hop-limit 25;', output, output)
+
+  def testHopLimitInet(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER +
+                                             GOOD_TERM_V6_HOP_LIMIT,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.assertNotIn('hop-limit 25;', output, output)
 
   def testProtocolExcept(self):
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_7,
@@ -1377,6 +1384,12 @@ class JuniperTest(unittest.TestCase):
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.assertIn('ttl 10;', output)
+
+  def testTTLInet6(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_21,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.assertNotIn('ttl 10;', output)
 
   def testNextIpFormat(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]

@@ -1,0 +1,374 @@
+# Common Patterns For Generators
+
+## Objective
+
+The purpose of this document is to describe common patterns for new Capirca
+Generators.
+
+## Security based requirements:
+
+### Inet_version ‘Mixed’ Platform Support
+
+#### When the platform does not support “mixed” in a single access-list
+
+##### Problem
+
+When the inet_version is set to ‘mixed’ it implies that the resultant policy
+should contain addresses from both families. Some platforms do not support both
+address families to exist in the same filter therefore leading to Capirca
+generators needing to handle the output differently for those platforms. Cisco
+is an example platform that does not support a mixed filter being generated, and
+therefore it requires two separate *access-list* filters.
+
+Platforms that support mixed family filters will simply generate filters that
+contain both address families.
+
+##### Desired Approach
+
+**The desired approach will be to have Capirca output two filters, one for each
+address family, for platforms that do not support ‘mixed’.** This currently
+occurs already with
+[cisco.py](https://github.com/google/capirca/blob/master/capirca/lib/cisco.py)
+which outputs two access-lists one that contains IPv4 and another that contains
+IPv6 addresses. This solves a problem of having to potentially maintain two
+different .pol so that in cases where vendor syntax of filter name is derived
+from .pol a syncing between v4 and v6 .pol do not need to be maintained.
+
+This may be misleading at first because when using Capirca the user expects that
+the output will be a single policy, but it is actually their lack of
+understanding about the vendor syntax that causes this belief.
+
+If the user does not want this output, then the user can simply issue two
+headers to Capirca one for IPv4 and one for IPv6.
+
+#### When the platform does supports “mixed” in a single access-list
+
+This will require the policy to be generated correctly for the
+[following permutations](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/tests/lib/nsxv_test.py#L236-L322)
+of address family, and when “mixed” is supported, and with valid tests:
+
+1.  [MIXED_TO_V4](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/tests/lib/nsxv_test.py#L236)
+1.  [V4_TO_MIXED](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/tests/lib/nsxv_test.py#L245)
+1.  [MIXED_TO_V6](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/tests/lib/nsxv_test.py#L254)
+1.  [V6_TO_MIXED](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/tests/lib/nsxv_test.py#L262)
+1.  [MIXED_TO_MIXED](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/tests/lib/nsxv_test.py#L270)
+1.  [MIXED_TO_ANY](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/tests/lib/nsxv_test.py#L278)
+1.  [ANY_TO_MIXED](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/tests/lib/nsxv_test.py#L285)
+1.  [V4_TO_V4](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/tests/lib/nsxv_test.py#L92)
+1.  [V6_TO_V6](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/tests/lib/nsxv_test.py#L300)
+1.  [V4_TO_V6](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/tests/lib/nsxv_test.py#L308)
+1.  [V6_TO_V4](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/tests/lib/nsxv_test.py#L316)
+
+### noverbose option is supported correctly
+
+noverberse must be supported if it makes sense for the platform. Noverbose
+removes all comments from the ACE terms, policies, etc. For example see the
+logic implemented in
+[juniper.py](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/capirca/lib/juniper.py#L219).
+
+### Sample.pol file is present
+
+A sample pol file should exist for that generator. Some examples are
+[here](https://github.com/google/capirca/tree/master/policies/pol). The
+sample.pol file for the new generator should have examples for all the filter
+option types used, with all supported IP types, along with any custom fields for
+that generator.
+
+### Perform truncating of names for term name or comment based on max length
+
+This is to ensure that truncation of terms and comments that exceed a max_width,
+is supported by the generator. Not all platforms have length limitations, if the
+generator’s platform has none, then this requirement can be skipped. This
+applies only when the term name and comments are being incorporated into the
+policy. If they are actual # comments (which are not applied to the policy),
+then this requirement does not apply. This could be done using the existing
+[WrapWords()](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/capirca/lib/aclgenerator.py#L549)
+or it may be done by a truncate function within the generator using a custom
+function such as in
+[juniper.py](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/capirca/lib/juniper.py#L715).
+This wrapping should also be present for the term name, and should be using
+Capirca’s
+[FixTermLength()](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/capirca/lib/aclgenerator.py#L463).
+
+### Logging is supported correctly for different types of logging
+
+There are different values of logging already created in
+[policy.py](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/capirca/lib/policy.py#L49).
+Not all are supported by every platform.
+
+*   LOG_BOTH is for logging session-init as well as session-close, which is
+    currently supported by JuniperSRX.
+
+*   DISABLE is a negative logging action.
+
+*   Every other option are considered positive actions.
+
+General rules:
+
+*   The generator should support all the types of logging it can.
+
+*   For all unsupported positive logging actions, the generator should enable
+    logging.
+
+*   For DISABLE, if the platform can turn off logging, it must; if the platform
+    does not support it, then it does nothing. Key part is DISABLE must not
+    enable logging.
+
+### DSMO Support
+
+DSMO is Discontinuous Subnet Masks and is used to save on TCAM space. This is
+supported by certain platforms such as Cisco, but is not supported by most
+platforms. If DSMO is not supported by a platform, this requirement can be
+safely ignored. If DSMO is supported by a platform it must be fully implemented
+and carefully unit tested.
+
+### The usage of good and meta Unified Direction names
+
+Good unified direction names for the ACE terms, that are meta and not specific
+to that platform, are preferred. This is only for platforms that require
+direction. The meta directions
+[supported by Capirca](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/capirca/lib/packetfilter.py#L77)
+are “in”, “out” and “”, but these should not be used as is. Different platforms
+use “ingress”, “egress” or “both” such as GCE. Do not rely on platform specific
+names for directions. “ingress” and “egress” are the preferred directions to be
+used, which can then be converted to the platform’s required specific names for
+directions.
+
+### Term Expirations are handled correctly
+
+Term expirations need to be handled correctly in code. An
+[example from Juniper](https://github.com/google/capirca/blob/master/capirca/lib/juniper.py#L968-L974)
+is that when the term is close to
+[expiration](https://github.com/google/capirca/blob/c0ca9d9a3a34d3dab0b41510571448f5d82c033d/capirca/utils/config.py#L17),
+an INFO message is logged; and when it is expired, a WARNING message is logged
+and the term is not generated. This is also done similarly across other
+platforms such as Cisco/GCE.
+
+### ICMP and ICMPv6 handling
+
+The generator needs to handle ICMP and ICMPv6 correctly. This is a broad
+requirement, but ICMP and ICMPv6 requires careful handling to **avoid rendering
+icmp terms under inet6, and icmpv6 under inet**. One commit that implements this
+for gcp_hf is
+[here](https://github.com/google/capirca/commit/b4af15a36b70593b7bbf043559405558e82c81bc).
+Some generators do not support icmp and icmp6 when the address family is mixed,
+such as
+[nftables.py](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/capirca/lib/nftables.py#L103-L111).
+The expected correct behavior is that when “mixed” is specified in the
+inet_version, the rule for ICMP should only contain IPv4 addresses, and the rule
+for ICMPv6 should contain only IPv6 addresses. Tests must ensure that types and
+codes used are valid for the given address family.
+
+In the future, we hope to refactor the code to allow for general ICMP support,
+but for now this functionality is implemented per-platform in each generator.
+
+Note: In a related requirement, IGMP does not apply to IPv6, and thus rules
+containing IGMP should not be generated with IPv6 addresses.
+
+### Makes an explicit determination about statefulness
+
+The generator author should check for “Am I stateful?”. It should clearly state
+in generator the result of this as a comment somewhere If it is, it should make
+sure that it is doing the right thing for terms. For example, for Juniper SRX,
+it is
+[possible to skip TCP-established](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/capirca/lib/junipersrx.py#L450-L453)
+because it is stateful. You would also want to do the stateful check probably
+early in the code rather than later, since this may impact efficiency by being
+able to skip further code/ checks. A pro of checking early would be being able
+to skip any processing of terms not necessary for a stateful firewall such as
+skipping TCP-established. In contrast, in iptables.py, the check is made later,
+while formatting the terms to modify the term to
+[allow established and related terms](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/capirca/lib/iptables.py#L474-L485).
+
+### Syntax of the config from the generator and on-device should match when cryptographically verified
+
+The ACL that is generated from the generator, and the ACL that is obtained from
+the device when a show configuration command is used, should match bit-by-bit,
+such that it should be possible to run a hashing function (such as SHA-1) and
+obtain the same hash for both the ACL configurations. Another variant of this
+requirement is that the `diff` between these two policies should be empty.
+
+There can be certain exceptions, such as if there is a policy header comment
+that cannot be handled by Cisco devices and is thus not present in the Cisco
+ACL. This can be handled by checking the diff between them and skipping over the
+known mismatches that are acceptable because of the device’s incapability.
+Another example of an exception is the Juniper
+[control sequence such as ‘replace’,](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/capirca/lib/juniper.py#L993)
+which indicates the device to replace, rather than merge the contents of the
+ACL, which does not show up on the device ACL.
+
+If there is a mismatch in the syntax of the 2 ACLs that cannot be fixed, then
+these mismatches and the technical reasoning behind the lack of a workaround or
+a fix should be listed in the associated Github issue for this generator.
+
+### Apply priority as described in .pol files
+
+If a priority or order exists for the platform, and an input pol file doesn't
+set priority for ACEs, then autogenerate priorities in top down order based on
+the ACE order in the .pol file.
+
+### Protocol support
+
+#### Call out support
+
+Make explicit which protocols the platform supports, and support them in the
+generator. If protocols are not supported by the platform, ensure that the
+generator explicitly does not support them, and gracefully handles these errors.
+
+#### Names vs numbers
+
+Names or numbers can be used to represent protocols within a generator.
+Throughout a given generators use only names or numbers, not a mix of both. The
+choice should be made based on the default representation for the device
+platform. (I.e. if the policy once applied to the device will show names in a
+"show config" command output, then use names within the generator. If the output
+contains numbers, use numbers within the generator.)
+
+#### Port support
+
+The following is a list of which IP protocols support ports. When supporting a
+protocol, make sure that the handling of port or lack thereof is correct.
+
+*   HOPOPT = No
+
+*   ICMP = No
+
+*   IGMP = No
+
+*   GGP = No
+
+*   IPIP = No
+
+*   TCP = Yes
+
+*   EGP = No
+
+*   IGP = No
+
+*   UDP = *Yes*
+
+*   RDP = *Yes (Uses different port ranges though, check RFC)*
+
+*   IPV6 = No
+
+*   IPV6_ROUTE = No
+
+*   FRAGMENT = No
+
+*   RSVP = No
+
+*   GRE = No
+
+*   ESP = No
+
+*   AH = No
+
+*   ICMPV6 = No
+
+*   IPV6_NONXT = No
+
+*   IPV6_OPTS = No
+
+*   OSPF = No
+
+*   PIM = No
+
+*   VRRP = No
+
+*   L2TP = No. (only uses UDP 1701)
+
+*   SCTP = *Yes*
+
+*   UDPLITE = *Yes*
+
+Note: DCCP also uses ports, but this is not currently supported. Source:
+https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml
+
+### Zone based firewall support
+
+Zone based firewalls should be implemented if supported by the platform. When
+implementing zone based firewalls, all combinations of zone types must be tested
+fully. Test for invalid and reserved zone names and illegal combinations of
+policies (i.e. any-> specific, or any->any).
+
+### Address book support
+
+Address books should be implemented if they are present in a platform. The
+generator should explicitly state whether it is implementing a global or zone
+based address book. If both are available for the platform, both must be
+implemented, and an option must be added to choose between the two. When
+implementing address books, always filter for address family before building the
+book. Tests should ensure that address books are filtered by address family
+properly along with their relevant rules.
+
+## Coding Style Requirements:
+
+### Use builtin libraries
+
+Use only Python standard builtin libraries wherever possible. External
+dependencies are discouraged and must be justified.
+
+### Structure generators for inheritance
+
+See Cisco and Juniper generators for examples. Wherever possible, use base
+classes, inheritance, etc to allow for common functions between generators in a
+"family".
+
+### Reuse common functions
+
+Use functions from aclgenerator.py, policy.py, nacaddr.py, etc wherever possible
+instead of implementing your own.
+
+### If output will be in a common exchange format, use a standard library for rendering
+
+This applies to common standards such as JSON, XML, YAML, protocol buffers, etc.
+Instead of building up such serialized output using string ops, use a standard
+library to produce the rendered output instead. (For example, to render JSON,
+use [json.dumps](https://docs.python.org/3/library/json.html#json.dumps). For
+XML, use some combination of the
+[standard libraries](https://docs.python.org/3/library/xml.html), such as
+xml.etree and xml.dom.) This should allow most generator code to interact with
+objects only, and serialize to a buffer at the end. Unit tests should operate on
+the object structures. Additional small unit tests should sanity check that the
+rendering library is producing valid output as expected. If a (JSON, XML, etc.)
+schema is available this should also be used to validate output in a test.
+
+### Check various limits when rendering output
+
+Make sure that line, identifier, full output, etc. limits are applied when
+rendering final output. Some of these may be specific to a given platform. These
+should always include but are not limited to:
+
+*   Maximum value of addresses and ports allowed in single rule. Generator must
+    support automatically splitting into new rule when exceeded.
+*   Maximum values allowed across entire policy for rule count, address, ports
+*   Maximum length for comments, and support splitting across lines the correct
+    way when over. Also check for max per-rule limit if one exists and truncate
+    using the common Capirca functions if needed.
+*   Max term length supported must be 24 or greater, in order to allow for
+    meaningful term names.
+
+### Test coverage
+
+#### General coverage
+
+Aim for as close to 100% test coverage as you can. Tests should cover a wide
+span of the vendor syntax, not just a single keyword.
+
+#### Custom exceptions
+
+All custom exceptions types added must be unit tested.
+
+### Test Methods
+
+#### Running end-to-end Capirca tests
+
+Create a test .pol file.
+
+Build and run the ACL generator binary with the desired base and output directory.
+The following command simply outputs to the current directory.
+
+```shell
+$ ./capirca/aclgen --base_directory ./
+--output_directory ./ --recursive --optimize --definitions_directory capirca/def --logtostderr --policy_file path/to/test.pol
+```

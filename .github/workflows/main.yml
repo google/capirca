@@ -1,0 +1,103 @@
+---
+name: Python package
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: [3.6.13, 3.7, 3.8, 3.9]
+
+    steps:
+    - name: Checkout branch with changes
+      uses: actions/checkout@v2
+      with:
+        path: current
+    - name: Checkout master branch
+      uses: actions/checkout@v2
+      with:
+        path: master
+        ref: master
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14'
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Setup environment variables
+      run: |
+        mkdir -p artifacts
+        echo "wfdt=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_ENV
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install unzip zip
+        python -m pip install --upgrade pip
+        python -m pip install setuptools wheel
+        python -m pip install flake8 pytest
+        cd current
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        if [ -f test-requirements.txt ]; then pip install -r test-requirements.txt; fi
+    - name: Lint with flake8
+      run: |
+        cd current
+        flake8 . --count --select=W291,W293,W391 --statistic
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 \
+          --max-line-length=127 --statistics
+    - name: Test with pytest
+      run: |
+        cd current
+        pytest
+    - name: Perform end-to-end testing with current branch or pull request
+      run: |
+        cd current
+        git status
+        python setup.py sdist bdist_wheel
+        python3 -m pip -v install dist/capirca*py3*.whl
+        aclgen --output_directory ./output --logtostderr
+        cd ./output/ && \
+          zip -r ../../artifacts/capirca_output_${{ env.wfdt }}.zip .
+        cd ..
+        python3 -m pip -v uninstall -y capirca
+    - name: Perform end-to-end testing with master branch
+      run: |
+        cd master
+        git status
+        python setup.py sdist bdist_wheel
+        python3 -m pip -v install dist/capirca*py3*.whl
+        aclgen --output_directory ./output --logtostderr
+        python3 -m pip -v uninstall -y capirca
+    - name: Compare output files between the branches
+      run: |
+        mkdir -p artifacts-diff
+        sudo npm install -g diff2html diff2html-cli
+        diff2html --version
+        diff -qr current/output master/output > \
+          ./artifacts-diff/policy_output.diff | true
+        cat ./artifacts-diff/policy_output.diff | grep Files | grep differ \
+          | cut -d" " -f2 | cut -d "/" -f3 > ./artifacts-diff/files.list
+        while read p; do diff -u master/output/$p current/output/$p | \
+          diff2html -i stdin --file ./artifacts-diff/$p.html | \
+          true; done < ./artifacts-diff/files.list
+        sed -i '/Diff to HTML by/d' ./artifacts-diff/*
+    - name: Upload generated policies
+      uses: actions/upload-artifact@v2
+      with:
+        name: capirca_output_${{ matrix.python-version }}_${{ env.wfdt }}
+        path: ./artifacts/capirca_output_${{ env.wfdt }}.zip
+    - name: Upload policy differences
+      uses: actions/upload-artifact@v2
+      with:
+        name: capirca_output_policy_diff
+        path: ./artifacts-diff

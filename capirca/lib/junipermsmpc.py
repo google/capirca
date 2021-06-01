@@ -24,6 +24,7 @@ import logging
 
 from capirca.lib import aclgenerator
 from capirca.lib import juniper
+from capirca.lib import nacaddr
 import six
 
 MAX_IDENTIFIER_LEN = 55  # It is really 63, but leaving room for added chars
@@ -174,14 +175,30 @@ class Term(juniper.Term):
             for saddr in source_address:
               for comment in self._Comment(saddr):
                 ret_str.Append('%s' % comment)
-              ret_str.Append('%s;' % saddr)
+              if saddr.version == 6 and 0 < saddr.prefixlen < 16:
+                for saddr2 in saddr.subnets(new_prefix=16):
+                  ret_str.Append('%s;' % saddr2)
+              else:
+                if saddr == nacaddr.IPv6('0::0/0'):
+                  saddr = 'any-ipv6'
+                elif saddr == nacaddr.IPv4('0.0.0.0/0'):
+                  saddr = 'any-ipv4'
+                ret_str.Append('%s;' % saddr)
 
           # SOURCE ADDRESS EXCLUDE
           if source_address_exclude:
             for ex in source_address_exclude:
               for comment in self._Comment(ex):
                 ret_str.Append('%s' % comment)
-              ret_str.Append('%s except;' % ex)
+              if ex.version == 6 and 0 < ex.prefixlen < 16:
+                for ex2 in ex.subnets(new_prefix=16):
+                  ret_str.Append('%s except;' % ex2)
+              else:
+                if ex == nacaddr.IPv6('0::0/0'):
+                  ex = 'any-ipv6'
+                elif ex == nacaddr.IPv4('0.0.0.0/0'):
+                  ex = 'any-ipv4'
+                ret_str.Append('%s except;' % ex)
           ret_str.Append('}')  # source-address {...}
 
         # DESTINATION ADDRESS
@@ -191,14 +208,30 @@ class Term(juniper.Term):
             for daddr in destination_address:
               for comment in self._Comment(daddr):
                 ret_str.Append('%s' % comment)
-              ret_str.Append('%s;' % daddr)
+              if daddr.version == 6 and 0 < daddr.prefixlen < 16:
+                for daddr2 in daddr.subnets(new_prefix=16):
+                  ret_str.Append('%s;' % daddr2)
+              else:
+                if daddr == nacaddr.IPv6('0::0/0'):
+                  daddr = 'any-ipv6'
+                elif daddr == nacaddr.IPv4('0.0.0.0/0'):
+                  daddr = 'any-ipv4'
+                ret_str.Append('%s;' % daddr)
 
           # DESTINATION ADDRESS EXCLUDE
           if destination_address_exclude:
             for ex in destination_address_exclude:
               for comment in self._Comment(ex):
                 ret_str.Append('%s' % comment)
-              ret_str.Append('%s except;' % ex)
+              if ex.version == 6 and 0 < ex.prefixlen < 16:
+                for ex2 in ex.subnets(new_prefix=16):
+                  ret_str.Append('%s except;' % ex2)
+              else:
+                if ex == nacaddr.IPv6('0::0/0'):
+                  ex = 'any-ipv6'
+                elif ex == nacaddr.IPv4('0.0.0.0/0'):
+                  ex = 'any-ipv4'
+                ret_str.Append('%s except;' % ex)
           ret_str.Append('}')  # destination-address {...}
 
         # source prefix <except> list
@@ -364,9 +397,9 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
                   if proto == 'vrrp':
                     proto = '112'
                   chunks.append('protocol %s;' % proto)
-                if sport:
+                if sport and ('udp' in proto or 'tcp' in proto):
                   chunks.append('source-port %s;' % sport)
-                if dport:
+                if dport and ('udp' in proto or 'tcp' in proto):
                   chunks.append('destination-port %s;' % dport)
                 if app['timeout']:
                   chunks.append(' inactivity-timeout %d;' % int(app['timeout']))
@@ -457,6 +490,11 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
         modified_term_name = filter_name[:(
             (MAX_IDENTIFIER_LEN) // 2)] + term.name[-(
                 (MAX_IDENTIFIER_LEN) // 2):]
+        if term.stateless_reply:
+          logging.warning(
+              "WARNING: Term %s is a stateless reply term and will not be "
+              "rendered.", term.name)
+          continue
         if set(['established', 'tcp-established']).intersection(term.option):
           logging.debug(
               'Skipping established term %s because MSMPC is stateful.',
@@ -501,6 +539,11 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
           protocol[protocol.index('icmpv6')] = 'icmp6'
         else:
           protocol = term.protocol
+        # MSMPC requires tcp and udp to specify ports, rather than imply all
+        # ports
+        if 'udp' in term.protocol or 'tcp' in term.protocol:
+          if not term.source_port and not term.destination_port:
+            term.destination_port = [[1, 65535]]
         new_application_set = {
             'sport': self._BuildPort(term.source_port),
             'dport': self._BuildPort(term.destination_port),

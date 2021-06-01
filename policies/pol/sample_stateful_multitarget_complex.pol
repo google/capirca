@@ -1,0 +1,53 @@
+################
+### RULEBASE ###
+################
+
+# NOTE: makes sure zone names correspond to those specified in your firewall setup
+
+header {
+  comment:: "this is a sample policy for a zone based filter that generates"
+  comment:: "multiple output formats. It checks tcp and udp rules are correctly"
+  comment:: "generated for a large number of IPv4 IPs."
+  target:: paloalto from-zone internal to-zone external
+  target:: srx from-zone internal to-zone external
+}
+
+term test-tcp-udp-many-ipv4 {
+  comment:: "Testing large IPv4 IPs to test address books."
+  source-address:: MANY_IPV4
+  destination-address:: MANY_IPV4
+  protocol:: tcp udp
+  action:: accept
+}
+
+header {
+  comment:: "this is a sample policy for a zone based filter that generates"
+  comment:: "multiple output formats. It checks tcp and udp rules are correctly"
+  comment:: "generated for a large number of IPv6 IPs."
+  target:: paloalto from-zone internal to-zone external inet6
+  target:: srx from-zone internal to-zone external inet6
+}
+
+term test-tcp-udp-many-ipv6 {
+  comment:: "Testing large IPv6 IPs to test address books."
+  source-address:: MANY_IPV6
+  destination-address:: MANY_IPV6
+  protocol:: tcp udp
+  action:: accept
+}
+
+header {
+  comment:: "this is a sample policy for a zone based filter that generates"
+  comment:: "multiple output formats. It checks tcp and udp rules are correctly"
+  comment:: "generated for a large number of mixed IPs."
+  target:: paloalto from-zone untrust to-zone external mixed
+  target:: srx from-zone internal to-zone external mixed
+}
+
+term test-tcp-udp-many-mixed {
+  comment:: "Testing mixed IPv4 and IPv6 IPs to test address books."
+  source-address:: MANY_IPV4 MANY_IPV6
+  destination-address:: MANY_IPV4 MANY_IPV6
+  protocol:: tcp udp
+  action:: accept
+}

@@ -40,14 +40,14 @@ term allow-icmp{
 }
 
 term allow-only-pan-app{
-  pan-application:: http
+  pan-application:: web-browsing
   action:: accept
 }
 
 term allow-web-inbound{
   destination-address:: WEB_SERVERS
   destination-port:: WEB_SERVICES
-  pan-application:: ssl http
+  pan-application:: ssl web-browsing
   protocol:: tcp
   action:: accept
 }

@@ -22,6 +22,8 @@ from __future__ import unicode_literals
 import json
 import unittest
 
+from absl.testing import parameterized
+
 from capirca.lib import aclgenerator
 from capirca.lib import gce
 from capirca.lib import nacaddr
@@ -54,6 +56,13 @@ GOOD_HEADER_NO_NETWORK = """
 header {
   comment:: "The general policy comment."
   target:: gce
+}
+"""
+
+GOOD_HEADER_MAX_ATTRIBUTE_COUNT = """
+header {
+  comment:: "The general policy comment."
+  target:: gce INGRESS global/networks/default 2
 }
 """
 
@@ -111,6 +120,14 @@ term good-term-1 {
   destination-tag:: dns-servers
   destination-port:: DNS
   protocol:: udp tcp
+  action:: accept
+}
+"""
+GOOD_TERM_5 = """
+term good-term-5 {
+  comment:: "ICMP from IP."
+  source-address:: CORP_EXTERNAL
+  protocol:: icmp
   action:: accept
 }
 """
@@ -239,6 +256,18 @@ term %s {
   destination-tag:: dns-servers
   destination-port:: DNS
   protocol:: udp tcp
+  action:: accept
+}
+"""
+
+GOOD_TERM_OWNERS = """
+term good-term-owners {
+  comment:: "DNS access from corp."
+  source-address:: CORP_EXTERNAL
+  destination-tag:: dns-servers
+  destination-port:: DNS
+  protocol:: udp tcp
+  owner:: test-owner
   action:: accept
 }
 """
@@ -479,7 +508,7 @@ TEST_INCLUDE_RANGE = [nacaddr.IP('10.128.0.0/9')]
 TEST_EXCLUDE_RANGE = [nacaddr.IP('10.240.0.0/16')]
 
 
-class GCETest(unittest.TestCase):
+class GCETest(parameterized.TestCase):
 
   def setUp(self):
     super(GCETest, self).setUp()
@@ -880,6 +909,144 @@ class GCETest(unittest.TestCase):
                                self.naming)
       acl = gce.GCE(pol, EXP_INFO)
       self.assertIsNotNone(str(acl))
+
+  def testTermOwners(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_OWNERS, self.naming),
+        EXP_INFO)
+    rendered_acl = json.loads(str(acl))[0]
+    self.assertEqual(rendered_acl['description'],
+                     'DNS access from corp. Owner: test-owner')
+
+  def testMaxAttributeExceeded(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    self.assertRaises(
+        gce.ExceededAttributeCountError,
+        gce.GCE,
+        policy.ParsePolicy(
+            GOOD_HEADER_MAX_ATTRIBUTE_COUNT + GOOD_TERM + DEFAULT_DENY,
+            self.naming),
+        EXP_INFO)
+
+  def testMaxAttribute(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.2.3.4/32')]
+    pol = policy.ParsePolicy(
+        GOOD_HEADER_MAX_ATTRIBUTE_COUNT + GOOD_TERM_5, self.naming)
+    acl = gce.GCE(pol, EXP_INFO)
+    self.assertIsNotNone(str(acl))
+
+  @parameterized.named_parameters(
+      ('1 ip, 2 ports',
+       {
+           'sourceRanges': ['10.128.0.0/10'],
+           'allowed': [
+               {
+                   'ports': ['22'],
+                   'IPProtocol': 'tcp'
+               },
+               {
+                   'ports': ['53'],
+                   'IPProtocol': 'udp'
+               }
+           ],
+       }, 5),
+      ('1 ip, 2 ports, 1 target tag',
+       {
+           'sourceRanges': ['10.128.0.0/10'],
+           'allowed': [
+               {
+                   'ports': ['22'],
+                   'IPProtocol': 'tcp'
+               },
+               {
+                   'ports': ['53'],
+                   'IPProtocol': 'udp'
+               }
+           ],
+           'targetTags': ['dns-servers'],
+       }, 6),
+      ('2 ips, 2 ports, 1 target tag',
+       {
+           'sourceRanges': ['10.128.0.0/10', '192.168.1.1/24'],
+           'allowed': [
+               {
+                   'ports': ['22'],
+                   'IPProtocol': 'tcp'
+               },
+               {
+                   'ports': ['53'],
+                   'IPProtocol': 'udp'
+               }
+           ],
+           'targetTags': ['dns-servers'],
+       }, 7),
+      ('2 ips, 2 ports',
+       {
+           'sourceRanges': ['10.128.0.0/10', '192.168.1.1/24'],
+           'allowed': [
+               {
+                   'ports': ['22'],
+                   'IPProtocol': 'tcp'
+               },
+               {
+                   'ports': ['53'],
+                   'IPProtocol': 'udp'
+               }
+           ],
+       }, 6),
+      ('2 ips, 2 protocols',
+       {
+           'sourceRanges': ['10.128.0.0/10', '192.168.1.1/24'],
+           'allowed': [
+               {
+                   'IPProtocol': 'tcp'
+               },
+               {
+                   'IPProtocol': 'udp'
+               }
+           ],
+       }, 4),
+      ('1 ip, 2 protocols, 1 source tag',
+       {
+           'sourceRanges': ['10.128.0.0/10'],
+           'allowed': [
+               {
+                   'IPProtocol': 'tcp'
+               },
+               {
+                   'IPProtocol': 'udp'
+               }
+           ],
+           'sourceTags': ['dns-servers'],
+       }, 4),
+      ('2 ips, 1 protocol',
+       {
+           'sourceRanges': ['10.128.0.0/10', '192.168.1.1/24'],
+           'allowed': [
+               {
+                   'IPProtocol': 'icmp'
+               }
+           ],
+       }, 3),
+      ('1 ip, 2 protocols, 1 service account',
+       {
+           'sourceRanges': ['10.128.0.0/10'],
+           'allowed': [
+               {
+                   'IPProtocol': 'tcp'
+               },
+               {
+                   'IPProtocol': 'udp'
+               }
+           ],
+           'targetServiceAccount': ['test@system.gserviceaccount.com'],
+       }, 4))
+  def testGetAttributeCount(self, dict_term, expected):
+    self.assertEqual(gce.GetAttributeCount(dict_term), expected)
 
 if __name__ == '__main__':
   unittest.main()

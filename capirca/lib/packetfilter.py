@@ -38,7 +38,7 @@ class DuplicateTermError(Error):
   """Raised when duplication of term names are detected."""
 
 
-class DuplicateShortenedTableName(Error):
+class DuplicateShortenedTableNameError(Error):
   """Raised when a duplicate shortened table name is found."""
 
 
@@ -256,7 +256,7 @@ class Term(aclgenerator.Term):
         self.options,
         self.stateful,))
 
-    return '\n'.join(str(v) for v in ret_str if v is not '')
+    return '\n'.join(str(v) for v in ret_str if v)
 
   def _CheckAddressAf(self, addrs):
     """Verify that the requested address-family matches the address's family."""
@@ -481,7 +481,7 @@ class PacketFilter(aclgenerator.ACLGenerator):
 
           if (src_token in self.def_short_to_long and
               self.def_short_to_long[src_token] != source_addr.parent_token):
-            raise DuplicateShortenedTableName(
+            raise DuplicateShortenedTableNameError(
                 'There is a shortened name conflict between names %s and %s '
                 '(different named objects would conflict when shortened to %s)'
                 % (self.def_short_to_long[src_token],
@@ -500,7 +500,7 @@ class PacketFilter(aclgenerator.ACLGenerator):
 
           if (dst_token in self.def_short_to_long and
               self.def_short_to_long[dst_token] != dest_addr.parent_token):
-            raise DuplicateShortenedTableName(
+            raise DuplicateShortenedTableNameError(
                 'There is a shortened name conflict between names %s and %s '
                 '(different named objects would conflict when shortened to %s)'
                 %(self.def_short_to_long[dst_token],

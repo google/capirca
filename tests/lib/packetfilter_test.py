@@ -818,7 +818,7 @@ class PacketFilterTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['25']
 
     self.assertRaises(
-        packetfilter.DuplicateShortenedTableName,
+        packetfilter.DuplicateShortenedTableNameError,
         packetfilter.PacketFilter.__init__,
         packetfilter.PacketFilter.__new__(packetfilter.PacketFilter),
         policy.ParsePolicy(
@@ -904,7 +904,7 @@ class PacketFilterTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['53']
 
     self.assertRaises(
-        packetfilter.DuplicateShortenedTableName,
+        packetfilter.DuplicateShortenedTableNameError,
         packetfilter.PacketFilter.__init__,
         packetfilter.PacketFilter.__new__(packetfilter.PacketFilter),
         policy.ParsePolicy(
@@ -929,7 +929,7 @@ class PacketFilterTest(unittest.TestCase):
     self.naming.GetServiceByProto.return_value = ['53']
 
     self.assertRaises(
-        packetfilter.DuplicateShortenedTableName,
+        packetfilter.DuplicateShortenedTableNameError,
         packetfilter.PacketFilter.__init__,
         packetfilter.PacketFilter.__new__(packetfilter.PacketFilter),
         policy.ParsePolicy(

@@ -88,6 +88,14 @@ term good-term-nocomment {
 }
 """
 
+GOOD_TERM_DEFAULT_DENY = """
+term good-term-defaultdeny {
+  comment:: "Default Deny term"
+  action:: deny
+}
+
+"""
+
 GOOD_TERM_LARGE_COMMENT = """
 term good-term-allow {
   comment:: "This is an unnecessarily long term comment that's going to be truncated"
@@ -577,6 +585,150 @@ EXPECTED_LARGECOMMENT_SPLIT_JSON = """
 ]
 """
 
+EXPECTED_DEFAULT_DENY_JSON = """
+[
+  {
+    "action": "deny(404)",
+    "description": "Default Deny term",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "*"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 1
+  }
+]
+"""
+
+EXPECTED_DEFAULT_DENY_SPLIT_JSON = """
+[
+  {
+    "action": "allow",
+    "description": "Sample CloudArmor Allow Rule [1/3]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "5.2.3.2/32",
+          "10.2.3.4/32",
+          "23.2.3.3/32",
+          "54.2.3.4/32",
+          "76.2.3.5/32"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 1
+  },
+  {
+    "action": "allow",
+    "description": "Sample CloudArmor Allow Rule [2/3]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "132.2.3.6/32",
+          "197.2.3.7/32",
+          "2001:4860:8000::5/128",
+          "24da:3ed8:32a0::7/128",
+          "3051:abd2:5400::9/128"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 2
+  },
+  {
+    "action": "allow",
+    "description": "Sample CloudArmor Allow Rule [3/3]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "577e:5400:3051::6/128",
+          "6f5d:abd2:1403::1/128",
+          "aee2:37ba:3cc0::3/128",
+          "af22:32d2:3f00::2/128"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 3
+  },
+  {
+    "action": "deny(404)",
+    "description": "Sample Deny Rule [1/3]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "5.2.3.2/32",
+          "10.2.3.4/32",
+          "23.2.3.3/32",
+          "54.2.3.4/32",
+          "76.2.3.5/32"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 4
+  },
+  {
+    "action": "deny(404)",
+    "description": "Sample Deny Rule [2/3]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "132.2.3.6/32",
+          "197.2.3.7/32",
+          "2001:4860:8000::5/128",
+          "24da:3ed8:32a0::7/128",
+          "3051:abd2:5400::9/128"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 5
+  },
+  {
+    "action": "deny(404)",
+    "description": "Sample Deny Rule [3/3]",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "577e:5400:3051::6/128",
+          "6f5d:abd2:1403::1/128",
+          "aee2:37ba:3cc0::3/128",
+          "af22:32d2:3f00::2/128"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 6
+  },
+  {
+    "action": "deny(404)",
+    "description": "Default Deny term",
+    "match": {
+      "config": {
+        "srcIpRanges": [
+          "*"
+        ]
+      },
+      "versionedExpr": "SRC_IPS_V1"
+    },
+    "preview": false,
+    "priority": 7
+  }
+]
+"""
+
 TEST_IPS_NOSPLIT = [nacaddr.IP('10.2.3.4/32'),
                     nacaddr.IP('2001:4860:8000::5/128')]
 
@@ -747,6 +899,24 @@ class CloudArmorTest(unittest.TestCase):
                            self.naming), EXP_INFO)
     self.assertNotIn('description', str(acl))
 
+  def testDefaultDenyStandalone(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS_NOSPLIT
+
+    acl = cloudarmor.CloudArmor(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_DEFAULT_DENY,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_DEFAULT_DENY_JSON)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testDefaultDenyWithSplit(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS_SPLIT
+
+    acl = cloudarmor.CloudArmor(
+        policy.ParsePolicy(GOOD_HEADER_MIXED + GOOD_TERM_ALLOW
+                           + GOOD_TERM_DENY + GOOD_TERM_DEFAULT_DENY,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_DEFAULT_DENY_SPLIT_JSON)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
 if __name__ == '__main__':
   unittest.main()

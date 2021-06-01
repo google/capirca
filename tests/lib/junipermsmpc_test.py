@@ -551,8 +551,14 @@ class JuniperMSMPCTest(parameterized.TestCase):
     msmpc = junipermsmpc.JuniperMSMPC(
         policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_5, self.naming), EXP_INFO)
     output = str(msmpc)
-    self.assertIn('protocol icmp;', output, output)
-    self.assertIn('protocol tcp;', output, output)
+    expected_output = (
+        '            application test-filtergood-term-5-app1 {\n' +
+        '                protocol icmp;\n' + '            }\n' +
+        '            application test-filtergood-term-5-app2 {\n' +
+        '                protocol tcp;\n' +
+        '                destination-port 1-65535;\n' + '            }')
+
+    self.assertIn(expected_output, output, output)
 
   def testPrefixList(self):
     msmpc = junipermsmpc.JuniperMSMPC(
@@ -654,6 +660,23 @@ class JuniperMSMPCTest(parameterized.TestCase):
     self.assertNotIn('tcp-established', output, output)
 
     self.naming.GetServiceByProto.assert_called_once_with('DNS', 'tcp')
+
+  def testStatelessReply(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.1/32')]
+    self.naming.GetServiceByProto.return_value = ['25']
+
+    ret = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1, self.naming)
+
+    _, terms = ret.filters[0]
+    for term in terms:
+      if term.protocol[0] == 'icmp':
+        term.stateless_reply = True
+
+    msmpc = junipermsmpc.JuniperMSMPC(ret, EXP_INFO)
+
+    output = str(msmpc)
+    self.assertNotIn('term good-term-1 {', output, output)
+    self.assertIn('term good-term-2 {', output, output)
 
   def testNoVerboseV4(self):
     addr_list = list()
@@ -1068,9 +1091,60 @@ class JuniperMSMPCTest(parameterized.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER + too_long_name, self.naming)
     self.assertRaises(junipermsmpc.ConflictingApplicationSetsError,
                       junipermsmpc.JuniperMSMPC, pol, EXP_INFO)
-    msmpc = junipermsmpc.JuniperMSMPC(
+    _ = junipermsmpc.JuniperMSMPC(
         policy.ParsePolicy(GOOD_HEADER + not_too_long_name, self.naming),
         EXP_INFO)
+
+  def testSlashZeroReplacement(self):
+    self.naming.GetNetAddr.return_value = ([
+        nacaddr.IPv4('0.0.0.0/0'),
+        nacaddr.IPv6('::/0')
+    ])
+    self.naming.GetServiceByProto.return_value = ['25']
+    expectedv4 = ('                    term good-term-2-inet {\n' +
+                  '                        from {\n' +
+                  '                            destination-address {\n' +
+                  '                                any-ipv4;\n' +
+                  '                            }')
+    expectedv6 = ('                    term good-term-2-inet6 {\n' +
+                  '                        from {\n' +
+                  '                            destination-address {\n' +
+                  '                                any-ipv6;\n' +
+                  '                            }')
+
+    msmpc = junipermsmpc.JuniperMSMPC(
+        policy.ParsePolicy(GOOD_HEADER_MIXED + GOOD_TERM_1, self.naming),
+        EXP_INFO)
+    output = str(msmpc)
+    self.assertIn(expectedv4, output, output)
+    self.assertIn(expectedv6, output, output)
+
+  def testV6SlashFourteenReplacement(self):
+    self.naming.GetNetAddr.return_value = ([
+        nacaddr.IPv4('0.0.0.0/1'),
+        nacaddr.IPv6('::/14')
+    ])
+    self.naming.GetServiceByProto.return_value = ['25']
+    expectedv4 = ('                    term good-term-2-inet {\n' +
+                  '                        from {\n' +
+                  '                            destination-address {\n' +
+                  '                                0.0.0.0/1;\n' +
+                  '                            }')
+    expectedv6 = ('                    term good-term-2-inet6 {\n' +
+                  '                        from {\n' +
+                  '                            destination-address {\n' +
+                  '                                ::/16;\n' +
+                  '                                1::/16;\n' +
+                  '                                2::/16;\n' +
+                  '                                3::/16;\n' +
+                  '                            }')
+
+    msmpc = junipermsmpc.JuniperMSMPC(
+        policy.ParsePolicy(GOOD_HEADER_MIXED + GOOD_TERM_1, self.naming),
+        EXP_INFO)
+    output = str(msmpc)
+    self.assertIn(expectedv4, output, output)
+    self.assertIn(expectedv6, output, output)
 
 
 if __name__ == '__main__':

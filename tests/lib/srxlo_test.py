@@ -33,6 +33,12 @@ header {
   target:: srxlo test-filter inet6
 }
 """
+GOOD_HEADER_2 = """
+header {
+  comment:: "this is a test acl"
+  target:: srxlo test-filter inet
+}
+"""
 GOOD_TERM_1 = """
 term good-term-1 {
   protocol:: icmpv6
@@ -51,6 +57,12 @@ term good-term-3 {
   protocol:: icmpv6
   action:: accept
   option:: inactive
+}
+"""
+GOOD_TERM_4 = """
+term good-term-4 {
+  protocol:: icmp
+  action:: accept
 }
 """
 
@@ -171,11 +183,25 @@ class SRXloTest(unittest.TestCase):
     super(SRXloTest, self).setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
+  def testIcmp(self):
+    output = str(srxlo.SRXlo(policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_1 +
+                                                GOOD_TERM_4, self.naming),
+                 EXP_INFO))
+    self.assertIn('protocol icmp;', output,
+                  'missing or incorrect ICMP specification')
+    self.assertNotIn('icmp6;', output,
+                     'missing or incorrect ICMP specification')
+    self.assertNotIn('icmpv6;', output,
+                     'missing or incorrect ICMP specification')
+
   def testIcmpv6(self):
-    output = str(srxlo.SRXlo(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
-                                                self.naming), EXP_INFO))
+    output = str(srxlo.SRXlo(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1 +
+                                                GOOD_TERM_4, self.naming),
+                 EXP_INFO))
     self.assertIn('next-header icmp6;', output,
                   'missing or incorrect ICMPv6 specification')
+    self.assertNotIn('icmp;', output,
+                     'missing or incorrect ICMPv6 specification')
 
   def testIcmpv6Type(self):
     output = str(srxlo.SRXlo(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,

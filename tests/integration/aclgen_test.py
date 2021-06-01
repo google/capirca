@@ -63,7 +63,9 @@ class TestAclGenDemo(unittest.TestCase):
         self.exp_info,
         self.max_renderers,
         self.ignore_directories,
-        self.context
+        None,
+        None,
+        self.context,
     )
     files = ['sample_cisco_lab.acl', 'sample_cloudarmor.gca', 'sample_gce.gce',
              'sample_ipset.ips', 'sample_juniper_loopback.jcl',
@@ -71,9 +73,14 @@ class TestAclGenDemo(unittest.TestCase):
              'sample_multitarget.bacl', 'sample_multitarget.eacl',
              'sample_multitarget.ipt', 'sample_multitarget.jcl',
              'sample_multitarget.msmpc', 'sample_multitarget.xacl',
+             'sample_multitarget.nxacl',
              'sample_nsxv.nsx', 'sample_packetfilter.pf',
              'sample_speedway.ipt', 'sample_srx.srx',
-             'sample_paloalto.xml']
+             'sample_paloalto.xml', 'sample_stateful_multitarget_simple.xml',
+             'sample_stateful_multitarget_simple.srx',
+             'sample_stateful_multitarget_complex.xml',
+             'sample_stateful_multitarget_complex.srx',
+             ]
     expected = [mock.call(
         os.path.join(self.test_subdirectory, f), mock.ANY) for f in files]
     mock_writer.assert_has_calls(expected, any_order=True)
@@ -90,7 +97,9 @@ class TestAclGenDemo(unittest.TestCase):
         self.exp_info,
         self.max_renderers,
         self.ignore_directories,
-        self.context
+        None,
+        None,
+        self.context,
     )
     mock_writer.assert_called_with(
         os.path.join(self.test_subdirectory, 'sample_cisco_lab.acl'), mock.ANY)

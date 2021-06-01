@@ -1,0 +1,52 @@
+---
+name: Python Package for Windows
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: [3.8, 3.9]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - uses: actions/cache@v2
+      with:
+        path: ~\AppData\Local\pip\Cache
+        key: ${{ runner.os }}-${{ matrix.python-version}}-pip-test-${{ hashFiles('setup.py','requirements.txt','test-requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.python-version}}-pip-test-
+          ${{ runner.os }}-${{ matrix.python-version}}-pip-
+          ${{ runner.os }}-${{ matrix.python-version}}-
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install setuptools wheel
+        python -m pip install flake8 pytest
+        python -m pip install -r test-requirements.txt
+        python -m pip install -r requirements.txt
+    - name: Build, install, and run
+      run: |
+        python setup.py sdist bdist_wheel
+        python -m pip -v install --find-links=dist capirca
+        aclgen --output_directory .\output --logtostderr
+        powershell Compress-Archive -Force output\* output.zip
+    - name: Upload generated policies
+      uses: actions/upload-artifact@v2
+      with:
+        name: capirca_output_${{ matrix.python-version }}
+        path: ./output.zip

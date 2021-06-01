@@ -1,0 +1,234 @@
+################
+### RULEBASE ###
+################
+
+# NOTE: makes sure zone names correspond to those specified in your firewall setup
+
+header {
+  comment:: "this is a sample policy for a zone based filter that generates"
+  comment:: "multiple output formats. It checks logging options, tcp, udp"
+  comment:: "and icmp type options."
+  target:: paloalto from-zone internal to-zone external
+  target:: srx from-zone internal to-zone external
+}
+
+term test-tcp-log-both {
+  comment:: "Testing log-both for tcp."
+  protocol:: tcp
+  logging:: log-both
+  action:: accept
+}
+
+term test-udp-log {
+  comment:: "Testing logging for udp."
+  protocol:: udp
+  logging:: true
+  action:: accept
+}
+
+term test-tcp-udp-any {
+  comment:: "Testing any port for tcp, udp,"
+  comment:: "`when destination-port is unspecified."
+  protocol:: tcp udp
+  action:: accept
+}
+
+term accept-honestdns {
+  comment:: "Allow name resolution using honestdns."
+  destination-address:: GOOGLE_DNS
+  destination-port:: DNS
+  protocol:: udp
+  action:: accept
+}
+
+term accept-icmp-specific-types {
+  comment:: "Allow ICMPv4, with icmp types, and test counters."
+  source-address:: INTERNAL
+  protocol:: icmp
+  icmp-type:: echo-request echo-reply
+  counter:: icmp-ping
+  action:: accept
+}
+
+term accept-igmp {
+  comment:: "Allow IGMP, and test syslog logging."
+  source-address:: INTERNAL
+  protocol:: igmp
+  action:: accept
+  logging:: syslog
+}
+
+term accept-traceroute-source-ports {
+  comment:: "Allow traceroute with source port range for udp."
+  protocol:: udp
+  source-port:: TRACEROUTE
+  action:: accept
+}
+
+term deny-to-bad-destinations {
+  comment:: "Deny to bad destinations."
+  destination-address:: RFC1918 BOGON RESERVED
+  action:: deny
+}
+
+header {
+  comment:: "this is a sample policy for a zone based filter that generates"
+  comment:: "multiple output formats. It checks tcp-established and udp "
+  comment:: "established options."
+  target:: paloalto from-zone external to-zone internal
+  target:: srx from-zone external to-zone internal
+}
+
+term accept-webserver-traffic {
+  comment:: "Allow webserver inbound traffic."
+  destination-address:: WEB_SERVERS
+  destination-port:: WEB_SERVICES
+  protocol:: tcp
+  action:: accept
+}
+
+term test-tcp-established {
+  comment:: "Allow tcp-established traffic."
+  comment:: "This should not be generated since this is a stateful policy."
+  destination-address:: MAIL_SERVERS WEB_SERVERS PUBLIC_NAT
+  protocol:: tcp
+  option:: tcp-established
+  action:: accept
+}
+
+term test-dns-replies {
+  comment:: "Allow DNS replies, and test udp established option."
+  comment:: "This should not be generated since this is a stateful policy."
+  source-port:: DNS
+  destination-address:: INTERNAL
+  protocol:: udp
+  option:: established
+  counter:: dns-replies
+  action:: accept
+}
+
+header {
+  comment:: "this is a sample policy for a zone based filter that generates"
+  comment:: "multiple output formats. It checks inet6 options and icmpv6."
+  target:: paloalto from-zone internal to-zone external inet6
+  target:: srx from-zone internal to-zone external inet6
+}
+
+term ipv6-accept-honestdns {
+  comment:: "Allow name resolution using honestdns."
+  destination-address:: GOOGLE_DNS
+  destination-port:: DNS
+  protocol:: udp
+  action:: accept
+}
+
+term accept-icmpv6-specific-types {
+  comment:: "Allow ICMPv6, with icmpv6 types."
+  protocol:: icmpv6
+  icmp-type:: echo-request echo-reply
+  action:: accept
+}
+
+term ipv6-deny-to-bad-destinations {
+  comment:: "Deny to bad destinations."
+  destination-address:: RFC1918 BOGON RESERVED
+  action:: deny
+}
+
+header {
+  comment:: "this is a sample policy for a zone based filter that generates"
+  comment:: "multiple output formats. It checks inet6 options."
+  target:: paloalto from-zone external to-zone internal inet6
+  target:: srx from-zone external to-zone internal inet6
+}
+
+term ipv6-accept-webserver-traffic {
+  comment:: "Allow webserver inbound traffic."
+  destination-address:: WEB_IPV6_SERVERS
+  destination-port:: WEB_SERVICES
+  protocol:: tcp
+  action:: accept
+}
+
+term test-tcp-established {
+  comment:: "Allow tcp-established traffic."
+  comment:: "This should not be generated since this is a stateful policy."
+  destination-address:: WEB_IPV6_SERVERS
+  protocol:: tcp
+  option:: tcp-established
+  action:: accept
+}
+
+term test-dns-replies {
+  comment:: "Allow DNS replies, and test udp established option."
+  comment:: "This should not be generated since this is a stateful policy."
+  source-port:: DNS
+  destination-address:: INTERNAL
+  protocol:: udp
+  option:: established
+  counter:: dns-replies
+  action:: accept
+}
+
+header {
+  comment:: "this is a test policy for a zone based filter that generates"
+  comment:: "multiple output formats. It checks inet6 options for IPv4 rules."
+  target:: paloalto from-zone unknown to-zone internal inet6
+  target:: srx from-zone unknown to-zone internal inet6
+}
+
+term test-inet6-webserver-traffic {
+  comment:: "Allow webserver inbound traffic."
+  comment:: "This should not be generated since this only has IPv4 addresses."
+  source-address:: RFC1918
+  destination-address:: WEB_SERVERS
+  protocol:: tcp
+  action:: accept
+}
+
+term test-inet6-tcp-icmp-traffic {
+  comment:: "Allow all tcp and icmp traffic."
+  comment:: "The icmp term should not be generated since this is inet6."
+  comment:: "The tcp term should be generated."
+  protocol:: tcp icmp
+  action:: accept
+}
+
+term test-inet6-tcp-icmpv6-traffic {
+  comment:: "Allow all tcp and icmpv6 traffic."
+  comment:: "This should be generated since this has no ports specified."
+  protocol:: tcp icmpv6
+  action:: accept
+}
+
+header {
+  comment:: "this is a test policy for a zone based filter that generates"
+  comment:: "multiple output formats. It checks inet options for IPv6 rules."
+  target:: paloalto from-zone unknown to-zone internal inet
+  target:: srx from-zone unknown to-zone internal inet
+}
+
+term test-inet-webserver-traffic {
+  comment:: "Allow webserver inbound IPv6 traffic."
+  comment:: "This should not be generated since this only has IPv6 addresses."
+  source-address:: PUBLIC_IPV6_SERVERS
+  destination-address:: WEB_IPV6_SERVERS
+  protocol:: tcp
+  action:: accept
+}
+
+term test-inet-tcp-icmp-traffic {
+  comment:: "Allow all tcp and icmp traffic."
+  comment:: "This should be generated since this has no ports specified."
+  protocol:: tcp icmp
+  action:: accept
+}
+
+term test-inet-tcp-icmpv6-traffic {
+  comment:: "Allow all tcp and icmpv6 traffic."
+  comment:: "The icmpv6 term should not be generated since this is inet."
+  comment:: "The tcp term should be generated."
+  protocol:: icmpv6 tcp
+  action:: accept
+}
+
