@@ -141,12 +141,14 @@ class ServiceMap(object):
   def __init__(self):
     self.entries = {}
 
-  def get_service_name(self, term_name, src_ports, ports, protocol):
+  def get_service_name(self, term_name, src_ports, ports, protocol, prefix=None):
     """Returns service name based on the provided ports and protocol."""
     if (src_ports, ports, protocol) in self.entries:
       return self.entries[(src_ports, ports, protocol)]["name"]
 
-    service_name = "service-%s-%s" % (term_name, protocol)
+    if prefix is None:
+      prefix = "service-"
+    service_name = "%s%s-%s" % (prefix, term_name, protocol)
 
     if len(service_name) > 63:
       raise PaloAltoFWNameTooLongError(
@@ -265,6 +267,21 @@ class Rule(object):
       for p in term.protocol:
         service_name = service_map.get_service_name(term.name,
                                                     src_ports, ports, p)
+        if service_name not in self.options["service"]:
+          self.options["service"].append(service_name)
+
+    elif "tcp" in term.protocol or "udp" in term.protocol:
+      for p in term.protocol:
+        if p not in ["tcp", "udp"]:
+          logging.warning(
+            "WARNING: Term %s in policy %s>%s contains port-less tcp "
+            "and/or udp with protocol %s.  Move %s to another term.",
+            term.name, self.options["from_zone"][0],
+            self.options["to_zone"][0], p, p)
+          continue
+        ports = pan_ports([("0", "65535")])
+        # use prefix "" to avoid service name clash with term named "any"
+        service_name = service_map.get_service_name("any", (), ports, p, "")
         if service_name not in self.options["service"]:
           self.options["service"].append(service_name)
 
