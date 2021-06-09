@@ -66,6 +66,34 @@ header {
 }
 """
 
+GOOD_HEADER_INET = """
+header {
+  comment:: "The general policy comment."
+  target:: gce INGRESS inet
+}
+"""
+
+GOOD_HEADER_EGRESS_INET = """
+header {
+  comment:: "The general policy comment."
+  target:: gce INGRESS inet
+}
+"""
+
+GOOD_HEADER_INET6 = """
+header {
+  comment:: "The general policy comment."
+  target:: gce INGRESS inet6
+}
+"""
+
+GOOD_HEADER_EGRESS_INET6 = """
+header {
+  comment:: "The general policy comment."
+  target:: gce EGRESS inet6
+}
+"""
+
 GOOD_TERM = """
 term good-term-1 {
   comment:: "DNS access from corp."
@@ -157,6 +185,16 @@ GOOD_TERM_INGRESS_SOURCETAG = """
 term good-term-1 {
   comment:: "Allow all GCE network internal traffic."
   source-tag:: internal-servers
+  protocol:: udp tcp
+  action:: accept
+}
+"""
+
+GOOD_TERM_INGRESS_ADDRESS_SOURCETAG = """
+term good-term-1 {
+  comment:: "Allow all GCE network internal traffic."
+  source-tag:: internal-servers
+  source-address:: CORP_EXTERNAL
   protocol:: udp tcp
   action:: accept
 }
@@ -272,6 +310,33 @@ term good-term-owners {
 }
 """
 
+GOOD_TERM_ICMP = """
+term good-term-ping {
+  comment:: "Good term."
+  source-address:: CORP_EXTERNAL
+  protocol:: icmp
+  action:: accept
+}
+"""
+
+GOOD_TERM_ICMPV6 = """
+term good-term-pingv6 {
+  comment:: "Good term."
+  source-address:: CORP_EXTERNAL
+  protocol:: icmpv6
+  action:: accept
+}
+"""
+
+GOOD_TERM_IGMP = """
+term good-term-igmp {
+  comment:: "Good term."
+  source-address:: CORP_EXTERNAL
+  protocol:: igmp
+  action:: accept
+}
+"""
+
 BAD_TERM_NO_SOURCE = """
 term bad-term-no-source {
   comment:: "Management access from corp."
@@ -368,6 +433,36 @@ term bad-term-source-dest-tag {
   action:: accept
 }
 """
+
+BAD_TERM_PORTS_COUNT = """
+term bad-term-ports-count {
+  comment:: "This term has way too many ports."
+  source-address:: CORP_EXTERNAL
+  source-tag:: ssh-bastion
+  destination-port:: SSH
+  protocol:: tcp
+  action:: accept
+}
+"""
+
+SAMPLE_TAG = 'ssh-bastions '
+
+BAD_TERM_SOURCE_TAGS_COUNT = """
+term bad-term-source-tags-count {{
+  comment:: "This term has way too many source tags."
+  protocol:: tcp
+  action:: accept
+  source-tag:: {many_source_tags}
+}}""".format(many_source_tags=SAMPLE_TAG*(gce.Term._TERM_SOURCE_TAGS_LIMIT+1))
+
+BAD_TERM_TARGET_TAGS_COUNT = """
+term bad-term-target-tags-count {{
+  comment:: "This term has way too many target tags."
+  source-address:: CORP_EXTERNAL
+  protocol:: tcp
+  action:: accept
+  destination-tag:: {many_target_tags}
+}}""".format(many_target_tags=SAMPLE_TAG*(gce.Term._TERM_TARGET_TAGS_LIMIT+1))
 
 GOOD_TERM_EXCLUDE_RANGE = """
 [
@@ -506,6 +601,16 @@ TEST_EXCLUDE_IPS = [nacaddr.IP('10.4.3.2/32')]
 TEST_INCLUDE_RANGE = [nacaddr.IP('10.128.0.0/9')]
 
 TEST_EXCLUDE_RANGE = [nacaddr.IP('10.240.0.0/16')]
+
+ANY_IPS = [nacaddr.IP('0.0.0.0/0'), nacaddr.IP('::/0')]
+
+TEST_IPV4_ONLY = [nacaddr.IP('10.2.3.4/32')]
+
+TEST_IPV6_ONLY = [nacaddr.IP('2001:4860:8000::5/128')]
+
+_TERM_SOURCE_TAGS_LIMIT = 30
+_TERM_TARGET_TAGS_LIMIT = 70
+_TERM_PORTS_LIMIT = 256
 
 
 class GCETest(parameterized.TestCase):
@@ -909,6 +1014,203 @@ class GCETest(parameterized.TestCase):
                                self.naming)
       acl = gce.GCE(pol, EXP_INFO)
       self.assertIsNotNone(str(acl))
+
+  def testInet(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER_INET + GOOD_TERM, self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertIn('10.2.3.4/32', str(acl))
+    self.assertNotIn('2001:4860:8000::5/128', str(acl))
+
+  def testInet6(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER_INET6 + GOOD_TERM, self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertIn('2001:4860:8000::5/128', str(acl))
+    self.assertNotIn('10.2.3.4/32', str(acl))
+
+  def testInetWithV6AddressesOnly(self):
+    self.naming.GetNetAddr.return_value = TEST_IPV6_ONLY
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER_INET + GOOD_TERM + DEFAULT_DENY, self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertNotIn('10.2.3.4/32', str(acl))
+    self.assertNotIn('2001:4860:8000::5/128', str(acl))
+
+  def testInet6WithV4AddressesOnly(self):
+    self.naming.GetNetAddr.return_value = TEST_IPV4_ONLY
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER_INET6 + GOOD_TERM + DEFAULT_DENY, self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertNotIn('2001:4860:8000::5/128', str(acl))
+    self.assertNotIn('10.2.3.4/32', str(acl))
+
+  def testInetWithSourceTag(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(
+            GOOD_HEADER_INET + GOOD_TERM_INGRESS_ADDRESS_SOURCETAG,
+            self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertIn('10.2.3.4/32', str(acl))
+    self.assertNotIn('2001:4860:8000::5/128', str(acl))
+    self.assertIn('internal-servers', str(acl))
+
+  def testInet6WithSourceTag(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(
+            GOOD_HEADER_INET6 + GOOD_TERM_INGRESS_ADDRESS_SOURCETAG,
+            self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertIn('2001:4860:8000::5/128', str(acl))
+    self.assertNotIn('10.2.3.4/32', str(acl))
+    self.assertIn('internal-servers', str(acl))
+
+  def testInetWithSourceTagAndV6Addresses(self):
+    self.naming.GetNetAddr.return_value = TEST_IPV6_ONLY
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(
+            GOOD_HEADER_INET + GOOD_TERM_INGRESS_ADDRESS_SOURCETAG +
+            DEFAULT_DENY, self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertNotIn('10.2.3.4/32', str(acl))
+    self.assertNotIn('2001:4860:8000::5/128', str(acl))
+    self.assertNotIn('internal-servers', str(acl))
+
+  def testInet6WithSourceTagAndV4Addresses(self):
+    self.naming.GetNetAddr.return_value = TEST_IPV4_ONLY
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(
+            GOOD_HEADER_INET6 + GOOD_TERM_INGRESS_ADDRESS_SOURCETAG +
+            DEFAULT_DENY, self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertNotIn('2001:4860:8000::5/128', str(acl))
+    self.assertNotIn('10.2.3.4/32', str(acl))
+    self.assertNotIn('internal-servers', str(acl))
+
+  def testInet6DefaultDenyEgressCreation(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(
+            GOOD_HEADER_EGRESS_INET6 + GOOD_TERM_EGRESS + DEFAULT_DENY,
+            self.naming), EXP_INFO)
+    self.assertNotIn('INGRESS', str(acl))
+    self.assertIn('EGRESS', str(acl))
+    self.assertIn('"priority": 65534', str(acl))
+    self.assertIn('::/0', str(acl))
+    self.assertNotIn('0.0.0.0/0', str(acl))
+
+  def testInet6DefaultDenyIngressCreation(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(GOOD_HEADER_INET6 +
+                                     GOOD_TERM_INGRESS_SOURCETAG +
+                                     DEFAULT_DENY, self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertIn('"priority": 65534', str(acl))
+    self.assertIn('::/0', str(acl))
+    self.assertNotIn('0.0.0.0/0', str(acl))
+
+  def testIcmpInet(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER_INET + GOOD_TERM_ICMP,
+                           self.naming), EXP_INFO)
+    self.assertIn('icmp', str(acl))
+    self.assertNotIn('58', str(acl))
+
+  def testIcmpv6Inet6(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER_INET6 + GOOD_TERM_ICMPV6,
+                           self.naming), EXP_INFO)
+    self.assertIn('58', str(acl))
+    self.assertNotIn('icmp', str(acl))
+
+  def testIcmpInet6(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER_INET6 + GOOD_TERM_ICMP,
+                           self.naming), EXP_INFO)
+    self.assertNotIn('icmp', str(acl))
+
+  def testIcmpv6Inet(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER_INET + GOOD_TERM_ICMPV6,
+                           self.naming), EXP_INFO)
+    self.assertNotIn('58', str(acl))
+
+  def testIgmpInet(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER_INET + GOOD_TERM_IGMP,
+                           self.naming), EXP_INFO)
+    self.assertIn('2', str(acl))
+
+  def testIgmpInet6(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER_INET6 + GOOD_TERM_IGMP,
+                           self.naming), EXP_INFO)
+    self.assertNotIn('2', str(acl))
+
+  def testPortsCountExceededError(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.return_value = list(
+        str(i) for i in range(1024, 1024 + (gce.Term._TERM_PORTS_LIMIT)*3, 2))
+    self.assertRaisesRegex(
+        gce.GceFirewallError,
+        'GCE firewall rule exceeded number of ports per rule: ' +
+        'bad-term-ports-count',
+        gce.GCE,
+        policy.ParsePolicy(
+            GOOD_HEADER_INET + BAD_TERM_PORTS_COUNT, self.naming),
+        EXP_INFO)
+    self.naming.GetServiceByProto.assert_called_once_with('SSH', 'tcp')
+
+  def testSourceTagCountExceededError(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.assertRaisesRegex(
+        gce.GceFirewallError,
+        'GCE firewall rule exceeded number of source tags per rule: ' +
+        'bad-term-source-tags-count',
+        gce.GCE,
+        policy.ParsePolicy(
+            GOOD_HEADER_INET + BAD_TERM_SOURCE_TAGS_COUNT, self.naming),
+        EXP_INFO)
+
+  def testTargetTagCountExceededError(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.assertRaisesRegex(
+        gce.GceFirewallError,
+        'GCE firewall rule exceeded number of target tags per rule: ' +
+        'bad-term-target-tags-count',
+        gce.GCE,
+        policy.ParsePolicy(
+            GOOD_HEADER_INET + BAD_TERM_TARGET_TAGS_COUNT, self.naming),
+        EXP_INFO)
 
   def testTermOwners(self):
     self.naming.GetNetAddr.return_value = TEST_IPS

@@ -34,7 +34,7 @@ import re
 
 from typing import Dict, Text, Any
 
-from capirca.lib import aclgenerator
+from capirca.lib import gcp
 from capirca.lib import nacaddr
 import six
 from six.moves import range
@@ -74,13 +74,18 @@ def IsDefaultDeny(term):
   return True
 
 
-class Term(aclgenerator.Term):
+class Term(gcp.Term):
   """Creates the term for the GCE firewall."""
 
   ACTION_MAP = {'accept': 'allowed',
                 'deny': 'denied'}
-  # Restrict the number of terms to 256. Proto supports up to 256
+  # Restrict the number of addresses per term to 256.
+  # Similar restrictions apply to source and target tags, and ports.
+  # Details: https://cloud.google.com/vpc/docs/quota#per_network_2
   _TERM_ADDRESS_LIMIT = 256
+  _TERM_SOURCE_TAGS_LIMIT = 30
+  _TERM_TARGET_TAGS_LIMIT = 70
+  _TERM_PORTS_LIMIT = 256
 
   # Firewall rule name has to match specific RE:
   # The first character must be a lowercase letter, and all following characters
@@ -97,11 +102,12 @@ class Term(aclgenerator.Term):
       ])
 
   # Any protocol not in _ALLOW_PROTO_NAME must be passed by number.
-  ALWAYS_PROTO_NUM = set(aclgenerator.Term.PROTO_MAP.keys()) - _ALLOW_PROTO_NAME
+  ALWAYS_PROTO_NUM = set(gcp.Term.PROTO_MAP.keys()) - _ALLOW_PROTO_NAME
 
-  def __init__(self, term):
+  def __init__(self, term, inet_version='inet'):
     super(Term, self).__init__(term)
     self.term = term
+    self.inet_version = inet_version
 
     self._validateDirection()
     if self.term.source_address_exclude and not self.term.source_address:
@@ -189,6 +195,16 @@ class Term(aclgenerator.Term):
       term_dict['name'] = '%s-%s' % (
           self.term.network.split('/')[-1], term_dict['name'])
 
+    # Checking counts of tags, and ports to see if they exceeded limits.
+    if len(self.term.source_tag) > self._TERM_SOURCE_TAGS_LIMIT:
+      raise GceFirewallError(
+          'GCE firewall rule exceeded number of source tags per rule: %s' %
+          self.term.name)
+    if len(self.term.destination_tag) > self._TERM_TARGET_TAGS_LIMIT:
+      raise GceFirewallError(
+          'GCE firewall rule exceeded number of target tags per rule: %s' %
+          self.term.name)
+
     if self.term.source_tag:
       if self.term.direction == 'INGRESS':
         term_dict['sourceTags'] = self.term.source_tag
@@ -200,10 +216,29 @@ class Term(aclgenerator.Term):
       term_dict['priority'] = self.term.priority
 
     rules = []
-    saddrs = sorted(self.term.GetAddressOfVersion('source_address', 4),
+    # TODO(abhindes) correctly account for 'mixed' as well
+    term_af = self.AF_MAP.get(self.inet_version)
+    saddrs = sorted(self.term.GetAddressOfVersion('source_address', term_af),
                     key=ipaddress.get_mixed_type_key)
-    daddrs = sorted(self.term.GetAddressOfVersion('destination_address', 4),
-                    key=ipaddress.get_mixed_type_key)
+    daddrs = sorted(
+        self.term.GetAddressOfVersion('destination_address', term_af),
+        key=ipaddress.get_mixed_type_key)
+
+    # If the address got filtered out and is empty due to address family, we
+    # don't render the term. At this point of term processing, the direction has
+    # already been validated, so we can just log and return empty rule.
+    if self.term.source_address and not saddrs:
+      logging.warning(
+          'WARNING: Term %s is not being rendered for %s, '
+          'because there are no addresses of that family.', self.term.name,
+          self.inet_version)
+      return []
+    if self.term.destination_address and not daddrs:
+      logging.warning(
+          'WARNING: Term %s is not being rendered for %s, '
+          'because there are no addresses of that family.', self.term.name,
+          self.inet_version)
+      return []
 
     if not self.term.protocol:
       raise GceFirewallError(
@@ -214,18 +249,59 @@ class Term(aclgenerator.Term):
     if self.term.logging:
       proto_dict['logConfig'] = {'enable': True}
 
+    filtered_protocols = []
     for proto in self.term.protocol:
+      # ICMP filtering by inet_version
+      # TODO(abhindes) deal with "mixed" correctly
+      # Convert protocol to number for uniformity of comparison.
+      # PROTO_MAP always returns protocol number.
+      if proto in self._ALLOW_PROTO_NAME:
+        proto_num = self.PROTO_MAP[proto]
+      else:
+        proto_num = proto
+      if proto_num == self.PROTO_MAP['icmp'] and self.inet_version == 'inet6':
+        logging.warning(
+            'WARNING: Term %s is being rendered for inet6, ICMP '
+            'protocol will not be rendered.', self.term.name)
+        continue
+      if proto_num == self.PROTO_MAP['icmpv6'] and self.inet_version == 'inet':
+        logging.warning(
+            'WARNING: Term %s is being rendered for inet, ICMPv6 '
+            'protocol will not be rendered.', self.term.name)
+        continue
+      if proto_num == self.PROTO_MAP['igmp'] and self.inet_version == 'inet6':
+        logging.warning(
+            'WARNING: Term %s is being rendered for inet6, IGMP '
+            'protocol will not be rendered.', self.term.name)
+        continue
+      filtered_protocols.append(proto)
+    # If there is no protocol left after ICMP/IGMP filtering, drop this term.
+    if not filtered_protocols:
+      return []
+    for proto in filtered_protocols:
+      # If the protocol name is not supported, protocol number is used.
+      # This is done by default in policy.py.
+      if proto not in self._ALLOW_PROTO_NAME:
+        logging.info(
+            'INFO: Term %s is being rendered using protocol number',
+            self.term.name)
       dest = {
           'IPProtocol': proto
           }
 
       if self.term.destination_port:
-        ports = dest.setdefault('ports', [])
+        ports = []
         for start, end in self.term.destination_port:
           if start == end:
             ports.append(str(start))
           else:
             ports.append('%d-%d' % (start, end))
+        if len(ports) > self._TERM_PORTS_LIMIT:
+          raise GceFirewallError(
+              'GCE firewall rule exceeded number of ports per rule: %s' %
+              self.term.name)
+        dest['ports'] = ports
+
       action = self.ACTION_MAP[self.term.action[0]]
       dict_val = []
       if action in proto_dict:
@@ -268,12 +344,16 @@ class Term(aclgenerator.Term):
     return rules
 
 
-class GCE(aclgenerator.ACLGenerator):
+class GCE(gcp.GCP):
   """A GCE firewall policy object."""
 
   _PLATFORM = 'gce'
   SUFFIX = '.gce'
-  _SUPPORTED_AF = set(('inet'))
+  _SUPPORTED_AF = frozenset(('inet', 'inet6'))
+  _ANY_IP = {
+      'inet': nacaddr.IP('0.0.0.0/0'),
+      'inet6': nacaddr.IP('::/0'),
+  }
   # Supported is 63 but we need to account for dynamic updates when the term
   # is rendered (which can add proto and a counter).
   _TERM_MAX_LENGTH = 53
@@ -330,6 +410,12 @@ class GCE(aclgenerator.ACLGenerator):
           if i in filter_options:
             direction = i
             filter_options.remove(i)
+      # Get the address family if set.
+      address_family = 'inet'
+      for i in self._SUPPORTED_AF:
+        if i in filter_options:
+          address_family = i
+          filter_options.remove(i)
 
       for opt in filter_options:
         try:
@@ -351,13 +437,11 @@ class GCE(aclgenerator.ACLGenerator):
         terms[-1].protocol = ['all']
         terms[-1].priority = 65534
         if direction == 'EGRESS':
-          terms[-1].destination_address = [nacaddr.IP('0.0.0.0/0'),
-                                           nacaddr.IP('::/0')]
+          if address_family != 'mixed':
+            terms[-1].destination_address = [self._ANY_IP[address_family]]
         else:
-          terms[-1].source_address = [
-              nacaddr.IP('0.0.0.0/0'),
-              nacaddr.IP('::/0')
-          ]
+          if address_family != 'mixed':
+            terms[-1].source_address = [self._ANY_IP[address_family]]
 
       for term in terms:
         if term.stateless_reply:
@@ -388,7 +472,7 @@ class GCE(aclgenerator.ACLGenerator):
           raise GceFirewallError(
               'GCE firewall does not support term options.')
 
-        for rules in Term(term).ConvertToDict():
+        for rules in Term(term, address_family).ConvertToDict():
           logging.debug('Attribute count of rule %s is: %d', term.name,
                         GetAttributeCount(rules))
           total_attribute_count += GetAttributeCount(rules)
