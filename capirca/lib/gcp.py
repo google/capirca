@@ -150,3 +150,17 @@ def TruncateString(raw_string, max_length):
   if len(raw_string) > max_length:
     return raw_string[:max_length]
   return raw_string
+
+
+def GetIpv6TermName(term_name):
+  """Returns the equivalent term name for IPv6 terms.
+
+  Args:
+    term_name: A string.
+
+  Returns:
+    string: The IPv6 requivalent term name.
+  """
+
+  return '%s-%s' % (term_name, 'v6')
+

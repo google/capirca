@@ -26,6 +26,7 @@ from absl.testing import parameterized
 
 from capirca.lib import aclgenerator
 from capirca.lib import gce
+from capirca.lib import gcp
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
@@ -91,6 +92,20 @@ GOOD_HEADER_EGRESS_INET6 = """
 header {
   comment:: "The general policy comment."
   target:: gce EGRESS inet6
+}
+"""
+
+GOOD_HEADER_MIXED = """
+header {
+  comment:: "The general policy comment."
+  target:: gce INGRESS mixed
+}
+"""
+
+GOOD_HEADER_EGRESS_MIXED = """
+header {
+  comment:: "The general policy comment."
+  target:: gce EGRESS mixed
 }
 """
 
@@ -1211,6 +1226,189 @@ class GCETest(parameterized.TestCase):
         policy.ParsePolicy(
             GOOD_HEADER_INET + BAD_TERM_TARGET_TAGS_COUNT, self.naming),
         EXP_INFO)
+
+  def testMixed(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER_MIXED + GOOD_TERM, self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertIn('2001:4860:8000::5/128', str(acl))
+    self.assertIn('10.2.3.4/32', str(acl))
+
+  def testInetIsDefault(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertNotIn('2001:4860:8000::5/128', str(acl))
+    self.assertIn('10.2.3.4/32', str(acl))
+
+  def testMixedWithV6AddressesOnly(self):
+    self.naming.GetNetAddr.return_value = TEST_IPV6_ONLY
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER_MIXED + GOOD_TERM + DEFAULT_DENY, self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertNotIn('10.2.3.4/32', str(acl))
+    self.assertIn('2001:4860:8000::5/128', str(acl))
+
+  def testMixedWithV4AddressesOnly(self):
+    self.naming.GetNetAddr.return_value = TEST_IPV4_ONLY
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER_MIXED + GOOD_TERM + DEFAULT_DENY, self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertNotIn('2001:4860:8000::5/128', str(acl))
+    self.assertIn('10.2.3.4/32', str(acl))
+
+  def testMixedIsSeparateRules(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(
+        GOOD_HEADER_MIXED + GOOD_TERM + DEFAULT_DENY, self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertIn('2001:4860:8000::5/128', str(acl))
+    self.assertIn('10.2.3.4/32', str(acl))
+    self.assertIn('good-term-1', str(acl))
+    self.assertIn(gcp.GetIpv6TermName('good-term-1'), str(acl))
+
+  def testMixedWithSourceTag(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(
+            GOOD_HEADER_MIXED + GOOD_TERM_INGRESS_ADDRESS_SOURCETAG,
+            self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertIn('10.2.3.4/32', str(acl))
+    self.assertIn('2001:4860:8000::5/128', str(acl))
+    self.assertIn('internal-servers', str(acl))
+    self.assertIn(gcp.GetIpv6TermName('good-term-1'), str(acl))
+
+  def testMixedWithSourceTagOnly(self):
+    self.naming.GetNetAddr.return_value = []
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(
+            GOOD_HEADER_MIXED + GOOD_TERM_INGRESS_ADDRESS_SOURCETAG,
+            self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertNotIn('10.2.3.4/32', str(acl))
+    self.assertNotIn('2001:4860:8000::5/128', str(acl))
+    self.assertIn('internal-servers', str(acl))
+    self.assertNotIn(gcp.GetIpv6TermName('good-term-1'), str(acl))
+
+  def testMixedWithSourceTagAndV6Addresses(self):
+    self.naming.GetNetAddr.return_value = TEST_IPV6_ONLY
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(
+            GOOD_HEADER_MIXED + GOOD_TERM_INGRESS_ADDRESS_SOURCETAG +
+            DEFAULT_DENY, self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertNotIn('10.2.3.4/32', str(acl))
+    self.assertIn('2001:4860:8000::5/128', str(acl))
+    self.assertIn('internal-servers', str(acl))
+    self.assertIn(gcp.GetIpv6TermName('good-term-1'), str(acl))
+
+  def testMixedWithSourceTagAndV4Addresses(self):
+    self.naming.GetNetAddr.return_value = TEST_IPV4_ONLY
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(
+            GOOD_HEADER_MIXED + GOOD_TERM_INGRESS_ADDRESS_SOURCETAG +
+            DEFAULT_DENY, self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertNotIn('2001:4860:8000::5/128', str(acl))
+    self.assertIn('10.2.3.4/32', str(acl))
+    self.assertIn('internal-servers', str(acl))
+    self.assertNotIn(gcp.GetIpv6TermName('good-term-1'), str(acl))
+
+  def testMixedWithEgressSourceTag(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(
+            GOOD_HEADER_EGRESS_MIXED + GOOD_TERM_EGRESS_SOURCETAG,
+            self.naming), EXP_INFO)
+    self.assertNotIn('INGRESS', str(acl))
+    self.assertIn('EGRESS', str(acl))
+    self.assertIn('10.2.3.4/32', str(acl))
+    self.assertIn('2001:4860:8000::5/128', str(acl))
+    self.assertIn('dns-servers', str(acl))
+    self.assertIn(gcp.GetIpv6TermName('good-term-1-e'), str(acl))
+
+  def testMixedDefaultDenyEgressCreation(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(
+            GOOD_HEADER_EGRESS_MIXED + GOOD_TERM_EGRESS + DEFAULT_DENY,
+            self.naming), EXP_INFO)
+    self.assertNotIn('INGRESS', str(acl))
+    self.assertIn('EGRESS', str(acl))
+    self.assertIn('"priority": 65534', str(acl))
+    self.assertIn('default-deny-e', str(acl))
+    self.assertIn(gcp.GetIpv6TermName('default-deny-e'), str(acl))
+    self.assertIn('::/0', str(acl))
+    self.assertIn('0.0.0.0/0', str(acl))
+
+  def testMixedDefaultDenyIngressCreation(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(policy.ParsePolicy(GOOD_HEADER_MIXED +
+                                     GOOD_TERM_INGRESS_SOURCETAG +
+                                     DEFAULT_DENY, self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertIn('"priority": 65534', str(acl))
+    self.assertIn('default-deny', str(acl))
+    self.assertIn(gcp.GetIpv6TermName('default-deny'), str(acl))
+    self.assertIn('::/0', str(acl))
+    self.assertIn('0.0.0.0/0', str(acl))
+
+  def testIcmpMixed(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER_MIXED + GOOD_TERM_ICMP,
+                           self.naming), EXP_INFO)
+    self.assertIn('icmp', str(acl))
+    self.assertNotIn('58', str(acl))
+    self.assertIn('10.2.3.4/32', str(acl))
+    self.assertNotIn('2001:4860:8000::5/128', str(acl))
+    self.assertNotIn(gcp.GetIpv6TermName('good-term-1'), str(acl))
+
+  def testIcmpv6Mixed(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER_MIXED + GOOD_TERM_ICMPV6,
+                           self.naming), EXP_INFO)
+    self.assertIn('58', str(acl))
+    self.assertNotIn('icmp', str(acl))
+    self.assertNotIn('10.2.3.4/32', str(acl))
+    self.assertIn('2001:4860:8000::5/128', str(acl))
+    self.assertIn(gcp.GetIpv6TermName('good-term-pingv6'), str(acl))
+
+  def testIgmpMixed(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER_MIXED + GOOD_TERM_IGMP,
+                           self.naming), EXP_INFO)
+    self.assertIn('2', str(acl))
+    self.assertIn('10.2.3.4/32', str(acl))
+    self.assertNotIn('2001:4860:8000::5/128', str(acl))
+    self.assertNotIn(gcp.GetIpv6TermName('good-term-pingv6'), str(acl))
 
   def testTermOwners(self):
     self.naming.GetNetAddr.return_value = TEST_IPS

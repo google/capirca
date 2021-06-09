@@ -74,6 +74,12 @@ def IsDefaultDeny(term):
   return True
 
 
+
+def GetNextPriority(priority):
+  """Get the priority for the next rule."""
+  return priority
+
+
 class Term(gcp.Term):
   """Creates the term for the GCE firewall."""
 
@@ -104,10 +110,14 @@ class Term(gcp.Term):
   # Any protocol not in _ALLOW_PROTO_NAME must be passed by number.
   ALWAYS_PROTO_NUM = set(gcp.Term.PROTO_MAP.keys()) - _ALLOW_PROTO_NAME
 
-  def __init__(self, term, inet_version='inet'):
+  def __init__(self, term, inet_version='inet', policy_inet_version='inet'):
     super(Term, self).__init__(term)
     self.term = term
     self.inet_version = inet_version
+    # This is to handle mixed, where the policy_inet_version is mixed,
+    # but the term inet version is either inet/inet6.
+    # This is only useful for term name and priority.
+    self.policy_inet_version = policy_inet_version
 
     self._validateDirection()
     if self.term.source_address_exclude and not self.term.source_address:
@@ -194,6 +204,13 @@ class Term(gcp.Term):
       term_dict['network'] = self.term.network
       term_dict['name'] = '%s-%s' % (
           self.term.network.split('/')[-1], term_dict['name'])
+    # Identify if this is inet6 processing for a term under a mixed policy.
+    mixed_policy_inet6_term = False
+    if self.policy_inet_version == 'mixed' and self.inet_version == 'inet6':
+      mixed_policy_inet6_term = True
+    # Update term name to have the IPv6 suffix for the inet6 rule.
+    if mixed_policy_inet6_term:
+      term_dict['name'] = gcp.GetIpv6TermName(term_dict['name'])
 
     # Checking counts of tags, and ports to see if they exceeded limits.
     if len(self.term.source_tag) > self._TERM_SOURCE_TAGS_LIMIT:
@@ -214,10 +231,26 @@ class Term(gcp.Term):
       term_dict['targetTags'] = self.term.destination_tag
     if self.term.priority:
       term_dict['priority'] = self.term.priority
+      # Update term priority for the inet6 rule.
+      if mixed_policy_inet6_term:
+        term_dict['priority'] = GetNextPriority(term_dict['priority'])
 
     rules = []
-    # TODO(abhindes) correctly account for 'mixed' as well
+    # If 'mixed' ends up in indvidual term inet_version, something has gone
+    # horribly wrong. The only valid values are inet/inet6.
     term_af = self.AF_MAP.get(self.inet_version)
+    if self.inet_version == 'mixed':
+      raise GceFirewallError(
+          'GCE firewall rule has incorrect inet_version for rule: %s' %
+          self.term.name)
+
+    # Exit early for inet6 processing of mixed rules that have only tags,
+    # and no IP addresses, since this is handled in the inet processing.
+    if mixed_policy_inet6_term:
+      if not self.term.source_address and not self.term.destination_address:
+        if 'targetTags' in term_dict or 'sourceTags' in term_dict:
+          return []
+
     saddrs = sorted(self.term.GetAddressOfVersion('source_address', term_af),
                     key=ipaddress.get_mixed_type_key)
     daddrs = sorted(
@@ -225,8 +258,8 @@ class Term(gcp.Term):
         key=ipaddress.get_mixed_type_key)
 
     # If the address got filtered out and is empty due to address family, we
-    # don't render the term. At this point of term processing, the direction has
-    # already been validated, so we can just log and return empty rule.
+    # don't render the term. At this point of term processing, the direction
+    # has already been validated, so we can just log and return empty rule.
     if self.term.source_address and not saddrs:
       logging.warning(
           'WARNING: Term %s is not being rendered for %s, '
@@ -252,7 +285,7 @@ class Term(gcp.Term):
     filtered_protocols = []
     for proto in self.term.protocol:
       # ICMP filtering by inet_version
-      # TODO(abhindes) deal with "mixed" correctly
+      # Since each term has inet_version, 'mixed' is correctly processed here.
       # Convert protocol to number for uniformity of comparison.
       # PROTO_MAP always returns protocol number.
       if proto in self._ALLOW_PROTO_NAME:
@@ -349,7 +382,7 @@ class GCE(gcp.GCP):
 
   _PLATFORM = 'gce'
   SUFFIX = '.gce'
-  _SUPPORTED_AF = frozenset(('inet', 'inet6'))
+  _SUPPORTED_AF = frozenset(('inet', 'inet6', 'mixed'))
   _ANY_IP = {
       'inet': nacaddr.IP('0.0.0.0/0'),
       'inet6': nacaddr.IP('::/0'),
@@ -438,10 +471,19 @@ class GCE(gcp.GCP):
         terms[-1].priority = 65534
         if direction == 'EGRESS':
           if address_family != 'mixed':
+            # Default deny also gets processed as part of terms processing.
+            # The name and priority get updated there.
             terms[-1].destination_address = [self._ANY_IP[address_family]]
+          else:
+            terms[-1].destination_address = [self._ANY_IP['inet'],
+                                             self._ANY_IP['inet6']]
         else:
           if address_family != 'mixed':
             terms[-1].source_address = [self._ANY_IP[address_family]]
+          else:
+            terms[-1].source_address = [
+                self._ANY_IP['inet'], self._ANY_IP['inet6']
+            ]
 
       for term in terms:
         if term.stateless_reply:
@@ -456,7 +498,7 @@ class GCE(gcp.GCP):
           term.name += '-e'
         term.name = self.FixTermLength(term.name)
         if term.name in term_names:
-          raise GceFirewallError('Duplicate term name')
+          raise GceFirewallError('Duplicate term name %s' % term.name)
         term_names.add(term.name)
 
         term.direction = direction
@@ -472,18 +514,26 @@ class GCE(gcp.GCP):
           raise GceFirewallError(
               'GCE firewall does not support term options.')
 
-        for rules in Term(term, address_family).ConvertToDict():
-          logging.debug('Attribute count of rule %s is: %d', term.name,
-                        GetAttributeCount(rules))
-          total_attribute_count += GetAttributeCount(rules)
-          total_rule_count += 1
-          if max_attribute_count and total_attribute_count > max_attribute_count:
-            # Stop processing rules as soon as the attribute count is over the
-            # limit.
-            raise ExceededAttributeCountError(
-                'Attribute count (%d) for %s exceeded the maximum (%d)' % (
-                    total_attribute_count, filter_name, max_attribute_count))
-          self.gce_policies.append(rules)
+        # Handle mixed for each indvidual term as inet and inet6.
+        # inet/inet6 are treated the same.
+        term_address_families = []
+        if address_family == 'mixed':
+          term_address_families = ['inet', 'inet6']
+        else:
+          term_address_families = [address_family]
+        for term_af in term_address_families:
+          for rules in Term(term, term_af, address_family).ConvertToDict():
+            logging.debug('Attribute count of rule %s is: %d', term.name,
+                          GetAttributeCount(rules))
+            total_attribute_count += GetAttributeCount(rules)
+            total_rule_count += 1
+            if max_attribute_count and total_attribute_count > max_attribute_count:
+              # Stop processing rules as soon as the attribute count is over the
+              # limit.
+              raise ExceededAttributeCountError(
+                  'Attribute count (%d) for %s exceeded the maximum (%d)' %
+                  (total_attribute_count, filter_name, max_attribute_count))
+            self.gce_policies.append(rules)
     logging.info('Total rule count of policy %s is: %d', filter_name,
                  total_rule_count)
     logging.info('Total attribute count of policy %s is: %d', filter_name,
