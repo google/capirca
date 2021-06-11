@@ -24,6 +24,7 @@ import re
 import unittest
 
 from absl import logging
+from absl.testing import parameterized
 from capirca.lib import aclgenerator
 from capirca.lib import juniper
 from capirca.lib import nacaddr
@@ -46,6 +47,11 @@ header {
 GOOD_HEADER_V6 = """
 header {
   target:: juniper test-filter inet6
+}
+"""
+GOOD_HEADER_MIXED = """
+header {
+  target:: juniper test-filter mixed
 }
 """
 GOOD_HEADER_BRIDGE = """
@@ -539,6 +545,16 @@ term flex-match-term-1 {
 }
 """
 
+MIXED_TESTING_TERM = """
+term good-term {
+  protocol:: tcp
+  source-address:: SOME_HOST
+  destination-port:: SMTP
+  destination-address:: SOME_OTHER_HOST
+  action:: accept
+}
+"""
+
 SUPPORTED_TOKENS = frozenset([
     'action',
     'address',
@@ -651,7 +667,7 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class JuniperTest(unittest.TestCase):
+class JuniperTest(parameterized.TestCase):
 
   def setUp(self):
     super(JuniperTest, self).setUp()
@@ -1538,6 +1554,136 @@ class JuniperTest(unittest.TestCase):
                       policy.ParsePolicy,
                       GOOD_HEADER_V6 + BAD_FLEX_MATCH_TERM_4,
                       self.naming)
+
+  @parameterized.named_parameters(
+      ('MIXED_TO_V4',
+       [[nacaddr.IPv4('0.0.0.0/1'),
+         nacaddr.IPv6('2001::/33')], [nacaddr.IPv4('192.168.0.0/24')]], [
+             '            term good-term {\n' +
+             '                from {\n' +
+             '                    source-address {\n' +
+             '                        0.0.0.0/1;\n' +
+             '                    }\n' +
+             '                    destination-address {\n' +
+             '                        192.168.0.0/24;\n' +
+             '                    }'
+         ], ['2001::/33']),
+      ('V4_TO_MIXED', [
+          [nacaddr.IPv4('192.168.0.0/24')],
+          [nacaddr.IPv4('0.0.0.0/1'),
+           nacaddr.IPv6('2001::/33')],
+      ], [
+          '            term good-term {\n' +
+          '                from {\n' +
+          '                    source-address {\n' +
+          '                        192.168.0.0/24;\n' +
+          '                    }\n' +
+          '                    destination-address {\n' +
+          '                        0.0.0.0/1;\n' +
+          '                    }'
+      ], ['2001::/33']),
+      ('MIXED_TO_V6',
+       [[nacaddr.IPv4('0.0.0.0/1'),
+         nacaddr.IPv6('2001::/33')], [nacaddr.IPv6('2201::/48')]], [
+             '            term good-term {\n' +
+             '                from {\n' +
+             '                    source-address {\n' +
+             '                        2001::/33;\n' +
+             '                    }\n' +
+             '                    destination-address {\n' +
+             '                        2201::/48;\n' +
+             '                    }'
+         ], ['0.0.0.0/1']),
+      ('V6_TO_MIXED', [[
+          nacaddr.IPv6('2201::/48')
+      ], [nacaddr.IPv4('0.0.0.0/1'),
+          nacaddr.IPv6('2001::/33')]], [
+              '            term good-term {\n' +
+              '                from {\n' +
+              '                    source-address {\n' +
+              '                        2201::/48;\n' +
+              '                    }\n' +
+              '                    destination-address {\n' +
+              '                        2001::/33;\n' +
+              '                    }'
+        ], ['0.0.0.0/1']),
+      ('MIXED_TO_MIXED', [[
+          nacaddr.IPv4('0.0.0.0/1'),
+          nacaddr.IPv6('2001::/33')
+      ], [nacaddr.IPv4('192.168.0.0/24'),
+          nacaddr.IPv6('2201::/48')]], [
+              '            term good-term {\n' +
+              '                from {\n' +
+              '                    source-address {\n' +
+              '                        0.0.0.0/1;\n' +
+              '                    }\n' +
+              '                    destination-address {\n' +
+              '                        192.168.0.0/24;\n' +
+              '                    }',
+              '            term good-term {\n' +
+              '                from {\n' +
+              '                    source-address {\n' +
+              '                        2001::/33;\n' +
+              '                    }\n' +
+              '                    destination-address {\n' +
+              '                        2201::/48;\n' +
+              '                    }'
+        ], []),
+      ('V4_TO_V4', [[nacaddr.IPv4('0.0.0.0/1')],
+                    [nacaddr.IPv4('192.168.0.0/24')]], [
+                        '            term good-term {\n' +
+                        '                from {\n' +
+                        '                    source-address {\n' +
+                        '                        0.0.0.0/1;\n' +
+                        '                    }\n' +
+                        '                    destination-address {\n' +
+                        '                        192.168.0.0/24;\n' +
+                        '                    }'
+      ], []),
+      ('V6_TO_V6', [[nacaddr.IPv6('2001::/33')], [nacaddr.IPv6('2201::/48')]], [
+          '            term good-term {\n' +
+          '                from {\n' +
+          '                    source-address {\n' +
+          '                        2001::/33;\n' +
+          '                    }\n' +
+          '                    destination-address {\n' +
+          '                        2201::/48;\n' +
+          '                    }'
+      ], []),
+      (
+          'V4_TO_V6',
+          [[nacaddr.IPv4('0.0.0.0/1')], [nacaddr.IPv6('2201::/48')]],
+          [],
+          ['0.0.0.0/1', '192.168.0.0/24', '2001::/33', '2201::/48'],
+      ),
+      (
+          'V6_TO_V4',
+          [[nacaddr.IPv6('2001::/33')], [nacaddr.IPv4('192.168.0.0/24')]],
+          [],
+          ['0.0.0.0/1', '192.168.0.0/24', '2001::/33', '2201::/48'],
+      ),
+      (
+          'PARTLY_UNSPECIFIED',
+          [[nacaddr.IPv6('2001::/33')], [nacaddr.IPv4('192.168.0.0/24')]],
+          ['term good_term_25 '],
+          [
+              '0.0.0.0/1', '192.168.0.0/24', '2001::/33', '2201::/48',
+              'term good-term-both-icmp-and-icmpv6-'
+          ],
+      ),
+  )
+  def testMixed(self, addresses, expected, notexpected):
+    self.naming.GetNetAddr.side_effect = addresses
+    self.naming.GetServiceByProto.return_value = ['25']
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(
+            GOOD_HEADER_MIXED + MIXED_TESTING_TERM + GOOD_TERM_25, self.naming),
+        EXP_INFO)
+    output = str(jcl)
+    for expect in expected:
+      self.assertIn(expect, output, output)
+    for notexpect in notexpected:
+      self.assertNotIn(notexpect, output, output)
 
 
 if __name__ == '__main__':

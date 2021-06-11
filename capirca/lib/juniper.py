@@ -169,7 +169,8 @@ class Term(aclgenerator.Term):
                            'daddr': 'ip-destination-address',
                            'protocol': 'ip-protocol',
                            'protocol-except': 'ip-protocol-except',
-                           'tcp-est': 'tcp-flags "(ack|rst)"'}}
+                           'tcp-est': 'tcp-flags "(ack|rst)"'}
+              }
 
   def __init__(self, term, term_type, enable_dsmo, noverbose):
     super(Term, self).__init__(term)
@@ -862,7 +863,7 @@ class Juniper(aclgenerator.ACLGenerator):
 
   _PLATFORM = 'juniper'
   _DEFAULT_PROTOCOL = 'ip'
-  _SUPPORTED_AF = set(('inet', 'inet6', 'bridge'))
+  _SUPPORTED_AF = set(('inet', 'inet6', 'bridge', 'mixed'))
   _TERM = Term
   SUFFIX = '.jcl'
 
@@ -947,42 +948,57 @@ class Juniper(aclgenerator.ACLGenerator):
       if len(filter_options) > 1:
         filter_type = filter_options[1]
 
-      term_names = set()
-      new_terms = []
-      for term in terms:
+      if filter_type == 'mixed':
+        filter_types_to_process = ['inet', 'inet6']
+      else:
+        filter_types_to_process = [filter_type]
 
-        # if inactive is set, deactivate the term and remove the option.
-        if 'inactive' in term.option:
-          term.inactive = True
-          term.option.remove('inactive')
+      for filter_type in filter_types_to_process:
 
-        term.name = self.FixTermLength(term.name)
+        filter_name_suffix = ''
+        # If mixed filter_type, will append 4 or 6 to the filter name
+        if len(filter_types_to_process) > 1:
+          if filter_type == 'inet':
+            filter_name_suffix = '4'
+          if filter_type == 'inet6':
+            filter_name_suffix = '6'
 
-        if term.name in term_names:
-          raise JuniperDuplicateTermError('You have multiple terms named: %s' %
-                                          term.name)
-        term_names.add(term.name)
+        term_names = set()
+        new_terms = []
+        for term in terms:
 
-        term = self.FixHighPorts(term, af=filter_type)
-        if not term:
-          continue
+          # if inactive is set, deactivate the term and remove the option.
+          if 'inactive' in term.option:
+            term.inactive = True
+            term.option.remove('inactive')
 
-        if term.expiration:
-          if term.expiration <= exp_info_date:
-            logging.info('INFO: Term %s in policy %s expires '
-                         'in less than two weeks.', term.name, filter_name)
-          if term.expiration <= current_date:
-            logging.warning('WARNING: Term %s in policy %s is expired and '
-                            'will not be rendered.', term.name, filter_name)
+          term.name = self.FixTermLength(term.name)
+
+          if term.name in term_names:
+            raise JuniperDuplicateTermError('You have multiple terms named: %s' %
+                                            term.name)
+          term_names.add(term.name)
+
+          term = self.FixHighPorts(term, af=filter_type)
+          if not term:
             continue
-        if 'is-fragment' in term.option and filter_type == 'inet6':
-          raise JuniperFragmentInV6Error('The term %s uses "is-fragment" but '
-                                         'is a v6 policy.' % term.name)
 
-        new_terms.append(self._TERM(term, filter_type, enable_dsmo, noverbose))
+          if term.expiration:
+            if term.expiration <= exp_info_date:
+              logging.info('INFO: Term %s in policy %s expires '
+                          'in less than two weeks.', term.name, filter_name)
+            if term.expiration <= current_date:
+              logging.warning('WARNING: Term %s in policy %s is expired and '
+                              'will not be rendered.', term.name, filter_name)
+              continue
+          if 'is-fragment' in term.option and filter_type == 'inet6':
+            raise JuniperFragmentInV6Error('The term %s uses "is-fragment" but '
+                                          'is a v6 policy.' % term.name)
 
-      self.juniper_policies.append((header, filter_name, filter_type,
-                                    interface_specific, new_terms))
+          new_terms.append(self._TERM(term, filter_type, enable_dsmo, noverbose))
+
+        self.juniper_policies.append((header, filter_name + filter_name_suffix, filter_type,
+                                      interface_specific, new_terms))
 
   def __str__(self):
     config = Config()
