@@ -15,6 +15,7 @@
 """Palo Alto Firewall generator."""
 
 import collections
+import copy
 import datetime
 import logging
 import re
@@ -182,20 +183,27 @@ class Rule(object):
                                                               to_zone)
       raise PaloAltoFWNameTooLongError(x)
 
-    self.options = {}
-    self.options["from_zone"] = [from_zone]
-    self.options["to_zone"] = [to_zone]
-    self.ModifyOptions(terms, service_map)
-
-  def ModifyOptions(self, terms, service_map):
-    """Massage firewall rules into Palo Alto rules format."""
+    self.options = []
     term = terms.term
-    self.options["description"] = []
-    self.options["source"] = []
-    self.options["destination"] = []
-    self.options["application"] = []
-    self.options["service"] = []
-    self.options["logging"] = []
+    while term is not None:
+      x, term = self.ModifyOptions(from_zone, to_zone,
+                                   term, service_map)
+      self.options.append(x)
+
+  @staticmethod
+  def ModifyOptions(from_zone, to_zone, term, service_map):
+    """Massage firewall rules into Palo Alto rules format."""
+    options = {}
+    options["from_zone"] = [from_zone]
+    options["to_zone"] = [to_zone]
+    options["description"] = []
+    options["source"] = []
+    options["destination"] = []
+    options["application"] = []
+    options["service"] = []
+    options["logging"] = []
+
+    new_term = None
 
     def pan_ports(ports):
       x = []
@@ -209,19 +217,19 @@ class Rule(object):
 
     # COMMENT
     if term.comment:
-      self.options["description"] = term.comment
+      options["description"] = term.comment
 
     # LOGGING
     if term.logging:
       for item in term.logging:
         if item.value in ["disable"]:
-          self.options["logging"] = ["disable"]
+          options["logging"] = ["disable"]
           break
         elif item.value in ["log-both"]:
-          self.options["logging"].append("log-start")
-          self.options["logging"].append("log-end")
+          options["logging"].append("log-start")
+          options["logging"].append("log-end")
         elif item.value in ["True", "true", "syslog", "local"]:
-          self.options["logging"].append("log-end")
+          options["logging"].append("log-end")
 
     # SOURCE-ADDRESS
     if term.source_address:
@@ -230,9 +238,9 @@ class Rule(object):
         saddr_check.add(saddr.parent_token)
       saddr_check = sorted(saddr_check)
       for addr in saddr_check:
-        self.options["source"].append(str(addr))
+        options["source"].append(str(addr))
     else:
-      self.options["source"].append("any")
+      options["source"].append("any")
 
     # DESTINATION-ADDRESS
     if term.destination_address:
@@ -241,20 +249,20 @@ class Rule(object):
         daddr_check.add(daddr.parent_token)
       daddr_check = sorted(daddr_check)
       for addr in daddr_check:
-        self.options["destination"].append(str(addr))
+        options["destination"].append(str(addr))
     else:
-      self.options["destination"].append("any")
+      options["destination"].append("any")
 
     # ACTION
     if term.action:
-      self.options["action"] = term.action[0]
+      options["action"] = term.action[0]
 
     if term.option:
-      self.options["option"] = term.option
+      options["option"] = term.option
 
     if term.pan_application:
       for pan_app in term.pan_application:
-        self.options["application"].append(pan_app)
+        options["application"].append(pan_app)
 
     if term.source_port or term.destination_port:
       src_ports = pan_ports(term.source_port)
@@ -267,23 +275,28 @@ class Rule(object):
       for p in term.protocol:
         service_name = service_map.get_service_name(term.name,
                                                     src_ports, ports, p)
-        if service_name not in self.options["service"]:
-          self.options["service"].append(service_name)
+        if service_name not in options["service"]:
+          options["service"].append(service_name)
 
     elif "tcp" in term.protocol or "udp" in term.protocol:
+      services = {"tcp", "udp"} & set(term.protocol)
+      others = set(term.protocol) - services
+      if others:
+        logging.info(
+          "INFO: Term %s in policy %s>%s contains port-less %s "
+          "with non-port protocol(s). Moving %s to a new term.",
+          term.name, from_zone, to_zone,
+          ', '.join(list(services)), ', '.join(list(others)))
+        new_term = copy.deepcopy(term)
+        new_term.protocol = list(others)
+        term.protocol = list(services)
+        options["application"] = []
       for p in term.protocol:
-        if p not in ["tcp", "udp"]:
-          logging.warning(
-            "WARNING: Term %s in policy %s>%s contains port-less tcp "
-            "and/or udp with protocol %s.  Move %s to another term.",
-            term.name, self.options["from_zone"][0],
-            self.options["to_zone"][0], p, p)
-          continue
         ports = pan_ports([("0", "65535")])
         # use prefix "" to avoid service name clash with term named "any"
         service_name = service_map.get_service_name("any", (), ports, p, "")
-        if service_name not in self.options["service"]:
-          self.options["service"].append(service_name)
+        if service_name not in options["service"]:
+          options["service"].append(service_name)
 
     if term.protocol:
       # Add application "any" to all terms, unless ICMP/ICMPv6
@@ -291,13 +304,15 @@ class Rule(object):
         if proto_name in ["icmp", "icmpv6"]:
           continue
         elif proto_name in ["igmp", "sctp", "gre"]:
-          if proto_name not in self.options["application"]:
-            self.options["application"].append(proto_name)
+          if proto_name not in options["application"]:
+            options["application"].append(proto_name)
         elif proto_name in ["tcp", "udp"]:
-          if "any" not in self.options["application"]:
-            self.options["application"].append("any")
+          if "any" not in options["application"]:
+            options["application"].append("any")
         else:
           pass
+
+    return options, new_term
 
 
 class PaloAltoFW(aclgenerator.ACLGenerator):
@@ -675,7 +690,13 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       for term in new_terms:
         current_rule = Rule(self.from_zone, self.to_zone, term,
                             self.service_map)
-        ruleset[term.term.name] = current_rule.options
+        if len(current_rule.options) > 1:
+          for i, v in enumerate(current_rule.options):
+            name = "%s-%d" % (term.term.name, i+1)
+            name = self.FixTermLength(name)
+            ruleset[name] = v
+        else:
+          ruleset[term.term.name] = current_rule.options[0]
 
       self.pafw_policies.append((header, ruleset, filter_options))
 
