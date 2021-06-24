@@ -332,6 +332,14 @@ term good_term_22 {
   action:: accept
 }
 """
+GOOD_TERM_23 = """
+term good_term_23 {
+  protocol:: tcp
+  destination-address:: SOME_HOST
+  restrict-address-family:: inet
+  action:: accept
+}
+"""
 LONG_COMMENT_TERM = """
 term long-comment-term {
   comment:: "%s "
@@ -358,6 +366,7 @@ SUPPORTED_TOKENS = {
     'platform',
     'platform_exclude',
     'protocol',
+    'restrict_address_family',
     'source_address',
     'source_address_exclude',
     'source_port',
@@ -684,6 +693,17 @@ class CiscoTest(absltest.TestCase):
     self.assertIn(inet6_test5, aclout, '[%s]' % aclout)
     self.assertTrue(re.search(inet6_test6, aclout), aclout)
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+
+  def testRestrictAddressFamilyType(self):
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IPv4('127.0.0.1'), nacaddr.IPv6('::1/128')]
+
+    acl = cisco.Cisco(policy.ParsePolicy(GOOD_MIXED_HEADER + GOOD_TERM_23,
+                                         self.naming), EXP_INFO)
+    output = str(acl)
+    self.assertIn('127.0.0.1', output, output)
+    self.assertNotIn('::1/128', output, output)
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
   def testDsmo(self):

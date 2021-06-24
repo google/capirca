@@ -196,6 +196,14 @@ term reject-imap-requests {
   action:: reject-with-tcp-rst
 }
 
+term af-mismatch {
+  comment:: "Will not be generated as target is inet"
+  comment:: "but address_family is inet6"
+  destination-address:: INTERNAL
+  restrict-address-family:: inet6
+  action:: reject
+}
+
 term discard-default {
   counter:: discard-default
   action:: deny

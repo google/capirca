@@ -871,6 +871,7 @@ class Juniper(aclgenerator.ACLGenerator):
     supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {'address',
+                         'restrict_address_family',
                          'counter',
                          'destination_prefix',
                          'destination_prefix_except',
@@ -961,6 +962,10 @@ class Juniper(aclgenerator.ACLGenerator):
         term_names = set()
         new_terms = []
         for term in terms:
+
+          # Ignore if the term is for a different AF
+          if term.restrict_address_family and term.restrict_address_family != filter_type:
+            continue
 
           # if inactive is set, deactivate the term and remove the option.
           if 'inactive' in term.option:
