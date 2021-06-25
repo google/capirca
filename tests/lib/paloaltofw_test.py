@@ -40,6 +40,21 @@ header {
   target:: paloalto from-zone all to-zone all
 }
 """
+
+GOOD_HEADER_INET6 = """
+header {
+  comment:: "This is a test acl with a comment"
+  target:: paloalto from-zone trust to-zone untrust inet6
+}
+"""
+
+GOOD_HEADER_MIXED = """
+header {
+  comment:: "This is a test acl with a comment"
+  target:: paloalto from-zone trust to-zone untrust mixed
+}
+"""
+
 BAD_HEADER_1 = """
 header {
   comment:: "This header has two address families"
@@ -165,15 +180,32 @@ term is_expiring {
 ICMP_TYPE_TERM_1 = """
 term test-icmp {
   protocol:: icmp
-  icmp-type:: echo-request echo-reply
+  icmp-type:: echo-request echo-reply unreachable
   action:: accept
 }
 """
 
-IPV6_ICMP_TERM = """
-term test-ipv6_icmp {
+ICMPV6_ONLY_TERM = """
+term test-icmpv6-only {
   protocol:: icmpv6
   action:: accept
+}
+"""
+
+ICMPV6_TYPE_TERM = """
+term test-icmpv6-types {
+  protocol:: icmpv6
+  icmp-type:: echo-request echo-reply destination-unreachable
+  action:: accept
+}
+"""
+
+BAD_ICMPV6_TYPE_TERM = """
+term test-icmp {
+  protocol:: icmpv6
+  icmp-type:: echo-request echo-reply unreachable
+  action:: accept
+  comment:: "This is incorrect because unreachable is not an icmpv6-type."
 }
 """
 
@@ -513,13 +545,37 @@ class PaloAltoFWTest(unittest.TestCase):
       self.assertEqual(node.tag, 'member', output)
       members.append(node.text)
 
-    self.assertCountEqual(['icmp-echo-reply', 'icmp-echo-request'], members,
-                          output)
+    self.assertCountEqual(
+        ['icmp-echo-reply', 'icmp-echo-request', 'icmp-unreachable'], members,
+        output)
+
+  def testIcmpV6Types(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_MIXED + ICMPV6_TYPE_TERM, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.find(PATH_RULES +
+                             "/entry[@name='test-icmpv6-types']/application")
+    self.assertIsNotNone(x, output)
+    members = []
+    for node in x:
+      self.assertEqual(node.tag, 'member', output)
+      members.append(node.text)
+
+    self.assertCountEqual([
+        'icmp6-echo-reply', 'icmp6-echo-request',
+        'icmp6-destination-unreachable'
+    ], members, output)
 
   def testBadICMP(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + BAD_ICMP_TERM_1, self.naming)
     self.assertRaises(paloaltofw.UnsupportedFilterError, paloaltofw.PaloAltoFW,
                       pol, EXP_INFO)
+
+  def testBadICMPv6Type(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_MIXED + BAD_ICMPV6_TYPE_TERM,
+                             self.naming)
+    self.assertRaises(paloaltofw.PaloAltoFWBadIcmpTypeError,
+                      paloaltofw.PaloAltoFW, pol, EXP_INFO)
 
   def testICMPProtocolOnly(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + ICMP_ONLY_TERM_1, self.naming)
@@ -534,6 +590,20 @@ class PaloAltoFWTest(unittest.TestCase):
       members.append(node.text)
 
     self.assertEqual(['icmp'], members, output)
+
+  def testICMPv6ProtocolOnly(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_INET6 + ICMPV6_ONLY_TERM, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.find(PATH_RULES +
+                             "/entry[@name='test-icmpv6-only']/application")
+    self.assertIsNotNone(x, output)
+    members = []
+    for node in x:
+      self.assertEqual(node.tag, 'member', output)
+      members.append(node.text)
+
+    self.assertEqual(['ipv6-icmp'], members, output)
 
   def testSkipStatelessReply(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_4_STATELESS_REPLY,

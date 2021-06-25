@@ -597,6 +597,9 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           if ("icmp" not in term.protocol and "icmpv6" not in term.protocol):
             # the protocol is not ICMP or ICMPv6
             break
+          if icmp_version not in term.protocol:
+            # skip if this icmp_version isn't in the term protocol.
+            continue
           if icmp_version == "icmp" and "ip4-ip4" not in flows:
             # skip if there is no ip4 to ipv4 communication
             continue
