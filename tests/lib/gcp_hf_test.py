@@ -80,6 +80,13 @@ header {
 }
 """
 
+HEADER_OPTION_EGRESS_INET6 = """
+header {
+  comment:: "The general policy comment."
+  target:: gcp_hf displayname EGRESS inet6 ga
+}
+"""
+
 HEADER_OPTION_MAX_AND_AF = """
 header {
   comment:: "The general policy comment."
@@ -91,6 +98,34 @@ HEADER_VERY_LOW_DEFAULT_MAX = """
 header {
   comment:: "The general policy comment."
   target:: gcp_hf displayname 1
+}
+"""
+
+HEADER_OPTION_BETA = """
+header {
+  comment:: "The general policy comment."
+  target:: gcp_hf displayname inet beta
+}
+"""
+
+HEADER_OPTION_GA = """
+header {
+  comment:: "The general policy comment."
+  target:: gcp_hf displayname ga
+}
+"""
+
+HEADER_OPTION_INET6 = """
+header {
+  comment:: "The general policy comment."
+  target:: gcp_hf displayname inet6 ga
+}
+"""
+
+BAD_HEADER_OPTION_BETA_AF = """
+header {
+  comment:: "The general policy comment."
+  target:: gcp_hf displayname inet6 beta
 }
 """
 
@@ -274,11 +309,11 @@ term allow-internal-traffic {
 }
 """
 
-BAD_TERM_PROTO = """
-  term bad-term-unsupp-proto {
+TERM_NUMBERED_PROTOCOL = """
+  term term-numbered-protocol {
   comment:: "Generic description"
   source-address:: PUBLIC_NAT
-  protocol:: ggp
+  protocol:: igmp
   action:: next
 }
 """
@@ -857,6 +892,24 @@ term icmpv6-in-inet-term {
 }
 """
 
+BAD_TERM_ICMP_VERSION_MISMATCH = """
+term icmp-in-inet6-term {
+  comment:: "Generic description"
+  source-address:: INTERNAL
+  protocol:: icmp
+  action:: next
+}
+"""
+
+BAD_TERM_IGMP_VERSION_MISMATCH = """
+term igmp-in-inet6-term {
+  comment:: "Generic description"
+  source-address:: INTERNAL
+  protocol:: igmp
+  action:: next
+}
+"""
+
 BAD_TERM_OPTIONS = """
 term term-with-options {
   comment:: "Generic description"
@@ -1150,6 +1203,35 @@ EXPECTED_DENY_INGRESS = """
 ]
 """
 
+EXPECTED_IPV6_DENY_INGRESS = """
+[
+  {
+    "displayName": "displayname",
+    "type": "FIREWALL",
+    "rules": [
+      {
+        "action": "deny",
+        "description": "default-deny-ingress: Generic description",
+        "direction": "INGRESS",
+        "match": {
+          "config": {
+            "layer4Configs": [
+              {
+                "ipProtocol": "all"
+              }
+            ],
+            "srcIpRanges": ["::/0"]
+          },
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 1,
+        "enableLogging": false
+      }
+    ]
+  }
+]
+"""
+
 EXPECTED_DENY_INGRESS_ON_TARGET = """
 [
   {
@@ -1305,6 +1387,35 @@ EXPECTED_DENY_EGRESS = """
 ]
 """
 
+EXPECTED_IPV6_DENY_EGRESS = """
+[
+  {
+    "displayName": "displayname",
+    "type": "FIREWALL",
+    "rules": [
+      {
+        "action": "deny",
+        "description": "default-deny-egress: Generic description",
+        "direction": "EGRESS",
+        "match": {
+          "config": {
+            "destIpRanges": ["::/0"],
+            "layer4Configs": [
+              {
+                "ipProtocol": "all"
+              }
+            ]
+          },
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 1,
+        "enableLogging": false
+      }
+    ]
+  }
+]
+"""
+
 EXPECTED_COST_OF_ONE = """
 [
   {
@@ -1324,7 +1435,7 @@ EXPECTED_COST_OF_ONE = """
                 "ports": ["80"]
               }
             ],
-            "srcIpRanges": ["10.1.1.0/24"]
+            "srcIpRanges": ["10.1.1.0/24"]/t
           },
           "versionedExpr": "FIREWALL"
         },
@@ -1953,6 +2064,65 @@ EXPECTED_EGRESS_CHUNKED = """
 ]
 """
 
+EXPECTED_ONE_RULE_NUMBERED_PROTOCOL = """
+[
+  {
+    "displayName": "displayname",
+    "type": "FIREWALL",
+    "rules": [
+      {
+        "action": "goto_next",
+        "description": "term-numbered-protocol: Generic description",
+        "direction": "INGRESS",
+        "match": {
+          "config": {
+            "layer4Configs": [
+              {
+                "ipProtocol": 2
+              }
+            ],
+            "srcIpRanges": ["0.0.0.0/0"]
+          },
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 1,
+        "enableLogging": false
+      }
+    ]
+  }
+]
+"""
+
+EXPECTED_ONE_RULE_IPV6_PROTOCOL = """
+[
+  {
+    "displayName": "displayname",
+    "type": "FIREWALL",
+    "rules": [
+      {
+        "action": "goto_next",
+        "description": "allow-traffic-to-port: Generic description",
+        "direction": "INGRESS",
+        "match": {
+          "config": {
+            "layer4Configs": [
+              {
+                "ipProtocol": "tcp",
+                "ports": ["80"]
+              }
+            ],
+            "srcIpRanges": ["2001:4860:8000::5/128"]
+          },
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 1,
+        "enableLogging": false
+      }
+    ]
+  }
+]
+"""
+
 SUPPORTED_TOKENS = frozenset({
     'action',
     'comment',
@@ -1980,7 +2150,10 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 TEST_IP = [nacaddr.IP('10.0.0.0/8')]
-ALL_IPS = [nacaddr.IP('0.0.0.0/0')]
+TEST_IPV6_IP = [nacaddr.IP('2001:4860:8000::5/128')]
+TEST_MIXED_IPS = [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('2001:4860:8000::5/128')]
+ALL_IPV4_IPS = [nacaddr.IP('0.0.0.0/0')]
+ALL_IPV6_IPS = [nacaddr.IP('::/0')]
 MANY_IPS = [nacaddr.IP('192.168.' + str(x) +'.0/32') for x in range(
     0, 256)]
 MANY_IPS.extend([nacaddr.IP('10.0.0.1'), nacaddr.IP('10.0.1.1')])
@@ -1998,7 +2171,7 @@ class GcpHfTest(parameterized.TestCase):
 
   def testDefaultHeader(self):
     """Test that a header without options is accepted."""
-    self.naming.GetNetAddr.return_value = ALL_IPS
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_ALLOW_ALL_INTERNAL,
@@ -2009,7 +2182,7 @@ class GcpHfTest(parameterized.TestCase):
 
   def testOptionMaxHeader(self):
     """Test that a header with a default maximum cost is accepted."""
-    self.naming.GetNetAddr.return_value = ALL_IPS
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_OPTION_MAX + TERM_ALLOW_ALL_INTERNAL,
@@ -2031,7 +2204,7 @@ class GcpHfTest(parameterized.TestCase):
 
   def testOptionAFHeader(self):
     """Test that a header with address family is accepted."""
-    self.naming.GetNetAddr.return_value = ALL_IPS
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_OPTION_AF + TERM_ALLOW_ALL_INTERNAL,
@@ -2064,7 +2237,7 @@ class GcpHfTest(parameterized.TestCase):
 
   def testOptionMaxAndAF(self):
     """Test a header with default maximum cost & address family is accepted."""
-    self.naming.GetNetAddr.return_value = ALL_IPS
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_OPTION_MAX_AND_AF + TERM_ALLOW_ALL_INTERNAL,
@@ -2072,6 +2245,24 @@ class GcpHfTest(parameterized.TestCase):
         EXP_INFO)
     expected = json.loads(EXPECTED_ONE_RULE_INGRESS)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testOptionApiVersionAFHeader(self):
+    """Test that a header with api_version is accepted."""
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_BETA + TERM_ALLOW_ALL_INTERNAL,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_ONE_RULE_INGRESS)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testRaisesHeaderErrorOnIcompatibleApiVersionAndAFOption(self):
+    """Test that an unknown header option raises a HeaderError."""
+    with self.assertRaises(gcp.HeaderError):
+      gcp_hf.HierarchicalFirewall(
+          policy.ParsePolicy(
+              BAD_HEADER_OPTION_BETA_AF + TERM_ALLOW_ALL_INTERNAL, self.naming),
+          EXP_INFO)
 
   def testRaisesHeaderErrorOnUnknownOption(self):
     """Test that an unknown header option raises a HeaderError."""
@@ -2166,12 +2357,15 @@ class GcpHfTest(parameterized.TestCase):
                              self.naming),
           EXP_INFO)
 
-  def testRaisesTermErrorOnTermWithUnsupportedProtocol(self):
-    """Test that a term with an unsupported protocol raises an error."""
-    with self.assertRaises(gcp.TermError):
-      gcp_hf.HierarchicalFirewall(
-          policy.ParsePolicy(HEADER_NO_OPTIONS + BAD_TERM_PROTO, self.naming),
-          EXP_INFO)
+  def testTermWithNumberedProtocol(self):
+    """Test that a protocol number is supported."""
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_NUMBERED_PROTOCOL,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_ONE_RULE_NUMBERED_PROTOCOL)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testRaisesTermErrorOnTermWithSourcePort(self):
     """Test that a term with a source port raises Term error."""
@@ -2270,9 +2464,88 @@ class GcpHfTest(parameterized.TestCase):
     exp = [{'displayName': 'displayname', 'rules': [], 'type': 'FIREWALL'}]
     self.assertEqual(exp, json.loads(self._StripAclHeaders(str(acl))))
 
+  def testInet6IgnoreTermWithICMP(self):
+    """Test that a term with only an icmp protocol is not rendered for inet6."""
+    self.naming.GetNetAddr.return_value = TEST_IP
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_INET6
+                           + BAD_TERM_ICMP_VERSION_MISMATCH,
+                           self.naming),
+        EXP_INFO)
+    exp = [{'displayName': 'displayname', 'rules': [], 'type': 'FIREWALL'}]
+    self.assertEqual(exp, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testInet6IgnoreTermWithIGMP(self):
+    """Test that a term with only an igmp protocol is not rendered for inet6."""
+    self.naming.GetNetAddr.return_value = TEST_IP
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_INET6
+                           + BAD_TERM_IGMP_VERSION_MISMATCH,
+                           self.naming),
+        EXP_INFO)
+    exp = [{'displayName': 'displayname', 'rules': [], 'type': 'FIREWALL'}]
+    self.assertEqual(exp, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testInet6TermWithIPv6Addresses(self):
+    """Test that IPv6 addresses are supported with inet6."""
+    self.naming.GetNetAddr.return_value = TEST_IPV6_IP
+    self.naming.GetServiceByProto.side_effect = [['80']]
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_INET6 + TERM_ALLOW_PORT,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_ONE_RULE_IPV6_PROTOCOL)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testInet6TermWithMixedAddresses(self):
+    """Test that Mixed addresses are supported with inet6."""
+    self.naming.GetNetAddr.return_value = TEST_MIXED_IPS
+    self.naming.GetServiceByProto.side_effect = [['80']]
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_INET6 + TERM_ALLOW_PORT,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_ONE_RULE_IPV6_PROTOCOL)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testInet6TermWithIPv4Addresses(self):
+    """Test that IPv4 addresses are not rendered with inet6."""
+    self.naming.GetNetAddr.return_value = TEST_IP
+    self.naming.GetServiceByProto.side_effect = [['80']]
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_INET6 + TERM_ALLOW_PORT,
+                           self.naming), EXP_INFO)
+    exp = [{'displayName': 'displayname', 'rules': [], 'type': 'FIREWALL'}]
+    self.assertEqual(exp, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testInetTermWithMixedAddresses(self):
+    """Test that Mixed addresses are supported with inet."""
+    self.naming.GetNetAddr.return_value = TEST_MIXED_IPS
+    self.naming.GetServiceByProto.side_effect = [['80']]
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_EGRESS_AND_AF + TERM_RESTRICT_EGRESS,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_ONE_RULE_EGRESS)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testInetTermWithIPv6Addresses(self):
+    """Test that IPv6 addresses are not rendered with inet."""
+    self.naming.GetNetAddr.return_value = TEST_IPV6_IP
+    self.naming.GetServiceByProto.side_effect = [['80']]
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_EGRESS_AND_AF + TERM_RESTRICT_EGRESS,
+                           self.naming), EXP_INFO)
+    exp = [{'displayName': 'displayname', 'rules': [], 'type': 'FIREWALL'}]
+    self.assertEqual(exp, json.loads(self._StripAclHeaders(str(acl))))
+
   def testPriority(self):
     """Test that priority is set based on terms' ordering."""
-    self.naming.GetNetAddr.return_value = ALL_IPS
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
 
     acl = gcp_hf.HierarchicalFirewall(
@@ -2318,7 +2591,7 @@ class GcpHfTest(parameterized.TestCase):
   def testMultiplePolicies(self):
     """Tests that both ingress and egress rules are included in one policy."""
     self.maxDiff = None
-    self.naming.GetNetAddr.return_value = ALL_IPS
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_ALLOW_ALL_INTERNAL +
@@ -2343,7 +2616,7 @@ class GcpHfTest(parameterized.TestCase):
 
   def testTermLongComment(self):
     """Test that a term's long comment gets truncated and prefixed with term name."""
-    self.naming.GetNetAddr.return_value = ALL_IPS
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_LONG_COMMENT,
@@ -2357,7 +2630,7 @@ class GcpHfTest(parameterized.TestCase):
 
   def testDefaultDenyIngressCreation(self):
     """Test that the correct IP is correctly set on a deny all ingress term."""
-    self.naming.GetNetAddr.return_value = ALL_IPS
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_DENY_INGRESS, self.naming),
@@ -2365,15 +2638,35 @@ class GcpHfTest(parameterized.TestCase):
     expected = json.loads(EXPECTED_DENY_INGRESS)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
+  def testInet6DefaultDenyIngressCreation(self):
+    """Test that the IPv6 IP is correctly set on a deny all ingress term."""
+    self.naming.GetNetAddr.return_value = ALL_IPV6_IPS
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_INET6 + TERM_DENY_INGRESS,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_IPV6_DENY_INGRESS)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
   def testDefaultDenyEgressCreation(self):
     """Test that the correct IP is correctly set on a deny all egress term."""
-    self.naming.GetNetAddr.return_value = ALL_IPS
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_OPTION_EGRESS + TERM_DENY_EGRESS,
                            self.naming),
         EXP_INFO)
     expected = json.loads(EXPECTED_DENY_EGRESS)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testInet6DefaultDenyEgressCreation(self):
+    """Test that the IPv6 IP is correctly set on a deny all egress term."""
+    self.naming.GetNetAddr.return_value = ALL_IPV6_IPS
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_EGRESS_INET6 + TERM_DENY_EGRESS,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_IPV6_DENY_EGRESS)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testBuildTokens(self):

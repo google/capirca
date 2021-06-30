@@ -36,6 +36,14 @@ class UnsupportedFilterTypeError(Error):
 class Term(aclgenerator.Term):
   """A Term object."""
 
+  # Protocols allowed by name from:
+  # https://cloud.google.com/vpc/docs/firewalls#protocols_and_ports
+  # 'all' is needed for the dedault deny, it should not be used in a pol file.
+  _ALLOW_PROTO_NAME = frozenset(
+      ['tcp', 'udp', 'icmp', 'esp', 'ah', 'ipip', 'sctp',
+       'all'
+      ])
+
   def _GetPorts(self):
     """Return a port or port range in string format."""
     ports = []

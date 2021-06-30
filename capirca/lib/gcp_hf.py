@@ -33,8 +33,6 @@ class Term(gcp.Term):
 
   _MAX_TERM_COMMENT_LENGTH = 64
 
-  _PROTO_NAMES = ['tcp', 'udp', 'icmp', 'icmpv6', 'esp', 'ah', 'sctp']
-
   _TARGET_RESOURCE_FORMAT = 'https://www.googleapis.com/compute/v1/projects/{}/global/networks/{}'
 
   _TERM_ADDRESS_LIMIT = 256
@@ -50,32 +48,9 @@ class Term(gcp.Term):
     self.skip = False
     self._ValidateTerm()
 
-    # Don't render icmp protocol terms under inet6.
-    if self.address_family == 'inet6':
-      if ['icmp'] == self.term.protocol:
-        # Skip term if its only protocol is icmp to prevent an empty list,
-        # which is equivalent to any protocol.
-        self.skip = True
-      elif 'icmp' in self.term.protocol:
-        self.term.protocol.remove('icmp')
-
-    # Don't render icmpv6 protocol terms under inet.
-    if self.address_family == 'inet':
-      # Skip term if its only protocol is icmpv6 to prevent an empty list,
-      # which is equivalent to any protocol.
-      if ['icmpv6'] == self.term.protocol:
-        self.skip = True
-      elif 'icmpv6' in self.term.protocol:
-        self.term.protocol.remove('icmpv6')
-
   def _ValidateTerm(self):
     if self.term.destination_tag or self.term.source_tag:
       raise gcp.TermError('Hierarchical Firewall does not support tags')
-
-    if self.term.protocol:
-      for protocol in self.term.protocol:
-        if protocol not in self._PROTO_NAMES:
-          raise gcp.TermError('Protocol %s is not supported' % protocol)
 
     if len(self.term.target_resources) > self._TERM_TARGET_RESOURCES_LIMIT:
       raise gcp.TermError(
@@ -144,13 +119,44 @@ class Term(gcp.Term):
     term_dict['description'] = gcp.TruncateString(raw_descirption,
                                                   self._MAX_TERM_COMMENT_LENGTH)
 
+    filtered_protocols = []
+    for proto in self.term.protocol:
+      # ICMP filtering by inet_version
+      # Since each term has inet_version, 'mixed' is correctly processed here.
+      if proto == 'icmp' and self.address_family == 'inet6':
+        logging.warning(
+            'WARNING: Term %s is being rendered for inet6, ICMP '
+            'protocol will not be rendered.', self.term.name)
+        continue
+      if proto == 'icmpv6' and self.address_family == 'inet':
+        logging.warning(
+            'WARNING: Term %s is being rendered for inet, ICMPv6 '
+            'protocol will not be rendered.', self.term.name)
+        continue
+      if proto == 'igmp' and self.address_family == 'inet6':
+        logging.warning(
+            'WARNING: Term %s is being rendered for inet6, IGMP '
+            'protocol will not be rendered.', self.term.name)
+        continue
+      filtered_protocols.append(proto)
+    # If there is no protocol left after ICMP/IGMP filtering, drop this term.
+    # But only do this for terms that originally had protocols.
+    # Otherwise you end up dropping the default-deny.
+    if self.term.protocol and not filtered_protocols:
+      return {}
+
     protocols_and_ports = []
     if not self.term.protocol:
       # Empty protocol list means any protocol, but any protocol in HF is
       # represented as "all"
       protocols_and_ports = [{'ipProtocol': 'all'}]
     else:
-      for proto in self.term.protocol:
+      for proto in filtered_protocols:
+        # If the protocol name is not supported, use the protocol number.
+        if proto not in self._ALLOW_PROTO_NAME:
+          proto = self.PROTO_MAP[proto]
+          logging.info('INFO: Term %s is being rendered using protocol number',
+                       self.term.name)
         proto_ports = {'ipProtocol': proto}
         if self.term.destination_port:
           ports = self._GetPorts()
@@ -176,35 +182,59 @@ class Term(gcp.Term):
       any_ip = [nacaddr.IPv6('::/0')]
 
     if self.term.direction == 'EGRESS':
-      daddrs = self.term.GetAddressOfVersion('destination_address',
-                                             ip_version)
+      daddrs = self.term.GetAddressOfVersion('destination_address', ip_version)
+
+      # If the address got filtered out and is empty due to address family, we
+      # don't render the term. At this point of term processing, the direction
+      # has already been validated, so we can just log and return empty rule.
+      if self.term.destination_address and not daddrs:
+        logging.warning(
+            'WARNING: Term %s is not being rendered for %s, '
+            'because there are no addresses of that family.', self.term.name,
+            self.address_family)
+        return []
+      # This should only happen if there were no addresses set originally.
       if not daddrs:
         daddrs = any_ip
 
       destination_address_chunks = [
-          daddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in
-          range(0, len(daddrs), self._TERM_ADDRESS_LIMIT)]
+          daddrs[x:x + self._TERM_ADDRESS_LIMIT]
+          for x in range(0, len(daddrs), self._TERM_ADDRESS_LIMIT)
+      ]
 
       for daddr_chunk in destination_address_chunks:
         rule = copy.deepcopy(term_dict)
-        rule['match']['config']['destIpRanges'] = [daddr.with_prefixlen for
-                                                   daddr in daddr_chunk]
+        rule['match']['config']['destIpRanges'] = [
+            daddr.with_prefixlen for daddr in daddr_chunk
+        ]
         rule['priority'] = priority_index
         rules.append(rule)
         priority_index += 1
     else:
       saddrs = self.term.GetAddressOfVersion('source_address', ip_version)
 
+      # If the address got filtered out and is empty due to address family, we
+      # don't render the term. At this point of term processing, the direction
+      # has already been validated, so we can just log and return empty rule.
+      if self.term.source_address and not saddrs:
+        logging.warning(
+            'WARNING: Term %s is not being rendered for %s, '
+            'because there are no addresses of that family.', self.term.name,
+            self.address_family)
+        return []
+      # This should only happen if there were no addresses set originally.
       if not saddrs:
         saddrs = any_ip
 
       source_address_chunks = [
-          saddrs[x:x+self._TERM_ADDRESS_LIMIT] for x in
-          range(0, len(saddrs), self._TERM_ADDRESS_LIMIT)]
+          saddrs[x:x + self._TERM_ADDRESS_LIMIT]
+          for x in range(0, len(saddrs), self._TERM_ADDRESS_LIMIT)
+      ]
       for saddr_chunk in source_address_chunks:
         rule = copy.deepcopy(term_dict)
-        rule['match']['config']['srcIpRanges'] = [saddr.with_prefixlen for
-                                                  saddr in saddr_chunk]
+        rule['match']['config']['srcIpRanges'] = [
+            saddr.with_prefixlen for saddr in saddr_chunk
+        ]
         rule['priority'] = priority_index
         rules.append(rule)
         priority_index += 1
@@ -219,9 +249,14 @@ class HierarchicalFirewall(gcp.GCP):
   """A GCP Hierarchical Firewall policy."""
 
   SUFFIX = '.gcphf'
-  _ANY = [nacaddr.IP('0.0.0.0/0')]
+  _ANY_IP = {
+      'inet': nacaddr.IP('0.0.0.0/0'),
+      'inet6': nacaddr.IP('::/0'),
+  }
   _PLATFORM = 'gcp_hf'
-  _SUPPORTED_AF = frozenset(['inet'])
+  _SUPPORTED_AF = frozenset(['inet', 'inet6'])
+  # Beta is the default API version. GA supports IPv6 (inet6/mixed).
+  _SUPPORTED_API_VERSION = frozenset(['beta', 'ga'])
   _DEFAULT_MAXIMUM_COST = 100
 
   def _BuildTokens(self):
@@ -295,6 +330,14 @@ class HierarchicalFirewall(gcp.GCP):
           address_family = i
           filter_options.remove(i)
 
+      # Get the compute API version if set.
+      api_version = 'beta'
+      for i in self._SUPPORTED_API_VERSION:
+        if i in filter_options:
+          api_version = i
+          filter_options.remove(i)
+          break
+
       # Find the default maximum cost of a policy, an integer, if specified.
       max_cost = self._DEFAULT_MAXIMUM_COST
       for opt in filter_options:
@@ -308,6 +351,10 @@ class HierarchicalFirewall(gcp.GCP):
       if max_cost > 65536:
         raise gcp.HeaderError(
             'Default maximum cost cannot be higher than 65536')
+
+      if api_version == 'beta' and address_family != 'inet':
+        raise gcp.HeaderError(
+            'Beta compute API does not support IPv6, only inet is supported')
 
       # Get policy name and validate it to meet displayName requirements.
       policy_name = header.FilterName(self._PLATFORM)
@@ -344,9 +391,11 @@ class HierarchicalFirewall(gcp.GCP):
 
         if gcp.IsDefaultDeny(term):
           if direction == 'EGRESS':
-            term.destination_address = self._ANY
+            if address_family != 'mixed':
+              term.destination_address = [self._ANY_IP[address_family]]
           else:
-            term.source_address = self._ANY
+            if address_family != 'mixed':
+              term.source_address = [self._ANY_IP[address_family]]
         term.name = self.FixTermLength(term.name)
         term.direction = direction
 
