@@ -41,12 +41,17 @@ class Term(gcp.Term):
 
   _TERM_DESTINATION_PORTS_LIMIT = 256
 
-  def __init__(self, term, address_family='inet'):
+  def __init__(self, term, address_family='inet', policy_inet_version='inet'):
     super(Term, self).__init__(term)
     self.address_family = address_family
     self.term = term
     self.skip = False
     self._ValidateTerm()
+
+    # This is to handle mixed, where the policy_inet_version is mixed,
+    # but the term inet version is either inet/inet6.
+    # This is only useful for term name and priority.
+    self.policy_inet_version = policy_inet_version
 
   def _ValidateTerm(self):
     if self.term.destination_tag or self.term.source_tag:
@@ -81,6 +86,15 @@ class Term(gcp.Term):
           % (self.term.name, str(len(
               self.term.destination_port)), self._TERM_DESTINATION_PORTS_LIMIT))
 
+    # Since policy_inet_version is used to handle 'mixed'.
+    # We should error out if the individual term's inet version (address_family)
+    # is anything other than inet/inet6, since this should never happen
+    # naturally. Something has gone horribly wrong if you encounter this error.
+    if self.address_family == 'mixed':
+      raise gcp.TermError(
+          'Hierarchical firewall rule has incorrect inet_version for rule: %s' %
+          self.term.name)
+
   def ConvertToDict(self, priority_index):
     """Converts term to dict representation of SecurityPolicy.Rule JSON format.
 
@@ -99,6 +113,11 @@ class Term(gcp.Term):
 
     rules = []
 
+    # Identify if this is inet6 processing for a term under a mixed policy.
+    mixed_policy_inet6_term = False
+    if self.policy_inet_version == 'mixed' and self.address_family == 'inet6':
+      mixed_policy_inet6_term = True
+
     term_dict = {
         'action': self.ACTION_MAP.get(self.term.action[0], self.term.action[0]),
         'direction': self.term.direction,
@@ -115,8 +134,11 @@ class Term(gcp.Term):
     term_dict['enableLogging'] = self._GetLoggingSetting()
 
     # This combo provides ability to identify the rule.
-    raw_descirption = self.term.name + ': ' + ' '.join(self.term.comment)
-    term_dict['description'] = gcp.TruncateString(raw_descirption,
+    term_name = self.term.name
+    if mixed_policy_inet6_term:
+      term_name = gcp.GetIpv6TermName(term_name)
+    raw_description = term_name + ': ' + ' '.join(self.term.comment)
+    term_dict['description'] = gcp.TruncateString(raw_description,
                                                   self._MAX_TERM_COMMENT_LENGTH)
 
     filtered_protocols = []
@@ -254,7 +276,7 @@ class HierarchicalFirewall(gcp.GCP):
       'inet6': nacaddr.IP('::/0'),
   }
   _PLATFORM = 'gcp_hf'
-  _SUPPORTED_AF = frozenset(['inet', 'inet6'])
+  _SUPPORTED_AF = frozenset(['inet', 'inet6', 'mixed'])
   # Beta is the default API version. GA supports IPv6 (inet6/mixed).
   _SUPPORTED_API_VERSION = frozenset(['beta', 'ga'])
   _DEFAULT_MAXIMUM_COST = 100
@@ -385,6 +407,14 @@ class HierarchicalFirewall(gcp.GCP):
             'Unsupported or unknown filter options %s in policy %s ' %
             (str(filter_options), policy_name))
 
+      # Handle mixed for each indvidual term as inet and inet6.
+      # inet/inet6 are treated the same.
+      term_address_families = []
+      if address_family == 'mixed':
+        term_address_families = ['inet', 'inet6']
+      else:
+        term_address_families = [address_family]
+
       for term in terms:
         if term.stateless_reply:
           continue
@@ -392,26 +422,39 @@ class HierarchicalFirewall(gcp.GCP):
         if gcp.IsDefaultDeny(term):
           if direction == 'EGRESS':
             if address_family != 'mixed':
+              # Default deny also gets processed as part of terms processing.
+              # The name and priority get updated there.
               term.destination_address = [self._ANY_IP[address_family]]
+            else:
+              term.destination_address = [
+                  self._ANY_IP['inet'], self._ANY_IP['inet6']
+              ]
           else:
             if address_family != 'mixed':
               term.source_address = [self._ANY_IP[address_family]]
+            else:
+              term.source_address = [
+                  self._ANY_IP['inet'], self._ANY_IP['inet6']
+              ]
         term.name = self.FixTermLength(term.name)
         term.direction = direction
 
-        rules = Term(term, address_family=address_family).ConvertToDict(
-            priority_index=counter)
-        if not rules:
-          continue
-        for dict_term in rules:
-          total_cost += GetRuleTupleCount(dict_term)
-          if total_cost > max_cost:
-            raise ExceededCostError('Policy cost (%d) for %s reached the '
-                                    'maximum (%d)' % (
-                                        total_cost, policy['displayName'],
-                                        max_cost))
-          policy['rules'].append(dict_term)
-        counter += len(rules)
+        for term_af in term_address_families:
+          rules = Term(
+              term, address_family=term_af,
+              policy_inet_version=address_family).ConvertToDict(
+                  priority_index=counter)
+          if not rules:
+            continue
+          for dict_term in rules:
+            total_cost += GetRuleTupleCount(dict_term)
+            if total_cost > max_cost:
+              raise ExceededCostError(
+                  'Policy cost (%d) for %s reached the '
+                  'maximum (%d)' %
+                  (total_cost, policy['displayName'], max_cost))
+            policy['rules'].append(dict_term)
+          counter += len(rules)
 
     self.policies.append(policy)
 
