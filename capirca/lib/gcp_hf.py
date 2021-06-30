@@ -26,6 +26,28 @@ class DifferentPolicyNameError(gcp.Error):
   """Raised when headers in the same policy have a different policy name."""
 
 
+class ApiVersionSyntaxMap(object):
+  """Defines the syntax changes between different API versions.
+
+   http://cloud/compute/docs/reference/rest/v1/firewallPolicies/addRule
+   http://cloud/compute/docs/reference/rest/beta/organizationSecurityPolicies/addRule
+  """
+  SYNTAX_MAP = {
+      'beta': {
+          'display_name': 'displayName',
+          'dest_ip_range': 'destIpRanges',
+          'src_ip_range': 'srcIpRanges',
+          'layer_4_config': 'layer4Configs'
+      },
+      'ga': {
+          'display_name': 'shortName',
+          'dest_ip_range': 'destIpRanges',
+          'src_ip_range': 'srcIpRanges',
+          'layer_4_config': 'layer4Configs'
+      }
+  }
+
+
 class Term(gcp.Term):
   """Used to create an individual term."""
 
@@ -41,12 +63,17 @@ class Term(gcp.Term):
 
   _TERM_DESTINATION_PORTS_LIMIT = 256
 
-  def __init__(self, term, address_family='inet', policy_inet_version='inet'):
+  def __init__(self,
+               term,
+               address_family='inet',
+               policy_inet_version='inet',
+               api_version='beta'):
     super(Term, self).__init__(term)
     self.address_family = address_family
     self.term = term
     self.skip = False
     self._ValidateTerm()
+    self.api_version = api_version
 
     # This is to handle mixed, where the policy_inet_version is mixed,
     # but the term inet version is either inet/inet6.
@@ -124,6 +151,14 @@ class Term(gcp.Term):
         'priority': priority_index
     }
 
+    # Get the correct syntax for API versions.
+    src_ip_range = ApiVersionSyntaxMap.SYNTAX_MAP[
+        self.api_version]['src_ip_range']
+    dest_ip_range = ApiVersionSyntaxMap.SYNTAX_MAP[
+        self.api_version]['dest_ip_range']
+    layer_4_config = ApiVersionSyntaxMap.SYNTAX_MAP[
+        self.api_version]['layer_4_config']
+
     target_resources = []
     for proj, vpc in self.term.target_resources:
       target_resources.append(self._TARGET_RESOURCE_FORMAT.format(proj, vpc))
@@ -186,11 +221,10 @@ class Term(gcp.Term):
             proto_ports['ports'] = ports
         protocols_and_ports.append(proto_ports)
 
-    term_dict['match'] = {
-        'config': {
-            'layer4Configs': protocols_and_ports
-        }
-    }
+    if self.api_version == 'ga':
+      term_dict['match'] = {layer_4_config: protocols_and_ports}
+    else:
+      term_dict['match'] = {'config': {layer_4_config: protocols_and_ports}}
 
     # match needs a field called versionedExpr with value FIREWALL
     # See documentation:
@@ -226,9 +260,14 @@ class Term(gcp.Term):
 
       for daddr_chunk in destination_address_chunks:
         rule = copy.deepcopy(term_dict)
-        rule['match']['config']['destIpRanges'] = [
-            daddr.with_prefixlen for daddr in daddr_chunk
-        ]
+        if self.api_version == 'ga':
+          rule['match'][dest_ip_range] = [
+              daddr.with_prefixlen for daddr in daddr_chunk
+          ]
+        else:
+          rule['match']['config'][dest_ip_range] = [
+              daddr.with_prefixlen for daddr in daddr_chunk
+          ]
         rule['priority'] = priority_index
         rules.append(rule)
         priority_index += 1
@@ -254,9 +293,14 @@ class Term(gcp.Term):
       ]
       for saddr_chunk in source_address_chunks:
         rule = copy.deepcopy(term_dict)
-        rule['match']['config']['srcIpRanges'] = [
-            saddr.with_prefixlen for saddr in saddr_chunk
-        ]
+        if self.api_version == 'ga':
+          rule['match'][src_ip_range] = [
+              saddr.with_prefixlen for saddr in saddr_chunk
+          ]
+        else:
+          rule['match']['config'][src_ip_range] = [
+              saddr.with_prefixlen for saddr in saddr_chunk
+          ]
         rule['priority'] = priority_index
         rules.append(rule)
         priority_index += 1
@@ -378,6 +422,8 @@ class HierarchicalFirewall(gcp.GCP):
         raise gcp.HeaderError(
             'Beta compute API does not support IPv6, only inet is supported')
 
+      display_name = ApiVersionSyntaxMap.SYNTAX_MAP[api_version]['display_name']
+
       # Get policy name and validate it to meet displayName requirements.
       policy_name = header.FilterName(self._PLATFORM)
       if not policy_name:
@@ -394,12 +440,12 @@ class HierarchicalFirewall(gcp.GCP):
             'a lowercase letter, and all following characters must be a dash, '
             'lowercase letter, or digit, except the last character, which '
             'cannot be a dash.' % (policy_name))
-      if 'displayName' in policy and policy['displayName'] != policy_name:
+      if display_name in policy and policy[display_name] != policy_name:
         raise DifferentPolicyNameError(
             'Policy names that are from the same policy are expected to be '
             'equal, but %s is different to %s' %
-            (policy['displayName'], policy_name))
-      policy['displayName'] = policy_name
+            (policy[display_name], policy_name))
+      policy[display_name] = policy_name
 
       # If there are remaining options, they are unknown/unsupported options.
       if filter_options:
@@ -441,18 +487,19 @@ class HierarchicalFirewall(gcp.GCP):
 
         for term_af in term_address_families:
           rules = Term(
-              term, address_family=term_af,
-              policy_inet_version=address_family).ConvertToDict(
-                  priority_index=counter)
+              term,
+              address_family=term_af,
+              policy_inet_version=address_family,
+              api_version=api_version).ConvertToDict(priority_index=counter)
           if not rules:
             continue
           for dict_term in rules:
-            total_cost += GetRuleTupleCount(dict_term)
+            total_cost += GetRuleTupleCount(dict_term, api_version)
             if total_cost > max_cost:
               raise ExceededCostError(
                   'Policy cost (%d) for %s reached the '
                   'maximum (%d)' %
-                  (total_cost, policy['displayName'], max_cost))
+                  (total_cost, policy[display_name], max_cost))
             policy['rules'].append(dict_term)
           counter += len(rules)
 
@@ -464,10 +511,10 @@ class HierarchicalFirewall(gcp.GCP):
 
     if total_cost > 0:
       logging.info('Policy %s quota cost: %d',
-                   policy['displayName'], total_cost)
+                   policy[display_name], total_cost)
 
 
-def GetRuleTupleCount(dict_term: Dict[Text, Any]):
+def GetRuleTupleCount(dict_term: Dict[Text, Any], api_version):
   """Calculate the tuple count of a rule in its dictionary form.
 
   Quota is charged based on how complex the rules are rather than simply
@@ -481,17 +528,25 @@ def GetRuleTupleCount(dict_term: Dict[Text, Any]):
 
   Args:
     dict_term: A dict object.
+    api_version: A string indicating the api version.
 
   Returns:
     int: The tuple count of the rule.
   """
-  config = dict_term.get('match', {}).get('config', {})
-  addresses_count = len(
-      config.get('destIpRanges', []) + config.get('srcIpRanges', []))
   layer4_count = 0
+  layer_4_config = ApiVersionSyntaxMap.SYNTAX_MAP[api_version]['layer_4_config']
+  dest_ip_range = ApiVersionSyntaxMap.SYNTAX_MAP[api_version]['dest_ip_range']
+  src_ip_range = ApiVersionSyntaxMap.SYNTAX_MAP[api_version]['src_ip_range']
   targets_count = len(dict_term.get('targetResources', []))
+  if api_version == 'ga':
+    config = dict_term.get('match', {})
+  else:
+    config = dict_term.get('match', {}).get('config', {})
 
-  for l4config in config.get('layer4Configs', []):
+  addresses_count = len(
+      config.get(dest_ip_range, []) + config.get(src_ip_range, []))
+
+  for l4config in config.get(layer_4_config, []):
     for _ in l4config.get('ports', []):
       layer4_count += 1
     if l4config.get('ipProtocol'):
