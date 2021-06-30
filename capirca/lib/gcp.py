@@ -163,4 +163,3 @@ def GetIpv6TermName(term_name):
   """
 
   return '%s-%s' % (term_name, 'v6')
-
