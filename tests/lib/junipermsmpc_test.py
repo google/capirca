@@ -304,6 +304,49 @@ term good-term {
   action:: accept
 }
 """
+
+MIXED_TESTING_TERM_ICMP = """
+term good-term-icmp {
+  protocol:: icmp
+  source-address:: SOME_HOST
+  destination-address:: SOME_OTHER_HOST
+  action:: accept
+}
+
+term good-term-icmp-2 {
+  protocol:: icmp
+  action:: accept
+}
+
+term good-term-icmpv6 {
+  protocol:: icmpv6
+  source-address:: SOME_HOST
+  destination-address:: SOME_OTHER_HOST
+  action:: accept
+}
+
+term good-term-icmpv6-2 {
+  protocol:: icmpv6
+  action:: accept
+}
+
+term good-term-both-icmp-and-icmpv6 {
+  protocol:: icmp
+  protocol:: icmpv6
+  source-address:: SOME_HOST
+  destination-address:: SOME_OTHER_HOST
+  action:: accept
+}
+
+term good-term-both-icmp-and-icmpv6-2 {
+  protocol:: icmp
+  protocol:: icmpv6
+  source-address:: SOME_HOST
+  destination-address:: SOME_OTHER_HOST
+  action:: accept
+}
+
+"""
 LOGGING_TERM = """
 term good-term-1 {
   protocol:: icmp
@@ -1012,13 +1055,416 @@ class JuniperMSMPCTest(parameterized.TestCase):
           [],
           ['0.0.0.0/1', '192.168.0.0/24', '2001::/33', '2201::/48'],
       ),
+      (
+          'PARTLY_UNSPECIFIED',
+          [[nacaddr.IPv6('2001::/33')], [nacaddr.IPv4('192.168.0.0/24')]],
+          ['term good_term_25 '],
+          [
+              '0.0.0.0/1', '192.168.0.0/24', '2001::/33', '2201::/48',
+              'term good-term-both-icmp-and-icmpv6-'
+          ],
+      ),
   )
   def testMixed(self, addresses, expected, notexpected):
     self.naming.GetNetAddr.side_effect = addresses
     self.naming.GetServiceByProto.return_value = ['25']
     msmpc = junipermsmpc.JuniperMSMPC(
-        policy.ParsePolicy(GOOD_HEADER_MIXED + MIXED_TESTING_TERM, self.naming),
+        policy.ParsePolicy(
+            GOOD_HEADER_MIXED + MIXED_TESTING_TERM + GOOD_TERM_25, self.naming),
         EXP_INFO)
+    output = str(msmpc)
+    for expect in expected:
+      self.assertIn(expect, output, output)
+    for notexpect in notexpected:
+      self.assertNotIn(notexpect, output, output)
+
+  @parameterized.named_parameters(
+      ('MIXED_TO_V4', [[
+          nacaddr.IPv4('0.0.0.0/1'),
+          nacaddr.IPv6('2001::/33')
+      ], [nacaddr.IPv4('192.168.0.0/24')]], [
+          '                    term good-term-icmp-inet {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                0.0.0.0/1;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                192.168.0.0/24;\n'
+          '                            }\n'
+          '                            application-sets test-filtergood-term-icmp-app;\n'
+          '                        }',
+          '                    term good-term-icmp-2 {\n'
+          '                        from {\n'
+          '                            application-sets test-filtergood-term-icmp-app;\n'
+          '                        }',
+          '                    term good-term-icmpv6-2 {\n'
+          '                        from {\n'
+          '                            application-sets test-filtergood-term-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-both-icmp-and-icmpv6-inet {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                0.0.0.0/1;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                192.168.0.0/24;\n'
+          '                            }\n'
+          '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-both-icmp-and-icmpv6-2-inet {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                0.0.0.0/1;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                192.168.0.0/24;\n'
+          '                            }\n'
+          '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+          '                        }',
+      ], ['2001::/33']),
+      ('V4_TO_MIXED', [
+          [nacaddr.IPv4('192.168.0.0/24')],
+          [nacaddr.IPv4('0.0.0.0/1'),
+           nacaddr.IPv6('2001::/33')],
+      ], [
+          '                    term good-term-icmp-inet {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                192.168.0.0/24;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                0.0.0.0/1;\n'
+          '                            }\n'
+          '                            application-sets test-filtergood-term-icmp-app;\n'
+          '                        }',
+          '                    term good-term-icmp-2 {\n'
+          '                        from {\n'
+          '                            application-sets test-filtergood-term-icmp-app;\n'
+          '                        }',
+          '                    term good-term-icmpv6-2 {\n'
+          '                        from {\n'
+          '                            application-sets test-filtergood-term-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-both-icmp-and-icmpv6-inet {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                192.168.0.0/24;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                0.0.0.0/1;\n'
+          '                            }\n'
+          '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-both-icmp-and-icmpv6-2-inet {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                192.168.0.0/24;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                0.0.0.0/1;\n'
+          '                            }\n'
+          '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+          '                        }',
+      ], ['2001::/33']),
+      ('MIXED_TO_V6', [[
+          nacaddr.IPv4('0.0.0.0/1'),
+          nacaddr.IPv6('2001::/33')
+      ], [nacaddr.IPv6('2201::/48')]], [
+          '                    term good-term-icmp-2 {\n'
+          '                        from {\n'
+          '                            application-sets test-filtergood-term-icmp-app;\n'
+          '                        }',
+          '                    term good-term-icmpv6-inet6 {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                2001::/33;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                2201::/48;\n'
+          '                            }\n'
+          '                            application-sets test-filtergood-term-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-icmpv6-2 {\n'
+          '                        from {\n'
+          '                            application-sets test-filtergood-term-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-both-icmp-and-icmpv6-inet6 {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                2001::/33;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                2201::/48;\n'
+          '                            }\n'
+          '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-both-icmp-and-icmpv6-2-inet6 {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                2001::/33;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                2201::/48;\n'
+          '                            }\n'
+          '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+          '                        }',
+      ], ['0.0.0.0/1']),
+      ('V6_TO_MIXED', [
+          [nacaddr.IPv6('2201::/48')],
+          [nacaddr.IPv4('0.0.0.0/1'),
+           nacaddr.IPv6('2001::/33')]
+      ], [
+          '                    term good-term-icmp-2 {\n'
+          '                        from {\n'
+          '                            application-sets test-filtergood-term-icmp-app;\n'
+          '                        }',
+          '                    term good-term-icmpv6-inet6 {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                2201::/48;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                2001::/33;\n'
+          '                            }\n'
+          '                            application-sets test-filtergood-term-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-icmpv6-2 {\n'
+          '                        from {\n'
+          '                            application-sets test-filtergood-term-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-both-icmp-and-icmpv6-inet6 {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                2201::/48;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                2001::/33;\n'
+          '                            }\n'
+          '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-both-icmp-and-icmpv6-2-inet6 {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                2201::/48;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                2001::/33;\n'
+          '                            }\n'
+          '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+          '                        }',
+      ], ['0.0.0.0/1']),
+      ('MIXED_TO_MIXED', [
+          [nacaddr.IPv4('0.0.0.0/1'),
+           nacaddr.IPv6('2001::/33')],
+          [nacaddr.IPv4('192.168.0.0/24'),
+           nacaddr.IPv6('2201::/48')]
+      ], [
+          '                    term good-term-icmp-inet {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                0.0.0.0/1;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                192.168.0.0/24;\n'
+          '                            }\n'
+          '                            application-sets test-filtergood-term-icmp-app;\n'
+          '                        }',
+          '                    term good-term-icmp-2 {\n'
+          '                        from {\n'
+          '                            application-sets test-filtergood-term-icmp-app;\n'
+          '                        }',
+          '                    term good-term-icmpv6-inet6 {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                2001::/33;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                2201::/48;\n'
+          '                            }\n'
+          '                            application-sets test-filtergood-term-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-icmpv6-2 {\n'
+          '                        from {\n'
+          '                            application-sets test-filtergood-term-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-both-icmp-and-icmpv6-inet {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                0.0.0.0/1;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                192.168.0.0/24;\n'
+          '                            }\n'
+          '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-both-icmp-and-icmpv6-inet6 {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                2001::/33;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                2201::/48;\n'
+          '                            }\n'
+          '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-both-icmp-and-icmpv6-2-inet {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                0.0.0.0/1;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                192.168.0.0/24;\n'
+          '                            }\n'
+          '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-both-icmp-and-icmpv6-2-inet6 {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                2001::/33;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                2201::/48;\n'
+          '                            }\n'
+          '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+          '                        }',
+      ], []),
+      ('V4_TO_V4', [[nacaddr.IPv4('0.0.0.0/1')], [
+          nacaddr.IPv4('192.168.0.0/24')
+      ]], [
+          '                    term good-term-icmp {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                0.0.0.0/1;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                192.168.0.0/24;\n'
+          '                            }\n'
+          '                            application-sets test-filtergood-term-icmp-app;\n'
+          '                        }',
+          '                    term good-term-icmp-2 {\n'
+          '                        from {\n'
+          '                            application-sets test-filtergood-term-icmp-app;\n'
+          '                        }',
+          '                    term good-term-icmpv6-2 {\n'
+          '                        from {\n'
+          '                            application-sets test-filtergood-term-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-both-icmp-and-icmpv6 {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                0.0.0.0/1;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                192.168.0.0/24;\n'
+          '                            }\n'
+          '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-both-icmp-and-icmpv6-2 {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                0.0.0.0/1;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                192.168.0.0/24;\n'
+          '                            }\n'
+          '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+          '                        }',
+      ], []),
+      ('V6_TO_V6', [[nacaddr.IPv6('2001::/33')], [nacaddr.IPv6('2201::/48')]], [
+          '                    term good-term-icmp-2 {\n'
+          '                        from {\n'
+          '                            application-sets test-filtergood-term-icmp-app;\n'
+          '                        }',
+          '                    term good-term-icmpv6 {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                2001::/33;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                2201::/48;\n'
+          '                            }\n'
+          '                            application-sets test-filtergood-term-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-icmpv6-2 {\n'
+          '                        from {\n'
+          '                            application-sets test-filtergood-term-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-both-icmp-and-icmpv6 {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                2001::/33;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                2201::/48;\n'
+          '                            }\n'
+          '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+          '                        }',
+          '                    term good-term-both-icmp-and-icmpv6-2 {\n'
+          '                        from {\n'
+          '                            source-address {\n'
+          '                                2001::/33;\n'
+          '                            }\n'
+          '                            destination-address {\n'
+          '                                2201::/48;\n'
+          '                            }\n'
+          '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+          '                        }',
+      ], []),
+      (
+          'V4_TO_V6',
+          [[nacaddr.IPv4('0.0.0.0/1')], [nacaddr.IPv6('2201::/48')]],
+          [
+              '                    term good-term-icmp-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmp-app;\n'
+              '                        }',
+              '                    term good-term-icmpv6-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmpv6-app;\n'
+              '                        }',
+          ],
+          ['0.0.0.0/1', '192.168.0.0/24', '2001::/33', '2201::/48'],
+      ),
+      (
+          'V6_TO_V4',
+          [[nacaddr.IPv6('2001::/33')], [nacaddr.IPv4('192.168.0.0/24')]],
+          [
+              '                    term good-term-icmp-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmp-app;\n'
+              '                        }',
+              '                    term good-term-icmpv6-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmpv6-app;\n'
+              '                        }',
+          ],
+          ['0.0.0.0/1', '192.168.0.0/24', '2001::/33', '2201::/48'],
+      ),
+      (
+          'PARTLY_UNSPECIFIED',
+          [[nacaddr.IPv6('2001::/33')], [nacaddr.IPv4('192.168.0.0/24')]],
+          [
+              '                    term good-term-icmp-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmp-app;\n'
+              '                        }',
+              '                    term good-term-icmpv6-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmpv6-app;\n'
+              '                        }',
+          ],
+          [
+              '0.0.0.0/1', '192.168.0.0/24', '2001::/33', '2201::/48',
+              'term good-term-icmp-i', 'term good-term-icmpv6-i',
+              'term good-term-both-icmp-and-icmpv6-'
+          ],
+      ),
+  )
+  def testMixedICMP(self, addresses, expected, notexpected):
+    self.naming.GetNetAddr.side_effect = addresses * 4
+    msmpc = junipermsmpc.JuniperMSMPC(
+        policy.ParsePolicy(GOOD_HEADER_MIXED + MIXED_TESTING_TERM_ICMP,
+                           self.naming), EXP_INFO)
     output = str(msmpc)
     for expect in expected:
       self.assertIn(expect, output, output)
@@ -1047,7 +1493,7 @@ class JuniperMSMPCTest(parameterized.TestCase):
         'test-filtergood-term-1-app;\n' + '                        }\n' +
         '                        then {\n' +
         '                            accept;\n' +
-        '                            syslog;\n' +
+        ('                            syslog;\n' if want_logging else '') +
         '                        }\n' + '                    }\n' +
         '                }\n' + '            }\n' + '        }\n' +
         '        applications {\n' +
@@ -1061,10 +1507,7 @@ class JuniperMSMPCTest(parameterized.TestCase):
         policy.ParsePolicy(GOOD_HEADER_MIXED_IMPLICIT + (LOGGING_TERM % option),
                            self.naming), EXP_INFO)
     output = str(msmpc)
-    if want_logging:
-      self.assertIn(expected_output, output, output)
-    else:
-      self.assertNotIn(expected_output, output, output)
+    self.assertIn(expected_output, output, output)
 
   @parameterized.named_parameters(('default', GOOD_HEADER, 'input-output'),
                                   ('ingress', GOOD_HEADER_INGRESS, 'input'),

@@ -100,32 +100,44 @@ class Term(juniper.Term):
 
     suffixes = []
     duplicate_term = False
+    has_icmp = 'icmp' in self.term.protocol
+    has_icmpv6 = 'icmpv6' in self.term.protocol
+    has_v4_ip = self.term.GetAddressOfVersion(
+        'source_address',
+        self.AF_MAP.get('inet')) or self.term.GetAddressOfVersion(
+            'source_address_exclude',
+            self.AF_MAP.get('inet')) or self.term.GetAddressOfVersion(
+                'destination_address',
+                self.AF_MAP.get('inet')) or self.term.GetAddressOfVersion(
+                    'destination_address_exclude', self.AF_MAP.get('inet'))
+    has_v6_ip = self.term.GetAddressOfVersion(
+        'source_address',
+        self.AF_MAP.get('inet6')) or self.term.GetAddressOfVersion(
+            'source_address_exclude',
+            self.AF_MAP.get('inet6')) or self.term.GetAddressOfVersion(
+                'destination_address',
+                self.AF_MAP.get('inet6')) or self.term.GetAddressOfVersion(
+                    'destination_address_exclude', self.AF_MAP.get('inet6'))
+
     if self.term_type == 'mixed':
-      if not (self.term.GetAddressOfVersion('source_address',
-                                            self.AF_MAP.get('inet6')) or
-              self.term.GetAddressOfVersion('source_address_exclude',
-                                            self.AF_MAP.get('inet6')) or
-              self.term.GetAddressOfVersion('destination_address',
-                                            self.AF_MAP.get('inet6')) or
-              self.term.GetAddressOfVersion('destination_address_exclude',
-                                            self.AF_MAP.get('inet6'))):
+      if not (has_v4_ip or has_v6_ip):
         suffixes = ['inet']
-      elif not (self.term.GetAddressOfVersion('source_address',
-                                              self.AF_MAP.get('inet')) or
-                self.term.GetAddressOfVersion('source_address_exclude',
-                                              self.AF_MAP.get('inet')) or
-                self.term.GetAddressOfVersion('destination_address',
-                                              self.AF_MAP.get('inet')) or
-                self.term.GetAddressOfVersion('destination_address_exclude',
-                                              self.AF_MAP.get('inet'))):
+      elif not has_v6_ip:
+        suffixes = ['inet']
+      elif not has_v4_ip:
         suffixes = ['inet6']
       else:
         suffixes = ['inet', 'inet6']
         duplicate_term = True
-    if not suffixes:
+    if not suffixes and self.term_type in ['inet', 'inet6']:
       suffixes = [self.term_type]
 
     for suffix in suffixes:
+      if self.term_type == 'mixed' and (not (has_icmp and has_icmpv6)) and (
+          has_v4_ip and has_v6_ip):
+        if (has_icmp and suffix != 'inet') or (has_icmpv6 and
+                                               suffix != 'inet6'):
+          continue
       source_address = self.term.GetAddressOfVersion('source_address',
                                                      self.AF_MAP.get(suffix))
       source_address_exclude = self.term.GetAddressOfVersion(
@@ -145,15 +157,16 @@ class Term(juniper.Term):
                   'destination_address', self.AF_MAP.get('mixed')) and
               not destination_address_exclude):
         continue
-      if ('icmp' in self.term.protocol and
-          suffix == 'inet6') or ('icmpv6' in self.term.protocol and
-                                 suffix == 'inet'):
+      if ((has_icmpv6 and not has_icmp and suffix == 'inet') or
+          (has_icmp and not has_icmpv6 and
+           suffix == 'inet6')) and self.term_type != 'mixed':
         logging.debug(
             self.NO_AF_LOG_PROTO.substitute(
                 term=self.term.name,
                 proto=', '.join(self.term.protocol),
                 af=suffix))
-        continue
+        return ''
+
       # NAME
       # if the term is inactive we have to set the prefix
       if self.term.inactive:
@@ -492,8 +505,8 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
                 (MAX_IDENTIFIER_LEN) // 2):]
         if term.stateless_reply:
           logging.warning(
-              "WARNING: Term %s is a stateless reply term and will not be "
-              "rendered.", term.name)
+              'WARNING: Term %s is a stateless reply term and will not be '
+              'rendered.', term.name)
           continue
         if set(['established', 'tcp-established']).intersection(term.option):
           logging.debug(
