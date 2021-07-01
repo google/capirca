@@ -1038,6 +1038,52 @@ term rule-1 {
     services = {elem.text for elem in x}
     self.assertEqual({"any-tcp", "any-udp"}, services, output)
 
+  def testPortLessNonPort(self):
+    POL = """
+header {
+  target:: paloalto from-zone trust to-zone untrust
+}
+term rule-1 {
+%s
+  action:: accept
+}"""
+
+    T = """
+  protocol:: udp icmp
+"""
+
+    pol = policy.ParsePolicy(POL % T, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findall(PATH_RULES +
+                                "/entry[@name='rule-1-1']/service/member")
+    self.assertTrue(len(x) > 0, output)
+    services = {elem.text for elem in x}
+    self.assertEqual({"any-udp"}, services, output)
+    x = paloalto.config.findall(PATH_RULES +
+                                "/entry[@name='rule-1-2']/application/member")
+    self.assertTrue(len(x) > 0, output)
+    applications = {elem.text for elem in x}
+    self.assertEqual({"icmp"}, applications, output)
+
+    T = """
+  protocol:: udp tcp icmp gre
+"""
+
+    pol = policy.ParsePolicy(POL % T, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findall(PATH_RULES +
+                                "/entry[@name='rule-1-1']/service/member")
+    self.assertTrue(len(x) > 0, output)
+    services = {elem.text for elem in x}
+    self.assertEqual({"any-udp", "any-tcp"}, services, output)
+    x = paloalto.config.findall(PATH_RULES +
+                                "/entry[@name='rule-1-2']/application/member")
+    self.assertTrue(len(x) > 0, output)
+    applications = {elem.text for elem in x}
+    self.assertEqual({"icmp", "gre"}, applications, output)
+
 
 if __name__ == '__main__':
   unittest.main()
