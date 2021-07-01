@@ -186,13 +186,13 @@ class Rule(object):
     self.options = []
     term = terms.term
     while term is not None:
-      x, term = self.ModifyOptions(from_zone, to_zone,
+      x, term = self.TermToOptions(from_zone, to_zone,
                                    term, service_map)
       self.options.append(x)
 
   @staticmethod
-  def ModifyOptions(from_zone, to_zone, term, service_map):
-    """Massage firewall rules into Palo Alto rules format."""
+  def TermToOptions(from_zone, to_zone, term, service_map):
+    """Convert term to Palo Alto security rule options."""
     options = {}
     options["from_zone"] = [from_zone]
     options["to_zone"] = [to_zone]
