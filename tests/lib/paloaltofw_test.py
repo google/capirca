@@ -347,6 +347,42 @@ term test-reset-action {
 }
 """
 
+PLATFORM_TERM = """
+term test-accept-action {
+  comment:: "Testing accept action for tcp."
+  protocol:: tcp
+  action:: accept
+  platform:: paloalto
+}
+"""
+
+OTHER_PLATFORM_TERM = """
+term test-accept-action {
+  comment:: "Testing accept action for tcp."
+  protocol:: tcp
+  action:: accept
+  platform:: juniper
+}
+"""
+
+PLATFORM_EXCLUDE_TERM = """
+term test-accept-action {
+  comment:: "Testing accept action for tcp."
+  protocol:: tcp
+  action:: accept
+  platform-exclude:: paloalto
+}
+"""
+
+OTHER_PLATFORM_EXCLUDE_TERM = """
+term test-accept-action {
+  comment:: "Testing accept action for tcp."
+  protocol:: tcp
+  action:: accept
+  platform-exclude:: junipersrx
+}
+"""
+
 HEADER_COMMENTS = """
 header {
   comment:: "comment 1"
@@ -402,6 +438,7 @@ SUPPORTED_TOKENS = frozenset({
     'option',
     'owner',
     'platform',
+    'platform_exclude',
     'protocol',
     'source_address',
     'source_address_exclude',
@@ -731,6 +768,39 @@ class PaloAltoFWTest(unittest.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + ACTION_NEXT_TERM, self.naming)
     self.assertRaises(aclgenerator.UnsupportedFilterError,
                       paloaltofw.PaloAltoFW, pol, EXP_INFO)
+
+  def testPlatformTerm(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + PLATFORM_TERM, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='test-accept-action']/action")
+    self.assertEqual(x, 'allow', output)
+
+  def testOtherPlatformTerm(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + OTHER_PLATFORM_TERM, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='test-accept-action']/action")
+    self.assertIsNone(x, output)
+
+  def testPlatformExcludeTerm(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + PLATFORM_EXCLUDE_TERM, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='test-accept-action']/action")
+    self.assertIsNone(x, output)
+
+  def testOtherPlatformExcludeTerm(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + OTHER_PLATFORM_EXCLUDE_TERM,
+                             self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='test-accept-action']/action")
+    self.assertEqual(x, 'allow', output)
 
   def testGreProtoTerm(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + GRE_PROTO_TERM, self.naming)
