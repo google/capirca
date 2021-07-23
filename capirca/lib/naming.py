@@ -44,11 +44,6 @@ DNS = 53/tcp
 
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import glob
 import os
 import re
@@ -99,7 +94,7 @@ class NamingSyntaxError(Error):
   """A general syntax error for the definition."""
 
 
-class _ItemUnit(object):
+class _ItemUnit:
   """This class is a container for an index key and a list of associated values.
 
   An ItemUnit will contain the name of either a service or network group,
@@ -115,7 +110,7 @@ class _ItemUnit(object):
     self.items = []
 
 
-class Naming(object):
+class Naming:
   """Object to hold naming objects from NETWORK and SERVICES definition files.
 
   Attributes:

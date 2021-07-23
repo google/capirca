@@ -20,11 +20,6 @@ performace of iptables firewall.
 
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import string
 
 from capirca.lib import iptables
@@ -48,7 +43,7 @@ class Term(iptables.Term):
   _FILTER_TOP_FORMAT = string.Template('-A $filter')
 
   def __init__(self, *args, **kwargs):
-    super(Term, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
     # This stores tuples of set name and set contents, keyed by direction.
     # For example:
     # { 'src': ('set_name', [ipaddr object, ipaddr object]),
@@ -189,7 +184,7 @@ class Ipset(iptables.Iptables):
   def __str__(self):
     # Actual rendering happens in __str__, so it has to be called
     # before we do set specific part.
-    iptables_output = super(Ipset, self).__str__()
+    iptables_output = super().__str__()
     output = []
     output.append(self._MARKER_BEGIN)
     for (_, _, _, _, terms) in self.iptables_policies:

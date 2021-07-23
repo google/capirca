@@ -13,10 +13,6 @@
 #
 """Windows IP security policy generator."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 # pylint: disable=g-importing-member
 from string import Template
@@ -24,7 +20,6 @@ from string import Template
 from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import windows
-from six.moves import range
 
 
 class Term(windows.Term):
@@ -197,8 +192,7 @@ class WindowsIPSec(windows.WindowsGenerator):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(
-        WindowsIPSec, self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens -= {'icmp_type'}
     del supported_sub_tokens['icmp_type']

@@ -1,21 +1,15 @@
 """Tests for google3.third_party.py.capirca.lib.gcp_hf.py."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import json
 import unittest
+from unittest import mock
 
 from absl.testing import parameterized
-
 from capirca.lib import gcp
 from capirca.lib import gcp_hf
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
-import mock
 
 HEADER_NO_OPTIONS = """
 header {
@@ -2486,7 +2480,7 @@ MANY_IPS.extend([nacaddr.IP('10.0.0.1'), nacaddr.IP('10.0.1.1')])
 class GcpHfTest(parameterized.TestCase):
 
   def setUp(self):
-    super(GcpHfTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def _StripAclHeaders(self, acl):

@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import multiprocessing
 import os
@@ -23,11 +19,11 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 from absl import app
 from absl import flags
 from capirca import aclgen
-import mock
 
 
 FLAGS = flags.FLAGS
@@ -40,7 +36,7 @@ class TestAclGenDemo(unittest.TestCase):
   """Ensure Capirca demo runs successfully out-of-the-box."""
 
   def setUp(self):
-    super(TestAclGenDemo, self).setUp()
+    super().setUp()
     self.test_subdirectory = tempfile.mkdtemp()
     self.def_dir = os.path.join(self.test_subdirectory, 'def')
     self.pol_dir = os.path.join(self.test_subdirectory, 'policies')

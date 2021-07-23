@@ -14,21 +14,16 @@
 
 """Unittest for Aruba acl rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 import logging
 import textwrap
 import unittest
+from unittest import mock
 
 from capirca.lib import aruba
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
-import mock
 
 GOOD_HEADER_V4 = """
 header {
@@ -244,7 +239,7 @@ EXP_INFO = 2
 class ArubaTest(unittest.TestCase):
 
   def setUp(self):
-    super(ArubaTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testBuildTokens(self):

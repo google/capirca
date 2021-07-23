@@ -20,11 +20,6 @@ https://cloud.google.com/compute/docs/networking
 https://cloud.google.com/compute/docs/reference/latest/firewalls
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import copy
 import datetime
 import ipaddress
@@ -32,12 +27,11 @@ import json
 import logging
 import re
 
-from typing import Dict, Text, Any
+from typing import Dict, Any
 
 from capirca.lib import gcp
 from capirca.lib import nacaddr
 import six
-from six.moves import range
 
 
 class Error(Exception):
@@ -111,7 +105,7 @@ class Term(gcp.Term):
   ALWAYS_PROTO_NUM = set(gcp.Term.PROTO_MAP.keys()) - _ALLOW_PROTO_NAME
 
   def __init__(self, term, inet_version='inet', policy_inet_version='inet'):
-    super(Term, self).__init__(term)
+    super().__init__(term)
     self.term = term
     self.inet_version = inet_version
     # This is to handle mixed, where the policy_inet_version is mixed,
@@ -401,7 +395,7 @@ class GCE(gcp.GCP):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, _ = super(GCE, self)._BuildTokens()
+    supported_tokens, _ = super()._BuildTokens()
 
     # add extra things
     supported_tokens |= {'destination_tag',
@@ -548,7 +542,7 @@ class GCE(gcp.GCP):
     return out
 
 
-def GetAttributeCount(dict_term: Dict[Text, Any]) -> int:
+def GetAttributeCount(dict_term: Dict[str, Any]) -> int:
   """Calculate the attribute count of a term in its dictionary form.
 
   The attribute count of a rule is the sum of the number of ports, protocols, IP

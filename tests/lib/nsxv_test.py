@@ -13,20 +13,14 @@
 # limitations under the License.
 """UnitTest class for nsxv.py."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import unittest
+from unittest import mock
 from xml.etree import ElementTree as ET
 
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import nsxv
 from capirca.lib import policy
-
-import mock
 
 
 INET_TERM = """\
@@ -401,7 +395,7 @@ _PLATFORM = 'nsxv'
 class TermTest(unittest.TestCase):
 
   def setUp(self):
-    super(TermTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testInitForinet(self):

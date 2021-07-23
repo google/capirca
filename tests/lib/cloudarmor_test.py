@@ -1,19 +1,14 @@
 """Tests for google3.third_party.py.capirca.lib.cloudarmor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import json
 import random
 import unittest
+from unittest import mock
 
 from capirca.lib import cloudarmor
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
-import mock
 
 SUPPORTED_TOKENS = {
     'action',
@@ -751,7 +746,7 @@ TEST_IPS_SPLIT = [nacaddr.IP('10.2.3.4/32'),
 class CloudArmorTest(unittest.TestCase):
 
   def setUp(self):
-    super(CloudArmorTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def _StripAclHeaders(self, acl):

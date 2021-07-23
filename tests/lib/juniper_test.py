@@ -14,14 +14,10 @@
 
 """Unittest for juniper acl rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 import re
 import unittest
+from unittest import mock
 
 from absl import logging
 from capirca.lib import aclgenerator
@@ -29,8 +25,6 @@ from capirca.lib import juniper
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
-import mock
-from six.moves import range
 
 GOOD_HEADER = """
 header {
@@ -654,7 +648,7 @@ EXP_INFO = 2
 class JuniperTest(unittest.TestCase):
 
   def setUp(self):
-    super(JuniperTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testOptions(self):

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 #
 # Copyright 2009 Google Inc.
 #
@@ -13,12 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """capirca installation module."""
 
 from os import path
-from setuptools import find_packages
-from setuptools import setup
+import setuptools
 
 root_dir = path.abspath(path.dirname(__file__))
 
@@ -28,7 +25,7 @@ with open(path.join(root_dir, 'VERSION'), encoding='utf-8') as f:
 with open(path.join(root_dir, 'README.md'), encoding='utf-8') as f:
   long_description = f.read()
 
-setup(
+setuptools.setup(
     name='capirca',
     version=version,
     description='Capirca',
@@ -36,9 +33,9 @@ setup(
     long_description_content_type='text/markdown',
     license='Apache License, Version 2.0',
     url='https://github.com/google/capirca/',
-    maintainer='Rob Ankeny',
-    maintainer_email='robankeny@google.com',
-    packages=find_packages(exclude=['tests*']),
+    maintainer='Capirca Team',
+    maintainer_email='capirca-dev@google.com',
+    packages=setuptools.find_packages(exclude=['tests*']),
     zip_safe=False,
     entry_points={
         'console_scripts': ['aclgen = capirca.aclgen:entry_point'],
@@ -59,5 +56,6 @@ setup(
         'mock',
         'six',
         'PyYAML',
-    ]
+    ],
+    python_requires='>=3.6',
 )

@@ -20,11 +20,6 @@
    order in which items are returned.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import argparse
 import unittest
 
@@ -203,7 +198,7 @@ TRACEROUTE = 33434-33534/udp
 """
 
 
-class Namespace(object):
+class Namespace:
 
   def __init__(self, **kwargs):
     for arg in kwargs:
@@ -213,7 +208,7 @@ class Namespace(object):
 class CgrepTest(unittest.TestCase):
 
   def setUp(self):
-    super(CgrepTest, self).setUp()
+    super().setUp()
     self.db = naming.Naming(None)
     self.db.ParseServiceList(_SERVICE.split('\n'))
     self.db.ParseNetworkList(_NETWORK.split('\n'))

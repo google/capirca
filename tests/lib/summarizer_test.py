@@ -14,11 +14,6 @@
 
 """Tests for discontinuous subnet mask summarizer."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import os
 
 import random
@@ -33,7 +28,7 @@ from capirca.lib import summarizer
 class SummarizerTest(unittest.TestCase):
 
   def setUp(self):
-    super(SummarizerTest, self).setUp()
+    super().setUp()
     random_seed = int(time.time())
     value = os.environ.get('TEST_RANDOM_SEED', '')
     try:

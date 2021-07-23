@@ -3,15 +3,10 @@
 Hierarchical Firewalls (HF) are represented in a SecurityPolicy GCP resouce.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import copy
 import re
 
-from typing import Dict, Text, Any
+from typing import Dict, Any
 
 from absl import logging
 from capirca.lib import gcp
@@ -26,7 +21,7 @@ class DifferentPolicyNameError(gcp.Error):
   """Raised when headers in the same policy have a different policy name."""
 
 
-class ApiVersionSyntaxMap(object):
+class ApiVersionSyntaxMap:
   """Defines the syntax changes between different API versions.
 
    http://cloud/compute/docs/reference/rest/v1/firewallPolicies/addRule
@@ -68,7 +63,7 @@ class Term(gcp.Term):
                address_family='inet',
                policy_inet_version='inet',
                api_version='beta'):
-    super(Term, self).__init__(term)
+    super().__init__(term)
     self.address_family = address_family
     self.term = term
     self.skip = False
@@ -331,7 +326,7 @@ class HierarchicalFirewall(gcp.GCP):
     Returns:
       Tuple containing both supported tokens and sub tokens.
     """
-    supported_tokens, _ = super(HierarchicalFirewall, self)._BuildTokens()
+    supported_tokens, _ = super()._BuildTokens()
 
     supported_tokens |= {
         'destination_tag', 'expiration', 'source_tag', 'translated',
@@ -514,7 +509,7 @@ class HierarchicalFirewall(gcp.GCP):
                    policy[display_name], total_cost)
 
 
-def GetRuleTupleCount(dict_term: Dict[Text, Any], api_version):
+def GetRuleTupleCount(dict_term: Dict[str, Any], api_version):
   """Calculate the tuple count of a rule in its dictionary form.
 
   Quota is charged based on how complex the rules are rather than simply

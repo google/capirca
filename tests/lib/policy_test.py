@@ -14,18 +14,13 @@
 
 """Unit tests for policy.py library."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import unittest
+from unittest import mock
 
 from absl import logging
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
-import mock
 
 
 HEADER = """
@@ -582,7 +577,7 @@ term bad-term-16 {
 class PolicyTest(unittest.TestCase):
 
   def setUp(self):
-    super(PolicyTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   @mock.patch.object(policy, '_ReadFile')

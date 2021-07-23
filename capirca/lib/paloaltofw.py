@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2017 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -136,7 +135,7 @@ class Term(aclgenerator.Term):
     return rval
 
 
-class ServiceMap(object):
+class ServiceMap:
   """Manages service names across a single policy instance."""
 
   def __init__(self):
@@ -165,7 +164,7 @@ class ServiceMap(object):
     return service_name
 
 
-class Rule(object):
+class Rule:
   """Extend the Term() class for PaloAlto Firewall Rules."""
 
   def __init__(self, from_zone, to_zone, terms, service_map):
@@ -351,7 +350,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     self.policy_name = ""
     self.config = None
     self.service_map = ServiceMap()
-    super(PaloAltoFW, self).__init__(pol, exp_info)
+    super().__init__(pol, exp_info)
 
   def _BuildTokens(self):
     """Build supported tokens for platform.
@@ -359,8 +358,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(PaloAltoFW,
-                                                   self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens = {
         "action",

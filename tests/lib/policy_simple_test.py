@@ -12,22 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import unittest
 
 from absl import logging
 from capirca.lib import policy_simple
-from six.moves import range
 
 
 class FieldTest(unittest.TestCase):
 
   def setUp(self):
-    super(FieldTest, self).setUp()
+    super().setUp()
     logging.debug('======> %s <======', self.id())
 
   def testAppendAppends(self):
@@ -112,7 +107,7 @@ class FieldTest(unittest.TestCase):
 class BlockTest(unittest.TestCase):
 
   def setUp(self):
-    super(BlockTest, self).setUp()
+    super().setUp()
     logging.debug('======> %s <======', self.id())
 
   def testRejectsNonField(self):
@@ -146,7 +141,7 @@ class BlockTest(unittest.TestCase):
 class PolicyTest(unittest.TestCase):
 
   def setUp(self):
-    super(PolicyTest, self).setUp()
+    super().setUp()
     logging.debug('======> %s <======', self.id())
 
   def testAddMember(self):
@@ -179,7 +174,7 @@ class PolicyTest(unittest.TestCase):
 class PolicyParserTest(unittest.TestCase):
 
   def setUp(self):
-    super(PolicyParserTest, self).setUp()
+    super().setUp()
     logging.debug('======> %s <======', self.id())
 
   def Parser(self, data):

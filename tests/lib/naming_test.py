@@ -14,11 +14,6 @@
 
 """Unittest for naming.py module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import unittest
 
 from capirca.lib import nacaddr
@@ -35,7 +30,7 @@ class NamingUnitTest(unittest.TestCase):
   """
 
   def setUp(self):
-    super(NamingUnitTest, self).setUp()
+    super().setUp()
     self.defs = naming.Naming(None)
     servicedata = []
     servicedata.append('SVC1 = 80/tcp 81/udp 82/tcp')

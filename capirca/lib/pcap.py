@@ -27,11 +27,6 @@ having more confidence in it.
 Stolen liberally from packetfilter.py.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 
 from absl import logging
@@ -102,7 +97,7 @@ class Term(aclgenerator.Term):
     Raises:
       aclgenerator.UnsupportedFilterError: Filter is not supported.
     """
-    super(Term, self).__init__(term)
+    super().__init__(term)
     self.term = term  # term object
     self.filter = filter_name  # actual name of filter
     self.options = []
@@ -341,7 +336,7 @@ class PcapFilter(aclgenerator.ACLGenerator):
     if 'invert' in kwargs:
       self._invert = kwargs['invert']
       del kwargs['invert']
-    super(PcapFilter, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
 
   def _BuildTokens(self):
     """Build supported tokens for platform.
@@ -349,8 +344,7 @@ class PcapFilter(aclgenerator.ACLGenerator):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(
-        PcapFilter, self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {'logging', 'icmp_code'}
     supported_tokens -= {'verbatim'}

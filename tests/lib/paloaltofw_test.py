@@ -13,19 +13,14 @@
 # limitations under the License.
 """Unit test for Palo Alto Firewalls acl rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import unittest
+from unittest import mock
 
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import paloaltofw
 from capirca.lib import policy
-import mock
 
 GOOD_HEADER_1 = """
 header {
@@ -515,7 +510,7 @@ PATH_SERVICE = PATH_VSYS + '/service'
 class PaloAltoFWTest(unittest.TestCase):
 
   def setUp(self):
-    super(PaloAltoFWTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testTermAndFilterName(self):

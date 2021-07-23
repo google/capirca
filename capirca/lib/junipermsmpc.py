@@ -14,11 +14,6 @@
 #
 """Juniper MS-MPC  generator for capirca."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 import logging
 
@@ -313,7 +308,7 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
 
   def __init__(self, pol, exp_info):
     self.applications = {}
-    super(JuniperMSMPC, self).__init__(pol, exp_info)
+    super().__init__(pol, exp_info)
 
   def _BuildTokens(self):
     """Build supported tokens for platform.
@@ -321,8 +316,7 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(JuniperMSMPC,
-                                                   self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {
         'destination_prefix', 'destination_prefix_except', 'icmp_code',
@@ -610,7 +604,7 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
         string: either the lower()'ed string or the ports, hyphenated
                 if they're a range, or by itself if it's not.
       """
-      if isinstance(el, str) or isinstance(el, six.text_type):
+      if isinstance(el, str):
         if not lc:
           return el
         else:

@@ -14,17 +14,12 @@
 
 """Unittest for Speedway rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import unittest
+from unittest import mock
 
 from capirca.lib import naming
 from capirca.lib import policy
 from capirca.lib import speedway
-import mock
 
 
 GOOD_HEADER_1 = """
@@ -152,7 +147,7 @@ EXP_INFO = 2
 class SpeedwayTest(unittest.TestCase):
 
   def setUp(self):
-    super(SpeedwayTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testSpeedwayOutputFormat(self):

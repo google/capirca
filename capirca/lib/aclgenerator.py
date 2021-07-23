@@ -15,11 +15,6 @@
 
 """ACL Generator base class."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import copy
 import logging
 import re
@@ -27,7 +22,6 @@ import string
 
 from capirca.lib import policy
 import six
-from six.moves import range
 
 
 # generic error class
@@ -71,7 +65,7 @@ class TermNameTooLongError(Error):
   """Raised when term named can not be abbreviated."""
 
 
-class Term(object):
+class Term:
   """Generic framework for a generator Term."""
   ICMP_TYPE = policy.Term.ICMP_TYPE
   # http://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
@@ -112,8 +106,8 @@ class Term(object):
   #  mapping.
   ALWAYS_PROTO_NUM = ['ipip']
   # provide flipped key/value dicts
-  PROTO_MAP_BY_NUMBER = dict([(v, k) for (k, v) in six.iteritems(PROTO_MAP)])
-  AF_MAP_BY_NUMBER = dict([(v, k) for (k, v) in six.iteritems(AF_MAP)])
+  PROTO_MAP_BY_NUMBER = dict([(v, k) for (k, v) in PROTO_MAP.items()])
+  AF_MAP_BY_NUMBER = dict([(v, k) for (k, v) in AF_MAP.items()])
 
   NO_AF_LOG_ADDR = string.Template('Term $term will not be rendered, as it has'
                                    ' $direction address match specified but no'
@@ -204,7 +198,7 @@ class Term(object):
     return rval
 
 
-class ACLGenerator(object):
+class ACLGenerator:
   """Generates platform specific filters and terms from a policy object.
 
   This class takes a policy object and renders the output into a syntax which

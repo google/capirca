@@ -15,21 +15,16 @@
 
 """unittest for arista traffic-policy rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 import re
 import unittest
+from unittest import mock
 
 from capirca.lib import aclgenerator
 from capirca.lib import arista_tp
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
-import mock
 
 GOOD_HEADER = """
 header {
@@ -571,7 +566,7 @@ EXP_INFO = 2
 class AristaTpTest(unittest.TestCase):
 
   def setUp(self):
-    super(AristaTpTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testOptions(self):

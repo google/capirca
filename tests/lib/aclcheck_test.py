@@ -14,11 +14,6 @@
 
 """Unit tests for AclCheck."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import unittest
 
 from capirca.lib import aclcheck
@@ -66,7 +61,7 @@ term term-5 {
 class AclCheckTest(unittest.TestCase):
 
   def setUp(self):
-    super(AclCheckTest, self).setUp()
+    super().setUp()
     self.defs = naming.Naming(None)
     servicedata = []
     servicedata.append('SSH = 22/tcp')

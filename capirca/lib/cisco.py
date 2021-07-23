@@ -15,11 +15,6 @@
 
 """Cisco generator."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 import ipaddress
 from typing import cast, Union
@@ -28,7 +23,6 @@ from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from capirca.lib import summarizer
-from six.moves import range
 
 
 _ACTION_TABLE = {
@@ -67,7 +61,7 @@ class ExtendedACLTermError(Error):
   """Raised when there is a problem in an extended access list."""
 
 
-class TermStandard(object):
+class TermStandard:
   """A single standard ACL Term."""
 
   def __init__(self, term, filter_name, platform='cisco', verbose=True):
@@ -202,7 +196,7 @@ class TermStandard(object):
     return '\n'.join(ret_str)
 
 
-class ObjectGroup(object):
+class ObjectGroup:
   """Used for printing out the object group definitions.
 
   since the ports don't store the token name information, we have
@@ -287,7 +281,7 @@ class ObjectGroup(object):
     return '\n'.join(ret_str)
 
 
-class PortMap(object):
+class PortMap:
   """Map port numbers to service names."""
   # Define port mappings common to all protocols
   _PORTS_TCP = {
@@ -458,7 +452,7 @@ class Term(aclgenerator.Term):
 
   def __init__(self, term, af=4, proto_int=True, enable_dsmo=False,
                term_remark=True, platform='cisco', verbose=True):
-    super(Term, self).__init__(term)
+    super().__init__(term)
     self.term = term
     self.proto_int = proto_int
     self.options = []
@@ -795,7 +789,7 @@ class ObjectGroupTerm(Term):
   _PROTO_INT = True
 
   def __init__(self, term, filter_name, platform='cisco', verbose=True):
-    super(ObjectGroupTerm, self).__init__(term)
+    super().__init__(term)
     self.term = term
     self.filter_name = filter_name
     self.platform = platform
@@ -904,7 +898,7 @@ class Cisco(aclgenerator.ACLGenerator):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(Cisco, self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {'address',
                          'dscp_match',

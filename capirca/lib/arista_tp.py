@@ -14,11 +14,6 @@
 #
 """arista traffic-policy generator."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import copy
 import datetime
 import re
@@ -75,7 +70,7 @@ class AristaTpFragmentInV6Error(Error):
   pass
 
 
-class Config(object):
+class Config:
   """config allows a configuration to be assembled easily.
 
   when appending to the configuration object, the element should be indented
@@ -154,7 +149,7 @@ class Term(aclgenerator.Term):
   }
 
   def __init__(self, term, term_type, noverbose):
-    super(Term, self).__init__(term)
+    super().__init__(term)
     self.term = term
     self.term_type = term_type  # drives the address-family
     self.noverbose = noverbose
@@ -618,7 +613,7 @@ class Term(aclgenerator.Term):
         string: either the lower()'ed string or the ports, hyphenated
                 if they're a range, or by itself if it's not.
       """
-      if isinstance(el, str) or isinstance(el, six.text_type):
+      if isinstance(el, str):
         if lc:
           return el
         else:
@@ -658,8 +653,7 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
 
   def _BuildTokens(self):
     """returns: tuple of supported tokens and sub tokens."""
-    supported_tokens, supported_sub_tokens = super(AristaTrafficPolicy,
-                                                   self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {
         "action", "comment", "counter", "destination_address",

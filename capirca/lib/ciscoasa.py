@@ -15,11 +15,6 @@
 
 """Cisco ASA renderer."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 import ipaddress
 import logging
@@ -307,8 +302,7 @@ class CiscoASA(aclgenerator.ACLGenerator):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(
-        CiscoASA, self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {'logging', 'owner'}
 

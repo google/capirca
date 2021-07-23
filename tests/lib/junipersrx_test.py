@@ -14,22 +14,17 @@
 
 """Unit test for Juniper SRX acl rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import copy
 import datetime
 import re
 import unittest
+from unittest import mock
 
 from capirca.lib import aclgenerator
 from capirca.lib import junipersrx
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
-import mock
 
 
 GOOD_HEADER = """
@@ -596,7 +591,7 @@ _IPSET5 = [nacaddr.IP('10.0.0.0/24')]
 class JuniperSRXTest(unittest.TestCase):
 
   def setUp(self):
-    super(JuniperSRXTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testHeaderComment(self):

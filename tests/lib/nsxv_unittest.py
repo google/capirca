@@ -14,34 +14,33 @@
 #
 """UnitTest class for nsxv.py."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import optparse
 import unittest
 from xml.etree import ElementTree as ET
 
-from lib import naming
-from lib import nsxv
-from lib import policy
-import nsxv_mocktest
+from capirca.lib import naming
+from capirca.lib import nsxv
+from capirca.lib import policy
+from capirca.tests.lib import nsxv_mocktest
 
 
 class TermTest(unittest.TestCase):
 
   def setUp(self):
     """Call before every test case."""
-    super(TermTest, self).setUp()
+    super().setUp()
     parser = optparse.OptionParser()
-    parser.add_option('-d', '--def', dest='definitions',
-                      help='definitions directory', default='../def')
+    parser.add_option(
+        '-d',
+        '--def',
+        dest='definitions',
+        help='definitions directory',
+        default='../def')
     (FLAGS, args) = parser.parse_args()
     self.defs = naming.Naming(FLAGS.definitions)
 
   def tearDown(self):
-    super(TermTest, self).setUp()
+    super().setUp()
     pass
 
   def runTest(self):
@@ -68,10 +67,10 @@ class TermTest(unittest.TestCase):
     spots = [(123, 123)]
     nsxv_term = nsxv.Term(nsxv_mocktest.INET_TERM, 'inet')
     service = nsxv_term._ServiceToString(proto, spots, dports, icmp_types)
-    self.assertEqual(service,
-                     '<service><protocol>6</protocol><sourcePort>123'
-                     '</sourcePort><destinationPort>1024-65535'
-                     '</destinationPort></service>')
+    self.assertEqual(
+        service, '<service><protocol>6</protocol><sourcePort>123'
+        '</sourcePort><destinationPort>1024-65535'
+        '</destinationPort></service>')
 
   def test_str_forinet(self):
     """Test for Term._str_."""
@@ -150,8 +149,7 @@ class TermTest(unittest.TestCase):
     pol = policy.ParsePolicy(nsxv_mocktest.INET_FILTER, self.defs, False)
     translate_pol = nsxv.Nsxv(pol, exp_info)
     nsxv_policies = translate_pol.nsxv_policies
-    for (_, filter_name, filter_list, terms
-         ) in nsxv_policies:
+    for (_, filter_name, filter_list, terms) in nsxv_policies:
       self.assertEqual(filter_name, 'inet')
       self.assertEqual(filter_list, ['inet'])
       self.assertEqual(len(terms), 1)

@@ -16,11 +16,6 @@
 """Parses the generic policy files and return a policy object for acl rendering.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 import os
 import sys
@@ -30,8 +25,6 @@ from capirca.lib import nacaddr
 from capirca.lib import naming
 from ply import lex
 from ply import yacc
-from six.moves import map
-from six.moves import range
 
 
 DEFINITIONS = None
@@ -166,7 +159,7 @@ def TranslatePorts(ports, protocols, term_name):
 
 
 # classes for storing the object types in the policy files.
-class Policy(object):
+class Policy:
   """The policy object contains everything found in a given policy file."""
 
   def __init__(self, header, terms):
@@ -302,7 +295,7 @@ class Policy(object):
     return self.__str__()
 
 
-class Term(object):
+class Term:
   """The Term object is used to store each of the terms.
 
   Args:
@@ -1436,7 +1429,7 @@ class Term(object):
     return True
 
 
-class VarType(object):
+class VarType:
   """Generic object meant to store lots of basic policy types."""
 
   COMMENT = 0
@@ -1524,7 +1517,7 @@ class VarType(object):
     return id(self)
 
 
-class Header(object):
+class Header:
   """The header of the policy file contains the targets and a global comment."""
 
   def __init__(self):
@@ -1632,7 +1625,7 @@ class Header(object):
 # b/c we're almost certainly going to have to do something more exotic with
 # it shortly to account for various rendering options like default iptables
 # policies or output file names, etc. etc.
-class Target(object):
+class Target:
   """The type of acl to be rendered from this policy file."""
 
   def __init__(self, target):

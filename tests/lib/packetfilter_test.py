@@ -14,20 +14,15 @@
 
 """Unittest for packetfilter rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 import unittest
+from unittest import mock
 
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import packetfilter
 from capirca.lib import policy
-import mock
 
 
 GOOD_HEADER = """
@@ -396,7 +391,7 @@ EXP_INFO = 2
 class PacketFilterTest(unittest.TestCase):
 
   def setUp(self):
-    super(PacketFilterTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testTcp(self):

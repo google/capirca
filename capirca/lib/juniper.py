@@ -15,18 +15,12 @@
 
 """Juniper JCL generator."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from capirca.lib import summarizer
 import six
-from six.moves import range
 
 
 # generic error class
@@ -70,7 +64,7 @@ class JuniperFragmentInV6Error(Error):
   pass
 
 
-class Config(object):
+class Config:
   """Config allows a configuration to be assembled easily.
 
   Configurations are automatically indented following Juniper's style.
@@ -172,7 +166,7 @@ class Term(aclgenerator.Term):
                            'tcp-est': 'tcp-flags "(ack|rst)"'}}
 
   def __init__(self, term, term_type, enable_dsmo, noverbose):
-    super(Term, self).__init__(term)
+    super().__init__(term)
     self.term = term
     self.term_type = term_type
     self.enable_dsmo = enable_dsmo
@@ -830,7 +824,7 @@ class Term(aclgenerator.Term):
         string: either the lower()'ed string or the ports, hyphenated
                 if they're a range, or by itself if it's not.
       """
-      if isinstance(el, str) or isinstance(el, six.text_type):
+      if isinstance(el, str) or isinstance(el, str):
         if lc:
           return el
         else:
@@ -872,7 +866,7 @@ class Juniper(aclgenerator.ACLGenerator):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(Juniper, self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {'address',
                          'counter',

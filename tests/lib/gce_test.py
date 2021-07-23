@@ -14,23 +14,17 @@
 
 """Unittest for GCE firewall rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import json
 import unittest
+from unittest import mock
 
 from absl.testing import parameterized
-
 from capirca.lib import aclgenerator
 from capirca.lib import gce
 from capirca.lib import gcp
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
-import mock
 
 GOOD_HEADER = """
 header {
@@ -631,7 +625,7 @@ _TERM_PORTS_LIMIT = 256
 class GCETest(parameterized.TestCase):
 
   def setUp(self):
-    super(GCETest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def _StripAclHeaders(self, acl):

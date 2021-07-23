@@ -24,11 +24,6 @@ TODO: This library is currently incomplete, and does not allow access to
       every argument of a policy term.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 from capirca.lib import naming
 
 
@@ -44,7 +39,7 @@ class InvalidFilterError(Error):
   """Filter is invalid."""
 
 
-class Filter(object):
+class Filter:
   """Simple filter with a name a list of terms."""
 
   def __init__(self, filtername=''):
@@ -61,7 +56,7 @@ class Filter(object):
     return '\n\n'.join(rval)
 
 
-class Term(object):
+class Term:
   """Simple term with a name a list of attributes."""
 
   def __init__(self, termname=''):
@@ -87,7 +82,7 @@ class Term(object):
     return '\n'.join(rval)
 
 
-class Policy(object):
+class Policy:
   """Holds basic attributes of an unexpanded policy definition file."""
 
   def __init__(self, filename, defs_data=None):
