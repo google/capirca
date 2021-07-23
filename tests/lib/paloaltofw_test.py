@@ -13,7 +13,7 @@
 # limitations under the License.
 """Unit test for Palo Alto Firewalls acl rendering module."""
 
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from capirca.lib import aclgenerator
@@ -507,7 +507,7 @@ PATH_TAG = PATH_VSYS + '/tag'
 PATH_SERVICE = PATH_VSYS + '/service'
 
 
-class PaloAltoFWTest(unittest.TestCase):
+class PaloAltoFWTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -1151,4 +1151,4 @@ term rule-1 {
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

@@ -16,7 +16,7 @@
 
 import datetime
 import re
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from capirca.lib import aclgenerator
@@ -567,7 +567,7 @@ class FakeTerm:
   protocol = ['tcp']
 
 
-class AclCheckTest(unittest.TestCase):
+class AclCheckTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -1246,4 +1246,4 @@ class AclCheckTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

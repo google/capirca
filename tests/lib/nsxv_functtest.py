@@ -16,7 +16,7 @@
 
 import copy
 import optparse
-import unittest
+from absl.testing import absltest
 from xml.etree import ElementTree as ET
 
 from capirca.lib import naming
@@ -25,7 +25,7 @@ from capirca.lib import policy
 from capirca.tests.lib import nsxv_mocktest
 
 
-class NsxvFunctionalTest(unittest.TestCase):
+class NsxvFunctionalTest(absltest.TestCase):
   """Functional testing for NSXV."""
 
   def setUp(self):
@@ -114,4 +114,4 @@ class NsxvFunctionalTest(unittest.TestCase):
     self.assertRaises(nsxv.NsxvAclTermError, str(nsxv.Nsxv(pol, 2)))
 
   if __name__ == '__main__':
-    unittest.main()
+    absltest.main()

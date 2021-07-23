@@ -17,7 +17,7 @@
 import datetime
 import logging
 import textwrap
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from capirca.lib import aruba
@@ -236,7 +236,7 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class ArubaTest(unittest.TestCase):
+class ArubaTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -807,4 +807,4 @@ class ArubaTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

@@ -16,7 +16,7 @@
 
 import datetime
 import re
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from absl.testing import parameterized
@@ -1585,4 +1585,4 @@ class JuniperMSMPCTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

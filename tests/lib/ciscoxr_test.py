@@ -13,7 +13,7 @@
 # limitations under the License.
 """Unittest for Cisco XR acl rendering module."""
 
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from capirca.lib import ciscoxr
@@ -183,7 +183,7 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class CiscoXRTest(unittest.TestCase):
+class CiscoXRTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -329,4 +329,4 @@ class CiscoXRTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

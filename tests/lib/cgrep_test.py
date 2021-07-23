@@ -21,7 +21,7 @@
 """
 
 import argparse
-import unittest
+from absl.testing import absltest
 
 from capirca.lib import nacaddr
 from capirca.lib import naming
@@ -205,7 +205,7 @@ class Namespace:
       setattr(self, arg, kwargs[arg])
 
 
-class CgrepTest(unittest.TestCase):
+class CgrepTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -530,4 +530,4 @@ class CgrepTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

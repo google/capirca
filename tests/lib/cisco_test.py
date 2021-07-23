@@ -16,7 +16,7 @@
 
 import datetime
 import re
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from capirca.lib import aclgenerator
@@ -423,7 +423,7 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class CiscoTest(unittest.TestCase):
+class CiscoTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -885,4 +885,4 @@ class CiscoTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

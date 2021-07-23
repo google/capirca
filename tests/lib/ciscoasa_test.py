@@ -14,7 +14,7 @@
 
 """Unittest for ciscoasa acl rendering module."""
 
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from capirca.lib import ciscoasa
@@ -119,7 +119,7 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class CiscoASATest(unittest.TestCase):
+class CiscoASATest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -141,4 +141,4 @@ class CiscoASATest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

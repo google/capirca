@@ -16,7 +16,7 @@
 
 import datetime
 import re
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from absl import logging
@@ -645,7 +645,7 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class JuniperTest(unittest.TestCase):
+class JuniperTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -1535,4 +1535,4 @@ class JuniperTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

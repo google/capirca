@@ -14,7 +14,7 @@
 
 """Unittest for ACL rendering module."""
 
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from capirca.lib import aclgenerator
@@ -87,7 +87,7 @@ class ACLMock(aclgenerator.ACLGenerator):
     pass
 
 
-class ACLGeneratorTest(unittest.TestCase):
+class ACLGeneratorTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -197,4 +197,4 @@ class ACLGeneratorTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

@@ -14,7 +14,7 @@
 
 """Unittest for Srxlo rendering module."""
 
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from capirca.lib import naming
@@ -172,7 +172,7 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class SRXloTest(unittest.TestCase):
+class SRXloTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -229,4 +229,4 @@ class SRXloTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

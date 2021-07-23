@@ -14,7 +14,7 @@
 """Unittest for windows_ipsec rendering module."""
 
 import datetime
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from capirca.lib import nacaddr
@@ -116,7 +116,7 @@ SUPPORTED_SUB_TOKENS = {'action': {'accept', 'deny'}}
 EXP_INFO = 2
 
 
-class WindowsIPSecTest(unittest.TestCase):
+class WindowsIPSecTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -236,4 +236,4 @@ class WindowsIPSecTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

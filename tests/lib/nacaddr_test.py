@@ -14,12 +14,12 @@
 
 """Unittest for nacaddr.py module."""
 
-import unittest
+from absl.testing import absltest
 
 from capirca.lib import nacaddr
 
 
-class NacaddrUnitTest(unittest.TestCase):
+class NacaddrUnitTest(absltest.TestCase):
   """Unit Test for nacaddr.py.
 
      nacaddr class extends ipaddr by adding .text fields to allow
@@ -276,4 +276,4 @@ class NacaddrUnitTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

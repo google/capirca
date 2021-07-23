@@ -13,7 +13,7 @@
 # limitations under the License.
 """UnitTest class for nsxv.py."""
 
-import unittest
+from absl.testing import absltest
 from unittest import mock
 from xml.etree import ElementTree as ET
 
@@ -392,7 +392,7 @@ EXP_INFO = 2
 _PLATFORM = 'nsxv'
 
 
-class TermTest(unittest.TestCase):
+class TermTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -991,4 +991,4 @@ class TermTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

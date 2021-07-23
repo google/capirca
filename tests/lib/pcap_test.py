@@ -14,7 +14,7 @@
 """Unittest for pcap rendering module."""
 
 import datetime
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from capirca.lib import aclgenerator
@@ -266,7 +266,7 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class PcapFilter(unittest.TestCase):
+class PcapFilter(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -445,4 +445,4 @@ class PcapFilter(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

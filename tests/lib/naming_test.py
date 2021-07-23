@@ -14,13 +14,13 @@
 
 """Unittest for naming.py module."""
 
-import unittest
+from absl.testing import absltest
 
 from capirca.lib import nacaddr
 from capirca.lib import naming
 
 
-class NamingUnitTest(unittest.TestCase):
+class NamingUnitTest(absltest.TestCase):
   """Unit Test for naming.py.
 
      The Naming class allows us to specify if we want to use arrays of text
@@ -192,4 +192,4 @@ class NamingUnitTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

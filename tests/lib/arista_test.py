@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for arista acl rendering module."""
 
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from capirca.lib import arista
@@ -203,7 +203,7 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class AristaTest(unittest.TestCase):
+class AristaTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -308,4 +308,4 @@ class AristaTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

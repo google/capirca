@@ -14,7 +14,7 @@
 
 """Unit tests for AclCheck."""
 
-import unittest
+from absl.testing import absltest
 
 from capirca.lib import aclcheck
 from capirca.lib import naming
@@ -58,7 +58,7 @@ term term-5 {
 """
 
 
-class AclCheckTest(unittest.TestCase):
+class AclCheckTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -149,4 +149,4 @@ class AclCheckTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

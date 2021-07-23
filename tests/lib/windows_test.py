@@ -14,7 +14,7 @@
 
 """Unittest for windows acl rendering module."""
 
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from capirca.lib import naming
@@ -144,7 +144,7 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class WindowsGeneratorTest(unittest.TestCase):
+class WindowsGeneratorTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -177,4 +177,4 @@ class WindowsGeneratorTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

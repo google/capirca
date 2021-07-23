@@ -14,7 +14,7 @@
 """Unittest for windows_advfirewall rendering module."""
 
 import datetime
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from capirca.lib import aclgenerator
@@ -258,7 +258,7 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class WindowsAdvFirewallTest(unittest.TestCase):
+class WindowsAdvFirewallTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -393,4 +393,4 @@ class WindowsAdvFirewallTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

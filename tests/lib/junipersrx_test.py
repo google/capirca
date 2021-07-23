@@ -17,7 +17,7 @@
 import copy
 import datetime
 import re
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from capirca.lib import aclgenerator
@@ -588,7 +588,7 @@ _IPSET4 = [nacaddr.IP('10.0.0.0/20')]
 _IPSET5 = [nacaddr.IP('10.0.0.0/24')]
 
 
-class JuniperSRXTest(unittest.TestCase):
+class JuniperSRXTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -1825,4 +1825,4 @@ class JuniperSRXTest(unittest.TestCase):
         self.assertGreater(address_set_count, 1)
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

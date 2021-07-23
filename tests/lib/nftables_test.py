@@ -15,7 +15,7 @@
 """Unittest for Nftables rendering module."""
 
 import datetime
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from absl import logging
@@ -288,7 +288,7 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class NftablesTest(unittest.TestCase):
+class NftablesTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -553,4 +553,4 @@ class NftablesTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

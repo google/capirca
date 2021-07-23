@@ -18,14 +18,14 @@ import os
 
 import random
 import time
-import unittest
+from absl.testing import absltest
 
 from absl import logging
 from capirca.lib import nacaddr
 from capirca.lib import summarizer
 
 
-class SummarizerTest(unittest.TestCase):
+class SummarizerTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -197,4 +197,4 @@ class SummarizerTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

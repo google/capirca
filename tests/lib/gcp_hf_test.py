@@ -1,7 +1,7 @@
 """Tests for google3.third_party.py.capirca.lib.gcp_hf.py."""
 
 import json
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from absl.testing import parameterized
@@ -3289,4 +3289,4 @@ class GcpHfTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

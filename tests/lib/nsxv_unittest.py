@@ -15,7 +15,7 @@
 """UnitTest class for nsxv.py."""
 
 import optparse
-import unittest
+from absl.testing import absltest
 from xml.etree import ElementTree as ET
 
 from capirca.lib import naming
@@ -24,7 +24,7 @@ from capirca.lib import policy
 from capirca.tests.lib import nsxv_mocktest
 
 
-class TermTest(unittest.TestCase):
+class TermTest(absltest.TestCase):
 
   def setUp(self):
     """Call before every test case."""
@@ -198,4 +198,4 @@ class TermTest(unittest.TestCase):
     self.assertEqual(notes, 'Allow name resolution using honestdns.')
 
   if __name__ == '__main__':
-    unittest.main()
+    absltest.main()

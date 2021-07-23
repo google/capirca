@@ -14,7 +14,7 @@
 """Tests for brocade acl rendering module."""
 
 import re
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from capirca.lib import brocade
@@ -127,7 +127,7 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class BrocadeTest(unittest.TestCase):
+class BrocadeTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -160,4 +160,4 @@ class BrocadeTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

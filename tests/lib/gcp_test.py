@@ -1,6 +1,6 @@
 """Unittest for GCP Firewall Generator module."""
 
-import unittest
+from absl.testing import absltest
 
 from absl.testing import parameterized
 
@@ -55,4 +55,4 @@ class HelperFunctionsTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

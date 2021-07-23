@@ -14,7 +14,7 @@
 
 """Unittest for Speedway rendering module."""
 
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from capirca.lib import naming
@@ -144,7 +144,7 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class SpeedwayTest(unittest.TestCase):
+class SpeedwayTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -184,4 +184,4 @@ class SpeedwayTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

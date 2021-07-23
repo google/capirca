@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for cisconx acl rendering module."""
 
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from capirca.lib import cisconx
@@ -197,7 +197,7 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class CiscoNXTest(unittest.TestCase):
+class CiscoNXTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -275,4 +275,4 @@ class CiscoNXTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

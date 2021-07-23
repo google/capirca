@@ -13,13 +13,13 @@
 # limitations under the License.
 
 
-import unittest
+from absl.testing import absltest
 
 from absl import logging
 from capirca.lib import policy_simple
 
 
-class FieldTest(unittest.TestCase):
+class FieldTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -104,7 +104,7 @@ class FieldTest(unittest.TestCase):
     self.assertEqual(expected_str, str(f))
 
 
-class BlockTest(unittest.TestCase):
+class BlockTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -138,7 +138,7 @@ class BlockTest(unittest.TestCase):
     self.assertEqual([a, b, c], list(block))
 
 
-class PolicyTest(unittest.TestCase):
+class PolicyTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -171,7 +171,7 @@ class PolicyTest(unittest.TestCase):
     self.assertEqual([a, b, c], list(pol))
 
 
-class PolicyParserTest(unittest.TestCase):
+class PolicyParserTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -227,4 +227,4 @@ class PolicyParserTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

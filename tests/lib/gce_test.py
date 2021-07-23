@@ -15,7 +15,7 @@
 """Unittest for GCE firewall rendering module."""
 
 import json
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from absl.testing import parameterized
@@ -1543,4 +1543,4 @@ class GCETest(parameterized.TestCase):
     self.assertEqual(gce.GetAttributeCount(dict_term), expected)
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

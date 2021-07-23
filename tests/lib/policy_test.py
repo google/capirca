@@ -14,7 +14,7 @@
 
 """Unit tests for policy.py library."""
 
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from absl import logging
@@ -574,7 +574,7 @@ term bad-term-16 {
 # pylint: disable=maybe-no-member
 
 
-class PolicyTest(unittest.TestCase):
+class PolicyTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -1682,4 +1682,4 @@ class PolicyTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()
