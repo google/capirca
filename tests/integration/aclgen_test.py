@@ -18,7 +18,7 @@ import os
 import shutil
 import sys
 import tempfile
-import unittest
+from absl.testing import absltest
 from unittest import mock
 
 from absl import app
@@ -32,7 +32,7 @@ aclgen.SetupFlags()  # Ensure flags are set up only once
 FLAGS(sys.argv[0:1])
 
 
-class TestAclGenDemo(unittest.TestCase):
+class TestAclGenDemo(absltest.TestCase):
   """Ensure Capirca demo runs successfully out-of-the-box."""
 
   def setUp(self):
@@ -110,7 +110,7 @@ class TestAclGenDemo(unittest.TestCase):
 
 
 def main(unused_argv):
-  unittest.main()
+  absltest.main()
 
 
 if __name__ == '__main__':
