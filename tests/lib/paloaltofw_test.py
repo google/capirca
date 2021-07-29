@@ -1149,6 +1149,57 @@ term rule-1 {
     applications = {elem.text for elem in x}
     self.assertEqual({"icmp", "gre"}, applications, output)
 
+  def testSrcAnyDstAnyAddressFamily(self):
+    POL = """
+header {
+  target:: paloalto from-zone trust to-zone untrust %s
+}
+term rule-1 {
+  action:: accept
+}"""
+
+    pol = policy.ParsePolicy(POL % "mixed", self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    for srcdst in ["source", "destination"]:
+      x = paloalto.config.findall(PATH_RULES +
+                                  "/entry[@name='rule-1']/%s/member" % srcdst)
+      self.assertTrue(len(x) == 1, output)
+      values = {elem.text for elem in x}
+      self.assertEqual({"any"}, values, output)
+
+    pol = policy.ParsePolicy(POL % "inet", self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    for srcdst in ["source", "destination"]:
+      x = paloalto.config.findall(PATH_RULES +
+                                  "/entry[@name='rule-1']/%s/member" % srcdst)
+      self.assertTrue(len(x) == 1, output)
+      values = {elem.text for elem in x}
+      self.assertEqual({"any-ipv4"}, values, output)
+      x = paloalto.config.find(PATH_RULES +
+                               "/entry[@name='rule-1']/negate-source")
+      self.assertIsNone(x, output)
+      x = paloalto.config.find(PATH_RULES +
+                               "/entry[@name='rule-1']/negate-destination")
+      self.assertIsNone(x, output)
+
+    pol = policy.ParsePolicy(POL % "inet6", self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    for srcdst in ["source", "destination"]:
+      x = paloalto.config.findall(PATH_RULES +
+                                  "/entry[@name='rule-1']/%s/member" % srcdst)
+      self.assertTrue(len(x) == 1, output)
+      values = {elem.text for elem in x}
+      self.assertEqual({"any-ipv4"}, values, output)
+      x = paloalto.config.find(PATH_RULES +
+                               "/entry[@name='rule-1']/negate-source")
+      self.assertIsNotNone(x, output)
+      x = paloalto.config.find(PATH_RULES +
+                               "/entry[@name='rule-1']/negate-destination")
+      self.assertIsNotNone(x, output)
+
 
 if __name__ == '__main__':
   absltest.main()

@@ -238,8 +238,6 @@ class Rule:
       saddr_check = sorted(saddr_check)
       for addr in saddr_check:
         options["source"].append(str(addr))
-    else:
-      options["source"].append("any")
 
     # DESTINATION-ADDRESS
     if term.destination_address:
@@ -249,8 +247,6 @@ class Rule:
       daddr_check = sorted(daddr_check)
       for addr in daddr_check:
         options["destination"].append(str(addr))
-    else:
-      options["destination"].append("any")
 
     # ACTION
     if term.action:
@@ -770,6 +766,8 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
   def __str__(self):
     """Render the output of the PaloAltoFirewall policy into config."""
 
+    add_any_ipv4 = False
+
     # INITAL CONFIG
     config = etree.Element("config", {
         "version": "8.1.0",
@@ -884,6 +882,28 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           member = etree.SubElement(from_, "member")
           member.text = x
 
+        dest = etree.SubElement(entry, "destination")
+        if not options["destination"]:
+          member = etree.SubElement(dest, "member")
+          if options["source"]:
+            member.text = "any"
+          else:
+            af = filter_options[4] if len(filter_options) > 4 else "inet"
+            if af != "mixed":
+              member.text = "any-ipv4"
+              options["source"] = ["any-ipv4"]
+              add_any_ipv4 = True
+              if af == "inet6":
+                for x in ["negate-source", "negate-destination"]:
+                  negate = etree.SubElement(entry, x)
+                  negate.text = "yes"
+            else:
+              member.text = "any"
+        else:
+          for x in options["destination"]:
+            member = etree.SubElement(dest, "member")
+            member.text = x
+
         source = etree.SubElement(entry, "source")
         if not options["source"]:
           member = etree.SubElement(source, "member")
@@ -891,15 +911,6 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
         else:
           for x in options["source"]:
             member = etree.SubElement(source, "member")
-            member.text = x
-
-        dest = etree.SubElement(entry, "destination")
-        if not options["destination"]:
-          member = etree.SubElement(dest, "member")
-          member.text = "any"
-        else:
-          for x in options["destination"]:
-            member = etree.SubElement(dest, "member")
             member.text = x
 
         # service section of a policy rule.
@@ -1005,6 +1016,14 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       desc.text = name
       ip = etree.SubElement(entry, "ip-netmask")
       ip.text = str(address_book_names_dict[name])
+
+    if add_any_ipv4:
+      entry = etree.SubElement(addr, "entry", {"name": "any-ipv4"})
+      desc = etree.SubElement(entry, "description")
+      desc.text = ("Object to match all IPv4 addresses; "
+                   "negate to match all IPv6 addresses.")
+      range = etree.SubElement(entry, "ip-range")
+      range.text = "0.0.0.0-255.255.255.255"
 
     vsys_entry.append(tag)
 
