@@ -38,7 +38,7 @@ setuptools.setup(
     packages=setuptools.find_packages(exclude=['tests*']),
     zip_safe=False,
     entry_points={
-        'console_scripts': ['aclgen = capirca.aclgen:entry_point'],
+        'console_scripts': ['aclgen = capirca.aclgen:EntryPoint'],
     },
     classifiers=[
         'Development Status :: 5 - Production/Stable',
