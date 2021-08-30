@@ -267,16 +267,19 @@ class Term(gcp.Term):
           self.inet_version)
       return []
 
+    filtered_protocols = []
     if not self.term.protocol:
-      raise GceFirewallError(
-          'GCE firewall rule contains no protocol, it must be specified.')
+      # Any protocol is represented as "all"
+      filtered_protocols = ['all']
+      logging.info(
+          'INFO: Term %s has no protocol specified,'
+          'which is interpreted as "all" protocols.', self.term.name)
 
     proto_dict = copy.deepcopy(term_dict)
 
     if self.term.logging:
       proto_dict['logConfig'] = {'enable': True}
 
-    filtered_protocols = []
     for proto in self.term.protocol:
       # ICMP filtering by inet_version
       # Since each term has inet_version, 'mixed' is correctly processed here.

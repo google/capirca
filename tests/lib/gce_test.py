@@ -346,6 +346,14 @@ term good-term-igmp {
 }
 """
 
+GOOD_TERM_NO_PROTOCOL = """
+term good-term-no-protocol {
+  comment:: "Good term."
+  source-address:: CORP_EXTERNAL
+  action:: accept
+}
+"""
+
 BAD_TERM_NO_SOURCE = """
 term bad-term-no-source {
   comment:: "Management access from corp."
@@ -1403,6 +1411,13 @@ class GCETest(parameterized.TestCase):
     self.assertIn('10.2.3.4/32', str(acl))
     self.assertNotIn('2001:4860:8000::5/128', str(acl))
     self.assertNotIn(gcp.GetIpv6TermName('good-term-pingv6'), str(acl))
+
+  def testNoProtocol(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER_MIXED + GOOD_TERM_NO_PROTOCOL,
+                           self.naming), EXP_INFO)
+    self.assertIn('all', str(acl))
 
   def testTermOwners(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
