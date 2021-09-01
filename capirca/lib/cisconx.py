@@ -14,6 +14,7 @@
 #
 """CiscoNX generator."""
 
+from capirca.lib import aclgenerator
 from capirca.lib import cisco
 
 
@@ -36,6 +37,11 @@ class CiscoNX(cisco.Cisco):
   SUFFIX = '.nxacl'
   # Protocols should be emitted as they were in the policy (names).
   _PROTO_INT = False
+
+  def RepositoryTagsHelper(self, target=[], filter_type='', filter_name=''):
+    target.extend(aclgenerator.AddRepositoryTags(
+        ' remark ', date=False, rid=False))
+    return target
 
   # CiscoNX omits the "extended" access-list argument.
   def _AppendTargetByFilterType(self, filter_name, filter_type):
