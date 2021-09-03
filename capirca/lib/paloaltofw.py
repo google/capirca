@@ -238,8 +238,7 @@ class Rule:
       saddr_check = sorted(saddr_check)
       for addr in saddr_check:
         options["source"].append(str(addr))
-    else:
-      options["source"].append("any")
+    # missing source handled during XML document generation
 
     # DESTINATION-ADDRESS
     if term.destination_address:
@@ -249,8 +248,7 @@ class Rule:
       daddr_check = sorted(daddr_check)
       for addr in daddr_check:
         options["destination"].append(str(addr))
-    else:
-      options["destination"].append("any")
+    # missing destination handled during XML document generation
 
     # ACTION
     if term.action:
@@ -770,6 +768,15 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
   def __str__(self):
     """Render the output of the PaloAltoFirewall policy into config."""
 
+    # IPv4 addresses are normalized into the policy as IPv6 addresses
+    # using ::<ipv4-address>.  The 0.0.0.0-255.255.255.255 range is
+    # equivalent to ::0/96 which will only match IPv4 addresses; when
+    # negated it will match only IPv6 addresses.
+    # Used for address families inet and inet6 when source and
+    # destination address are not specified (any any).
+    ANY_IPV4_RANGE = "0.0.0.0-255.255.255.255"
+    add_any_ipv4 = False
+
     # INITAL CONFIG
     config = etree.Element("config", {
         "version": "8.1.0",
@@ -884,10 +891,17 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           member = etree.SubElement(from_, "member")
           member.text = x
 
+        af = filter_options[4] if len(filter_options) > 4 else "inet"
+
         source = etree.SubElement(entry, "source")
         if not options["source"]:
           member = etree.SubElement(source, "member")
-          member.text = "any"
+          if not options["destination"] and af != "mixed":
+            # only inet and inet6 use the any-ipv4 object
+            member.text = "any-ipv4"
+            add_any_ipv4 = True
+          else:
+            member.text = "any"
         else:
           for x in options["source"]:
             member = etree.SubElement(source, "member")
@@ -896,7 +910,18 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
         dest = etree.SubElement(entry, "destination")
         if not options["destination"]:
           member = etree.SubElement(dest, "member")
-          member.text = "any"
+          if options["source"]:
+            member.text = "any"
+          else:
+            if af != "mixed":
+              # only inet and inet6 use the any-ipv4 object
+              member.text = "any-ipv4"
+              if af == "inet6":
+                for x in ["negate-source", "negate-destination"]:
+                  negate = etree.SubElement(entry, x)
+                  negate.text = "yes"
+            else:
+              member.text = "any"
         else:
           for x in options["destination"]:
             member = etree.SubElement(dest, "member")
@@ -1005,6 +1030,14 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       desc.text = name
       ip = etree.SubElement(entry, "ip-netmask")
       ip.text = str(address_book_names_dict[name])
+
+    if add_any_ipv4:
+      entry = etree.SubElement(addr, "entry", {"name": "any-ipv4"})
+      desc = etree.SubElement(entry, "description")
+      desc.text = ("Object to match all IPv4 addresses; "
+                   "negate to match all IPv6 addresses.")
+      range = etree.SubElement(entry, "ip-range")
+      range.text = ANY_IPV4_RANGE
 
     vsys_entry.append(tag)
 
