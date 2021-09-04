@@ -214,8 +214,9 @@ class CiscoNXTest(absltest.TestCase):
     self.assertIn(expected, str(acl), str(acl))
     expected = 'test-filter remark'
     self.assertNotIn(expected, str(acl), str(acl))
-    self.assertNotIn(' remark $Id:$', str(acl), str(acl))
-    self.assertIn(' remark $Revision:$', str(acl), str(acl))
+    self.assertNotIn(' remark %sId:%s' % ('$', '$'), str(acl), str(acl))
+    self.assertIn(' remark "%sRevision:%s"' % ('$', '$'), str(acl), str(acl))
+    self.assertNotIn(' remark $', str(acl), str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 

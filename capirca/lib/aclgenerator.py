@@ -515,7 +515,8 @@ def ProtocolNameToNumber(protocols, proto_to_num, name_to_num_map):
   return return_proto
 
 
-def AddRepositoryTags(prefix='', rid=True, date=True, revision=True):
+def AddRepositoryTags(prefix='', rid=True, date=True, revision=True,
+                      wrap=False):
   """Add repository tagging into the output.
 
   Args:
@@ -523,16 +524,18 @@ def AddRepositoryTags(prefix='', rid=True, date=True, revision=True):
     rid: bool; True includes the revision Id: repository tag.
     date: bool; True includes the Date: repository tag.
     revision: bool; True includes the Revision: repository tag.
+    wrap: bool; True wraps the tag in double quotes.
   Returns:
     list of text lines containing revision data
   """
   tags = []
+  wrapper = '"' if wrap else ''
 
   # Format print the '$' into the RCS tags in order prevent the tags from
   # being interpolated here.
-  p4_id = '%sId:%s' % ('$', '$')
-  p4_date = '%sDate:%s' % ('$', '$')
-  p4_revision = '%sRevision:%s' % ('$', '$')
+  p4_id = '%s%sId:%s%s' % (wrapper, '$', '$', wrapper)
+  p4_date = '%s%sDate:%s%s' % (wrapper, '$', '$', wrapper)
+  p4_revision = '%s%sRevision:%s%s' % (wrapper, '$', '$', wrapper)
   if rid:
     tags.append('%s%s' % (prefix, p4_id))
   if date:

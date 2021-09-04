@@ -38,9 +38,11 @@ class CiscoNX(cisco.Cisco):
   # Protocols should be emitted as they were in the policy (names).
   _PROTO_INT = False
 
-  def RepositoryTagsHelper(self, target=[], filter_type='', filter_name=''):
+  def _RepositoryTagsHelper(self, target=None, filter_type='', filter_name=''):
+    if target is None:
+      target = []
     target.extend(aclgenerator.AddRepositoryTags(
-        ' remark ', date=False, rid=False))
+        ' remark ', rid=False, wrap=True))
     return target
 
   # CiscoNX omits the "extended" access-list argument.

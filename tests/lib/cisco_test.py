@@ -499,8 +499,10 @@ class CiscoTest(absltest.TestCase):
                   str(acl))
     self.assertIn('access-list 50 remark standard-term-1', str(acl),
                   str(acl))
-    self.assertIn('access-list 50 remark $Id:$', str(acl), str(acl))
-    self.assertNotIn('access-list 50 remark $Revision:$', str(acl), str(acl))
+    self.assertIn('access-list 50 remark %sId:%s' % ('$', '$'), str(acl),
+                  str(acl))
+    self.assertNotIn('access-list 50 remark %sRevision:%s' % ('$', '$'),
+                     str(acl), str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 

@@ -194,6 +194,10 @@ class ACLGeneratorTest(absltest.TestCase):
     self.assertListEqual(
         ['%sId:%s' % ('$', '$')],
         aclgenerator.AddRepositoryTags(date=False, revision=False))
+    # Wrap the Date: tag.
+    self.assertListEqual(
+        ['"%sDate:%s"' % ('$', '$')],
+        aclgenerator.AddRepositoryTags(revision=False, rid=False, wrap=True))
 
 
 if __name__ == '__main__':

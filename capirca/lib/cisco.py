@@ -1061,7 +1061,9 @@ class Cisco(aclgenerator.ACLGenerator):
               filter_type, self._PLATFORM))
     return target
 
-  def RepositoryTagsHelper(self, target=[], filter_type='', filter_name=''):
+  def _RepositoryTagsHelper(self, target=None, filter_type='', filter_name=''):
+    if target is None:
+      target = []
     if filter_type == 'standard' and filter_name.isdigit():
       target.extend(aclgenerator.AddRepositoryTags(
           'access-list %s remark ' % filter_name, date=False, revision=False))
@@ -1087,7 +1089,7 @@ class Cisco(aclgenerator.ACLGenerator):
         # remove/re-create of the filter, otherwise config mode doesn't
         # know where to place these remarks in the configuration.
         if self.verbose:
-          target = self.RepositoryTagsHelper(target, filter_type, filter_name)
+          target = self._RepositoryTagsHelper(target, filter_type, filter_name)
 
           # add a header comment if one exists
 
