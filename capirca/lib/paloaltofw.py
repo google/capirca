@@ -65,76 +65,6 @@ class PaloAltoFWBadIcmpTypeError(Error):
   pass
 
 
-class Term(aclgenerator.Term):
-  """Representation of an individual term.
-
-  This is mostly useful for the __str__() method.
-
-  Attributes:
-    obj: a policy.Term object
-    term_type: type of filter to generate, e.g. inet or inet6
-    filter_options: list of remaining target options (zones)
-  """
-
-  ACTIONS = {
-      "accept": "allow",
-      "deny": "deny",
-      "reject": "reset-client",
-      "reject-with-tcp-rst": "reset-client",
-  }
-
-  def __init__(self, term, term_type, zones):
-    self.term = term
-    self.term_type = term_type
-    self.from_zone = zones[1]
-    self.to_zone = zones[3]
-    self.extra_actions = []
-
-  def __str__(self):
-    """Render config output from this term object."""
-    # Verify platform specific terms. Skip whole term if platform does not
-    # match.
-    # Nothing here for now
-
-  def _Group(self, group):
-    """If 1 item return it, else return [ item1 item2 ].
-
-    Args:
-      group: a list.  could be a list of strings (protocols) or a list of tuples
-        (ports)
-
-    Returns:
-      rval: a string surrounded by '[' and '];' if len(group) > 1
-            or with just ';' appended if len(group) == 1
-    """
-
-    def _FormattedGroup(el):
-      """Return the actual formatting of an individual element.
-
-      Args:
-        el: either a string (protocol) or a tuple (ports)
-
-      Returns:
-        string: either the lower()'ed string or the ports, hyphenated
-                if they're a range, or by itself if it's not.
-      """
-      if isinstance(el, str):
-        return el.lower()
-      elif isinstance(el, int):
-        return str(el)
-      # type is a tuple below here
-      elif el[0] == el[1]:
-        return "%d" % el[0]
-      else:
-        return "%d-%d" % (el[0], el[1])
-
-    if len(group) > 1:
-      rval = "[ " + " ".join([_FormattedGroup(x) for x in group]) + " ];"
-    else:
-      rval = _FormattedGroup(group[0]) + ";"
-    return rval
-
-
 class ServiceMap:
   """Manages service names across a single policy instance."""
 
@@ -167,7 +97,7 @@ class ServiceMap:
 class Rule:
   """Extend the Term() class for PaloAlto Firewall Rules."""
 
-  def __init__(self, from_zone, to_zone, terms, service_map):
+  def __init__(self, from_zone, to_zone, term, service_map):
     # Palo Alto Firewall rule keys
     MAX_ZONE_LENGTH = 31
 
@@ -183,7 +113,7 @@ class Rule:
       raise PaloAltoFWNameTooLongError(x)
 
     self.options = []
-    term = terms.term
+
     while term is not None:
       x, term = self.TermToOptions(from_zone, to_zone,
                                    term, service_map)
@@ -201,6 +131,13 @@ class Rule:
     options["application"] = []
     options["service"] = []
     options["logging"] = []
+
+    ACTIONS = {
+      "accept": "allow",
+      "deny": "deny",
+      "reject": "reset-client",
+      "reject-with-tcp-rst": "reset-client",
+    }
 
     new_term = None
 
@@ -252,7 +189,7 @@ class Rule:
 
     # ACTION
     if term.action:
-      options["action"] = term.action[0]
+      options["action"] = ACTIONS[term.action[0]]
 
     if term.option:
       options["option"] = term.option
@@ -687,11 +624,13 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           raise PaloAltoFWUnsupportedProtocolError(
               "protocol %s is not supported" % proto_name)
 
-        # Create Term object with the term, address family, and header
-        # parameters, e.g. to/from zone, and add it to a list of
-        # terms that would form a rule.
-        new_term = Term(term, filter_type, filter_options)
-        new_terms.append(new_term)
+        if (term.icmp_type and term.protocol != ['icmp'] and
+            term.protocol != ['icmpv6']):
+          raise UnsupportedFilterError('%s %s' % (
+            'icmp-types specified for non-icmp protocols in term:',
+            term.name))
+
+        new_terms.append(term)
 
       # Create a ruleset. It contains the rules for the terms defined under
       # a single header on a particular platform.
@@ -702,11 +641,11 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
                             self.service_map)
         if len(current_rule.options) > 1:
           for i, v in enumerate(current_rule.options):
-            name = "%s-%d" % (term.term.name, i+1)
+            name = "%s-%d" % (term.name, i+1)
             name = self.FixTermLength(name)
             ruleset[name] = v
         else:
-          ruleset[term.term.name] = current_rule.options[0]
+          ruleset[term.name] = current_rule.options[0]
 
       self.pafw_policies.append((header, ruleset, filter_options))
 
@@ -944,7 +883,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
 
         # ACTION
         action = etree.SubElement(entry, "action")
-        action.text = Term.ACTIONS.get(str(options["action"]))
+        action.text = options["action"]
 
         # check whether the rule is interzone
         if list(set(options["from_zone"]).difference(options["to_zone"])):

@@ -204,13 +204,6 @@ term test-icmp {
 }
 """
 
-BAD_ICMP_TERM_1 = """
-term test-icmp-type {
-  icmp-type:: echo-request echo-reply
-  action:: accept
-}
-"""
-
 ICMP_ONLY_TERM_1 = """
 term test-icmp-only {
   protocol:: icmp
@@ -599,9 +592,38 @@ class PaloAltoFWTest(absltest.TestCase):
     ], members, output)
 
   def testBadICMP(self):
-    pol = policy.ParsePolicy(GOOD_HEADER_1 + BAD_ICMP_TERM_1, self.naming)
-    self.assertRaises(paloaltofw.UnsupportedFilterError, paloaltofw.PaloAltoFW,
-                      pol, EXP_INFO)
+    POL = """
+header {
+  target:: paloalto from-zone trust to-zone untrust %s
+}
+term rule-1 {
+%s
+  action:: accept
+}"""
+
+    T = """
+  icmp-type:: echo-request echo-reply
+"""
+
+    pol = policy.ParsePolicy(POL % ("", T), self.naming)
+    self.assertRaises(paloaltofw.UnsupportedFilterError,
+                      paloaltofw.PaloAltoFW, pol, EXP_INFO)
+
+    T = """
+  protocol:: udp icmp
+  icmp-type:: echo-request echo-reply
+"""
+
+    pol = policy.ParsePolicy(POL % ("inet", T), self.naming)
+    self.assertRaises(paloaltofw.UnsupportedFilterError,
+                      paloaltofw.PaloAltoFW, pol, EXP_INFO)
+
+    T = """
+  protocol:: icmpv6
+  icmp-type:: echo echo-reply
+"""
+    self.assertRaises(policy.TermInvalidIcmpType,
+                      policy.ParsePolicy, POL % ("inet6", T), self.naming)
 
   def testBadICMPv6Type(self):
     pol = policy.ParsePolicy(GOOD_HEADER_MIXED + BAD_ICMPV6_TYPE_TERM,
