@@ -619,6 +619,15 @@ term rule-1 {
                       paloaltofw.PaloAltoFW, pol, EXP_INFO)
 
     T = """
+  protocol:: icmpv6 icmp
+  icmp-type:: echo-request
+"""
+
+    pol = policy.ParsePolicy(POL % ("mixed", T), self.naming)
+    self.assertRaises(paloaltofw.UnsupportedFilterError,
+                      paloaltofw.PaloAltoFW, pol, EXP_INFO)
+
+    T = """
   protocol:: icmpv6
   icmp-type:: echo echo-reply
 """

@@ -624,11 +624,15 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           raise PaloAltoFWUnsupportedProtocolError(
               "protocol %s is not supported" % proto_name)
 
-        if (term.icmp_type and term.protocol != ['icmp'] and
-            term.protocol != ['icmpv6']):
-          raise UnsupportedFilterError('%s %s' % (
-            'icmp-types specified for non-icmp protocols in term:',
-            term.name))
+        if term.icmp_type:
+          if set(term.protocol) == {'icmp', 'icmpv6'}:
+            raise UnsupportedFilterError('%s %s' % (
+                'icmp-type specified for both icmp and icmpv6 protocols'
+                ' in a single term:', term.name))
+          if term.protocol != ['icmp'] and term.protocol != ['icmpv6']:
+            raise UnsupportedFilterError('%s %s' % (
+                'icmp-type specified for non-icmp protocols in term:',
+                term.name))
 
         new_terms.append(term)
 
