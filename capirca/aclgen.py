@@ -405,7 +405,6 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
       iptables.Error,
       speedway.Error,
       pcap.Error,
-      usps.Error,
       aclgenerator.Error,
       aruba.Error,
       nftables.Error,
@@ -467,7 +466,7 @@ def FilesUpdated(file_name: pathlib.Path, new_text: str, binary: bool) -> bool:
     p4_revision = '$Rev ision:'.replace(' ', '')
 
     def P4Tags(text: str) -> bool:
-      return p4_id in text or p4_date in text or p4_revision in text
+      return not (p4_id in text or p4_date in text or p4_revision in text)
 
     filtered_conf = filter(P4Tags, conf.split('\n'))
     filtered_text = filter(P4Tags, new_text.split('\n'))
