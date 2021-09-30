@@ -642,6 +642,10 @@ class Term(aclgenerator.Term):
           for dport in destination_port:
             for proto in protocol:
               opts = fixed_opts[proto]
+              # cisconx uses icmp for both ipv4 and ipv6
+              if self.platform == 'cisconx':
+                if self.af == 6:
+                  proto = 'icmp' if proto == 'icmpv6' else proto
               for icmp_type in icmp_types:
                 for icmp_code in icmp_codes:
                   ret_str.extend(

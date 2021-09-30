@@ -111,6 +111,20 @@ term good-term-6 {
   action:: accept
 }
 """
+GOOD_TERM_10 = """
+term good-term-10 {
+  protocol:: icmp
+  icmp-type:: echo-reply unreachable time-exceeded
+  action:: accept
+}
+"""
+GOOD_TERM_11 = """
+term good-term-11 {
+  protocol:: icmpv6
+  icmp-type:: echo-reply destination-unreachable time-exceeded
+  action:: accept
+}
+"""
 
 SUPPORTED_TOKENS = {
     'action',
@@ -275,6 +289,33 @@ class CiscoNXTest(absltest.TestCase):
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST')])
     self.naming.GetServiceByProto.assert_has_calls([mock.call('SSH', 'tcp')])
+
+  def testIcmpTypes(self):
+    acl = cisconx.CiscoNX(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_10, self.naming), EXP_INFO)
+    # echo-reply = 0
+    expected = 'permit icmp any any 0'
+    self.assertIn(expected, str(acl), str(acl))
+    # unreachable = 3
+    expected = 'permit icmp any any 3'
+    self.assertIn(expected, str(acl), str(acl))
+    # time-exceeded = 11
+    expected = 'permit icmp any any 11'
+    self.assertIn(expected, str(acl), str(acl))
+
+  def testIpv6IcmpTypes(self):
+    acl = cisconx.CiscoNX(
+        policy.ParsePolicy(GOOD_HEADER_IPV6 + GOOD_TERM_11, self.naming),
+        EXP_INFO)
+    # echo-reply = icmp-type code 129
+    expected = 'permit icmp any any 129'
+    self.assertIn(expected, str(acl), str(acl))
+    # destination-unreachable = icmp-type code 1
+    expected = 'permit icmp any any 1'
+    self.assertIn(expected, str(acl), str(acl))
+    # time-exceeded = icmp-type code 3
+    expected = 'permit icmp any any 3'
+    self.assertIn(expected, str(acl), str(acl))
 
 
 if __name__ == '__main__':
