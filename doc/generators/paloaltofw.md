@@ -3,7 +3,7 @@
 The paloalto header designation has the following format:
 
 ```
-target:: paloalto from-zone [zone name] to-zone [zone name] [address family]
+target:: paloalto from-zone [zone name] to-zone [zone name] [address family] [address objects]
 ```
   * _from-zone_: static keyword, followed by the source zone
   * _to-zone_: static keyword, followed by the destination zone
@@ -11,6 +11,13 @@ target:: paloalto from-zone [zone name] to-zone [zone name] [address family]
     - _inet_: the filter should only render IPv4 addresses (default)
     - _inet6_: the filter should only render IPv6 addresses
     - _mixed_: the filter should render IPv4 and IPv6 addresses
+  * _address objects_: specifies whether custom address objects or
+     network/mask definitions are used in security policy source and
+     destination fields
+    - _addr-obj_: specifies address groups are used in the security policy
+      source and destination fields (default)
+    - _no-addr-obj_: specifies network/mask definitions are used in the
+       security policy source and destination fields
 
 ## Term Format
 * _action::_ The action to take when matched. See Actions section for valid options.

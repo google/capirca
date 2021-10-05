@@ -269,6 +269,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
   _MAX_RULE_DESCRIPTION_LENGTH = 1024
   _MAX_TAG_COMMENTS_LENGTH = 1023
   _TAG_NAME_FORMAT = "{from_zone}_{to_zone}_policy-comment-{num}"
+  _MAX_RULE_SRC_DST_MEMBERS = 65535
 
   INDENT = "  "
 
@@ -346,6 +347,8 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     """
     current_date = datetime.date.today()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
+    first_addr_obj = None
+
     for header, terms in pol.filters:
       if self._PLATFORM not in header.platforms:
         continue
@@ -373,8 +376,22 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
 
       if filter_type not in self._SUPPORTED_AF:
         raise UnsupportedHeaderError(
-            "Palo Alto Firewall Generator currently does not support"
-            " %s as a header option" % (filter_type))
+            'Palo Alto Firewall Generator invalid address family option: "%s"'
+            '; expect {%s}' % (filter_type, '|'.join(self._SUPPORTED_AF)))
+
+      valid_addr_obj = ["addr-obj", "no-addr-obj"]
+      if len(filter_options) > 5 and filter_options[5] not in valid_addr_obj:
+        raise UnsupportedHeaderError(
+            'Palo Alto Firewall Generator invalid address objects option: "%s"'
+            '; expect {%s}' % (filter_options[5], '|'.join(valid_addr_obj)))
+      no_addr_obj = True if (len(filter_options) > 5 and
+                             filter_options[5] == "no-addr-obj") else False
+      if first_addr_obj is None:
+        first_addr_obj = no_addr_obj
+      if first_addr_obj != no_addr_obj:
+        raise UnsupportedHeaderError(
+            "Cannot mix addr-obj and no-addr-obj header option in "
+            "a single policy file")
 
       term_dup_check = set()
       new_terms = []
@@ -720,6 +737,32 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     ANY_IPV4_RANGE = "0.0.0.0-255.255.255.255"
     add_any_ipv4 = False
 
+    address_book_names_dict = {}
+    address_book_groups_dict = {}
+    for zone in self.addressbook:
+      # building individual addresses dictionary
+      groups = sorted(self.addressbook[zone])
+      for group in groups:
+        for address, name in self.addressbook[zone][group]:
+          if name in address_book_names_dict:
+            if address_book_names_dict[name].supernet_of(address):
+              continue
+          address_book_names_dict[name] = address
+
+        # building individual address-group dictionary
+        for nested_group in groups:
+          group_names = []
+          for address, name in self.addressbook[zone][nested_group]:
+            group_names.append(name)
+          address_book_groups_dict[nested_group] = group_names
+
+      # sort address books and address sets
+      address_book_groups_dict = collections.OrderedDict(
+          sorted(address_book_groups_dict.items()))
+
+    address_book_keys = sorted(
+        list(address_book_names_dict.keys()), key=self._SortAddressBookNumCheck)
+
     # INITAL CONFIG
     config = etree.Element("config", {
         "version": "8.1.0",
@@ -812,6 +855,9 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
                 self._MAX_TAG_COMMENTS_LENGTH)
           comments.text = comment[:self._MAX_TAG_COMMENTS_LENGTH]
 
+      no_addr_obj = True if (len(filter_options) > 5 and
+                             filter_options[5] == "no-addr-obj") else False
+
       for name, options in pa_rules.items():
         entry = etree.SubElement(rules, "entry", {"name": name})
         if options["description"]:
@@ -836,6 +882,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
 
         af = filter_options[4] if len(filter_options) > 4 else "inet"
 
+        max_src_dst = 0
         source = etree.SubElement(entry, "source")
         if not options["source"]:
           member = etree.SubElement(source, "member")
@@ -847,9 +894,22 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
             member.text = "any"
         else:
           for x in options["source"]:
-            member = etree.SubElement(source, "member")
-            member.text = x
+            if no_addr_obj:
+              for group in address_book_groups_dict[x]:
+                member = etree.SubElement(source, "member")
+                member.text = str(address_book_names_dict[group])
+                max_src_dst += 1
+            else:
+              member = etree.SubElement(source, "member")
+              member.text = x
+              max_src_dst += 1
 
+        if max_src_dst > self._MAX_RULE_SRC_DST_MEMBERS:
+          raise UnsupportedFilterError(
+            "term %s source members exceeds maximum of %d: %d" %
+            (name, self._MAX_RULE_SRC_DST_MEMBERS, max_src_dst))
+
+        max_src_dst = 0
         dest = etree.SubElement(entry, "destination")
         if not options["destination"]:
           member = etree.SubElement(dest, "member")
@@ -867,8 +927,20 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
               member.text = "any"
         else:
           for x in options["destination"]:
-            member = etree.SubElement(dest, "member")
-            member.text = x
+            if no_addr_obj:
+              for group in address_book_groups_dict[x]:
+                member = etree.SubElement(dest, "member")
+                member.text = str(address_book_names_dict[group])
+                max_src_dst += 1
+            else:
+              member = etree.SubElement(dest, "member")
+              member.text = x
+              max_src_dst += 1
+
+        if max_src_dst > self._MAX_RULE_SRC_DST_MEMBERS:
+          raise UnsupportedFilterError(
+            "term %s destination members exceeds maximum of %d: %d" %
+            (name, self._MAX_RULE_SRC_DST_MEMBERS, max_src_dst))
 
         # service section of a policy rule.
         service = etree.SubElement(entry, "service")
@@ -928,32 +1000,11 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
 
     # pytype: enable=key-error
 
+    if no_addr_obj:
+      address_book_groups_dict = {}
+      address_book_keys = {}
+
     # ADDRESS
-    address_book_names_dict = {}
-    address_book_groups_dict = {}
-    for zone in self.addressbook:
-      # building individual addresses dictionary
-      groups = sorted(self.addressbook[zone])
-      for group in groups:
-        for address, name in self.addressbook[zone][group]:
-          if name in address_book_names_dict:
-            if address_book_names_dict[name].supernet_of(address):
-              continue
-          address_book_names_dict[name] = address
-
-        # building individual address-group dictionary
-        for nested_group in groups:
-          group_names = []
-          for address, name in self.addressbook[zone][nested_group]:
-            group_names.append(name)
-          address_book_groups_dict[nested_group] = group_names
-
-      # sort address books and address sets
-      address_book_groups_dict = collections.OrderedDict(
-          sorted(address_book_groups_dict.items()))
-    address_book_keys = sorted(
-        list(address_book_names_dict.keys()), key=self._SortAddressBookNumCheck)
-
     vsys_entry.append(etree.Comment(" Address Groups "))
     addr_group = etree.SubElement(vsys_entry, "address-group")
 
