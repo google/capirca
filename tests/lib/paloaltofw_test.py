@@ -1231,6 +1231,109 @@ term rule-1 {
                                "/entry[@name='rule-1']/negate-destination")
       self.assertIsNotNone(x, output)
 
+  def testNoAddrObj(self):
+    definitions = naming.Naming()
+    definitions._ParseLine('NET1 = 10.1.0.0/24', 'networks')
+    definitions._ParseLine('NET2 = 10.2.0.0/24', 'networks')
+    definitions._ParseLine('NET3 = 10.3.1.0/24', 'networks')
+    definitions._ParseLine('       10.3.2.0/24', 'networks')
+    definitions._ParseLine('NET4 = 2001:db8:0:aa::/64', 'networks')
+    definitions._ParseLine('       2001:db8:0:bb::/64', 'networks')
+    definitions._ParseLine('NET5 = NET3 NET4', 'networks')
+
+    POL = """
+header {
+  target:: paloalto from-zone trust to-zone untrust %s no-addr-obj
+}
+term rule-1 {
+%s
+  action:: accept
+  protocol:: tcp
+}"""
+
+    T = """
+  source-address:: NET1
+  destination-address:: NET2 NET3
+"""
+
+    pol = policy.ParsePolicy(POL % ("inet", T), definitions)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findall(PATH_RULES +
+                                "/entry[@name='rule-1']/source/member")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"10.1.0.0/24"}, addrs, output)
+    x = paloalto.config.findall(PATH_RULES +
+                                "/entry[@name='rule-1']/destination/member")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"10.2.0.0/24",
+                      "10.3.1.0/24", "10.3.2.0/24"}, addrs, output)
+
+    T = """
+  source-address:: NET4
+"""
+
+    pol = policy.ParsePolicy(POL % ("inet6", T), definitions)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findall(PATH_RULES +
+                                "/entry[@name='rule-1']/source/member")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"2001:db8:0:aa::/64", "2001:db8:0:bb::/64"},
+                     addrs, output)
+    x = paloalto.config.findall(PATH_RULES +
+                                "/entry[@name='rule-1']/destination/member")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"any"}, addrs, output)
+
+    T = """
+  destination-address:: NET5
+"""
+
+    pol = policy.ParsePolicy(POL % ("mixed", T), definitions)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findall(PATH_RULES +
+                                "/entry[@name='rule-1']/source/member")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"any"}, addrs, output)
+    x = paloalto.config.findall(PATH_RULES +
+                                "/entry[@name='rule-1']/destination/member")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"10.3.1.0/24", "10.3.2.0/24",
+                      "2001:db8:0:aa::/64", "2001:db8:0:bb::/64"},
+                     addrs, output)
+
+    POL = """
+header {
+  target:: paloalto from-zone trust to-zone untrust inet no-addr-obj
+}
+term rule-1 {
+  source-address:: NET1 NET2
+  action:: accept
+  protocol:: tcp
+}
+header {
+  target:: paloalto from-zone trust to-zone untrust inet addr-obj
+}
+term rule-1 {
+  destination-address:: NET3
+  action:: accept
+  protocol:: tcp
+}"""
+
+    pol = policy.ParsePolicy(POL, definitions)
+    self.assertRaisesRegex(paloaltofw.UnsupportedHeaderError,
+                           '^Cannot mix addr-obj and no-addr-obj header '
+                           'option in a single policy file$',
+                           paloaltofw.PaloAltoFW, pol, EXP_INFO)
+
 
 if __name__ == '__main__':
   absltest.main()
