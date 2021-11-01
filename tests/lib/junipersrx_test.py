@@ -332,6 +332,12 @@ term good_term_21 {
 }
 """
 
+GOOD_TERM_23 = """
+term good_term_23 {
+  action:: accept
+}
+"""
+
 BAD_TERM_1 = """
 term bad-term-1 {
   destination-address:: SOME_HOST
@@ -1823,6 +1829,19 @@ class JuniperSRXTest(absltest.TestCase):
         # check if each addresssetname referenced in policy occurs more than
         # once i.e. is defined in the address book
         self.assertGreater(address_set_count, 1)
+
+  def testEmptyApplications(self):
+    self.naming.GetNetAddr.return_value = _IPSET
+
+    # GOOD_HEADER_3 doesn't matter, any valid header should do
+    pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_23,
+                             self.naming)
+    p = junipersrx.JuniperSRX(pol, EXP_INFO)
+    output = p._GenerateApplications()
+
+    pattern = re.compile(r'replace: applications \{\s*\}')
+    self.assertTrue(pattern.search(str(''.join(output))))
+
 
 if __name__ == '__main__':
   absltest.main()
