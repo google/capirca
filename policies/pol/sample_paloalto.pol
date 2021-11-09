@@ -8,14 +8,14 @@ header {
   target:: paloalto from-zone internal to-zone external
 }
 
-term ping-gdns{
+term ping-gdns {
   source-address:: INTERNAL
   destination-address:: GOOGLE_DNS
   protocol:: icmp
   action:: accept
 }
 
-term dns-gdns{
+term dns-gdns {
   source-address:: INTERNAL
   destination-address:: GOOGLE_DNS
   destination-port:: DNS
@@ -23,7 +23,7 @@ term dns-gdns{
   action:: accept
 }
 
-term allow-web-outbound{
+term allow-web-outbound {
   source-address:: INTERNAL
   destination-port:: WEB_SERVICES
   protocol:: tcp
@@ -34,20 +34,28 @@ header {
   target:: paloalto from-zone external to-zone internal
 }
 
-term allow-icmp{
+term allow-icmp {
   protocol:: icmp
   action:: accept
 }
 
-term allow-only-pan-app{
+# pan-application only: service application-default
+term allow-pan-app-01 {
   pan-application:: web-browsing
   action:: accept
 }
 
-term allow-web-inbound{
-  destination-address:: WEB_SERVERS
-  destination-port:: WEB_SERVICES
-  pan-application:: ssl web-browsing
+# pan-application + tcp: service any-tcp
+term allow-pan-app-02 {
+  pan-application:: web-browsing
   protocol:: tcp
+  action:: accept
+}
+
+# pan-application + ports: service custom service objects
+term allow-pan-app-03 {
+  pan-application:: ssl
+  protocol:: tcp
+  destination-port:: HTTPS IMAPS
   action:: accept
 }

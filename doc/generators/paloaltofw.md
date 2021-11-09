@@ -45,6 +45,23 @@ target:: paloalto from-zone [zone name] to-zone [zone name] [address family] [ad
 
 ## Terms Section
 ### Optionally Supported Keywords
-  * _pan-application_:: paloalto only, specify a Palo Alto application.
-Application can be a predefined application or a custom application object.
-If an application is specified with no port, the service will default to "application-default".
+  * _pan-application_:: paloalto target only.
+    Specify applications for the security policy which can be predefined
+    applications (https://applipedia.paloaltonetworks.com/)
+    and custom application objects.
+
+    - _Security Policy Service Setting_
+
+      When no _protocol_ is specified in the term, the service will be
+      _application-default_.
+
+      When _protocol_ is tcp or udp, and no _source-port_ or
+      _destination-port_ is specified, the service will be custom
+      service objects for the protocols and all ports (0-65535).
+
+      When _protocol_ is tcp or udp, and a _source-port_ or
+      _destination-port_ is specified, the service will be custom
+      service objects for the protocols and ports.
+
+      _pan-application_ can only be used when no _protocol_ is specified
+      in the term, or the protocols tcp and udp.
