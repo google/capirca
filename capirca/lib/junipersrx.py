@@ -867,6 +867,12 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         if app_list:
           target.extend(app_list)
 
+
+    if len(done_apps) == 0:
+      target.clear()
+      target.append('delete: applications;')
+      return target
+
     target.extend(apps_set_list)
     target.append('}\n')
     return target

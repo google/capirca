@@ -1839,8 +1839,8 @@ class JuniperSRXTest(absltest.TestCase):
     p = junipersrx.JuniperSRX(pol, EXP_INFO)
     output = p._GenerateApplications()
 
-    pattern = re.compile(r'replace: applications \{\s*\}')
-    self.assertTrue(pattern.search(str(''.join(output))))
+    pattern = re.compile(r'delete: applications;')
+    self.assertTrue(pattern.search(str(''.join(output))), ''.join(output))
 
 
 if __name__ == '__main__':
