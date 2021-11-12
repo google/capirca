@@ -332,6 +332,12 @@ term good_term_22 {
   action:: accept
 }
 """
+GOOD_TERM_23 = """
+term good_term_23 {
+  protocol:: 50
+  action:: accept
+}
+"""
 LONG_COMMENT_TERM = """
 term long-comment-term {
   comment:: "%s "
@@ -876,7 +882,6 @@ class CiscoTest(absltest.TestCase):
         LONG_VERSION_HEADER + GOOD_TERM_7,
         self.naming)
     acl = cisco.Cisco(pol, EXP_INFO)
-    print(acl)
     self.assertIn('remark This long header should be split even on a', str(acl))
     self.assertIn(('remark looooooooooooooooooooooooooonnnnnnnnnnnnnnnnnn'
                    'gggggggggg string.'), str(acl))
@@ -887,6 +892,13 @@ class CiscoTest(absltest.TestCase):
     self.assertIn(('remark 5:0x169ef02a512c5b28!8m2!3d37.4220579!4d-122.084'
                    '0897'), str(acl))
 
+  def testProtocolByNumber(self):
+      """Test policy term refering to protocol by number"""
+      pol = policy.ParsePolicy(
+          GOOD_HEADER + GOOD_TERM_23, self.naming
+      )
+      acl = cisco.Cisco(pol, EXP_INFO)
+      self.assertIn('permit 50 any any', str(acl))
 
 if __name__ == '__main__':
   absltest.main()
