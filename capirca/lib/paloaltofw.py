@@ -431,6 +431,14 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
                                              term.name)
         term_dup_check.add(term.name)
 
+        services = {"tcp", "udp"} & set(term.protocol)
+        others = set(term.protocol) - services
+        if others and term.pan_application:
+          raise UnsupportedFilterError(
+            "Term %s contains non tcp, udp protocols with pan-application: %s: %s"
+            "\npan-application can only be used with protocols tcp, udp" %
+            (term.name, ', '.join(term.pan_application), ', '.join(term.protocol)))
+
         if term.expiration:
           if term.expiration <= exp_info_date:
             logging.info(

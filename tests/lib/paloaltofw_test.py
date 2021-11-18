@@ -1020,6 +1020,56 @@ term rule-1 {
         {'app1', 'app2', 'app3'},
     ]
 
+    POL3 = """
+header {
+  target:: paloalto from-zone trust to-zone untrust
+}
+term rule-1 {
+  pan-application:: web-browsing
+  action:: accept%s
+}"""
+
+    T0 = ''
+    T1 = """
+  protocol:: tcp
+"""
+    T2 = """
+  protocol:: tcp
+  destination-port:: PORT1 PORT2
+"""
+
+    POL4 = """
+header {
+  target:: paloalto from-zone trust to-zone untrust %s
+}
+term rule-1 {
+  pan-application:: web-browsing
+  action:: accept
+  protocol:: %s
+}"""
+
+    POL5 = """
+header {
+  target:: paloalto from-zone trust to-zone untrust
+}
+term rule-1 {
+  pan-application:: web-browsing
+  action:: accept
+  protocol:: icmp
+  icmp-type:: echo-request
+}"""
+
+    POL6 = """
+header {
+  target:: paloalto from-zone trust to-zone untrust
+}
+term rule-1 {
+  pan-application:: web-browsing
+  protocol:: tcp icmp
+  destination-port:: PORT1
+  action:: accept
+}"""
+
     pol = policy.ParsePolicy(POL1, self.naming)
     paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
     output = str(paloalto)
@@ -1035,6 +1085,49 @@ term rule-1 {
                                   "/entry[@name='rule-1']/application/member")
       apps = {elem.text for elem in x}
       self.assertEqual(APPS[i], apps, output)
+
+    pol = policy.ParsePolicy(POL3 % T0, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='rule-1']/service/member")
+    self.assertEqual(x, 'application-default', output)
+
+    pol = policy.ParsePolicy(POL3 % T1, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='rule-1']/service/member")
+    self.assertEqual(x, 'any-tcp', output)
+
+    definitions = naming.Naming()
+    definitions._ParseLine('PORT1 = 8080/tcp', 'services')
+    definitions._ParseLine('PORT2 = 8081/tcp', 'services')
+    pol = policy.ParsePolicy(POL3 % T2, definitions)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findtext(PATH_RULES +
+                                 "/entry[@name='rule-1']/service/member")
+    self.assertEqual(x, 'service-rule-1-tcp', output)
+
+    regex = ('^Term rule-1 contains non tcp, udp protocols '
+             'with pan-application:')
+    pol = policy.ParsePolicy(POL4 % ('inet', 'tcp icmp'), self.naming)
+    self.assertRaisesRegex(paloaltofw.UnsupportedFilterError, regex,
+                           paloaltofw.PaloAltoFW, pol, EXP_INFO)
+
+    pol = policy.ParsePolicy(POL4 % ('inet6', 'icmpv6'), self.naming)
+    self.assertRaisesRegex(paloaltofw.UnsupportedFilterError, regex,
+                           paloaltofw.PaloAltoFW, pol, EXP_INFO)
+
+    pol = policy.ParsePolicy(POL5, self.naming)
+    self.assertRaisesRegex(paloaltofw.UnsupportedFilterError, regex,
+                           paloaltofw.PaloAltoFW, pol, EXP_INFO)
+
+    self.assertRaisesRegex(policy.MixedPortandNonPortProtos,
+                           '^Term rule-1 contains mixed uses of protocols '
+                           'with and without port numbers',
+                           policy.ParsePolicy, POL6, definitions)
 
   def testPanPorts(self):
     POL = """
