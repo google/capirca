@@ -172,14 +172,15 @@ class Term(aclgenerator.Term):
     self.enable_dsmo = enable_dsmo
     self.noverbose = noverbose
 
-    if term_type not in self._TERM_TYPE:
-      raise ValueError('Unknown Filter Type: %s' % term_type)
-    if 'hopopt' in self.term.protocol:
-      loc = self.term.protocol.index('hopopt')
-      self.term.protocol[loc] = 'hop-by-hop'
+    if self._PLATFORM != 'msmpc':
+      if term_type not in self._TERM_TYPE:
+        raise ValueError('Unknown Filter Type: %s' % term_type)
+      if 'hopopt' in self.term.protocol:
+        loc = self.term.protocol.index('hopopt')
+        self.term.protocol[loc] = 'hop-by-hop'
 
-    # some options need to modify the actions
-    self.extra_actions = []
+      # some options need to modify the actions
+      self.extra_actions = []
 
   # TODO(pmoody): get rid of all of the default string concatenation here.
   #  eg, indent(8) + 'foo;' -> '%s%s;' % (indent(8), 'foo'). pyglint likes this

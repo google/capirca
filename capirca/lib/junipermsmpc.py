@@ -38,10 +38,19 @@ class Term(juniper.Term):
   _ACTIONS = {'accept': 'accept', 'deny': 'discard', 'reject': 'reject'}
 
   def __init__(self, term, term_type, noverbose, filter_name):
+    enable_dsmo = False
+    super().__init__(term, term_type, enable_dsmo, noverbose)
     self.term = term
     self.term_type = term_type
     self.noverbose = noverbose
     self.filter_name = filter_name
+
+    if 'hopopt' in self.term.protocol:
+      loc = self.term.protocol.index('hopopt')
+      self.term.protocol[loc] = str(self.PROTO_MAP.get('hopopt'))
+    if 'vrrp' in self.term.protocol:
+      loc = self.term.protocol.index('vrrp')
+      self.term.protocol[loc] = str(self.PROTO_MAP.get('vrrp'))
 
   def __str__(self):
     # Verify platform specific terms. Skip whole term if platform does not
@@ -52,6 +61,9 @@ class Term(juniper.Term):
     if self.term.platform_exclude:
       if self._PLATFORM in self.term.platform_exclude:
         return ''
+
+    if self.enable_dsmo:
+      raise NotImplementedError('enable_dsmo not implemented for msmpc')
 
     ret_str = juniper.Config(indent=self._DEFAULT_INDENT)
 
@@ -400,9 +412,6 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
               for dport in app['dport'] or ['']:
                 chunks = []
                 if proto:
-                  # MSMPC does not like proto vrrp
-                  if proto == 'vrrp':
-                    proto = '112'
                   chunks.append('protocol %s;' % proto)
                 if sport and ('udp' in proto or 'tcp' in proto):
                   chunks.append('source-port %s;' % sport)
