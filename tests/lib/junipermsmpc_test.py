@@ -1666,6 +1666,12 @@ class JuniperMSMPCTest(parameterized.TestCase):
     output = str(msmpc)
     self.assertIn(expected, output, output)
 
+  def testSupportedNamedProtocols(self):
+    supported_as_names = junipermsmpc.Term._SUPPORTED_PROTOCOL_NAMES
+    all_supported_protocols = junipermsmpc.Term.PROTO_MAP.keys()
+    for want in supported_as_names:
+      self.assertIn(want, all_supported_protocols)
+
 
 if __name__ == '__main__':
   absltest.main()

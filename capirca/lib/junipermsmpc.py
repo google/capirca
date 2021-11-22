@@ -36,6 +36,24 @@ class Term(juniper.Term):
   _PLATFORM = 'msmpc'
   _DEFAULT_INDENT = 20
   _ACTIONS = {'accept': 'accept', 'deny': 'discard', 'reject': 'reject'}
+  # msmpc supports a limited number of protocol names
+  # https://www.juniper.net/documentation/us/en/software/junos/security-policies/topics/ref/statement/applications-edit-protocol.html
+  _SUPPORTED_PROTOCOL_NAMES = (
+      'ah',
+      'egp',
+      'esp',
+      'gre',
+      'icmp',
+      'icmpv6',
+      'igmp',
+      'ipip',
+      #'node', A pseudo-protocol which may require additional handling
+      'ospf',
+      'pim',
+      'rsvp',
+      'sctp',
+      'tcp',
+      'udp')
 
   def __init__(self, term, term_type, noverbose, filter_name):
     enable_dsmo = False
@@ -45,12 +63,10 @@ class Term(juniper.Term):
     self.noverbose = noverbose
     self.filter_name = filter_name
 
-    if 'hopopt' in self.term.protocol:
-      loc = self.term.protocol.index('hopopt')
-      self.term.protocol[loc] = str(self.PROTO_MAP.get('hopopt'))
-    if 'vrrp' in self.term.protocol:
-      loc = self.term.protocol.index('vrrp')
-      self.term.protocol[loc] = str(self.PROTO_MAP.get('vrrp'))
+    for prot in self.term.protocol:
+      if prot not in self._SUPPORTED_PROTOCOL_NAMES:
+        loc = self.term.protocol.index(prot)
+        self.term.protocol[loc] = str(self.PROTO_MAP.get(prot, prot))
 
   def __str__(self):
     # Verify platform specific terms. Skip whole term if platform does not
