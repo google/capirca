@@ -1012,6 +1012,7 @@ header {
 term rule-1 {
   pan-application:: %s
   action:: accept
+  %s
 }"""
 
     APPS = [
@@ -1078,7 +1079,17 @@ term rule-1 {
     self.assertEqual(x, 'any', output)
 
     for i, app in enumerate(APPS):
-      pol = policy.ParsePolicy(POL2 % ' '.join(app), self.naming)
+      pol = policy.ParsePolicy(POL2 % (' '.join(app), ''), self.naming)
+      paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+      output = str(paloalto)
+      x = paloalto.config.findall(PATH_RULES +
+                                  "/entry[@name='rule-1']/application/member")
+      apps = {elem.text for elem in x}
+      self.assertEqual(APPS[i], apps, output)
+
+    for i, app in enumerate(APPS):
+      pol = policy.ParsePolicy(POL2 % (' '.join(app), 'protocol:: tcp'),
+                               self.naming)
       paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
       output = str(paloalto)
       x = paloalto.config.findall(PATH_RULES +
