@@ -15,11 +15,6 @@
 
 """Nsxv generator."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 import re
 import xml
@@ -28,8 +23,6 @@ from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 import six
-from six.moves import map
-from six.moves import range
 
 
 _ACTION_TABLE = {
@@ -476,7 +469,7 @@ class Nsxv(aclgenerator.ACLGenerator):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(Nsxv, self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {'logging'}
     supported_sub_tokens.update({'action': {'accept', 'deny', 'reject',

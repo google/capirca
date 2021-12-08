@@ -4,7 +4,7 @@
 #
 header {
   comment:: "this is a sample policy to generate GCE filter"
-  target:: gce global/networks/default
+  target:: gce global/networks/default inet
 }
 
 term test-ssh {
@@ -31,11 +31,51 @@ term test-icmp {
   action:: accept
 }
 
+term test-icmpv6 {
+  comment:: "Allow ICMPv6 from company. This should not be rendered."
+  source-address:: PUBLIC_NAT
+  protocol:: icmpv6
+  action:: accept
+}
+
+term test-igmp {
+  comment:: "Allow IGMP from company."
+  source-address:: PUBLIC_NAT
+  protocol:: igmp
+  action:: accept
+}
+
+term test-multiple-protocols {
+  comment:: "Allow TCP/UDP access to all instances from company."
+  source-address:: PUBLIC_NAT
+  protocol:: tcp udp
+  destination-port:: HIGH_PORTS
+  action:: accept
+}
+
+term test-multiple-protocols-tcp-icmpv6 {
+  comment:: "Allow all tcp and icmpv6. This should only render tcp."
+  source-address:: PUBLIC_NAT
+  protocol:: tcp icmpv6
+  action:: accept
+}
+
+term test-multiple-protocols-tcp-icmp {
+  comment:: "Allow all tcp and icmp."
+  source-address:: PUBLIC_NAT
+  protocol:: tcp icmp
+  action:: accept
+}
+
 term test-internal {
   comment:: "Allow all GCE network internal traffic."
   source-address:: RFC1918
   protocol:: tcp udp
   action:: accept
+}
+
+term default-deny {
+  action:: deny
 }
 
 #
@@ -44,7 +84,7 @@ term test-internal {
 #
 header {
   comment:: "this is a sample policy to generate EGRESS GCE filter"
-  target:: gce EGRESS global/networks/default
+  target:: gce EGRESS global/networks/default inet
 }
 
 term test-egress-address {
@@ -64,4 +104,14 @@ term test-egress-tag {
   action:: accept
 }
 
+term test-egress-address-v6-only {
+  comment:: "Outbound to IPv6 Server. This should not be rendered."
+  protocol:: tcp
+  destination-port:: SMTP
+  destination-address:: PUBLIC_IPV6_SERVERS
+  action:: accept
+}
 
+term default-deny {
+  action:: deny
+}

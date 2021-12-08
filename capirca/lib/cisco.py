@@ -15,11 +15,6 @@
 
 """Cisco generator."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 import ipaddress
 from typing import cast, Union
@@ -28,7 +23,6 @@ from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from capirca.lib import summarizer
-from six.moves import range
 
 
 _ACTION_TABLE = {
@@ -67,7 +61,7 @@ class ExtendedACLTermError(Error):
   """Raised when there is a problem in an extended access list."""
 
 
-class TermStandard(object):
+class TermStandard:
   """A single standard ACL Term."""
 
   def __init__(self, term, filter_name, platform='cisco', verbose=True):
@@ -202,7 +196,7 @@ class TermStandard(object):
     return '\n'.join(ret_str)
 
 
-class ObjectGroup(object):
+class ObjectGroup:
   """Used for printing out the object group definitions.
 
   since the ports don't store the token name information, we have
@@ -287,7 +281,7 @@ class ObjectGroup(object):
     return '\n'.join(ret_str)
 
 
-class PortMap(object):
+class PortMap:
   """Map port numbers to service names."""
   # Define port mappings common to all protocols
   _PORTS_TCP = {
@@ -458,7 +452,7 @@ class Term(aclgenerator.Term):
 
   def __init__(self, term, af=4, proto_int=True, enable_dsmo=False,
                term_remark=True, platform='cisco', verbose=True):
-    super(Term, self).__init__(term)
+    super().__init__(term)
     self.term = term
     self.proto_int = proto_int
     self.options = []
@@ -648,6 +642,10 @@ class Term(aclgenerator.Term):
           for dport in destination_port:
             for proto in protocol:
               opts = fixed_opts[proto]
+              # cisconx uses icmp for both ipv4 and ipv6
+              if self.platform == 'cisconx':
+                if self.af == 6:
+                  proto = 'icmp' if proto == 'icmpv6' else proto
               for icmp_type in icmp_types:
                 for icmp_code in icmp_codes:
                   ret_str.extend(
@@ -795,7 +793,7 @@ class ObjectGroupTerm(Term):
   _PROTO_INT = True
 
   def __init__(self, term, filter_name, platform='cisco', verbose=True):
-    super(ObjectGroupTerm, self).__init__(term)
+    super().__init__(term)
     self.term = term
     self.filter_name = filter_name
     self.platform = platform
@@ -904,7 +902,7 @@ class Cisco(aclgenerator.ACLGenerator):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(Cisco, self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {'address',
                          'dscp_match',
@@ -1067,6 +1065,17 @@ class Cisco(aclgenerator.ACLGenerator):
               filter_type, self._PLATFORM))
     return target
 
+  def _RepositoryTagsHelper(self, target=None, filter_type='', filter_name=''):
+    if target is None:
+      target = []
+    if filter_type == 'standard' and filter_name.isdigit():
+      target.extend(aclgenerator.AddRepositoryTags(
+          'access-list %s remark ' % filter_name, date=False, revision=False))
+    else:
+      target.extend(aclgenerator.AddRepositoryTags(
+          ' remark ', date=False, revision=False))
+    return target
+
   def __str__(self):
     target_header = []
     target = []
@@ -1084,14 +1093,7 @@ class Cisco(aclgenerator.ACLGenerator):
         # remove/re-create of the filter, otherwise config mode doesn't
         # know where to place these remarks in the configuration.
         if self.verbose:
-          if filter_type == 'standard' and filter_name.isdigit():
-            target.extend(
-                aclgenerator.AddRepositoryTags(
-                    'access-list %s remark ' % filter_name,
-                    date=False, revision=False))
-          else:
-            target.extend(aclgenerator.AddRepositoryTags(
-                ' remark ', date=False, revision=False))
+          target = self._RepositoryTagsHelper(target, filter_type, filter_name)
 
           # add a header comment if one exists
 

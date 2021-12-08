@@ -13,18 +13,13 @@
 # limitations under the License.
 """Tests for brocade acl rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import re
-import unittest
+from absl.testing import absltest
+from unittest import mock
 
 from capirca.lib import brocade
 from capirca.lib import naming
 from capirca.lib import policy
-import mock
 
 GOOD_HEADER = """
 header {
@@ -132,10 +127,10 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class BrocadeTest(unittest.TestCase):
+class BrocadeTest(absltest.TestCase):
 
   def setUp(self):
-    super(BrocadeTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testTcpEstablished(self):
@@ -165,4 +160,4 @@ class BrocadeTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

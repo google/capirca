@@ -13,21 +13,16 @@
 # limitations under the License.
 """Unittest for windows_advfirewall rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
-import unittest
+from absl.testing import absltest
+from unittest import mock
 
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
-from capirca.lib import windows_advfirewall
 from capirca.lib import windows
-import mock
+from capirca.lib import windows_advfirewall
 
 
 GOOD_HEADER_OUT = """
@@ -263,16 +258,16 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class WindowsAdvFirewallTest(unittest.TestCase):
+class WindowsAdvFirewallTest(absltest.TestCase):
 
   def setUp(self):
-    super(WindowsAdvFirewallTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def assertTrue(self, strings, result, term):
     for string in strings:
       fullstring = 'netsh advfirewall firewall add rule %s' % (string)
-      super(WindowsAdvFirewallTest, self).assertIn(
+      super().assertIn(
           fullstring, result,
           'did not find "%s" for %s\nGot:\n%s' % (fullstring, term, result))
 
@@ -398,4 +393,4 @@ class WindowsAdvFirewallTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

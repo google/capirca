@@ -1,0 +1,140 @@
+header {
+  comment:: "This is sample IPv6 policy for GCP HF"
+  target:: gcp_hf testhf INGRESS mixed ga 200
+}
+
+term test-folder-ssh-mixed {
+  comment:: "Allow SSH from Server and Company with mixed addresses."
+  source-address:: PUBLIC_IPV6_SERVERS PUBLIC_NAT
+  protocol:: tcp
+  destination-port:: SSH
+  action:: next
+}
+
+term test-folder-ssh-v6 {
+  comment:: "Allow SSH access from IPv6 server."
+  source-address:: PUBLIC_IPV6_SERVERS
+  protocol:: tcp
+  destination-port:: SSH
+  action:: next
+}
+
+term test-folder-ssh-v4 {
+  comment:: "Allow SSH access to all instances from company."
+  source-address:: PUBLIC_NAT
+  protocol:: tcp
+  destination-port:: SSH
+  action:: next
+}
+
+term folder-rdp {
+  comment:: "Allow RDP to targetResources. Making long comment to show truncation."
+  source-address:: PUBLIC_IPV6_SERVERS PUBLIC_NAT
+  protocol:: tcp
+  destination-port:: RDP
+  target-resources:: (proj-1,vpc1)
+  action:: next
+}
+
+term test-multiple-protocols {
+  comment:: "Allow high port access from mixed address servers."
+  source-address:: PUBLIC_IPV6_SERVERS PUBLIC_NAT
+  protocol:: tcp udp
+  destination-port:: HIGH_PORTS
+  action:: accept
+}
+
+term test-multiple-protocols-tcp-icmpv6 {
+  comment:: "Allow all tcp and icmpv6 from mixed address servers."
+  source-address:: PUBLIC_IPV6_SERVERS PUBLIC_NAT
+  protocol:: tcp icmpv6
+  action:: accept
+}
+
+term test-multiple-protocols-tcp-icmp {
+  comment:: "Allow all tcp and icmp from mixed address servers."
+  source-address:: PUBLIC_IPV6_SERVERS PUBLIC_NAT
+  protocol:: tcp icmp
+  action:: accept
+}
+
+term test-multiple-protocols-tcp-icmpv6-v6-only {
+  comment:: "Allow all tcp and icmpv6."
+  source-address:: PUBLIC_IPV6_SERVERS
+  protocol:: tcp icmpv6
+  action:: accept
+}
+
+term test-multiple-protocols-tcp-icmp-v4-only {
+  comment:: "Allow all tcp and icmp."
+  source-address:: PUBLIC_NAT
+  protocol:: tcp icmp
+  action:: accept
+}
+
+term test-icmp {
+  comment:: "Allow ICMP from mixed server."
+  source-address:: PUBLIC_NAT PUBLIC_IPV6_SERVERS
+  protocol:: icmp
+  action:: accept
+}
+
+term test-icmpv6 {
+  comment:: "Allow ICMPv6 from mixed server."
+  source-address:: PUBLIC_IPV6_SERVERS PUBLIC_NAT
+  protocol:: icmpv6
+  action:: accept
+}
+
+term test-igmp {
+  comment:: "Allow IGMP from mixed server. This should rendered for IPv4 only."
+  source-address:: PUBLIC_IPV6_SERVERS PUBLIC_NAT
+  protocol:: igmp
+  action:: accept
+}
+
+term default-deny {
+  action:: deny
+}
+
+header {
+  comment:: "This is sample IPv6 policy for GCP HF"
+  target:: gcp_hf testhf EGRESS mixed ga 200
+}
+
+term folder-smtp{
+  comment:: "Outbound SMTP to mixed address servers."
+  protocol:: tcp
+  destination-port:: SMTP
+  destination-address:: PUBLIC_IPV6_SERVERS PUBLIC_NAT
+  action:: next
+}
+
+term folder-ssh-nat{
+  comment:: "Outbound to mixed address servers."
+  protocol:: tcp
+  destination-port:: SSH
+  destination-address:: PUBLIC_IPV6_SERVERS PUBLIC_NAT
+  target-resources:: (proj-2,vpc2)
+  action:: next
+}
+
+term test-egress-address-v4-only {
+  comment:: "Outbound SSH to RFC1918."
+  protocol:: tcp
+  destination-port:: SSH
+  destination-address:: RFC1918
+  action:: accept
+}
+
+term test-egress-address-v6-only {
+  comment:: "Outbound SSH to public IPv6 server."
+  protocol:: tcp
+  destination-port:: SSH
+  destination-address:: PUBLIC_IPV6_SERVERS
+  action:: accept
+}
+
+term egress-default-deny {
+  action:: deny
+}

@@ -14,17 +14,12 @@
 
 """Unittest for nacaddr.py module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
-import unittest
+from absl.testing import absltest
 
 from capirca.lib import nacaddr
 
 
-class NacaddrUnitTest(unittest.TestCase):
+class NacaddrUnitTest(absltest.TestCase):
   """Unit Test for nacaddr.py.
 
      nacaddr class extends ipaddr by adding .text fields to allow
@@ -32,7 +27,7 @@ class NacaddrUnitTest(unittest.TestCase):
   """
 
   def setUp(self):
-    super(NacaddrUnitTest, self).setUp()
+    super().setUp()
     self.addr1 = nacaddr.IPv4(u'10.0.0.0/8', 'The 10 block')
     self.addr2 = nacaddr.IPv6('DEAD:BEEF:BABE:FACE:DEAF:FEED:C0DE:F001/64',
                               'An IPv6 Address', strict=False)
@@ -281,4 +276,4 @@ class NacaddrUnitTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

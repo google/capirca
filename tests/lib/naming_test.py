@@ -14,18 +14,13 @@
 
 """Unittest for naming.py module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
-import unittest
+from absl.testing import absltest
 
 from capirca.lib import nacaddr
 from capirca.lib import naming
 
 
-class NamingUnitTest(unittest.TestCase):
+class NamingUnitTest(absltest.TestCase):
   """Unit Test for naming.py.
 
      The Naming class allows us to specify if we want to use arrays of text
@@ -35,7 +30,7 @@ class NamingUnitTest(unittest.TestCase):
   """
 
   def setUp(self):
-    super(NamingUnitTest, self).setUp()
+    super().setUp()
     self.defs = naming.Naming(None)
     servicedata = []
     servicedata.append('SVC1 = 80/tcp 81/udp 82/tcp')
@@ -197,4 +192,4 @@ class NamingUnitTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

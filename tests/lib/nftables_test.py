@@ -14,21 +14,15 @@
 
 """Unittest for Nftables rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
-import unittest
+from absl.testing import absltest
+from unittest import mock
 
 from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from capirca.lib import nftables
 from capirca.lib import policy
-
-import mock
 
 
 BAD_HEADER = """
@@ -294,10 +288,10 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class NftablesTest(unittest.TestCase):
+class NftablesTest(absltest.TestCase):
 
   def setUp(self):
-    super(NftablesTest, self).setUp()
+    super().setUp()
     self.mock_naming = mock.MagicMock()
 
   def testBadHeader(self):
@@ -559,4 +553,4 @@ class NftablesTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

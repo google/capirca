@@ -15,11 +15,6 @@
 
 """Check where hosts, ports and protocols are matched in a capirca policy."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import logging
 from capirca.lib import nacaddr
 from capirca.lib import policy
@@ -42,7 +37,7 @@ class NoTargetError(Error):
   """Specified target platform not available in specified policy."""
 
 
-class AclCheck(object):
+class AclCheck:
   """Check where hosts, ports and protocols match in a NAC policy.
 
   Attributes:
@@ -270,7 +265,7 @@ class AclCheck(object):
     return False
 
 
-class Match(object):
+class Match:
   """A matching term and its associate values."""
 
   def __init__(self, filtername, term, possibles, action, qos=None):

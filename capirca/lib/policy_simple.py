@@ -21,17 +21,11 @@ inline comments but preservers line-level comments. Fields expected to have
 "naming" values are stored as a set without order or line breaks retained.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 from absl import logging
 import six
-from six.moves import zip
 
 
-class Field(object):
+class Field:
   """A name-value assignment within a block."""
 
   def __init__(self, value):
@@ -40,7 +34,7 @@ class Field(object):
   def __str__(self):
     t = type(self)
     f = 'UNKNOWN'
-    for k, v in six.iteritems(field_map):
+    for k, v in field_map.items():
       if t == v:
         f = k
         break
@@ -65,7 +59,7 @@ class Field(object):
 class IntegerField(Field):
 
   def __init__(self, value):
-    super(IntegerField, self).__init__(value)
+    super().__init__(value)
     try:
       _ = int(value)
     except ValueError:
@@ -76,7 +70,7 @@ class NamingField(Field):
   """A naming field is one that refers to names in used in naming.py."""
 
   def __init__(self, value):
-    super(NamingField, self).__init__(value)
+    super().__init__(value)
     self.value = self.ParseString(value)
 
   def ParseString(self, value):
@@ -381,7 +375,7 @@ field_map = {
 }
 
 
-class Block(object):
+class Block:
   """A section containing fields."""
 
   def __init__(self):
@@ -452,14 +446,14 @@ class Term(Block):
   """A policy term."""
 
   def __init__(self, name):
-    super(Term, self).__init__()
+    super().__init__()
     self.name = name
 
   def Name(self):
     return self.name
 
   def __eq__(self, o):
-    if not super(Term, self).__eq__(o):
+    if not super().__eq__(o):
       return False
     return self.name == o.name
 
@@ -563,7 +557,7 @@ class Term(Block):
     return ' '.join(pieces)
 
 
-class BlankLine(object):
+class BlankLine:
   """A blank line."""
 
   def __str__(self):
@@ -576,7 +570,7 @@ class BlankLine(object):
     return not self == o
 
 
-class CommentLine(object):
+class CommentLine:
   """A comment in the file."""
 
   def __init__(self, data):
@@ -594,7 +588,7 @@ class CommentLine(object):
     return not self == o
 
 
-class Include(object):
+class Include:
   """A reference to another policy definition."""
 
   def __init__(self, identifier):
@@ -612,7 +606,7 @@ class Include(object):
     return not self == o
 
 
-class Policy(object):
+class Policy:
   """An ordered list of headers, terms, comments, blank lines and includes."""
 
   def __init__(self, identifier):
@@ -650,7 +644,7 @@ class Policy(object):
         yield match_idx, field_idx, f
 
 
-class PolicyParser(object):
+class PolicyParser:
   """Parse a policy object from a data buffer."""
 
   def __init__(self, data, identifier):

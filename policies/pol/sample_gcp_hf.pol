@@ -1,6 +1,6 @@
 header {
   comment:: "This is sample policy for GCP HF"
-  target:: gcp_hf testhf INGRESS inet 200
+  target:: gcp_hf testhf INGRESS inet beta 200
 }
 
 term folder-ssh{
@@ -18,6 +18,53 @@ term folder-rdp {
   destination-port:: RDP
   target-resources:: (proj-1,vpc1)
   action:: next
+}
+
+term test-icmp {
+  comment:: "Allow ICMP from company."
+  source-address:: PUBLIC_NAT
+  protocol:: icmp
+  action:: accept
+}
+
+term test-icmpv6 {
+  comment:: "Allow ICMPv6 from company. This should not be rendered."
+  source-address:: PUBLIC_NAT
+  protocol:: icmpv6
+  action:: accept
+}
+
+term test-igmp {
+  comment:: "Allow IGMP from company."
+  source-address:: PUBLIC_NAT
+  protocol:: igmp
+  action:: accept
+}
+
+term test-multiple-protocols {
+  comment:: "Allow TCP/UDP access to all instances from company."
+  source-address:: PUBLIC_NAT
+  protocol:: tcp udp
+  destination-port:: HIGH_PORTS
+  action:: accept
+}
+
+term test-multiple-protocols-tcp-icmpv6 {
+  comment:: "Allow all tcp and icmpv6. This should only render tcp."
+  source-address:: PUBLIC_NAT
+  protocol:: tcp icmpv6
+  action:: accept
+}
+
+term test-multiple-protocols-tcp-icmp {
+  comment:: "Allow all tcp and icmp."
+  source-address:: PUBLIC_NAT
+  protocol:: tcp icmp
+  action:: accept
+}
+
+term default-deny {
+  action:: deny
 }
 
 header {
@@ -40,4 +87,16 @@ term folder-ssh-nat{
   destination-address:: PUBLIC_NAT
   target-resources:: (proj-2,vpc2)
   action:: next
+}
+
+term test-egress-address-v6-only {
+  comment:: "Outbound to IPv6 Server. This should not be rendered."
+  protocol:: tcp
+  destination-port:: SMTP
+  destination-address:: PUBLIC_IPV6_SERVERS
+  action:: accept
+}
+
+term default-deny {
+  action:: deny
 }

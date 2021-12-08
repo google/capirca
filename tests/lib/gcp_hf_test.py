@@ -1,21 +1,15 @@
 """Tests for google3.third_party.py.capirca.lib.gcp_hf.py."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import json
-import unittest
+from absl.testing import absltest
+from unittest import mock
 
 from absl.testing import parameterized
-
 from capirca.lib import gcp
 from capirca.lib import gcp_hf
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
-import mock
 
 HEADER_NO_OPTIONS = """
 header {
@@ -80,6 +74,13 @@ header {
 }
 """
 
+HEADER_OPTION_EGRESS_INET6 = """
+header {
+  comment:: "The general policy comment."
+  target:: gcp_hf displayname EGRESS inet6 ga
+}
+"""
+
 HEADER_OPTION_MAX_AND_AF = """
 header {
   comment:: "The general policy comment."
@@ -91,6 +92,55 @@ HEADER_VERY_LOW_DEFAULT_MAX = """
 header {
   comment:: "The general policy comment."
   target:: gcp_hf displayname 1
+}
+"""
+
+HEADER_OPTION_BETA = """
+header {
+  comment:: "The general policy comment."
+  target:: gcp_hf displayname inet beta
+}
+"""
+
+HEADER_OPTION_GA = """
+header {
+  comment:: "The general policy comment."
+  target:: gcp_hf displayname ga
+}
+"""
+
+HEADER_GA_NO_INET_OPTIONS = """
+header {
+  comment:: "The general policy comment."
+  target:: gcp_hf displayname ga
+}
+"""
+
+HEADER_OPTION_INET6 = """
+header {
+  comment:: "The general policy comment."
+  target:: gcp_hf displayname inet6 ga
+}
+"""
+
+HEADER_OPTION_MIXED = """
+header {
+  comment:: "The general policy comment."
+  target:: gcp_hf displayname mixed ga
+}
+"""
+
+HEADER_OPTION_EGRESS_MIXED = """
+header {
+  comment:: "The general policy comment."
+  target:: gcp_hf displayname EGRESS mixed ga
+}
+"""
+
+BAD_HEADER_OPTION_BETA_AF = """
+header {
+  comment:: "The general policy comment."
+  target:: gcp_hf displayname inet6 beta
 }
 """
 
@@ -161,6 +211,24 @@ TERM_ALLOW_ALL_INTERNAL = """
 term allow-internal-traffic {
   comment:: "Generic description"
   protocol:: tcp icmp udp
+  action:: next
+}
+"""
+
+TERM_ALLOW_MULTIPLE_PROTOCOL = """
+term allow-internal-traffic {
+  comment:: "Generic description"
+  source-address:: PUBLIC_NAT
+  protocol:: tcp icmp udp
+  action:: next
+}
+"""
+
+TERM_ALLOW_MULTIPLE_PROTOCOL_ICMPV6 = """
+term allow-internal-traffic {
+  comment:: "Generic description"
+  source-address:: PUBLIC_NAT
+  protocol:: tcp icmpv6 udp
   action:: next
 }
 """
@@ -274,11 +342,11 @@ term allow-internal-traffic {
 }
 """
 
-BAD_TERM_PROTO = """
-  term bad-term-unsupp-proto {
+TERM_NUMBERED_PROTOCOL = """
+  term term-numbered-protocol {
   comment:: "Generic description"
   source-address:: PUBLIC_NAT
-  protocol:: ggp
+  protocol:: igmp
   action:: next
 }
 """
@@ -857,6 +925,24 @@ term icmpv6-in-inet-term {
 }
 """
 
+BAD_TERM_ICMP_VERSION_MISMATCH = """
+term icmp-in-inet6-term {
+  comment:: "Generic description"
+  source-address:: INTERNAL
+  protocol:: icmp
+  action:: next
+}
+"""
+
+BAD_TERM_IGMP_VERSION_MISMATCH = """
+term igmp-in-inet6-term {
+  comment:: "Generic description"
+  source-address:: INTERNAL
+  protocol:: igmp
+  action:: next
+}
+"""
+
 BAD_TERM_OPTIONS = """
 term term-with-options {
   comment:: "Generic description"
@@ -886,7 +972,7 @@ term default-deny-ingress-on-target {
 }
 """
 
-EXPECTED_ONE_RULE_INGRESS = """
+EXPECTED_ONE_RULE_INGRESS_BETA = """
 [
   {
     "displayName": "displayname",
@@ -921,7 +1007,7 @@ EXPECTED_ONE_RULE_INGRESS = """
 ]
 """
 
-EXPECTED_ONE_RULE_INGRESS_W_LOGGING = """
+EXPECTED_ONE_RULE_INGRESS_W_LOGGING_BETA = """
 [
   {
     "displayName": "displayname",
@@ -950,7 +1036,7 @@ EXPECTED_ONE_RULE_INGRESS_W_LOGGING = """
 ]
 """
 
-EXPECTED_ONE_RULE_EGRESS = """
+EXPECTED_ONE_RULE_EGRESS_BETA = """
 [
   {
     "displayName": "displayname",
@@ -985,7 +1071,7 @@ EXPECTED_ONE_RULE_EGRESS = """
 ]
 """
 
-EXPECTED_MULTIPLE_RULE_INGRESS = """
+EXPECTED_MULTIPLE_RULE_INGRESS_BETA = """
 [
   {
     "displayName": "displayname",
@@ -1091,7 +1177,7 @@ EXPECTED_MULTIPLE_RULE_INGRESS_W_DENY = """
 ]
 """
 
-EXPECTED_PORT_RANGE_INGRESS = """
+EXPECTED_PORT_RANGE_INGRESS_BETA = """
 [
   {
     "displayName": "displayname",
@@ -1121,7 +1207,7 @@ EXPECTED_PORT_RANGE_INGRESS = """
 ]
 """
 
-EXPECTED_DENY_INGRESS = """
+EXPECTED_DENY_INGRESS_BETA = """
 [
   {
     "displayName": "displayname",
@@ -1150,7 +1236,77 @@ EXPECTED_DENY_INGRESS = """
 ]
 """
 
-EXPECTED_DENY_INGRESS_ON_TARGET = """
+EXPECTED_IPV6_DENY_INGRESS_GA = """
+[
+  {
+    "shortName": "displayname",
+    "type": "FIREWALL",
+    "rules": [
+      {
+        "action": "deny",
+        "description": "default-deny-ingress: Generic description",
+        "direction": "INGRESS",
+        "match": {
+          "layer4Configs": [
+            {
+              "ipProtocol": "all"
+            }
+          ],
+          "srcIpRanges": ["::/0"],
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 1,
+        "enableLogging": false
+      }
+    ]
+  }
+]
+"""
+
+EXPECTED_MIXED_DENY_INGRESS_GA = """
+[
+  {
+    "shortName": "displayname",
+    "type": "FIREWALL",
+    "rules": [
+      {
+        "action": "deny",
+        "description": "default-deny-ingress: Generic description",
+        "direction": "INGRESS",
+        "match": {
+          "layer4Configs": [
+            {
+              "ipProtocol": "all"
+            }
+          ],
+          "srcIpRanges": ["0.0.0.0/0"],
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 1,
+        "enableLogging": false
+      },
+      {
+        "action": "deny",
+        "description": "default-deny-ingress-v6: Generic description",
+        "direction": "INGRESS",
+        "match": {
+          "layer4Configs": [
+            {
+              "ipProtocol": "all"
+            }
+          ],
+          "srcIpRanges": ["::/0"],
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 2,
+        "enableLogging": false
+      }
+    ]
+  }
+]
+"""
+
+EXPECTED_DENY_INGRESS_ON_TARGET_BETA = """
 [
   {
     "displayName": "displayname",
@@ -1181,7 +1337,7 @@ EXPECTED_DENY_INGRESS_ON_TARGET = """
 ]
 """
 
-EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
+EXPECTED_INGRESS_AND_EGRESS_W_DENY_BETA = """
 [
   {
     "displayName": "displayname",
@@ -1276,7 +1432,7 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY = """
 ]
 """
 
-EXPECTED_DENY_EGRESS = """
+EXPECTED_DENY_EGRESS_BETA = """
 [
   {
     "displayName": "displayname",
@@ -1305,6 +1461,76 @@ EXPECTED_DENY_EGRESS = """
 ]
 """
 
+EXPECTED_IPV6_DENY_EGRESS_GA = """
+[
+  {
+    "shortName": "displayname",
+    "type": "FIREWALL",
+    "rules": [
+      {
+        "action": "deny",
+        "description": "default-deny-egress: Generic description",
+        "direction": "EGRESS",
+        "match": {
+          "destIpRanges": ["::/0"],
+          "layer4Configs": [
+            {
+              "ipProtocol": "all"
+            }
+          ],
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 1,
+        "enableLogging": false
+      }
+    ]
+  }
+]
+"""
+
+EXPECTED_MIXED_DENY_EGRESS_GA = """
+[
+  {
+    "shortName": "displayname",
+    "type": "FIREWALL",
+    "rules": [
+      {
+        "action": "deny",
+        "description": "default-deny-egress: Generic description",
+        "direction": "EGRESS",
+        "match": {
+          "destIpRanges": ["0.0.0.0/0"],
+          "layer4Configs": [
+            {
+              "ipProtocol": "all"
+            }
+          ],
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 1,
+        "enableLogging": false
+      },
+      {
+        "action": "deny",
+        "description": "default-deny-egress-v6: Generic description",
+        "direction": "EGRESS",
+        "match": {
+          "destIpRanges": ["::/0"],
+          "layer4Configs": [
+            {
+              "ipProtocol": "all"
+            }
+          ],
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 2,
+        "enableLogging": false
+      }
+    ]
+  }
+]
+"""
+
 EXPECTED_COST_OF_ONE = """
 [
   {
@@ -1324,7 +1550,7 @@ EXPECTED_COST_OF_ONE = """
                 "ports": ["80"]
               }
             ],
-            "srcIpRanges": ["10.1.1.0/24"]
+            "srcIpRanges": ["10.1.1.0/24"]/t
           },
           "versionedExpr": "FIREWALL"
         },
@@ -1335,7 +1561,7 @@ EXPECTED_COST_OF_ONE = """
 ]
 """
 
-EXPECTED_CHUNKED = """
+EXPECTED_CHUNKED_BETA = """
 [
   {
     "displayName": "displayname",
@@ -1644,7 +1870,7 @@ EXPECTED_CHUNKED = """
 ]
 """
 
-EXPECTED_EGRESS_CHUNKED = """
+EXPECTED_EGRESS_CHUNKED_BETA = """
 [
   {
     "displayName": "displayname",
@@ -1944,6 +2170,268 @@ EXPECTED_EGRESS_CHUNKED = """
               "192.168.255.0/32"
             ]
           },
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 2
+      }
+    ]
+  }
+]
+"""
+
+EXPECTED_ONE_RULE_NUMBERED_PROTOCOL_BETA = """
+[
+  {
+    "displayName": "displayname",
+    "type": "FIREWALL",
+    "rules": [
+      {
+        "action": "goto_next",
+        "description": "term-numbered-protocol: Generic description",
+        "direction": "INGRESS",
+        "match": {
+          "config": {
+            "layer4Configs": [
+              {
+                "ipProtocol": 2
+              }
+            ],
+            "srcIpRanges": ["0.0.0.0/0"]
+          },
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 1,
+        "enableLogging": false
+      }
+    ]
+  }
+]
+"""
+
+EXPECTED_ONE_RULE_IPV6_PROTOCOL_GA = """
+[
+  {
+    "shortName": "displayname",
+    "type": "FIREWALL",
+    "rules": [
+      {
+        "action": "goto_next",
+        "description": "allow-traffic-to-port: Generic description",
+        "direction": "INGRESS",
+        "match": {
+          "layer4Configs": [
+            {
+              "ipProtocol": "tcp",
+              "ports": ["80"]
+            }
+          ],
+          "srcIpRanges": ["2001:4860:8000::5/128"],
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 1,
+        "enableLogging": false
+      }
+    ]
+  }
+]
+"""
+
+EXPECTED_ONE_RULE_MIXED_IPV6_PROTOCOL_GA = """
+[
+  {
+    "shortName": "displayname",
+    "type": "FIREWALL",
+    "rules": [
+      {
+        "action": "goto_next",
+        "description": "allow-traffic-to-port-v6: Generic description",
+        "direction": "INGRESS",
+        "match": {
+          "layer4Configs": [
+            {
+              "ipProtocol": "tcp",
+              "ports": ["80"]
+            }
+          ],
+          "srcIpRanges": ["2001:4860:8000::5/128"],
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 1,
+        "enableLogging": false
+      }
+    ]
+  }
+]
+"""
+
+EXPECTED_ONE_RULE_MIXED_IPV4_PROTOCOL_GA = """
+[
+  {
+    "shortName": "displayname",
+    "type": "FIREWALL",
+    "rules": [
+      {
+        "action": "goto_next",
+        "description": "allow-traffic-to-port: Generic description",
+        "direction": "INGRESS",
+        "match": {
+          "layer4Configs": [
+            {
+              "ipProtocol": "tcp",
+              "ports": ["80"]
+            }
+          ],
+          "srcIpRanges": ["10.0.0.0/8"],
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 1,
+        "enableLogging": false
+      }
+    ]
+  }
+]
+"""
+
+EXPECTED_MULTIPLE_MIXED_RULE_INGRESS_GA = """
+[
+  {
+    "shortName": "displayname",
+    "type": "FIREWALL",
+    "rules": [
+      {
+        "action": "goto_next",
+        "description": "allow-traffic-to-port: Generic description",
+        "direction": "INGRESS",
+        "enableLogging": false,
+        "match": {
+          "layer4Configs": [
+            {
+              "ipProtocol": "tcp",
+              "ports": ["80"]
+            }
+          ],
+          "srcIpRanges": ["10.0.0.0/8"],
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 1
+      },
+      {
+        "action": "goto_next",
+        "description": "allow-traffic-to-port-v6: Generic description",
+        "direction": "INGRESS",
+        "enableLogging": false,
+        "match": {
+          "layer4Configs": [
+            {
+              "ipProtocol": "tcp",
+              "ports": ["80"]
+            }
+          ],
+          "srcIpRanges": ["2001:4860:8000::5/128"],
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 2
+      }
+    ]
+  }
+]
+"""
+
+EXPECTED_MULTIPLE_MIXED_RULE_INGRESS_WITH_ICMP_GA = """
+[
+  {
+    "shortName": "displayname",
+    "type": "FIREWALL",
+    "rules": [
+      {
+        "action": "goto_next",
+        "description": "allow-internal-traffic: Generic description",
+        "direction": "INGRESS",
+        "enableLogging": false,
+        "match": {
+          "layer4Configs": [
+            {
+              "ipProtocol": "tcp"
+            },
+            {
+              "ipProtocol": "icmp"
+            },
+            {
+              "ipProtocol": "udp"
+            }
+          ],
+          "srcIpRanges": ["10.0.0.0/8"],
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 1
+      },
+      {
+        "action": "goto_next",
+        "description": "allow-internal-traffic-v6: Generic description",
+        "direction": "INGRESS",
+        "enableLogging": false,
+        "match": {
+          "layer4Configs": [
+            {
+              "ipProtocol": "tcp"
+            },
+            {
+              "ipProtocol": "udp"
+            }
+          ],
+          "srcIpRanges": ["2001:4860:8000::5/128"],
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 2
+      }
+    ]
+  }
+]
+"""
+
+EXPECTED_MULTIPLE_MIXED_RULE_INGRESS_WITH_ICMPV6_GA = """
+[
+  {
+    "shortName": "displayname",
+    "type": "FIREWALL",
+    "rules": [
+      {
+        "action": "goto_next",
+        "description": "allow-internal-traffic: Generic description",
+        "direction": "INGRESS",
+        "enableLogging": false,
+        "match": {
+          "layer4Configs": [
+            {
+              "ipProtocol": "tcp"
+            },
+            {
+              "ipProtocol": "udp"
+            }
+          ],
+          "srcIpRanges": ["10.0.0.0/8"],
+          "versionedExpr": "FIREWALL"
+        },
+        "priority": 1
+      },
+      {
+        "action": "goto_next",
+        "description": "allow-internal-traffic-v6: Generic description",
+        "direction": "INGRESS",
+        "enableLogging": false,
+        "match": {
+          "layer4Configs": [
+            {
+              "ipProtocol": "tcp"
+            },
+            {
+              "ipProtocol": 58
+            },
+            {
+              "ipProtocol": "udp"
+            }
+          ],
+          "srcIpRanges": ["2001:4860:8000::5/128"],
           "versionedExpr": "FIREWALL"
         },
         "priority": 2
@@ -1980,7 +2468,10 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 TEST_IP = [nacaddr.IP('10.0.0.0/8')]
-ALL_IPS = [nacaddr.IP('0.0.0.0/0')]
+TEST_IPV6_IP = [nacaddr.IP('2001:4860:8000::5/128')]
+TEST_MIXED_IPS = [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('2001:4860:8000::5/128')]
+ALL_IPV4_IPS = [nacaddr.IP('0.0.0.0/0')]
+ALL_IPV6_IPS = [nacaddr.IP('::/0')]
 MANY_IPS = [nacaddr.IP('192.168.' + str(x) +'.0/32') for x in range(
     0, 256)]
 MANY_IPS.extend([nacaddr.IP('10.0.0.1'), nacaddr.IP('10.0.1.1')])
@@ -1989,7 +2480,7 @@ MANY_IPS.extend([nacaddr.IP('10.0.0.1'), nacaddr.IP('10.0.1.1')])
 class GcpHfTest(parameterized.TestCase):
 
   def setUp(self):
-    super(GcpHfTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def _StripAclHeaders(self, acl):
@@ -1998,24 +2489,24 @@ class GcpHfTest(parameterized.TestCase):
 
   def testDefaultHeader(self):
     """Test that a header without options is accepted."""
-    self.naming.GetNetAddr.return_value = ALL_IPS
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_ALLOW_ALL_INTERNAL,
                            self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_ONE_RULE_INGRESS)
+    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_BETA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testOptionMaxHeader(self):
     """Test that a header with a default maximum cost is accepted."""
-    self.naming.GetNetAddr.return_value = ALL_IPS
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_OPTION_MAX + TERM_ALLOW_ALL_INTERNAL,
                            self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_ONE_RULE_INGRESS)
+    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_BETA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testOptionEgressHeader(self):
@@ -2026,18 +2517,18 @@ class GcpHfTest(parameterized.TestCase):
         policy.ParsePolicy(HEADER_OPTION_EGRESS + TERM_RESTRICT_EGRESS,
                            self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_ONE_RULE_EGRESS)
+    expected = json.loads(EXPECTED_ONE_RULE_EGRESS_BETA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testOptionAFHeader(self):
     """Test that a header with address family is accepted."""
-    self.naming.GetNetAddr.return_value = ALL_IPS
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_OPTION_AF + TERM_ALLOW_ALL_INTERNAL,
                            self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_ONE_RULE_INGRESS)
+    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_BETA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testOptionEgressAndMaxHeader(self):
@@ -2048,7 +2539,7 @@ class GcpHfTest(parameterized.TestCase):
         policy.ParsePolicy(HEADER_OPTION_EGRESS_AND_MAX + TERM_RESTRICT_EGRESS,
                            self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_ONE_RULE_EGRESS)
+    expected = json.loads(EXPECTED_ONE_RULE_EGRESS_BETA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testOptionEgressAndAF(self):
@@ -2059,19 +2550,37 @@ class GcpHfTest(parameterized.TestCase):
         policy.ParsePolicy(HEADER_OPTION_EGRESS_AND_AF + TERM_RESTRICT_EGRESS,
                            self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_ONE_RULE_EGRESS)
+    expected = json.loads(EXPECTED_ONE_RULE_EGRESS_BETA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testOptionMaxAndAF(self):
     """Test a header with default maximum cost & address family is accepted."""
-    self.naming.GetNetAddr.return_value = ALL_IPS
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_OPTION_MAX_AND_AF + TERM_ALLOW_ALL_INTERNAL,
                            self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_ONE_RULE_INGRESS)
+    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_BETA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testOptionApiVersionAFHeader(self):
+    """Test that a header with api_version is accepted."""
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_BETA + TERM_ALLOW_ALL_INTERNAL,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_BETA)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testRaisesHeaderErrorOnIcompatibleApiVersionAndAFOption(self):
+    """Test that an unknown header option raises a HeaderError."""
+    with self.assertRaises(gcp.HeaderError):
+      gcp_hf.HierarchicalFirewall(
+          policy.ParsePolicy(
+              BAD_HEADER_OPTION_BETA_AF + TERM_ALLOW_ALL_INTERNAL, self.naming),
+          EXP_INFO)
 
   def testRaisesHeaderErrorOnUnknownOption(self):
     """Test that an unknown header option raises a HeaderError."""
@@ -2166,12 +2675,15 @@ class GcpHfTest(parameterized.TestCase):
                              self.naming),
           EXP_INFO)
 
-  def testRaisesTermErrorOnTermWithUnsupportedProtocol(self):
-    """Test that a term with an unsupported protocol raises an error."""
-    with self.assertRaises(gcp.TermError):
-      gcp_hf.HierarchicalFirewall(
-          policy.ParsePolicy(HEADER_NO_OPTIONS + BAD_TERM_PROTO, self.naming),
-          EXP_INFO)
+  def testTermWithNumberedProtocol(self):
+    """Test that a protocol number is supported."""
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_NUMBERED_PROTOCOL,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_ONE_RULE_NUMBERED_PROTOCOL_BETA)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testRaisesTermErrorOnTermWithSourcePort(self):
     """Test that a term with a source port raises Term error."""
@@ -2270,16 +2782,158 @@ class GcpHfTest(parameterized.TestCase):
     exp = [{'displayName': 'displayname', 'rules': [], 'type': 'FIREWALL'}]
     self.assertEqual(exp, json.loads(self._StripAclHeaders(str(acl))))
 
+  def testInet6IgnoreTermWithICMP(self):
+    """Test that a term with only an icmp protocol is not rendered for inet6."""
+    self.naming.GetNetAddr.return_value = TEST_IP
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_INET6
+                           + BAD_TERM_ICMP_VERSION_MISMATCH,
+                           self.naming),
+        EXP_INFO)
+    exp = [{'shortName': 'displayname', 'rules': [], 'type': 'FIREWALL'}]
+    self.assertEqual(exp, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testInet6IgnoreTermWithIGMP(self):
+    """Test that a term with only an igmp protocol is not rendered for inet6."""
+    self.naming.GetNetAddr.return_value = TEST_IP
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_INET6
+                           + BAD_TERM_IGMP_VERSION_MISMATCH,
+                           self.naming),
+        EXP_INFO)
+    exp = [{'shortName': 'displayname', 'rules': [], 'type': 'FIREWALL'}]
+    self.assertEqual(exp, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testInet6TermWithIPv6Addresses(self):
+    """Test that IPv6 addresses are supported with inet6."""
+    self.naming.GetNetAddr.return_value = TEST_IPV6_IP
+    self.naming.GetServiceByProto.side_effect = [['80']]
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_INET6 + TERM_ALLOW_PORT,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_ONE_RULE_IPV6_PROTOCOL_GA)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testInet6TermWithMixedAddresses(self):
+    """Test that Mixed addresses are supported with inet6."""
+    self.naming.GetNetAddr.return_value = TEST_MIXED_IPS
+    self.naming.GetServiceByProto.side_effect = [['80']]
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_INET6 + TERM_ALLOW_PORT,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_ONE_RULE_IPV6_PROTOCOL_GA)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testInet6TermWithIPv4Addresses(self):
+    """Test that IPv4 addresses are not rendered with inet6."""
+    self.naming.GetNetAddr.return_value = TEST_IP
+    self.naming.GetServiceByProto.side_effect = [['80']]
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_INET6 + TERM_ALLOW_PORT,
+                           self.naming), EXP_INFO)
+    exp = [{'shortName': 'displayname', 'rules': [], 'type': 'FIREWALL'}]
+    self.assertEqual(exp, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testInetTermWithMixedAddresses(self):
+    """Test that Mixed addresses are supported with inet."""
+    self.naming.GetNetAddr.return_value = TEST_MIXED_IPS
+    self.naming.GetServiceByProto.side_effect = [['80']]
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_EGRESS_AND_AF + TERM_RESTRICT_EGRESS,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_ONE_RULE_EGRESS_BETA)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testInetTermWithIPv6Addresses(self):
+    """Test that IPv6 addresses are not rendered with inet."""
+    self.naming.GetNetAddr.return_value = TEST_IPV6_IP
+    self.naming.GetServiceByProto.side_effect = [['80']]
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_EGRESS_AND_AF + TERM_RESTRICT_EGRESS,
+                           self.naming), EXP_INFO)
+    exp = [{'displayName': 'displayname', 'rules': [], 'type': 'FIREWALL'}]
+    self.assertEqual(exp, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testMixedTermWithMixedAddresses(self):
+    """Test that IPv4 and IPv6 addresses are supported with mixed."""
+    self.naming.GetNetAddr.return_value = TEST_MIXED_IPS
+    self.naming.GetServiceByProto.side_effect = [['80']]
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_MIXED + TERM_ALLOW_PORT,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_MULTIPLE_MIXED_RULE_INGRESS_GA)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testMixedTermWithIPv4Addresses(self):
+    """Test that IPv4 addresses are supported with mixed."""
+    self.naming.GetNetAddr.return_value = TEST_IP
+    self.naming.GetServiceByProto.side_effect = [['80']]
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_MIXED + TERM_ALLOW_PORT,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_ONE_RULE_MIXED_IPV4_PROTOCOL_GA)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testMixedTermWithIPv6Addresses(self):
+    """Test that IPv6 addresses are supported with mixed."""
+    self.naming.GetNetAddr.return_value = TEST_IPV6_IP
+    self.naming.GetServiceByProto.side_effect = [['80']]
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_MIXED + TERM_ALLOW_PORT,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_ONE_RULE_MIXED_IPV6_PROTOCOL_GA)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testMixedTermWithICMP(self):
+    """Test that ICMP protocol is supported with mixed."""
+    self.naming.GetNetAddr.return_value = TEST_MIXED_IPS
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_MIXED + TERM_ALLOW_MULTIPLE_PROTOCOL,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_MULTIPLE_MIXED_RULE_INGRESS_WITH_ICMP_GA)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testMixedTermWithICMPv6(self):
+    """Test that ICMPv6 protocol is supported with mixed."""
+    self.naming.GetNetAddr.return_value = TEST_MIXED_IPS
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(
+            HEADER_OPTION_MIXED + TERM_ALLOW_MULTIPLE_PROTOCOL_ICMPV6,
+            self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_MULTIPLE_MIXED_RULE_INGRESS_WITH_ICMPV6_GA)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testInetIsDefaultInetVersion(self):
+    """Test that inet is the default inet version when not specified."""
+    self.naming.GetNetAddr.return_value = TEST_MIXED_IPS
+    self.naming.GetServiceByProto.side_effect = [['80']]
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_GA_NO_INET_OPTIONS + TERM_ALLOW_PORT,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_ONE_RULE_MIXED_IPV4_PROTOCOL_GA)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
   def testPriority(self):
     """Test that priority is set based on terms' ordering."""
-    self.naming.GetNetAddr.return_value = ALL_IPS
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_ALLOW_ALL_INTERNAL
                            + TERM_ALLOW_DNS, self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_MULTIPLE_RULE_INGRESS)
+    expected = json.loads(EXPECTED_MULTIPLE_RULE_INGRESS_BETA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testLogging(self):
@@ -2290,7 +2944,7 @@ class GcpHfTest(parameterized.TestCase):
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_WITH_LOGGING, self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_W_LOGGING)
+    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_W_LOGGING_BETA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testTargetResources(self):
@@ -2301,7 +2955,7 @@ class GcpHfTest(parameterized.TestCase):
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_WITH_TARGET_RESOURCES,
                            self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_DENY_INGRESS_ON_TARGET)
+    expected = json.loads(EXPECTED_DENY_INGRESS_ON_TARGET_BETA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testSecondWayOfPassingTargetResources(self):
@@ -2312,13 +2966,13 @@ class GcpHfTest(parameterized.TestCase):
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_WITH_TARGET_RESOURCES_2,
                            self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_DENY_INGRESS_ON_TARGET)
+    expected = json.loads(EXPECTED_DENY_INGRESS_ON_TARGET_BETA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testMultiplePolicies(self):
     """Tests that both ingress and egress rules are included in one policy."""
     self.maxDiff = None
-    self.naming.GetNetAddr.return_value = ALL_IPS
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_ALLOW_ALL_INTERNAL +
@@ -2326,7 +2980,7 @@ class GcpHfTest(parameterized.TestCase):
                            TERM_RESTRICT_EGRESS + TERM_DENY_EGRESS,
                            self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_INGRESS_AND_EGRESS_W_DENY)
+    expected = json.loads(EXPECTED_INGRESS_AND_EGRESS_W_DENY_BETA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testPortRange(self):
@@ -2338,18 +2992,18 @@ class GcpHfTest(parameterized.TestCase):
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_ALLOW_PORT_RANGE,
                            self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_PORT_RANGE_INGRESS)
+    expected = json.loads(EXPECTED_PORT_RANGE_INGRESS_BETA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testTermLongComment(self):
     """Test that a term's long comment gets truncated and prefixed with term name."""
-    self.naming.GetNetAddr.return_value = ALL_IPS
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_LONG_COMMENT,
                            self.naming),
         EXP_INFO)
-    comment_truncated = EXPECTED_ONE_RULE_INGRESS.replace(
+    comment_truncated = EXPECTED_ONE_RULE_INGRESS_BETA.replace(
         'Generic description',
         'This is a very long description, it is l')
     expected = json.loads(comment_truncated)
@@ -2357,23 +3011,61 @@ class GcpHfTest(parameterized.TestCase):
 
   def testDefaultDenyIngressCreation(self):
     """Test that the correct IP is correctly set on a deny all ingress term."""
-    self.naming.GetNetAddr.return_value = ALL_IPS
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_DENY_INGRESS, self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_DENY_INGRESS)
+    expected = json.loads(EXPECTED_DENY_INGRESS_BETA)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testInet6DefaultDenyIngressCreation(self):
+    """Test that the IPv6 IP is correctly set on a deny all ingress term."""
+    self.naming.GetNetAddr.return_value = ALL_IPV6_IPS
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_INET6 + TERM_DENY_INGRESS,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_IPV6_DENY_INGRESS_GA)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testMixedDefaultDenyIngressCreation(self):
+    """Test that the mixed IPs are correctly set on a deny all ingress term."""
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_MIXED + TERM_DENY_INGRESS,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_MIXED_DENY_INGRESS_GA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testDefaultDenyEgressCreation(self):
     """Test that the correct IP is correctly set on a deny all egress term."""
-    self.naming.GetNetAddr.return_value = ALL_IPS
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_OPTION_EGRESS + TERM_DENY_EGRESS,
                            self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_DENY_EGRESS)
+    expected = json.loads(EXPECTED_DENY_EGRESS_BETA)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testInet6DefaultDenyEgressCreation(self):
+    """Test that the IPv6 IP is correctly set on a deny all egress term."""
+    self.naming.GetNetAddr.return_value = ALL_IPV6_IPS
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_EGRESS_INET6 + TERM_DENY_EGRESS,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_IPV6_DENY_EGRESS_GA)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testMixedDefaultDenyEgressCreation(self):
+    """Test that the mixed IPs are correctly set on a deny all egress term."""
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(HEADER_OPTION_EGRESS_MIXED + TERM_DENY_EGRESS,
+                           self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_MIXED_DENY_EGRESS_GA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testBuildTokens(self):
@@ -2406,7 +3098,7 @@ class GcpHfTest(parameterized.TestCase):
         policy.ParsePolicy(HEADER_OPTION_HIGH_QUOTA + TERM_ALLOW_PORT,
                            self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_CHUNKED)
+    expected = json.loads(EXPECTED_CHUNKED_BETA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testChunkedEgressIPRanges(self):
@@ -2418,7 +3110,7 @@ class GcpHfTest(parameterized.TestCase):
         policy.ParsePolicy(HEADER_OPTION_EGRESS_HIGH_QUOTA +
                            TERM_ALLOW_EGRESS_PORT, self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_EGRESS_CHUNKED)
+    expected = json.loads(EXPECTED_EGRESS_CHUNKED_BETA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   @parameterized.named_parameters(
@@ -2504,8 +3196,97 @@ class GcpHfTest(parameterized.TestCase):
        }, 5),
   )
   def testGetRuleTupleCount(self, dict_term, expected):
-    self.assertEqual(gcp_hf.GetRuleTupleCount(dict_term), expected)
+    self.assertEqual(gcp_hf.GetRuleTupleCount(dict_term, 'beta'), expected)
+
+  @parameterized.named_parameters(
+      ('1 ip, 2 protocols', {
+          'match': {
+              'destIpRanges': ['0.0.0.0/0'],
+              'layer4Configs': [{
+                  'ipProtocol': 'tcp'
+              }, {
+                  'ipProtocol': 'icmp'
+              }]
+          }
+      }, 3),
+      ('1 ip, 3 protocols, ', {
+          'match': {
+              'srcIpRanges': ['0.0.0.0/0'],
+              'layer4Configs': [{
+                  'ipProtocol': 'tcp'
+              }, {
+                  'ipProtocol': 'icmp'
+              }, {
+                  'ipProtocol': 'udp'
+              }]
+          }
+      }, 4),
+      ('1 ip, 1 protocol with 1 port', {
+          'match': {
+              'srcIpRanges': ['0.0.0.0/0'],
+              'layer4Configs': [{
+                  'ipProtocol': 'tcp',
+                  'ports': ['22']
+              }]
+          }
+      }, 3),
+      ('1 ip, 2 protocols with 2 ports each', {
+          'match': {
+              'srcIpRanges': ['0.0.0.0/0'],
+              'layer4Configs': [{
+                  'ipProtocol': 'tcp',
+                  'ports': ['22']
+              }, {
+                  'ipProtocol': 'udp',
+                  'ports': ['22']
+              }]
+          }
+      }, 5),
+      ('1 ip, 1 protocol with 2 ports', {
+          'match': {
+              'srcIpRanges': ['0.0.0.0/0'],
+              'layer4Configs': [{
+                  'ipProtocol': 'tcp',
+                  'ports': ['22', '23']
+              }]
+          }
+      }, 4),
+      ('2 ips, 1 protocol with 2 ports', {
+          'match': {
+              'srcIpRanges': ['1.4.6.8/10', '1.2.3.4/5'],
+              'layer4Configs': [{
+                  'ipProtocol': 'tcp',
+                  'ports': ['22', '23']
+              }]
+          }
+      }, 5),
+      ('2 ips, 2 protocols with 2 ports each', {
+          'match': {
+              'srcIpRanges': ['1.4.6.8/10', '1.2.3.4/5'],
+              'layer4Configs': [{
+                  'ipProtocol': 'tcp',
+                  'ports': ['22', '23']
+              }, {
+                  'ipProtocol': 'udp',
+                  'ports': ['22', '23']
+              }]
+          }
+      }, 8),
+      ('1 ip, 2 protocols, 2 targets', {
+          'match': {
+              'destIpRanges': ['0.0.0.0/0'],
+              'layer4Configs': [{
+                  'ipProtocol': 'tcp'
+              }, {
+                  'ipProtocol': 'icmp'
+              }]
+          },
+          'targetResources': ['target1', 'target2']
+      }, 5),
+  )
+  def testGAGetRuleTupleCount(self, dict_term, expected):
+    self.assertEqual(gcp_hf.GetRuleTupleCount(dict_term, 'ga'), expected)
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

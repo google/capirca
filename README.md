@@ -1,93 +1,66 @@
 # capirca
 
 [![BuildStatus](https://travis-ci.org/google/capirca.svg?branch=master)](https://travis-ci.org/google/capirca)
-<!--
-<a href="https://github.com/google/capirca/actions/" target="_blank"><img src="https://github.com/google/capirca/workflows/build/badge.svg?branch=master"></a>
--->
+<!-- <a href="https://github.com/google/capirca/actions/" target="_blank"><img src="https://github.com/google/capirca/workflows/build/badge.svg?branch=master"></a> -->
 
-<!-- begin-markdown-toc -->
-## Table of Contents
+- [About](#about)
+- [The basics](#the-basics)
+  - [Anatomy of a policy file](#anatomy-of-a-policy-file)
+      - [Headers](#headers)
+      - [Terms](#terms)
+      - [Tokens](#tokens)
+  - [Keywords](#keywords)
+      - [Required](#required)
+      - [Optional](#optional)
+  - [Includes](#includes)
+  - [Example](#example)
+      - [Term Keywords By Generator](#term-keywords-by-generator)
+      - [Term Examples](#term-examples)
+      - [Example Policy File](#example-policy-file)
+- [Getting Started](#getting-started)
+  - [Installation](#installation)
+      - [From Source](#from-source)
+      - [Package Manager](#package-manager)
+  - [Basic Usage](#basic-usage)
+  - [Python Package](#python-package)
+  - [Running with Docker](#running-with-docker)
+- [Miscellaneous](#miscellaneous)
 
-* [Overview](#overview)
-* [Key Concepts](#key-concepts)
-  * [Object Definitions](#object-definitions)
-    * [Directory Structure](#directory-structure)
-    * [Network Objects](#network-objects)
-    * [Service Objects](#service-objects)
-    * [Object Nesting](#object-nesting)
-  * [Access Control Policy](#access-control-policy)
-    * [Policy Components](#policy-components)
-    * [Header Section](#header-section)
-    * [Terms Section](#terms-section)
-  * [Policy Generator](#policy-generator)
-    * [Required Term Keywords](#required-term-keywords)
-    * [Optional Term Keywords](#optional-term-keywords)
-    * [Term Keywords By Generator](#term-keywords-by-generator)
-    * [Term Examples](#term-examples)
-    * [Includes](#includes)
-    * [Example Policy File](#example-policy-file)
-* [Getting Started](#getting-started)
-  * [Installation](#installation)
-    * [From Source](#from-source)
-    * [Package Manager](#package-manager)
-  * [Basic Usage](#basic-usage)
-  * [Python Package](#python-package)
-  * [Running with Docker](#running-with-docker)
-* [Miscellaneous](#miscellaneous)
+## About
 
-<!-- end-markdown-toc -->
-
-## Overview
-
-Capirca is a designed to utilize common definitions of networks, services and
+Capirca is designed to utilize common definitions of networks, services and
 high-level policy files to facilitate the development and manipulation of
 network access control lists (ACLs) for various platforms. It was developed by
 Google for internal use, and is now open source.
 
-Capirca consists of `capirca` Python package and the accompanying `aclgen` tool.
+Capirca consist of `capirca` Python package and the `capirca` tool.
 
 The typical usage workflow consists of the following steps:
 
-1. Create **object definitions** containing "network" and "service" definitions
-1. Create a **access control policy** defining the desired state of access
-  control and referencing the **object definitions** together with desired firewall
-  platforms
-1. Generate ACL configurations by running `aclgen` command referencing the
-  access control policy and the object definitions. The command triggers a
-  **generator** for each of the firewall platforms.
+1.  Create **object definitions** containing "network" and "service" definitions
+1.  Create a **access control policy** defining the desired state of access
+    control and referencing the **object definitions** together with desired
+    firewall platforms
+1.  Generate ACL configurations by running `capirca` command referencing the
+    access control policy and the object definitions. The command triggers a
+    **generator** for each of the firewall platforms.
 
-## Key Concepts
+## The basics
 
-### Object Definitions
+At a high-level capirca rationalizes objects (networks, services) against a
+security definition (.pol file) to generate a specific device configuration file
+via a platform specific **ACL generator**. Before getting started some objects
+must exist, the below table summarizes where objects are stored:
 
-**Object definitions** is a collection of files containing the definitions for
-network and service objects used to describe the desired state of access control.
-
-[Back to Top](#table-of-contents)
-
-#### Directory Structure
-
-The tool populates the **object definitions** from a set of files in a specified
-directory, e.g. [`def`](./def). These files may NOT reference other
-network and service definition files located outside of the directory.
-
-For example, the [`def`](./def) directory consists of two files:
-
-* [`NETWORK.net`](./def/NETWORK.net): a list of network object definitions
-* [`SERVICES.svc`](./def/SERVICES.svc): a list of service object definitions
-
-A user may create multiple network and service definitions files to facilitate
-the grouping of related definitions, and/or to utilize filesystem permissions
-to restrict or permit the editing of files by specific groups.
-
-The use of a revision control system, such as git, perforce, or subversion, is a
-recommended way to ensure historical change control and tracking of contributor
-changes.
+path              | description
+----------------- | -----------------------------------------
+/def/NETWORK.net  | a list of **network objects** definitions
+/def/SERVICES.svc | a list of **service objects** definitions
 
 Each network or service definition file has a very simple structure. A token is
 defined, e.g. `GUEST_NET`, followed by an equal sign, then followed by a
-definition, e.g. `10.10.10.0/24`, and optional description field,
-e.g. `# guest network range`.
+definition, e.g. `10.10.10.0/24`, and optional description field, e.g. `# guest
+network range`.
 
 ```
 GUEST_NET = 10.10.10.0/24      # guest network range
@@ -99,12 +72,10 @@ recursively for `.pol` files and add them to the policy, .e.g `.pol` files are
 located in [`policies/pol`](./policies/pol).
 
 Additionally, the `.pol` files MAY reference other policy definition files
-located outside of the directory by using `include` directive.
-Please see [Includes](#includes) section for documentation.
+located outside of the directory by using `include` directive. Please see
+[Includes](#includes) section for documentation.
 
-[Back to Top](#table-of-contents)
-
-#### Network Objects
+### Network Objects
 
 The files with `.net` extension contain the definitions of network objects, e.g.
 IP networks and hosts. The following definition creates `INTERNAL` and `RFC1918`
@@ -121,7 +92,7 @@ INTERNAL = RFC1918
 
 [Back to Top](#table-of-contents)
 
-#### Service Objects
+### Service Objects
 
 The files with `.svc` extension contain the definitions of service objects, e.g.
 ports and protocols.
@@ -133,7 +104,7 @@ DNS = 53/tcp  # transfers
 
 [Back to Top](#table-of-contents)
 
-#### Object Nesting
+### Object Nesting
 
 The nesting of tokens is permitted only when both tokens are of the same type.
 The referencing of a "network" object by "service" object is not allowed, and
@@ -168,34 +139,226 @@ NYC_NETWORK = 172.16.1.0/24      # NYC IPv4
 
 [Back to Top](#table-of-contents)
 
-### Access Control Policy
+### Anatomy of a policy file
 
-#### Policy Components
+A policy file (/policies/pol/something.pol) has the security policy written
+using capirca specific meta-language and format. There are specific sections
+(e.g: header) that tell capirca how to generate the output configuration of the
+security policy.
 
-The **access control policy** describes the desired network security policy
-through the use of a high-level language that uses **keywords** and **tokens**.
+#### Headers
 
-The **tokens** are the names of services and networks loaded from the
-object definitions, e.g. `HTTPS` and `NYC_NETWORK`.
+The header section defines:
 
-The **keywords** are the **header** and **term** statements referencing target
-firewall platforms with corresponding parameters and defining an ACL.
+*   **target** firewall platforms (which ACL generator to use)
+*   passes **additional arguments** to the generator responsible for that
+    platform.
 
-The **access control policy** is a collection of **ACLs** stored in a
-**policy file** with`.pol` extension.
+A single header may have many targets within a section. It will result in
+multiple outputs being generated for that policy.
 
-Each **ACL** consists of one or more **header** section, each followed by one or
-more **term** sections.
+#### Terms
 
-The **header** section defines target firewall platforms and passes arguments
-to the generator responsible for the platform.
+The **term** sections defines the access control rules within an ACL, it contains
+keywords followed by an object (service or network) and policy decision ("action" keyword).
 
-The **term** section specifies the network flow metadata for ACL matching,
-e.g. addresses, ports, protocols and actions.
+The term section specifies the network flow metadata for ACL matching.
 
-For example, this **ACL** targets Palo Alto firewall platform. It controls
-traffic from `internal` to `external` zones, i.e. outbound traffic. It allows
-ICMP traffic from `INTERNAL` network object to `GOOGLE_DNS` network object.
+*   Addresses
+*   Ports
+*   Protocols
+*   Action (allow/deny)
+
+Inside a `term` a mandatory keyword will be found followed by an object token
+for rule evaluation.
+
+#### Tokens
+
+Tokens are the names of services and networks loaded from the object
+definitions. Example:
+
+token_name    | definition
+------------- | --------------
+"HTTPS"       | 443
+"NYC_NETWORK" | 192.168.0.0/24
+
+### Keywords
+
+| keyword  | description                                                      |
+| -------- | ---------------------------------------------------------------- |
+| required | **must be supported by all output policy generators**            |
+| optional | available in a subset of the generators and are intended to      |
+:          : provide additional flexibility when developing policies for that :
+:          : specific target platform                                         :
+
+#### Required
+
+*   **action**
+    *   accept
+    *   deny
+    *   reject
+    *   next
+    *   reject-with-tcp-rst
+*   **comment**
+    *   a text comment enclosed in double-quotes. Comments may span multiple
+        lines if desired.
+*   **destination-address**
+    *   one or more destination address tokens.
+*   **destination-exclude**
+    *   exclude one or more address tokens from the specified
+        destination-address.
+*   **destination-port**
+    *   one or more service definition tokens.
+*   **icmp-type**
+    *   specific icmp-type code to match (IPv4/IPv6 types vary).
+        *   IPv4:
+        *   echo-reply
+        *   unreachable
+        *   source-quench
+        *   redirect
+        *   alternate-address
+        *   echo-request
+        *   router-advertisement
+        *   router-solicitation
+        *   time-exceeded
+        *   parameter-problem
+        *   timestamp-request
+        *   timestamp-reply
+        *   information-request
+        *   information-reply
+        *   mask-request
+        *   mask-reply
+        *   conversion-error
+        *   mobile-redirect
+        *   IPv6:
+        *   destination-unreachable
+        *   packet-too-big
+        *   time-exceeded
+        *   parameter-problem
+        *   echo-request
+        *   echo-reply
+        *   multicast-listener-query
+        *   multicast-listener-report
+        *   multicast-listener-done
+        *   router-solicit
+        *   router-advertisement
+        *   neighbor-solicit
+        *   neighbor-advertisement
+        *   redirect-message
+        *   router-renumbering
+        *   icmp-node-information-query
+        *   icmp-node-information-response
+        *   inverse-neighbor-discovery-solicitation
+        *   inverse-neighbor-discovery-advertisement
+        *   version-2-multicast-listener-report
+        *   home-agent-address-discovery-request
+        *   home-agent-address-discovery-reply
+        *   mobile-prefix-solicitation
+        *   mobile-prefix-advertisement
+        *   certification-path-solicitation
+        *   certification-path-advertisement
+        *   multicast-router-advertisement
+        *   multicast-router-solicitation
+        *   multicast-router-termination
+*   **option**
+    *   connection options.
+        *   **established**
+            *   only permit established connections; implements tcp-established
+                flag if protocol is tcp only, otherwise adds 1024-65535 to
+                required destination-ports.
+        *   **tcp-established**
+            *   only permit established tcp connections, usually checked based
+                on TCP flag settings. If protocol UDP is included in term, only
+                adds 1024-65535 to required destination-ports.
+        *   **sample**
+            *   not supported by all generators. Samples traffic for netflow.
+        *   **intial**
+            *   currently only supported by juniper generator. Appends
+                tcp-initial to the term.
+        *   **rst**
+            *   currently only supported by juniper generator. Appends
+                "tcp-flags rst" to the term.
+        *   **first-fragment**
+            *   currently only supported by juniper generator. Appends
+                'first-fragment' to the term.
+*   **protocol**
+    *   network protocols this term will match, such as tcp, udp, icmp, or a
+        numeric value.
+*   **protocol-except**
+    *   network protocols that should be excluded from the protocol
+        specification. This is rarely used.
+*   **source-address**
+    *   one or more source address tokens.
+*   **source-exclude**
+    *   exclude one or more address tokens from the specified source-address.
+*   **source-port**
+    *   one or more service definition tokens.
+*   **verbatim**
+    *   this specifies that the text enclosed within quotes should be rendered
+        into the output without interpretation or modification. This is
+        sometimes used as a temporary workaround while new required features are
+        being added.
+
+#### Optional
+
+WARNING: These terms may or may not function properly on all generators. Always
+refer to the generator specific documentation and code base.
+
+*   **address**
+    *   one or more network address tokens matches either source or destination.
+*   **counter**
+    *   (Juniper only) enable filter-based generic routing encapsulation (GRE)
+        tunneling using the specified tunnel template.
+*   **destination-prefix**
+    *   (Juniper only) specify destination-prefix matching (e.g. source-prefix`
+        configured-neighbors-only).
+*   **ether-type**
+    *   (Juniper only) specify matching ether-type(e.g. ether-type` arp).
+*   **fragement-offset**
+    *   (Juniper only) specify a fragment offset of a fragmented packet.
+*   **logging**
+    *   (Juniper, speedway/iptables) specify that this packet should be logged
+        via syslog.
+*   **loss-priority**
+    *   (Juniper only) specify loss priority.
+*   **packet-length**
+    *   (Juniper only) specify packet length.
+*   **policer**
+    *   (Juniper only) specify which policer to apply to matching packets.
+*   **precedence**
+    *   (Juniper only) specify precendence.
+*   **qos**
+    *   (Juniper only) apply quality of service classification to matching
+        packets (e.g. qos` af4).
+*   **routing-instance**
+    *   (iptables, speedway only) specify specific interface a term should apply
+        to (e.g. source-interface` eth3).
+*   **source-prefix**
+    *   (Juniper only) specify source-prefix matching (e.g. source-prefix,
+        configured-neighbors-only).
+*   **traffic-type**
+    *   (Juniper only) specify traffic-type.
+
+### Includes
+
+Policy files support the use of `#include` statements. An include may be used to
+avoid duplication of commonly used text, such as a group of terms that permit or
+block specific types of traffic.
+
+An include directive will result in the contents of the included file being
+injected into the current policy file in the exact location of the `#include`
+directive. An example include:
+
+```
+#include 'policies/includes/untrusted-networks-blocking.inc'
+```
+
+The `.inc` file extension and the `includes` folder is not required but it is
+recommended to be used as a best practice and for easier readability.
+
+### Example
+
+WARNING: Not all generators have the same configuration options or feature set.
 
 ```
 header {
@@ -210,225 +373,24 @@ term ping-gdns{
 }
 ```
 
-Importantly, the above **ACL** controls traffic in one direction only, in the
-outbound direction. Practically though, there should also be another **ACL**,
-i.e. `header` and `term` keywords, UNLESS the target **generator** allows the
-the creation of bi-directional configuration output for a single ACL.
-Please see documentation of [individual generators](#policy-generator).
+The above example tells capirca to use paloalto.py to generate a platform
+specific configuration for Palo Alto.
 
-[Back to Top](#table-of-contents)
+The security policy is written within the term section using the meta-language:
 
-#### Header Section
+*   name/description: ping-gdns
+*   source: any INTERNAL network (check /def/NETWORK.net definition of
+    'INTERNAL')
+*   destination: service object named GOOGLE_DNS
+*   protocol: icmp
+*   action: accept
 
-The **header** section is used to define the type of ACL, a descriptor or
-name, direction (if applicable) and format (ipv4/ipv6).
-
-For example, the following simple header defines an ACL that can generate
-output for `juniper`, `cisco` and `iptables` formats.
-
-```
-header {
-  comment:: "Example header for juniper and iptables filter."
-  target:: juniper edge-filter
-  target:: speedway INPUT
-  target:: iptables INPUT
-  target:: cisco edge-filter
-}
-```
-
-Notice, that the 1st target has 2 arguments: `juniper` and `edge_filter`. The
-first argument specifies that the ACL can be rendered for Juniper JCLs, and
-that the output ACL should be called `edge_filter`.
-
-The 2nd and 3rd target also has 2 arguments: `speedway` and `INPUT`. Since
-Speedway and iptables has specific inherent ACL names (aka chain names), such as
-`INPUT`, `OUTPUT`, and `FORWARD`, the target specification for iptables usually
-points to one of these chain names although a custom chain can be specified
-(usually for combining with other rules through the use of a `jump` directive
-from one of the default iptables filters).
-
-Likewise, the 4th target, `cisco` simply specifies the name of the access
-control list to be generated.
-
-Each target platform may have different possible arguments, which are detailed
-in the following subsections.
-
-[Back to Top](#table-of-contents)
-
-#### Terms Section
-
-The **term** sections defines access control rules within an ACL. Once the
-header section of an ACL is defined, it is followed by one or more terms.
-The terms are enclosed in brackets and use keywords to specify the functionality
-of a specific access control.
-
-A term section begins with the keyword `term`, followed by the term's name.
-Opening and closing brackets follow, which include the keywords and tokens to
-define the matching and action of the access control term.
-
-There are two categories of the keywords:
-
-* **required**: must be supported by all output policy generators
-* **optional**: available in a subset of the generators and are intended to
-  provide additional flexibility when developing policies on a single target
-  platform.
-
-The ability to **abstract and normalize the language engineers use to describe
-their intended policy** is at the core of `capirca`.
-
-* Allows the same language be used across multiple platforms
-* Concepts are normalized and aligned so that a single policy file can be
-  generated across multiple generators without needing changes.
-
-Therefore, its appropriate and encouraged to use more keywords as long as they
-are functional and can be normalized.
-
-A generator may silently ignore optional ACL keywords which it does not support,
-unless the keywords affect the security properties of the ACL.
-
-**WARNING**: When developing filters that are intended to be rendered across
-multiple generators (e.g `cisco`, `iptables`, `juniper`, etc.) it is strongly
-recommended to only use the **required** keywords in policy terms. It help
-ensure each platform's rendered filter will contain compatible security
-policies.
-
-[Back to Top](#table-of-contents)
-
-### Policy Generator
-
-A **policy generator** is a Python object that takes in an ACL and outputs
-a configuration applicable to the targets describes in the policy.
-
-#### Required Term Keywords
-
-The **required keywords** supported by all generators follow.
-
-Importantly, the generators using the below term keywords may not all handle
-the associated values (sometimes called sub-actions) correctly. Therefore,
-please validate that the generator you use produces expected ACL output.
-
-* `action`: the action to take when matched
-  - `accept`
-  - `deny`
-  - `reject`
-  - `next`
-  - `reject-with-tcp-rst`
-* `comment`: a text comment enclosed in double-quotes. The comment can extend
-  over multiple lines if desired, until a closing quote is encountered.
-* `destination-address`: one or more destination address tokens
-* `destination-exclude`: exclude one or more address tokens from the specified
-  destination-address
-* `destination-port`: one or more service definition tokens
-* `icmp-type`: specify icmp-type code to match.
-  - IPv4:
-    * `echo-reply`
-    * `unreachable`
-    * `source-quench`
-    * `redirect`
-    * `alternate-address`
-    * `echo-request`
-    * `router-advertisement`
-    * `router-solicitation`
-    * `time-exceeded`
-    * `parameter-problem`
-    * `timestamp-request`
-    * `timestamp-reply`
-    * `information-request`
-    * `information-reply`
-    * `mask-request`
-    * `mask-reply`
-    * `conversion-error`
-    * `mobile-redirect`
-  - IPv6:
-    * `destination-unreachable`
-    * `packet-too-big`
-    * `time-exceeded`
-    * `parameter-problem`
-    * `echo-request`
-    * `echo-reply`
-    * `multicast-listener-query`
-    * `multicast-listener-report`
-    * `multicast-listener-done`
-    * `router-solicit`
-    * `router-advertisement`
-    * `neighbor-solicit`
-    * `neighbor-advertisement`
-    * `redirect-message`
-    * `router-renumbering`
-    * `icmp-node-information-query`
-    * `icmp-node-information-response`
-    * `inverse-neighbor-discovery-solicitation`
-    * `inverse-neighbor-discovery-advertisement`
-    * `version-2-multicast-listener-report`
-    * `home-agent-address-discovery-request`
-    * `home-agent-address-discovery-reply`
-    * `mobile-prefix-solicitation`
-    * `mobile-prefix-advertisement`
-    * `certification-path-solicitation`
-    * `certification-path-advertisement`
-    * `multicast-router-advertisement`
-    * `multicast-router-solicitation`
-    * `multicast-router-termination`
-* `option`: connection options
-  - `established`: only permit established connections; implements
-    tcp-established flag if protocol is tcp only, otherwise adds 1024-65535
-    to required destination-ports.
-  - `tcp-established`: only permit established tcp connections, usually checked
-    based on TCP flag settings. If protocol UDP is included in term, only adds
-    1024-65535 to required destination-ports.
-  - `sample`: not supported by all generators. Samples traffic for netflow.
-  - `intial`: currently only supported by juniper generator. Appends tcp-initial
-    to the term.
-  - `rst`: currently only supported by juniper generator. Appends "tcp-flags rst"
-    to the term.
-  - `first-fragment`: currently only supported by juniper generator. Appends
-    'first-fragment' to the term.
-* `protocol`: the network protocols this term will match, such as tcp, udp,
-  icmp, or a numeric value.
-* `protocol-except`: network protocols that should be excluded from the protocol
-  specification. This is rarely used.
-* `source-address`: one or more source address tokens
-* `source-exclude`: exclude one or more address tokens from the specified
-  source-address
-* `source-port`: one or more service definition tokens
-* `verbatim`: this specifies that the text enclosed within quotes should be
-  rendered into the output without interpretation or modification. This is
-  sometimes used as a temporary workaround while new required features are
-  being added.
-
-[Back to Top](#table-of-contents)
-
-#### Optional Term Keywords
-
-The keywords are optionally supported. These may or may not function properly
-on all generators. Therefore, refer to the documentation of individual
-generators in the next section.
-
-* `address`: one or more network address tokens matches either source or
-  destination
-* `counter`: juniper only, update a counter for matching packets
-* `encapsulate`: juniper only, enable filter-based generic routing encapsulation
-  (GRE) tunneling using the specified tunnel template
-* `destination-prefix`: juniper only, specify destination-prefix matching
-  (e.g. source-prefix` configured-neighbors-only)
-* `ether-type`: juniper only, specify matching ether-type(e.g. ether-type` arp)
-* `fragement-offset`: juniper only, specify a fragment offset of a fragmented packet
-* `logging`: supported juniper and iptables/speedway, specify that this packet
-  should be logged via syslog
-* `loss-priority`: juniper only, specify loss priority
-* `packet-length`: juniper only, specify packet length
-* `policer`: juniper only, specify which policer to apply to matching packets
-* `precedence`: juniper only, specify precendence
-* `qos`: juniper only, apply quality of service classification to matching
-  packets (e.g. qos` af4)
-* `routing-instance`: juniper only, specify routing instance for matching packets
-* `source-interface`: iptables and speedway only, specify specific interface a
-  term should apply to (e.g. source-interface` eth3)
-* `source-prefix`: juniper only, specify source-prefix matching (e.g.
-  source-prefix, configured-neighbors-only)
-* `traffic-type`: juniper only, specify traffic-type
-
-[Back to Top](#table-of-contents)
+The above ACL controls traffic in one direction only (outbound towards the
+service) and there should be another header and term to control the traffic in
+the opposite direction. Unless the target generator features the ability to
+automatically create bi-directional configuration from a single ACL term. Always
+check the documentation of the generator or validate the output generated to
+validate final configuration and policy interpretation.
 
 #### Term Keywords By Generator
 
@@ -436,30 +398,31 @@ The following list contains links to the documentation of the individual policy
 generators:
 
 <!-- begin-generator-term-links -->
-* [`arista`](./doc/generators/arista.md): Arista
-* [`aruba`](./doc/generators/aruba.md): Aruba
-* [`brocade`](./doc/generators/brocade.md): Brocade
-* [`cisco`](./doc/generators/cisco.md): Cisco
-* [`ciscoasa`](./doc/generators/ciscoasa.md): Cisco ASA
-* [`ciscoxr`](./doc/generators/ciscoxr.md): Cisco XR
-* [`cloudarmor`](./doc/generators/cloudarmor.md): cloudarmor
-* [`gce`](./doc/generators/gce.md): GCE
-* `gcp_hf`
-* [`ipset`](./doc/generators/ipset.md): ipset
-* [`iptables`](./doc/generators/iptables.md): iptables
-* [`juniper`](./doc/generators/juniper.md): Juniper
-* [`junipermsmpc`](./doc/generators/junipermsmpc.md): Juniper
-* [`junipersrx`](./doc/generators/junipersrx.md): Juniper SRX
-* [`nftables`](./doc/generators/nftables.md): nftables
-* [`nsxv`](./doc/generators/nsxv.md): NSX
-* [`packetfilter`](./doc/generators/packetfilter.md): PacketFilter
-* [`paloaltofw`](./doc/generators/paloaltofw.md): Palo Alto PANOS
-* [`pcap`](./doc/generators/pcap.md): PcapFilter
-* [`speedway`](./doc/generators/speedway.md): Speedway
-* [`srxlo`](./doc/generators/srxlo.md): Stateless Juniper ACL
-* [`windows_advfirewall`](./doc/generators/windows_advfirewall.md):
-  Windows Advanced Firewall
-<!-- begin-generator-term-links -->
+
+*   [`arista`](./doc/generators/arista.md): Arista
+*   [`aruba`](./doc/generators/aruba.md): Aruba
+*   [`brocade`](./doc/generators/brocade.md): Brocade
+*   [`cisco`](./doc/generators/cisco.md): Cisco
+*   [`ciscoasa`](./doc/generators/ciscoasa.md): Cisco ASA
+*   [`cisconx`](./doc/generators/cisconx.md): Cisco NX
+*   [`ciscoxr`](./doc/generators/ciscoxr.md): Cisco XR
+*   [`cloudarmor`](./doc/generators/cloudarmor.md): cloudarmor
+*   [`gce`](./doc/generators/gce.md): GCE
+*   `gcp_hf`
+*   [`ipset`](./doc/generators/ipset.md): ipset
+*   [`iptables`](./doc/generators/iptables.md): iptables
+*   [`juniper`](./doc/generators/juniper.md): Juniper
+*   [`junipermsmpc`](./doc/generators/junipermsmpc.md): Juniper
+*   [`junipersrx`](./doc/generators/junipersrx.md): Juniper SRX
+*   [`nftables`](./doc/generators/nftables.md): nftables
+*   [`nsxv`](./doc/generators/nsxv.md): NSX
+*   [`packetfilter`](./doc/generators/packetfilter.md): PacketFilter
+*   [`paloaltofw`](./doc/generators/paloaltofw.md): Palo Alto PANOS
+*   [`pcap`](./doc/generators/pcap.md): PcapFilter
+*   [`speedway`](./doc/generators/speedway.md): Speedway
+*   [`srxlo`](./doc/generators/srxlo.md): Stateless Juniper ACL
+*   [`windows_advfirewall`](./doc/generators/windows_advfirewall.md): Windows
+    Advanced Firewall <!-- begin-generator-term-links -->
 
 [Back to Top](#table-of-contents)
 
@@ -468,7 +431,7 @@ generators:
 The following are examples of how to construct a term, and assumes that naming
 definition tokens used have been defined in the definitions files.
 
-* Block incoming bogons and spoofed traffic
+*   Block incoming bogons and spoofed traffic
 
 ```
 term block-bogons {
@@ -478,7 +441,7 @@ term block-bogons {
 }
 ```
 
-* Permit Public to Web Servers
+*   Permit Public to Web Servers
 
 ```
 term permit-to-web-servers {
@@ -489,7 +452,7 @@ term permit-to-web-servers {
 }
 ```
 
-* Permit Replies to DNS Servers From Primaries
+*   Permit Replies to DNS Servers From Primaries
 
 ```
 term permit-dns-tcp-replies {
@@ -502,7 +465,7 @@ term permit-dns-tcp-replies {
 }
 ```
 
-* Permit All Corporate Networks, Except New York, to FTP Server
+*   Permit All Corporate Networks, Except New York, to FTP Server
 
 This will "subtract" the `CORP_NYC_NETBLOCK` from the `CORP_NETBLOCKS` token.
 For example, assume `CORP_NETBLOCKS` includes `200.0.0.0/20`, and
@@ -519,27 +482,6 @@ term allow-inbound-ftp-from-corp {
   action:: accept
 }
 ```
-
-[Back to Top](#table-of-contents)
-
-#### Includes
-
-The policy language supports the use of `#include` statements. An include can be
-used to avoid duplication of commonly used text, such as a group of terms that
-permit or block specific types of traffic.
-
-An include directive will result in the contents of the included file being
-injected into the current policy at the exact location of the include directive.
-
-The include directive has the following format:
-
-```
-#include 'policies/includes/untrusted-networks-blocking.inc'
-```
-
-The `.inc` file extension and the `include` in the directory path are not
-required. However, it is a practical way to diff to help differentiate the
-included policy files from typical policy files.
 
 [Back to Top](#table-of-contents)
 
@@ -611,9 +553,8 @@ term default-accept {
 
 #### From Source
 
-If `setuptools` Python package is not installed on your system, install it:
-For example, the following commands installs the package with `apt` package
-manager.
+If `setuptools` Python package is not installed on your system, install it: For
+example, the following commands installs the package with `apt` package manager.
 
 ```bash
 sudo apt-get install python3-pip python3-setuptools
@@ -628,12 +569,11 @@ cd capirca/
 python3 setup.py install --user
 ```
 
-Typically, when provided `--user` argument, the installer creates the
-following files, where `3.8` is Python version and `2.0.0` is the version
-of `capirca`:
+Typically, when provided `--user` argument, the installer creates the following
+files, where `3.8` is Python version and `2.0.0` is the version of `capirca`:
 
-* `~/.local/bin/aclgen`
-* `~/.local/lib/python3.8/site-packages/capirca-2.0.0-py3.8.egg`
+*   `~/.local/bin/capirca`
+*   `~/.local/lib/python3.8/site-packages/capirca-2.0.0-py3.8.egg`
 
 If necessary, remove build files:
 
@@ -641,15 +581,15 @@ If necessary, remove build files:
 rm -rf build capirca.egg-info dist
 ```
 
-Next, test `aclgen` by generating sample output filters for Cisco, Juniper,
+Next, test `capirca` by generating sample output filters for Cisco, Juniper,
 iptables, and other firewall platforms.
 
 ```bash
-~/.local/bin/aclgen
+~/.local/bin/capirca
 ```
 
 The generation of sample output while in the `capirca`'s source code directory
-does not require command line parameters, because `aclgen` inherits default
+does not require command line parameters, because `capirca` inherits default
 settings from the following configuration (see `capirca/utils/config.py`).
 
 ```json
@@ -669,10 +609,10 @@ settings from the following configuration (see `capirca/utils/config.py`).
 }
 ```
 
-Although the `policy_file` is `None`, the tool processes all policies located
-in `base_directory`, i.e. `./policies`. The tool loads network and service
-definitions from `definitions_directory`. The tool output generated ACLs to
-the root of the source directory because `output_directory` is `./filters`.
+Although the `policy_file` is `None`, the tool processes all policies located in
+`base_directory`, i.e. `./policies`. The tool loads network and service
+definitions from `definitions_directory`. The tool output generated ACLs to the
+root of the source directory because `output_directory` is `./filters`.
 
 [Back to Top](#table-of-contents)
 
@@ -692,9 +632,9 @@ pip install capirca --user
 There are a number of command-line arguments that can be used with `capirca`.
 
 ```
-$ ~/.local/bin/aclgen --helpfull
+$ ~/.local/bin/capirca --helpfull
 
-       USAGE: aclgen [flags]
+       USAGE: capirca [flags]
 flags:
 
 absl.app:
@@ -743,7 +683,7 @@ absl.logging:
     (default: '-1')
     (an integer)
 
-capirca.aclgen:
+capirca.capirca:
   --base_directory: The base directory to look for acls; typically where you'd find ./corp and ./prod
     (default: './policies')
   --config_file: A yaml file with the configuration options for capirca;
@@ -811,13 +751,13 @@ exp_info: 2
 
 ### Python Package
 
-The `aclgen` tool uses `capirca` Python package.
+The `capirca` tool uses `capirca` Python package.
 
 Therefore, there is a way to access `capirca` programmatically.
 
-* `policies/sample_paloalto.pol`
-* `def/SERVICES.svc`
-* `def/NETWORK.net`
+*   `policies/sample_paloalto.pol`
+*   `def/SERVICES.svc`
+*   `def/NETWORK.net`
 
 Provided you have the following files in your directory, the following code
 snippets create a `naming` definitions object, policy object, and render
@@ -835,8 +775,8 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>>
 ```
 
-Next, import `naming` library and create `naming` object from definitions files in
-`./def` directory.
+Next, import `naming` library and create `naming` object from definitions files
+in `./def` directory.
 
 ```py
 from pprint import pprint
@@ -951,16 +891,16 @@ docker run -v "${PWD}:/data" docker.pkg.github.com/google/capirca/capirca:latest
 
 Additional documentation:
 
-* [aclcheck library](./doc/wiki/AclCheck-library.md)
-* [policy reader library](./doc/wiki/PolicyReader-library.md)
-* [policy library](./doc/wiki/Policy-library.md)
-* [naming library](./doc/wiki/Naming-library.md)
-* [capirca design doc](./doc/wiki/Capirca-design.md)
+*   [aclcheck library](./doc/wiki/AclCheck-library.md)
+*   [policy reader library](./doc/wiki/PolicyReader-library.md)
+*   [policy library](./doc/wiki/Policy-library.md)
+*   [naming library](./doc/wiki/Naming-library.md)
+*   [capirca design doc](./doc/wiki/Capirca-design.md)
 
 External links, resources and references:
 
-* [Brief Overview (4 slides):](https://docs.google.com/present/embed?id=dhtc9k26_13cz9fphfb&autoStart=true&loop=true&size=1)
-* [Nanog49; Enterprise QoS](http://www.nanog.org/meetings/nanog49/presentations/Tuesday/Chung-EnterpriseQoS-final.pdf)
-* [Capirca Slack at NetworkToCode](https://networktocode.slack.com/)
+*   [Brief Overview (4 slides):](https://docs.google.com/present/embed?id=dhtc9k26_13cz9fphfb&autoStart=true&loop=true&size=1)
+*   [Nanog49; Enterprise QoS](http://www.nanog.org/meetings/nanog49/presentations/Tuesday/Chung-EnterpriseQoS-final.pdf)
+*   [Capirca Slack at NetworkToCode](https://networktocode.slack.com/)
 
 [Back to Top](#table-of-contents)

@@ -1,4 +1,4 @@
-# Copyright 2016 Google Inc. All Rights Reserved.
+# Copyright 2021 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for arista acl rendering module."""
+"""Tests for cisconx acl rendering module."""
 
 from absl.testing import absltest
 from unittest import mock
 
-from capirca.lib import arista
+from capirca.lib import cisconx
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
@@ -24,28 +24,21 @@ from capirca.lib import policy
 GOOD_HEADER = """
 header {
   comment:: "this is a test extended acl"
-  target:: arista test-filter extended
+  target:: cisconx test-filter extended
 }
 """
 
 GOOD_HEADER_2 = """
 header {
   comment:: "this is a test acl"
-  target:: arista test-filter
-}
-"""
-
-GOOD_HEADER_3 = """
-header {
-  comment:: "this is a test standard acl"
-  target:: arista test-filter standard
+  target:: cisconx test-filter
 }
 """
 
 GOOD_HEADER_IPV6 = """
 header {
   comment:: "this is a test inet6 acl"
-  target:: arista test-filter inet6
+  target:: cisconx test-filter inet6
 }
 """
 
@@ -118,6 +111,20 @@ term good-term-6 {
   action:: accept
 }
 """
+GOOD_TERM_10 = """
+term good-term-10 {
+  protocol:: icmp
+  icmp-type:: echo-reply unreachable time-exceeded
+  action:: accept
+}
+"""
+GOOD_TERM_11 = """
+term good-term-11 {
+  protocol:: icmpv6
+  icmp-type:: echo-reply destination-unreachable time-exceeded
+  action:: accept
+}
+"""
 
 SUPPORTED_TOKENS = {
     'action',
@@ -146,8 +153,7 @@ SUPPORTED_TOKENS = {
 }
 
 SUPPORTED_SUB_TOKENS = {
-    'action': {'accept', 'deny', 'reject', 'next',
-               'reject-with-tcp-rst'},
+    'action': {'accept', 'deny', 'reject', 'next', 'reject-with-tcp-rst'},
     'icmp_type': {
         'alternate-address',
         'certification-path-advertisement',
@@ -192,10 +198,12 @@ SUPPORTED_SUB_TOKENS = {
         'unreachable',
         'version-2-multicast-listener-report',
     },
-    'option': {'established',
-               'tcp-established',
-               'is-fragment',
-               'fragments'}
+    'option': {
+        'established',
+        'tcp-established',
+        'is-fragment',
+        'fragments'
+    }
 }
 
 # Print a info message when a term is set to expire in that many weeks.
@@ -203,7 +211,7 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class AristaTest(absltest.TestCase):
+class CiscoNXTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -212,51 +220,37 @@ class AristaTest(absltest.TestCase):
   def testRemark(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
 
-    pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_4,
-                             self.naming)
-    acl = arista.Arista(pol, EXP_INFO)
-    expected = 'remark this is a test standard acl'
+    pol = policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_4, self.naming)
+    acl = cisconx.CiscoNX(pol, EXP_INFO)
+    expected = 'remark this is a test extended acl'
     self.assertIn(expected, str(acl), '[%s]' % str(acl))
     expected = 'remark good-term-4'
     self.assertIn(expected, str(acl), str(acl))
     expected = 'test-filter remark'
     self.assertNotIn(expected, str(acl), str(acl))
+    self.assertNotIn(' remark %sId:%s' % ('$', '$'), str(acl), str(acl))
+    self.assertIn(' remark "%sRevision:%s"' % ('$', '$'), str(acl), str(acl))
+    self.assertNotIn(' remark $', str(acl), str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
-  def testExtendedEosSyntax(self):
+  def testExtendedNXosSyntax(self):
     # Extended access-lists should not use the "extended" argument to ip
     # access-list.
-    acl = arista.Arista(
+    acl = cisconx.CiscoNX(
         policy.ParsePolicy(GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
     self.assertIn('ip access-list test-filter', str(acl))
 
-  def testESPIsAnInteger(self):
-    acl = arista.Arista(
-        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_5, self.naming), EXP_INFO)
-    self.assertIn('permit 50', str(acl))
-
-  def testAHIsAnInteger(self):
-    acl = arista.Arista(
-        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_6, self.naming), EXP_INFO)
-    self.assertIn('permit 51', str(acl))
-
-  def testAHAndESPAreIntegers(self):
-    acl = arista.Arista(
-        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_7, self.naming), EXP_INFO)
-    self.assertIn('permit 50', str(acl))
-    self.assertIn('permit 51', str(acl))
-
   def testBuildTokens(self):
-    pol1 = arista.Arista(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM,
-                                            self.naming), EXP_INFO)
+    pol1 = cisconx.CiscoNX(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
     self.assertEqual(st, SUPPORTED_TOKENS)
     self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
   def testBuildWarningTokens(self):
-    pol1 = arista.Arista(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1,
-                                            self.naming), EXP_INFO)
+    pol1 = cisconx.CiscoNX(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_1, self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
     self.assertEqual(st, SUPPORTED_TOKENS)
     self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
@@ -267,44 +261,61 @@ class AristaTest(absltest.TestCase):
 
     pol = policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_2 + GOOD_TERM_3,
                              self.naming)
-    acl = arista.Arista(pol, EXP_INFO)
+    acl = cisconx.CiscoNX(pol, EXP_INFO)
     expected = 'ip access-list test-filter'
     self.assertIn(expected, str(acl), '[%s]' % str(acl))
-    expected = ' permit tcp 10.1.1.0/24 any eq ssh'
+    expected = ' permit tcp 10.1.1.0 0.0.0.255 any eq 22'
     self.assertIn(expected, str(acl), str(acl))
-    expected = ' permit tcp 10.1.1.0/24 any eq 6537'
+    expected = ' permit tcp 10.1.1.0 0.0.0.255 any eq 6537'
     self.assertIn(expected, str(acl), str(acl))
 
-    self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
-                                             mock.call('SOME_HOST2')])
+    self.naming.GetNetAddr.assert_has_calls(
+        [mock.call('SOME_HOST'),
+         mock.call('SOME_HOST2')])
     self.naming.GetServiceByProto.assert_has_calls(
-        [mock.call('SSH', 'tcp'), mock.call('GOPENFLOW', 'tcp')])
+        [mock.call('SSH', 'tcp'),
+         mock.call('GOPENFLOW', 'tcp')])
 
   def testStandardTermHostV6(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('2620:1::/64')]
     self.naming.GetServiceByProto.return_value = ['22']
 
     pol = policy.ParsePolicy(GOOD_HEADER_IPV6 + GOOD_TERM_2, self.naming)
-    acl = arista.Arista(pol, EXP_INFO)
+    acl = cisconx.CiscoNX(pol, EXP_INFO)
     expected = 'ipv6 access-list test-filter'
     self.assertIn(expected, str(acl), '[%s]' % str(acl))
-    expected = ' permit tcp 2620:1::/64 any eq ssh'
+    expected = ' permit tcp 2620:1::/64 any eq 22'
     self.assertIn(expected, str(acl), str(acl))
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST')])
     self.naming.GetServiceByProto.assert_has_calls([mock.call('SSH', 'tcp')])
 
-  def testStandardTermV4(self):
-    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.0/24')]
-
-    pol = policy.ParsePolicy(GOOD_HEADER_3 + GOOD_TERM_4, self.naming)
-    acl = arista.Arista(pol, EXP_INFO)
-    expected = 'ip access-list standard test-filter'
-    self.assertIn(expected, str(acl), '[%s]' % str(acl))
-    expected = ' permit 10.1.1.0/24\n'
+  def testIcmpTypes(self):
+    acl = cisconx.CiscoNX(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_10, self.naming), EXP_INFO)
+    # echo-reply = 0
+    expected = 'permit icmp any any 0'
+    self.assertIn(expected, str(acl), str(acl))
+    # unreachable = 3
+    expected = 'permit icmp any any 3'
+    self.assertIn(expected, str(acl), str(acl))
+    # time-exceeded = 11
+    expected = 'permit icmp any any 11'
     self.assertIn(expected, str(acl), str(acl))
 
-    self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST')])
+  def testIpv6IcmpTypes(self):
+    acl = cisconx.CiscoNX(
+        policy.ParsePolicy(GOOD_HEADER_IPV6 + GOOD_TERM_11, self.naming),
+        EXP_INFO)
+    # echo-reply = icmp-type code 129
+    expected = 'permit icmp any any 129'
+    self.assertIn(expected, str(acl), str(acl))
+    # destination-unreachable = icmp-type code 1
+    expected = 'permit icmp any any 1'
+    self.assertIn(expected, str(acl), str(acl))
+    # time-exceeded = icmp-type code 3
+    expected = 'permit icmp any any 3'
+    self.assertIn(expected, str(acl), str(acl))
 
 
 if __name__ == '__main__':

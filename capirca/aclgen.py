@@ -12,24 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-
 """Renders policy source files into actual Access Control Lists."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import copy
 import multiprocessing
-import os
 import pathlib
 import sys
+from typing import Iterator, List, Tuple
 
 from absl import app
 from absl import flags
 from absl import logging
+
 from capirca.lib import aclgenerator
 from capirca.lib import arista
 from capirca.lib import arista_tp
@@ -37,6 +31,7 @@ from capirca.lib import aruba
 from capirca.lib import brocade
 from capirca.lib import cisco
 from capirca.lib import ciscoasa
+from capirca.lib import cisconx
 from capirca.lib import ciscoxr
 from capirca.lib import cloudarmor
 from capirca.lib import gce
@@ -59,74 +54,59 @@ from capirca.lib import windows_advfirewall
 
 from capirca.utils import config
 
-
 FLAGS = flags.FLAGS
+WriteList = List[Tuple[pathlib.Path, str]]
 
 
 def SetupFlags():
+  """Read in configuration from CLI flags."""
   flags.DEFINE_string(
-      'base_directory',
-      None,
-      'The base directory to look for acls; '
-      'typically where you\'d find ./corp and ./prod\n(default: \'%s\')'
-      % config.defaults['base_directory'])
+      'base_directory', None, 'The base directory to look for acls; '
+      'typically where you\'d find ./corp and ./prod\n(default: \'%s\')' %
+      config.defaults['base_directory'])
   flags.DEFINE_string(
-      'definitions_directory',
-      None,
-      'Directory where the definitions can be found.\n(default: \'%s\')'
-      % config.defaults['definitions_directory'])
+      'definitions_directory', None,
+      'Directory where the definitions can be found.\n(default: \'%s\')' %
+      config.defaults['definitions_directory'])
+  flags.DEFINE_string('policy_file', None,
+                      'Individual policy file to generate.')
   flags.DEFINE_string(
-      'policy_file',
-      None,
-      'Individual policy file to generate.')
-  flags.DEFINE_string(
-      'output_directory',
-      None,
-      'Directory to output the rendered acls.\n(default: \'%s\')'
-      % config.defaults['output_directory'])
+      'output_directory', None,
+      'Directory to output the rendered acls.\n(default: \'%s\')' %
+      config.defaults['output_directory'])
   flags.DEFINE_boolean(
       'optimize',
       None,
       'Turn on optimization.\n(default: \'%s\')' % config.defaults['optimize'],
       short_name='o')
   flags.DEFINE_boolean(
-      'recursive',
-      None,
+      'recursive', None,
       'Descend recursively from the base directory rendering acls\n(default: \'%s\')'
       % str(config.defaults['recursive']).lower())
   flags.DEFINE_boolean(
-      'debug',
-      None,
-      'Debug messages\n(default: \'%s\')' %
+      'debug', None, 'Debug messages\n(default: \'%s\')' %
       str(config.defaults['debug']).lower())
   flags.DEFINE_boolean(
-      'verbose',
-      None,
-      'Verbose messages\n(default: \'%s\')' %
+      'verbose', None, 'Verbose messages\n(default: \'%s\')' %
       str(config.defaults['verbose']).lower())
   flags.DEFINE_list(
-      'ignore_directories',
-      None,
+      'ignore_directories', None,
       'Don\'t descend into directories that look like this string\n(default: \'%s\')'
       % ','.join(config.defaults['ignore_directories']))
   flags.DEFINE_integer(
-      'max_renderers',
-      None,
-      'Max number of rendering processes to use.\n(default: \'%s\')'
-      % config.defaults['max_renderers'])
+      'max_renderers', None,
+      'Max number of rendering processes to use.\n(default: \'%s\')' %
+      config.defaults['max_renderers'])
   flags.DEFINE_boolean(
-      'shade_check',
-      None,
+      'shade_check', None,
       'Raise an error when a term is completely shaded by a prior term.\n(default: \'%s\')'
       % str(config.defaults['shade_check']).lower())
   flags.DEFINE_integer(
-      'exp_info',
-      None,
+      'exp_info', None,
       'Print a info message when a term is set to expire in that many weeks.\n(default: \'%s\')'
       % str(config.defaults['exp_info']))
   flags.DEFINE_multi_string(
-      'config_file',
-      None,
+      'config_file', None,
       'A yaml file with the configuration options for capirca')
 
 
@@ -147,7 +127,7 @@ class ACLParserError(Error):
 
 
 def SkipLines(text, skip_line_func=False):
-  """Difflib has problems with the junkline func. fix it.
+  """Apply skip_line_func to the given text.
 
   Args:
     text: list of the first text to scan
@@ -161,8 +141,10 @@ def SkipLines(text, skip_line_func=False):
   return [x for x in text if not skip_line_func(x)]
 
 
-def RenderFile(base_directory, input_file, output_directory, definitions,
-               exp_info, optimize, shade_check, write_files):
+def RenderFile(base_directory: str, input_file: pathlib.Path,
+               output_directory: pathlib.Path, definitions: naming.Naming,
+               exp_info: int, optimize: bool, shade_check: bool,
+               write_files: WriteList):
   """Render a single file.
 
   Args:
@@ -170,14 +152,17 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
     input_file: the name of the input policy file.
     output_directory: the directory in which we place the rendered file.
     definitions: the definitions from naming.Naming().
-    exp_info: print a info message when a term is set to expire
-              in that many weeks.
+    exp_info: print a info message when a term is set to expire in that many
+      weeks.
     optimize: a boolean indicating if we should turn on optimization or not.
     shade_check: should we raise an error if a term is completely shaded
     write_files: a list of file tuples, (output_file, acl_text), to write
   """
-  logging.debug('rendering file: %s into %s', input_file,
-                output_directory)
+  output_relative = input_file.relative_to(base_directory).parent.parent
+  output_directory = output_directory / output_relative
+
+  logging.debug('rendering file: %s into %s', input_file, output_directory)
+
   pol = None
   jcl = False
   acl = False
@@ -201,6 +186,7 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
   jsl = False
   nft = False
   win_afw = False
+  nxacl = False
   xacl = False
   paloalto = False
 
@@ -214,14 +200,17 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
 
   try:
     pol = policy.ParsePolicy(
-        conf, definitions, optimize=optimize,
-        base_dir=base_directory, shade_check=shade_check)
+        conf,
+        definitions,
+        optimize=optimize,
+        base_dir=base_directory,
+        shade_check=shade_check)
   except policy.ShadingError as e:
     logging.warning('shading errors for %s:\n%s', input_file, e)
     return
   except (policy.Error, naming.Error):
-    raise ACLParserError('Error parsing policy file %s:\n%s%s' % (
-        input_file, sys.exc_info()[0], sys.exc_info()[1]))
+    raise ACLParserError('Error parsing policy file %s:\n%s%s' %
+                         (input_file, sys.exc_info()[0], sys.exc_info()[1]))
 
   platforms = set()
   for header in pol.headers:
@@ -262,6 +251,8 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
     jsl = copy.deepcopy(pol)
   if 'windows_advfirewall' in platforms:
     win_afw = copy.deepcopy(pol)
+  if 'cisconx' in platforms:
+    nxacl = copy.deepcopy(pol)
   if 'ciscoxr' in platforms:
     xacl = copy.deepcopy(pol)
   if 'nftables' in platforms:
@@ -275,118 +266,160 @@ def RenderFile(base_directory, input_file, output_directory, definitions,
   if 'cloudarmor' in platforms:
     gca = copy.deepcopy(pol)
 
-  if not output_directory.endswith('/'):
-    output_directory += '/'
+  acl_obj: aclgenerator.ACLGenerator
 
   try:
     if jcl:
       acl_obj = juniper.Juniper(jcl, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if msmpc:
       acl_obj = junipermsmpc.JuniperMSMPC(msmpc, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if srx:
       acl_obj = junipersrx.JuniperSRX(srx, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if acl:
       acl_obj = cisco.Cisco(acl, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if asacl:
       acl_obj = ciscoasa.CiscoASA(asacl, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if aacl:
       acl_obj = aruba.Aruba(aacl, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if bacl:
       acl_obj = brocade.Brocade(bacl, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if eacl:
       acl_obj = arista.Arista(eacl, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if atp:
       acl_obj = arista_tp.AristaTrafficPolicy(atp, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if ips:
       acl_obj = ipset.Ipset(ips, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if ipt:
       acl_obj = iptables.Iptables(ipt, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if nsx:
       acl_obj = nsxv.Nsxv(nsx, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if spd:
       acl_obj = speedway.Speedway(spd, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if pcap_accept:
       acl_obj = pcap.PcapFilter(pcap_accept, exp_info)
-      RenderACL(str(acl_obj), '-accept' + acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), '-accept' + acl_obj.SUFFIX, output_directory,
+          input_file, write_files)
     if pcap_deny:
       acl_obj = pcap.PcapFilter(pcap_deny, exp_info, invert=True)
-      RenderACL(str(acl_obj), '-deny' + acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), '-deny' + acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if pf:
       acl_obj = packetfilter.PacketFilter(pf, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if win_afw:
       acl_obj = windows_advfirewall.WindowsAdvFirewall(win_afw, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if jsl:
       acl_obj = srxlo.SRXlo(jsl, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
+    if nxacl:
+      acl_obj = cisconx.CiscoNX(nxacl, exp_info)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if xacl:
       acl_obj = ciscoxr.CiscoXR(xacl, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if nft:
       acl_obj = nftables.Nftables(nft, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if gcefw:
       acl_obj = gce.GCE(gcefw, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if gcphf:
       acl_obj = gcp_hf.HierarchicalFirewall(gcphf, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
 
     if paloalto:
       acl_obj = paloaltofw.PaloAltoFW(paloalto, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if gca:
       acl_obj = cloudarmor.CloudArmor(gca, exp_info)
-      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
-                input_file, write_files)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
   # TODO(robankeny) add additional errors.
-  except (juniper.Error, junipermsmpc.Error, junipersrx.Error, cisco.Error,
-          ipset.Error, iptables.Error, speedway.Error, pcap.Error,
-          aclgenerator.Error, aruba.Error, nftables.Error, gce.Error,
-          cloudarmor.Error) as e:
-    raise ACLGeneratorError(
-        'Error generating target ACL for %s:\n%s' % (input_file, e))
+  except (
+      juniper.Error,
+      junipermsmpc.Error,
+      junipersrx.Error,
+      cisco.Error,
+      ipset.Error,
+      iptables.Error,
+      speedway.Error,
+      pcap.Error,
+      aclgenerator.Error,
+      aruba.Error,
+      nftables.Error,
+      gce.Error,
+      cloudarmor.Error) as e:
+    raise ACLGeneratorError('Error generating target ACL for %s:\n%s' %
+                            (input_file, e))
 
 
-def RenderACL(acl_text, acl_suffix, output_directory, input_file, write_files,
-              binary=False):
+def RenderACL(acl_text: str,
+              acl_suffix: str,
+              output_directory: pathlib.Path,
+              input_file: pathlib.Path,
+              write_files: List[Tuple[pathlib.Path, str]],
+              binary: bool = False):
   """Write the ACL string out to file if appropriate.
 
   Args:
@@ -397,8 +430,8 @@ def RenderACL(acl_text, acl_suffix, output_directory, input_file, write_files,
     write_files: A list of file tuples, (output_file, acl_text), to write.
     binary: Boolean if the rendered ACL is in binary format.
   """
-  output_file = os.path.join(output_directory, '%s%s') % (
-      os.path.splitext(os.path.basename(input_file))[0], acl_suffix)
+  input_filename = input_file.with_suffix(acl_suffix).name
+  output_file = output_directory / input_filename
 
   if FilesUpdated(output_file, acl_text, binary):
     logging.info('file changed: %s', output_file)
@@ -407,23 +440,24 @@ def RenderACL(acl_text, acl_suffix, output_directory, input_file, write_files,
     logging.debug('file not changed: %s', output_file)
 
 
-def FilesUpdated(file_name, new_text, binary):
+def FilesUpdated(file_name: pathlib.Path, new_text: str, binary: bool) -> bool:
   """Diff the rendered acl with what's already on disk.
 
   Args:
     file_name: Name of file on disk to check against.
     new_text: Text of newly generated ACL.
     binary: True if file is a binary format.
+
   Returns:
     Boolean if config does not equal new text.
   """
+  if binary:
+    readmode = 'rb'
+  else:
+    readmode = 'r'
   try:
-    if binary:
-      with open(file_name, 'rb') as f:
-        conf = f.read()
-    else:
-      with open(file_name) as f:
-        conf = f.read()
+    with open(file_name, readmode) as f:
+      conf: str = str(f.read())
   except IOError:
     return True
   if not binary:
@@ -431,66 +465,50 @@ def FilesUpdated(file_name, new_text, binary):
     p4_date = '$Da te:'.replace(' ', '')
     p4_revision = '$Rev ision:'.replace(' ', '')
 
-    p4_tags = lambda x: p4_id in x or p4_date in x or p4_revision in x
+    def P4Tags(text: str) -> bool:
+      return not (p4_id in text or p4_date in text or p4_revision in text)
 
-    conf = SkipLines(conf.split('\n'), skip_line_func=p4_tags)
-    new_text = SkipLines(new_text.split('\n'), skip_line_func=p4_tags)
-
+    filtered_conf = filter(P4Tags, conf.split('\n'))
+    filtered_text = filter(P4Tags, new_text.split('\n'))
+    return list(filtered_conf) != list(filtered_text)
   return conf != new_text
 
 
-def DescendRecursively(input_dirname, output_dirname, definitions,
-                       ignore_directories, depth=1):
-  """Recursively descend from input_dirname looking for policy files to render.
+def DescendDirectory(input_dirname: str,
+                     ignore_directories: List[str]) -> List[pathlib.Path]:
+  """Descend from input_dirname looking for policy files to render.
 
   Args:
     input_dirname: the base directory.
-    output_dirname: where to place the rendered files.
-    definitions: naming.Naming object.
-    ignore_directories: directories to ignore in search
-    depth: integer, for outputting '---> rendering prod/corp-backbone.jcl'.
+    ignore_directories: directories to ignore while traversing.
 
   Returns:
-    the files that were found
+    a list of input file paths
   """
-  # p4 complains if you try to edit a file like ./corp//corp-isp.jcl
-  input_dirname = input_dirname.rstrip('/')
-  output_dirname = output_dirname.rstrip('/')
+  input_dir = pathlib.Path(input_dirname)
 
-  files = []
-  # calling all directories
-  for curdir in [x for x in os.listdir(input_dirname) if
-                 os.path.isdir(input_dirname + '/' + x)]:
-    # be on the lookout for a policy directory
-    if curdir == 'pol':
-      for input_file in [x for x in os.listdir(input_dirname + '/pol')
-                         if x.endswith('.pol')]:
-        files.append({
-            'in_file': os.path.join(input_dirname, 'pol', input_file),
-            'out_dir': output_dirname,
-            'defs': definitions})
-    else:
-      # so we don't have a policy directory, we should check if this new
-      # directory has a policy directory
-      if curdir in ignore_directories:
-        continue
-      logging.warning('-' * (2 * depth) + '> %s' % (
-          input_dirname + '/' + curdir))
-      files_found = DescendRecursively(
-          input_dirname + '/' + curdir,
-          output_dirname + '/' + curdir,
-          definitions,
-          ignore_directories,
-          depth + 1
-      )
-      logging.warning('-' * (2 * depth) + '> %s (%d pol files found)' % (
-          input_dirname + '/' + curdir, len(files_found)))
-      files.extend(files_found)
+  policy_files: List[pathlib.Path] = []
+  policy_directories: Iterator[pathlib.Path] = filter(
+      lambda path: path.is_dir(), input_dir.glob('**/pol'))
+  for ignored_directory in ignore_directories:
 
-  return files
+    def Filtering(path, ignored=ignored_directory):
+      return not path.match('%s/**/pol' % ignored) and not path.match(
+          '%s/pol' % ignored)
+
+    policy_directories = filter(Filtering, policy_directories)
+
+  for directory in policy_directories:
+    directory_policies = list(directory.glob('*.pol'))
+    depth = len(directory.parents) - 1
+    logging.warning('-' * (2 * depth) + '> %s (%d pol files found)' %
+                    (directory, len(directory_policies)))
+    policy_files.extend(filter(lambda path: path.is_file(), directory_policies))
+
+  return policy_files
 
 
-def WriteFiles(write_files):
+def WriteFiles(write_files: WriteList):
   """Writes files to disk.
 
   Args:
@@ -500,104 +518,86 @@ def WriteFiles(write_files):
     logging.info('writing %d files to disk...', len(write_files))
   else:
     logging.info('no files changed, not writing to disk')
-  for output_file, file_string in write_files:
-    _WriteFile(output_file, file_string)
+  for output_file, file_contents in write_files:
+    _WriteFile(output_file, file_contents)
 
 
-def _WriteFile(output_file, file_string):
+def _WriteFile(output_file: pathlib.Path, file_contents: str):
+  """Inner file writing function.
+
+  Args:
+    output_file: Path to write to
+    file_contents: Data to write
+  """
   try:
     parent_path = pathlib.Path(output_file).parent
     if not parent_path.is_dir():
       parent_path.mkdir(parents=True, exist_ok=True)
     with open(output_file, 'w') as output:
       logging.info('writing file: %s', output_file)
-      output.write(file_string)
+      output.write(file_contents)
   except IOError:
     logging.warning('error while writing file: %s', output_file)
     raise
 
 
-def DiscoverAllPolicies(base_directory, output_directory, definitions):
-  logging.info('finding policies...')
-  pols = []
-  pols.extend(
-      DescendRecursively(
-          base_directory,
-          output_directory,
-          definitions,
-          list()
-      )
-  )
-  return pols
+def Run(base_directory: str, definitions_directory: str, policy_file: str,
+        output_directory: str, exp_info: int, max_renderers: int,
+        ignore_directories: List[str], optimize: bool, shade_check: bool,
+        context: multiprocessing.context.BaseContext):
+  """Generate ACLs.
 
-
-def Run(
-    base_directory,
-    definitions_directory,
-    policy_file,
-    output_directory,
-    exp_info,
-    max_renderers,
-    ignore_directories,
-    optimize,
-    shade_check,
-    context
-):
+  Args:
+    base_directory: directory containing policy files.
+    definitions_directory: directory containing NETWORK and SERVICES definition
+      files.
+    policy_file: path to a single policy file to render.
+    output_directory: directory in which rendered files are placed.
+    exp_info: print a info message when a term is set to expire in that many
+      weeks.
+    max_renderers: the number of renderers to run in parallel.
+    ignore_directories: directories to ignore when searching for policy files.
+    optimize: a boolean indicating if we should turn on optimization or not.
+    shade_check: should we raise an error if a term is completely shaded.
+    context: multiprocessing context
+  """
   definitions = None
   try:
     definitions = naming.Naming(definitions_directory)
   except naming.NoDefinitionsError:
     err_msg = 'bad definitions directory: %s' % definitions_directory
     logging.fatal(err_msg)
+    return  # static type analyzer can't detect that logging.fatal exits program
 
   # thead-safe list for storing files to write
-  manager = context.Manager()
-  write_files = manager.list()
+  manager: multiprocessing.managers.SyncManager = context.Manager()
+  write_files: WriteList = manager.list()
 
   with_errors = False
+  logging.info('finding policies...')
   if policy_file:
     # render just one file
     logging.info('rendering one file')
-    RenderFile(
-        base_directory,
-        policy_file,
-        output_directory,
-        definitions,
-        exp_info,
-        optimize,
-        shade_check,
-        write_files)
+    RenderFile(base_directory, pathlib.Path(policy_file),
+               pathlib.Path(output_directory), definitions, exp_info, optimize,
+               shade_check, write_files)
+  elif max_renderers == 1:
+    # If only one process, run it sequentially
+    policies = DescendDirectory(base_directory, ignore_directories)
+    for pol in policies:
+      RenderFile(base_directory, pol, pathlib.Path(output_directory),
+                 definitions, exp_info, optimize, shade_check, write_files)
   else:
     # render all files in parallel
-    logging.info('finding policies...')
-    pols = []
-    pols.extend(
-        DescendRecursively(
-            base_directory,
-            output_directory,
-            definitions,
-            ignore_directories
-        )
-    )
-
+    policies = DescendDirectory(base_directory, ignore_directories)
     pool = context.Pool(processes=max_renderers)
-    results = []
-    for pol in pols:
+    results: List[multiprocessing.pool.AsyncResult] = []
+    for pol in policies:
       results.append(
           pool.apply_async(
               RenderFile,
-              args=(
-                  base_directory,
-                  pol.get('in_file'),
-                  pol.get('out_dir'),
-                  definitions,
-                  exp_info,
-                  optimize,
-                  shade_check,
-                  write_files
-              )
-          )
-      )
+              args=(base_directory, pol, output_directory, definitions,
+                    exp_info, optimize, shade_check, write_files)))
     pool.close()
     pool.join()
 
@@ -606,8 +606,8 @@ def Run(
         result.get()
       except (ACLParserError, ACLGeneratorError) as e:
         with_errors = True
-        logging.warning('\n\nerror encountered in rendering '
-                        'process:\n%s\n\n', e)
+        logging.warning('\n\nerror encountered in rendering process:\n%s\n\n',
+                        e)
 
   # actually write files to disk
   WriteFiles(write_files)
@@ -630,35 +630,24 @@ def main(argv):
     logging.set_verbosity(logging.DEBUG)
   logging.debug(
       'binary: %s\noptimize: %d\nbase_directory: %s\n'
-      'policy_file: %s\nrendered_acl_directory: %s',
-      str(sys.argv[0]),
-      int(configs['optimize']),
-      str(configs['base_directory']),
-      str(configs['policy_file']),
-      str(configs['output_directory'])
-  )
+      'policy_file: %s\nrendered_acl_directory: %s', str(sys.argv[0]),
+      int(configs['optimize']), str(configs['base_directory']),
+      str(configs['policy_file']), str(configs['output_directory']))
   logging.debug('capirca configurations: %s', configs)
 
   context = multiprocessing.get_context()
 
-  Run(
-      configs['base_directory'],
-      configs['definitions_directory'],
-      configs['policy_file'],
-      configs['output_directory'],
-      configs['exp_info'],
-      configs['max_renderers'],
-      configs['ignore_directories'],
-      configs['optimize'],
-      configs['shade_check'],
-      context
-  )
+  Run(configs['base_directory'], configs['definitions_directory'],
+      configs['policy_file'], configs['output_directory'], configs['exp_info'],
+      configs['max_renderers'], configs['ignore_directories'],
+      configs['optimize'], configs['shade_check'], context)
 
 
-def entry_point():
+def EntryPoint():
+  """Read in flags and call main()."""
   SetupFlags()
   app.run(main)
 
 
 if __name__ == '__main__':
-  entry_point()
+  EntryPoint()

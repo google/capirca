@@ -14,36 +14,35 @@
 #
 """Functional test class for nsxv.py."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import copy
 import optparse
-import unittest
+from absl.testing import absltest
 from xml.etree import ElementTree as ET
 
-from lib import naming
-from lib import nsxv
-from lib import policy
-import nsxv_mocktest
+from capirca.lib import naming
+from capirca.lib import nsxv
+from capirca.lib import policy
+from capirca.tests.lib import nsxv_mocktest
 
 
-class NsxvFunctionalTest(unittest.TestCase):
+class NsxvFunctionalTest(absltest.TestCase):
   """Functional testing for NSXV."""
 
   def setUp(self):
     """Call before every test case."""
-    super(NsxvFunctionalTest, self).setUp()
+    super().setUp()
     parser = optparse.OptionParser()
-    parser.add_option('-d', '--def', dest='definitions',
-                      help='definitions directory', default='../def')
+    parser.add_option(
+        '-d',
+        '--def',
+        dest='definitions',
+        help='definitions directory',
+        default='../def')
     (FLAGS, args) = _parser.parse_args()
     self.defs = naming.Naming(FLAGS.definitions)
 
   def tearDown(self):
-    super(NsxvFunctionalTest, self).tearDown()
+    super().tearDown()
     pass
 
   def runTest(self):
@@ -108,12 +107,11 @@ class NsxvFunctionalTest(unittest.TestCase):
   def test_nsxv_incorrectfiltertype(self):
     pol = policy.ParsePolicy(nsxv_mocktest.POLICY_INCORRECT_FILTERTYPE,
                              self.defs)
-    self.assertRaises(nsxv.UnsupportedNsxvAccessListError,
-                      nsxv.Nsxv(pol, 2))
+    self.assertRaises(nsxv.UnsupportedNsxvAccessListError, nsxv.Nsxv(pol, 2))
 
   def test_nsxv_optionkywd(self):
     pol = policy.ParsePolicy(nsxv_mocktest.POLICY_OPTION_KYWD, self.defs)
     self.assertRaises(nsxv.NsxvAclTermError, str(nsxv.Nsxv(pol, 2)))
 
   if __name__ == '__main__':
-    unittest.main()
+    absltest.main()

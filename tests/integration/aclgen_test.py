@@ -12,23 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import multiprocessing
 import os
+import pathlib
 import shutil
 import sys
 import tempfile
-import unittest
+from unittest import mock
 
 from absl import app
 from absl import flags
+from absl.testing import absltest
 from capirca import aclgen
-import mock
-
 
 FLAGS = flags.FLAGS
 aclgen.SetupFlags()  # Ensure flags are set up only once
@@ -36,11 +31,11 @@ aclgen.SetupFlags()  # Ensure flags are set up only once
 FLAGS(sys.argv[0:1])
 
 
-class TestAclGenDemo(unittest.TestCase):
+class TestAclGenDemo(absltest.TestCase):
   """Ensure Capirca demo runs successfully out-of-the-box."""
 
   def setUp(self):
-    super(TestAclGenDemo, self).setUp()
+    super().setUp()
     self.test_subdirectory = tempfile.mkdtemp()
     self.def_dir = os.path.join(self.test_subdirectory, 'def')
     self.pol_dir = os.path.join(self.test_subdirectory, 'policies')
@@ -67,21 +62,35 @@ class TestAclGenDemo(unittest.TestCase):
         None,
         self.context,
     )
-    files = ['sample_cisco_lab.acl', 'sample_cloudarmor.gca', 'sample_gce.gce',
-             'sample_ipset.ips', 'sample_juniper_loopback.jcl',
-             'sample_multitarget.acl', 'sample_multitarget.asa',
-             'sample_multitarget.bacl', 'sample_multitarget.eacl',
-             'sample_multitarget.ipt', 'sample_multitarget.jcl',
-             'sample_multitarget.msmpc', 'sample_multitarget.xacl',
-             'sample_nsxv.nsx', 'sample_packetfilter.pf',
-             'sample_speedway.ipt', 'sample_srx.srx',
-             'sample_paloalto.xml', 'sample_stateful_multitarget_simple.xml',
-             'sample_stateful_multitarget_simple.srx',
-             'sample_stateful_multitarget_complex.xml',
-             'sample_stateful_multitarget_complex.srx',
-             ]
-    expected = [mock.call(
-        os.path.join(self.test_subdirectory, f), mock.ANY) for f in files]
+    files = [
+        'sample_cisco_lab.acl',
+        'sample_cloudarmor.gca',
+        'sample_gce.gce',
+        'sample_ipset.ips',
+        'sample_juniper_loopback.jcl',
+        'sample_multitarget.acl',
+        'sample_multitarget.asa',
+        'sample_multitarget.bacl',
+        'sample_multitarget.eacl',
+        'sample_multitarget.ipt',
+        'sample_multitarget.jcl',
+        'sample_multitarget.msmpc',
+        'sample_multitarget.xacl',
+        'sample_multitarget.nxacl',
+        'sample_nsxv.nsx',
+        'sample_packetfilter.pf',
+        'sample_speedway.ipt',
+        'sample_srx.srx',
+        'sample_paloalto.xml',
+        'sample_stateful_multitarget_simple.xml',
+        'sample_stateful_multitarget_simple.srx',
+        'sample_stateful_multitarget_complex.xml',
+        'sample_stateful_multitarget_complex.srx',
+    ]
+    expected = [
+        mock.call(pathlib.Path(self.test_subdirectory, f), mock.ANY)
+        for f in files
+    ]
     mock_writer.assert_has_calls(expected, any_order=True)
 
   @mock.patch.object(aclgen, '_WriteFile', autospec=True)
@@ -101,19 +110,19 @@ class TestAclGenDemo(unittest.TestCase):
         self.context,
     )
     mock_writer.assert_called_with(
-        os.path.join(self.test_subdirectory, 'sample_cisco_lab.acl'), mock.ANY)
+        pathlib.Path(self.test_subdirectory, 'sample_cisco_lab.acl'), mock.ANY)
 
   # Test to ensure existence of the entry point function for installed script.
   @mock.patch.object(aclgen, 'SetupFlags', autospec=True)
   @mock.patch.object(app, 'run', autospec=True)
   def test_entry_point(self, mock_run, mock_flags):
-    aclgen.entry_point()
+    aclgen.EntryPoint()
     mock_flags.assert_called_with()
     mock_run.assert_called_with(aclgen.main)
 
 
 def main(unused_argv):
-  unittest.main()
+  absltest.main()
 
 
 if __name__ == '__main__':

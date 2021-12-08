@@ -14,18 +14,12 @@
 
 """Discontinuous subnet mask summarizer."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import collections
 
 from capirca.lib import nacaddr
-from six.moves import range
 
 
-class DSMNet(object):
+class DSMNet:
   """Hold IP address information for the purposes of DSM summarization.
 
     ipaddr maintainers explicitly declared that they will not

@@ -20,13 +20,8 @@
    order in which items are returned.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import argparse
-import unittest
+from absl.testing import absltest
 
 from capirca.lib import nacaddr
 from capirca.lib import naming
@@ -203,17 +198,17 @@ TRACEROUTE = 33434-33534/udp
 """
 
 
-class Namespace(object):
+class Namespace:
 
   def __init__(self, **kwargs):
     for arg in kwargs:
       setattr(self, arg, kwargs[arg])
 
 
-class CgrepTest(unittest.TestCase):
+class CgrepTest(absltest.TestCase):
 
   def setUp(self):
-    super(CgrepTest, self).setUp()
+    super().setUp()
     self.db = naming.Naming(None)
     self.db.ParseServiceList(_SERVICE.split('\n'))
     self.db.ParseNetworkList(_NETWORK.split('\n'))
@@ -535,4 +530,4 @@ class CgrepTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

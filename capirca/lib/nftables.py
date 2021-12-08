@@ -22,11 +22,6 @@ generator inherits directly from aclgenerator.
 
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import collections
 import datetime
 
@@ -75,7 +70,7 @@ class Term(aclgenerator.Term):
 
     Note: AF of mixed requires kernel 3.15 or higher
     """
-    super(Term, self).__init__(term)
+    super().__init__(term)
     self.term = term
     self.af = af
     if af == 'inet6':
@@ -175,8 +170,7 @@ class Term(aclgenerator.Term):
       if icmp_types != ['']:
         # nft intepreter requires ICMP types to be spelled out
         icmp_name_types = self.ICMP_TYPE[self.AF_MAP[self.af]]
-        icmp_type_names = dict((v, k) for k, v in six.iteritems(
-            icmp_name_types))
+        icmp_type_names = dict((v, k) for k, v in icmp_name_types.items())
         output.append('icmp type %s' %
                       self._FormatMatch([icmp_type_names[icmp_type] for
                                          icmp_type in icmp_types]))
@@ -266,8 +260,7 @@ class Nftables(aclgenerator.ACLGenerator):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(
-        Nftables, self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {'owner', 'counter', 'logging', 'log_name'}
     del supported_sub_tokens['option']

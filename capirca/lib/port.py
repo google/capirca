@@ -15,10 +15,6 @@
 
 """Common library for network ports and protocol handling."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 
 class Error(Exception):
@@ -41,7 +37,7 @@ class NotSinglePort(Error):
   """Port range defined instead of a single port."""
 
 
-class PPP(object):
+class PPP:
   """PPP: [P]ort [P]rotocol [P]airs.
 
   Make port/protocol pairs an object for easy comparisons

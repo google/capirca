@@ -15,11 +15,6 @@
 
 """A subclass of the ipaddress library that includes comments for ipaddress."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import collections
 import ipaddress
 import itertools
@@ -83,7 +78,7 @@ class IPv4(ipaddress.IPv4Network):
       ip = (ip_string.network_address._ip, ip_string.prefixlen)  # pylint disable=protected-access # pytype: disable=attribute-error
     else:
       ip = ip_string
-    super(IPv4, self).__init__(ip, strict)
+    super().__init__(ip, strict)
 
   def subnet_of(self, other):
     """Return True if this network is a subnet of other."""
@@ -162,7 +157,7 @@ class IPv6(ipaddress.IPv6Network):
       ip = (ip_string.network_address._ip, ip_string.prefixlen)  # pylint disable=protected-access # pytype: disable=attribute-error
     else:
       ip = ip_string
-    super(IPv6, self).__init__(ip, strict)
+    super().__init__(ip, strict)
 
   def subnet_of(self, other):
     """Return True if this network is a subnet of other."""

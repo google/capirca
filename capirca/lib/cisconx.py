@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2021 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+"""CiscoNX generator."""
 
-"""Arista generator."""
-
+from capirca.lib import aclgenerator
 from capirca.lib import cisco
 
 
@@ -22,24 +22,30 @@ class Error(Exception):
   """Base error class."""
 
 
-class UnsupportedEosAccessListError(Error):
-  """When a filter type is not supported in an EOS policy target."""
+class UnsupportedNXosAccessListError(Error):
+  """When a filter type is not supported in an NXOS policy target."""
 
 
-class Arista(cisco.Cisco):
-  """An Arista policy object.
+class CiscoNX(cisco.Cisco):
+  """An CiscoNX policy object.
 
-  EOS devices differ slightly from Cisco, omitting the extended argument to
-  ACLs for example. There are other items such as 'tracked' we may want to add
-  in the future.
+  CiscoNX devices differ slightly from Cisco, omitting the extended argument to
+  ACLs for example.
   """
 
-  _PLATFORM = 'arista'
-  SUFFIX = '.eacl'
+  _PLATFORM = 'cisconx'
+  SUFFIX = '.nxacl'
   # Protocols should be emitted as they were in the policy (names).
   _PROTO_INT = False
 
-  # Arista omits the "extended" access-list argument.
+  def _RepositoryTagsHelper(self, target=None, filter_type='', filter_name=''):
+    if target is None:
+      target = []
+    target.extend(aclgenerator.AddRepositoryTags(
+        ' remark ', rid=False, wrap=True))
+    return target
+
+  # CiscoNX omits the "extended" access-list argument.
   def _AppendTargetByFilterType(self, filter_name, filter_type):
     """Takes in the filter name and type and appends headers.
 
@@ -51,16 +57,10 @@ class Arista(cisco.Cisco):
       list of strings
 
     Raises:
-      UnsupportedEosAccessListError: When unknown filter type is used.
+      UnsupportedNXosAccessListError: When unknown filter type is used.
     """
     target = []
-    if filter_type == 'standard':
-      if filter_name.isdigit():
-        target.append('no access-list %s' % filter_name)
-      else:
-        target.append('no ip access-list standard %s' % filter_name)
-        target.append('ip access-list standard %s' % filter_name)
-    elif filter_type == 'extended':
+    if filter_type == 'extended':
       target.append('no ip access-list %s' % filter_name)
       target.append('ip access-list %s' % filter_name)
     elif filter_type == 'object-group':
@@ -70,7 +70,7 @@ class Arista(cisco.Cisco):
       target.append('no ipv6 access-list %s' % filter_name)
       target.append('ipv6 access-list %s' % filter_name)
     else:
-      raise UnsupportedEosAccessListError(
-          'access list type %s not supported by %s' % (
-              filter_type, self._PLATFORM))
+      raise UnsupportedNXosAccessListError(
+          'access list type %s not supported by %s' %
+          (filter_type, self._PLATFORM))
     return target
