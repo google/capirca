@@ -62,6 +62,7 @@ SUPPORTED_TOKENS = {
     'platform',
     'platform_exclude',
     'protocol',
+    'restrict_address_family',
     'source_address',
     'source_address_exclude',
     'source_port',

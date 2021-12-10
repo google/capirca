@@ -33,6 +33,7 @@ The default format is _inet4_, and is implied if not other argument is given.
 ## Term Format
 * _action::_ The action to take when matched. See Actions section for valid options.
 * _address::_ One or more network address tokens, matches source or destination.
+* _restrict-address-family::_ Only include the term in the matching address family filter (eg. for mixed filters).
 * _comment::_ A text comment enclosed in double-quotes.  The comment can extend over multiple lines if desired, until a closing quote is encountered.
 * _counter::_ Update a counter for matching packets
 * _destination-address::_ One or more destination address tokens
@@ -91,4 +92,3 @@ The default format is _inet4_, and is implied if not other argument is given.
 * _sample::_ Samples traffic for netflow.
 * _tcp-established::_ Only match established tcp connections, based on statefull match or TCP flags. Not supported for other protocols.
 * _tcp-initial::_ Only match initial packet for TCP protocol.
-

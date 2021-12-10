@@ -905,6 +905,7 @@ class Cisco(aclgenerator.ACLGenerator):
     supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {'address',
+                         'restrict_address_family',
                          'dscp_match',
                          'icmp_code',
                          'logging',
@@ -987,6 +988,10 @@ class Cisco(aclgenerator.ACLGenerator):
             af = 'inet6'
           term = self.FixHighPorts(term, af=af)
           if not term:
+            continue
+
+          # Ignore if the term is for a different AF
+          if term.restrict_address_family and term.restrict_address_family != af:
             continue
 
           if term.expiration:

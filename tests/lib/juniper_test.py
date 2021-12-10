@@ -380,6 +380,13 @@ term good-term-36 {
   action:: accept
 }
 """
+GOOD_TERM_37 = """
+term good-term-37 {
+  destination-address:: SOME_HOST
+  restrict-address-family:: inet
+  action:: accept
+}
+"""
 GOOD_TERM_COMMENT = """
 term good-term-comment {
   comment:: "This is a COMMENT"
@@ -588,6 +595,7 @@ SUPPORTED_TOKENS = frozenset([
     'protocol',
     'protocol_except',
     'qos',
+    'restrict_address_family',
     'routing_instance',
     'source_address',
     'source_address_exclude',
@@ -1032,6 +1040,31 @@ class JuniperTest(parameterized.TestCase):
 
     self.naming.GetServiceByProto.assert_has_calls([
         mock.call('DNS', 'tcp'), mock.call('DNS', 'udp')])
+
+  def testMixedFilterInetType(self):
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IPv4('127.0.0.1'), nacaddr.IPv6('::1/128')]
+
+    jcl = juniper.Juniper(policy.ParsePolicy(
+        GOOD_HEADER_MIXED + GOOD_TERM_12, self.naming), EXP_INFO)
+    output = str(jcl)
+    self.assertIn('test-filter4', output, output)
+    self.assertIn('127.0.0.1', output, output)
+    self.assertIn('test-filter6', output, output)
+    self.assertIn('::1/128', output, output)
+
+    self.naming.GetNetAddr.assert_called_once_with('LOCALHOST')
+
+  def testRestrictAddressFamilyType(self):
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IPv4('127.0.0.1'), nacaddr.IPv6('::1/128')]
+
+    jcl = juniper.Juniper(policy.ParsePolicy(
+        GOOD_HEADER_MIXED + GOOD_TERM_37, self.naming), EXP_INFO)
+    output = str(jcl)
+    self.assertIn('127.0.0.1', output, output)
+    self.assertNotIn('::1/128', output, output)
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
   def testBridgeFilterInetType(self):
     self.naming.GetNetAddr.return_value = [
