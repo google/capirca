@@ -14,12 +14,7 @@
 
 """Unit tests for AclCheck."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
-import unittest
+from absl.testing import absltest
 
 from capirca.lib import aclcheck
 from capirca.lib import naming
@@ -63,10 +58,10 @@ term term-5 {
 """
 
 
-class AclCheckTest(unittest.TestCase):
+class AclCheckTest(absltest.TestCase):
 
   def setUp(self):
-    super(AclCheckTest, self).setUp()
+    super().setUp()
     self.defs = naming.Naming(None)
     servicedata = []
     servicedata.append('SSH = 22/tcp')
@@ -154,4 +149,4 @@ class AclCheckTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

@@ -51,6 +51,11 @@ RESERVED = 0.0.0.0/8           # reserved
 
 ANY = 0.0.0.0/0
 
+ANY_V6 = ::/0
+
+ANY_MIXED = ANY
+            ANY_V6
+
 # http://www.team-cymru.org/Services/Bogons/bogon-bn-agg.txt
 # 22-Apr-2011
 BOGON = 0.0.0.0/8

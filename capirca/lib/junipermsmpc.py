@@ -14,11 +14,6 @@
 #
 """Juniper MS-MPC  generator for capirca."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 import logging
 
@@ -41,12 +36,37 @@ class Term(juniper.Term):
   _PLATFORM = 'msmpc'
   _DEFAULT_INDENT = 20
   _ACTIONS = {'accept': 'accept', 'deny': 'discard', 'reject': 'reject'}
+  # msmpc supports a limited number of protocol names
+  # https://www.juniper.net/documentation/us/en/software/junos/security-policies/topics/ref/statement/applications-edit-protocol.html
+  _SUPPORTED_PROTOCOL_NAMES = (
+      'ah',
+      'egp',
+      'esp',
+      'gre',
+      'icmp',
+      'icmpv6',
+      'igmp',
+      'ipip',
+      #'node', A pseudo-protocol which may require additional handling
+      'ospf',
+      'pim',
+      'rsvp',
+      'sctp',
+      'tcp',
+      'udp')
 
   def __init__(self, term, term_type, noverbose, filter_name):
+    enable_dsmo = False
+    super().__init__(term, term_type, enable_dsmo, noverbose)
     self.term = term
     self.term_type = term_type
     self.noverbose = noverbose
     self.filter_name = filter_name
+
+    for prot in self.term.protocol:
+      if prot not in self._SUPPORTED_PROTOCOL_NAMES:
+        loc = self.term.protocol.index(prot)
+        self.term.protocol[loc] = str(self.PROTO_MAP.get(prot, prot))
 
   def __str__(self):
     # Verify platform specific terms. Skip whole term if platform does not
@@ -57,6 +77,9 @@ class Term(juniper.Term):
     if self.term.platform_exclude:
       if self._PLATFORM in self.term.platform_exclude:
         return ''
+
+    if self.enable_dsmo:
+      raise NotImplementedError('enable_dsmo not implemented for msmpc')
 
     ret_str = juniper.Config(indent=self._DEFAULT_INDENT)
 
@@ -100,32 +123,44 @@ class Term(juniper.Term):
 
     suffixes = []
     duplicate_term = False
+    has_icmp = 'icmp' in self.term.protocol
+    has_icmpv6 = 'icmpv6' in self.term.protocol
+    has_v4_ip = self.term.GetAddressOfVersion(
+        'source_address',
+        self.AF_MAP.get('inet')) or self.term.GetAddressOfVersion(
+            'source_address_exclude',
+            self.AF_MAP.get('inet')) or self.term.GetAddressOfVersion(
+                'destination_address',
+                self.AF_MAP.get('inet')) or self.term.GetAddressOfVersion(
+                    'destination_address_exclude', self.AF_MAP.get('inet'))
+    has_v6_ip = self.term.GetAddressOfVersion(
+        'source_address',
+        self.AF_MAP.get('inet6')) or self.term.GetAddressOfVersion(
+            'source_address_exclude',
+            self.AF_MAP.get('inet6')) or self.term.GetAddressOfVersion(
+                'destination_address',
+                self.AF_MAP.get('inet6')) or self.term.GetAddressOfVersion(
+                    'destination_address_exclude', self.AF_MAP.get('inet6'))
+
     if self.term_type == 'mixed':
-      if not (self.term.GetAddressOfVersion('source_address',
-                                            self.AF_MAP.get('inet6')) or
-              self.term.GetAddressOfVersion('source_address_exclude',
-                                            self.AF_MAP.get('inet6')) or
-              self.term.GetAddressOfVersion('destination_address',
-                                            self.AF_MAP.get('inet6')) or
-              self.term.GetAddressOfVersion('destination_address_exclude',
-                                            self.AF_MAP.get('inet6'))):
+      if not (has_v4_ip or has_v6_ip):
         suffixes = ['inet']
-      elif not (self.term.GetAddressOfVersion('source_address',
-                                              self.AF_MAP.get('inet')) or
-                self.term.GetAddressOfVersion('source_address_exclude',
-                                              self.AF_MAP.get('inet')) or
-                self.term.GetAddressOfVersion('destination_address',
-                                              self.AF_MAP.get('inet')) or
-                self.term.GetAddressOfVersion('destination_address_exclude',
-                                              self.AF_MAP.get('inet'))):
+      elif not has_v6_ip:
+        suffixes = ['inet']
+      elif not has_v4_ip:
         suffixes = ['inet6']
       else:
         suffixes = ['inet', 'inet6']
         duplicate_term = True
-    if not suffixes:
+    if not suffixes and self.term_type in ['inet', 'inet6']:
       suffixes = [self.term_type]
 
     for suffix in suffixes:
+      if self.term_type == 'mixed' and (not (has_icmp and has_icmpv6)) and (
+          has_v4_ip and has_v6_ip):
+        if (has_icmp and suffix != 'inet') or (has_icmpv6 and
+                                               suffix != 'inet6'):
+          continue
       source_address = self.term.GetAddressOfVersion('source_address',
                                                      self.AF_MAP.get(suffix))
       source_address_exclude = self.term.GetAddressOfVersion(
@@ -145,15 +180,16 @@ class Term(juniper.Term):
                   'destination_address', self.AF_MAP.get('mixed')) and
               not destination_address_exclude):
         continue
-      if ('icmp' in self.term.protocol and
-          suffix == 'inet6') or ('icmpv6' in self.term.protocol and
-                                 suffix == 'inet'):
+      if ((has_icmpv6 and not has_icmp and suffix == 'inet') or
+          (has_icmp and not has_icmpv6 and
+           suffix == 'inet6')) and self.term_type != 'mixed':
         logging.debug(
             self.NO_AF_LOG_PROTO.substitute(
                 term=self.term.name,
                 proto=', '.join(self.term.protocol),
                 af=suffix))
-        continue
+        return ''
+
       # NAME
       # if the term is inactive we have to set the prefix
       if self.term.inactive:
@@ -300,7 +336,7 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
 
   def __init__(self, pol, exp_info):
     self.applications = {}
-    super(JuniperMSMPC, self).__init__(pol, exp_info)
+    super().__init__(pol, exp_info)
 
   def _BuildTokens(self):
     """Build supported tokens for platform.
@@ -308,8 +344,7 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(JuniperMSMPC,
-                                                   self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {
         'destination_prefix', 'destination_prefix_except', 'icmp_code',
@@ -393,9 +428,6 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
               for dport in app['dport'] or ['']:
                 chunks = []
                 if proto:
-                  # MSMPC does not like proto vrrp
-                  if proto == 'vrrp':
-                    proto = '112'
                   chunks.append('protocol %s;' % proto)
                 if sport and ('udp' in proto or 'tcp' in proto):
                   chunks.append('source-port %s;' % sport)
@@ -492,8 +524,8 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
                 (MAX_IDENTIFIER_LEN) // 2):]
         if term.stateless_reply:
           logging.warning(
-              "WARNING: Term %s is a stateless reply term and will not be "
-              "rendered.", term.name)
+              'WARNING: Term %s is a stateless reply term and will not be '
+              'rendered.', term.name)
           continue
         if set(['established', 'tcp-established']).intersection(term.option):
           logging.debug(
@@ -597,7 +629,7 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
         string: either the lower()'ed string or the ports, hyphenated
                 if they're a range, or by itself if it's not.
       """
-      if isinstance(el, str) or isinstance(el, six.text_type):
+      if isinstance(el, str):
         if not lc:
           return el
         else:

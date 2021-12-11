@@ -5,12 +5,6 @@ https://cloud.google.com/armor/
 https://cloud.google.com/armor/docs/
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
-
 import copy
 import json
 import logging
@@ -44,7 +38,7 @@ class Term(aclgenerator.Term):
   _MAX_TERM_COMMENT_LENGTH = 64
 
   def __init__(self, term, address_family='inet', verbose=True):
-    super(Term, self).__init__(term)
+    super().__init__(term)
     self.term = term
     self.address_family = address_family
     self.verbose = verbose
@@ -167,7 +161,7 @@ class CloudArmor(aclgenerator.ACLGenerator):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, _ = super(CloudArmor, self)._BuildTokens()
+    supported_tokens, _ = super()._BuildTokens()
     supported_tokens -= {'destination_address',
                          'destination_address_exclude',
                          'destination_port',

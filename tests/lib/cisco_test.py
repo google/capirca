@@ -14,22 +14,16 @@
 
 """Unittest for cisco acl rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 import re
-import unittest
+from absl.testing import absltest
+from unittest import mock
 
 from capirca.lib import aclgenerator
 from capirca.lib import cisco
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
-import mock
-from six.moves import range
 
 
 GOOD_HEADER = """
@@ -338,6 +332,14 @@ term good_term_22 {
   action:: accept
 }
 """
+GOOD_TERM_23 = """
+term good_term_23 {
+  protocol:: tcp
+  destination-address:: SOME_HOST
+  restrict-address-family:: inet
+  action:: accept
+}
+"""
 LONG_COMMENT_TERM = """
 term long-comment-term {
   comment:: "%s "
@@ -364,6 +366,7 @@ SUPPORTED_TOKENS = {
     'platform',
     'platform_exclude',
     'protocol',
+    'restrict_address_family',
     'source_address',
     'source_address_exclude',
     'source_port',
@@ -429,10 +432,10 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class CiscoTest(unittest.TestCase):
+class CiscoTest(absltest.TestCase):
 
   def setUp(self):
-    super(CiscoTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testIPVersion(self):
@@ -505,6 +508,10 @@ class CiscoTest(unittest.TestCase):
                   str(acl))
     self.assertIn('access-list 50 remark standard-term-1', str(acl),
                   str(acl))
+    self.assertIn('access-list 50 remark %sId:%s' % ('$', '$'), str(acl),
+                  str(acl))
+    self.assertNotIn('access-list 50 remark %sRevision:%s' % ('$', '$'),
+                     str(acl), str(acl))
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
@@ -686,6 +693,17 @@ class CiscoTest(unittest.TestCase):
     self.assertIn(inet6_test5, aclout, '[%s]' % aclout)
     self.assertTrue(re.search(inet6_test6, aclout), aclout)
 
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+
+  def testRestrictAddressFamilyType(self):
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IPv4('127.0.0.1'), nacaddr.IPv6('::1/128')]
+
+    acl = cisco.Cisco(policy.ParsePolicy(GOOD_MIXED_HEADER + GOOD_TERM_23,
+                                         self.naming), EXP_INFO)
+    output = str(acl)
+    self.assertIn('127.0.0.1', output, output)
+    self.assertNotIn('::1/128', output, output)
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
   def testDsmo(self):
@@ -891,4 +909,4 @@ class CiscoTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

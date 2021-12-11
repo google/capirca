@@ -33,6 +33,7 @@ The default format is _inet4_, and is implied if not other argument is given.
 ## Term Format
 * _action::_ The action to take when matched. See Actions section for valid options.
 * _address::_ One or more network address tokens, matches source or destination.
+* _restrict-address-family::_ Only include the term in the matching address family filter (eg. for mixed filters).
 * _comment::_ A text comment enclosed in double-quotes.  The comment can extend over multiple lines if desired, until a closing quote is encountered.
 * _counter::_ Update a counter for matching packets
 * _destination-address::_ One or more destination address tokens

@@ -1,0 +1,141 @@
+#
+# This is an example inet6 (i.e IPv6) policy for capirca
+# Target defaults to INGRESS is not specified in the header
+#
+header {
+  comment:: "this is a sample policy to generate GCE filter"
+  target:: gce global/networks/default inet6
+}
+
+term test-ssh-v6 {
+  comment:: "Allow SSH access from IPv6 server."
+  source-address:: PUBLIC_IPV6_SERVERS
+  protocol:: tcp
+  destination-port:: SSH
+  action:: accept
+}
+
+term test-ssh-v4 {
+  comment:: "This term should not be rendered since it is IPv4 only."
+  source-address:: PUBLIC_NAT
+  protocol:: tcp
+  destination-port:: SSH
+  action:: accept
+}
+
+term test-multiple-protocols {
+  comment:: "Allow high port access from a public IPv6 server."
+  source-address:: PUBLIC_IPV6_SERVERS
+  protocol:: tcp udp
+  destination-port:: HIGH_PORTS
+  action:: accept
+}
+
+term test-multiple-protocols-tcp-icmpv6 {
+  comment:: "Allow all tcp and icmpv6 from IPv6 Server."
+  source-address:: PUBLIC_IPV6_SERVERS
+  protocol:: tcp icmpv6
+  action:: accept
+}
+
+term test-multiple-protocols-tcp-icmp {
+  comment:: "Allow all tcp and icmp from IPv6 server. This should only render"
+  comment:: "tcp."
+  source-address:: PUBLIC_IPV6_SERVERS
+  protocol:: tcp icmp
+  action:: accept
+}
+
+term test-web {
+  comment:: "Allow HTTP/S to instances with webserver tag and any IPs."
+  source-tag:: webserver
+  source-address:: ANY_V6
+  protocol:: tcp
+  destination-port:: HTTP
+  destination-tag:: other-webserver
+  action:: accept
+}
+
+term test-web-tag-only {
+  comment:: "Allow HTTP/S to instances with webserver tag only."
+  source-tag:: webserver
+  protocol:: tcp
+  destination-port:: HTTP
+  destination-tag:: other-webserver
+  action:: accept
+}
+
+term test-web-tag-v4-only {
+  comment:: "Allow HTTP/S to instances with webserver tag. This should not"
+  comment:: "be rendered."
+  source-address:: ANY
+  source-tag:: webserver
+  protocol:: tcp
+  destination-port:: HTTP
+  destination-tag:: other-webserver
+  action:: accept
+}
+
+term test-icmp {
+  comment:: "Allow ICMP from company. This should not be rendered."
+  source-address:: PUBLIC_NAT
+  protocol:: icmp
+  action:: accept
+}
+
+term test-icmpv6 {
+  comment:: "Allow ICMPv6 from IPv6 server."
+  source-address:: PUBLIC_IPV6_SERVERS
+  protocol:: icmpv6
+  action:: accept
+}
+
+term test-igmp {
+  comment:: "Allow IGMP from IPv6 server. This should not be rendered."
+  source-address:: PUBLIC_IPV6_SERVERS
+  protocol:: igmp
+  action:: accept
+}
+
+term default-deny {
+  action:: deny
+}
+
+#
+# Sample EGRESS policy
+# If source-tag is included, it maps to targetTags in the GCP Egress rule
+#
+header {
+  comment:: "this is a sample policy to generate EGRESS GCE filter"
+  target:: gce EGRESS global/networks/default inet6
+}
+
+term test-egress-address {
+  comment:: "Outbound to IPv6 Server."
+  protocol:: tcp
+  destination-port:: SMTP
+  destination-address:: PUBLIC_IPV6_SERVERS
+  action:: accept
+}
+
+term test-egress-tag {
+  comment:: "Outbound to IPv6 Server."
+  protocol:: tcp
+  destination-port:: SSH
+  destination-address:: PUBLIC_IPV6_SERVERS
+  source-tag:: webserver
+  action:: accept
+}
+
+term test-egress-tag-v4-only {
+  comment:: "Outbound to RFC1918. This should not be rendered."
+  protocol:: tcp
+  destination-port:: SSH
+  destination-address:: RFC1918
+  source-tag:: webserver
+  action:: accept
+}
+
+term egress-default-deny {
+  action:: deny
+}

@@ -15,11 +15,6 @@
 
 """Cisco IOS-XR filter renderer."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 from capirca.lib import cisco
 
 
@@ -56,7 +51,7 @@ class CiscoXR(cisco.Cisco):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(CiscoXR, self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {'next_ip'}
 

@@ -16,10 +16,6 @@
 """SRX generator."""
 # pylint: disable=super-init-not-called
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import collections
 import copy
@@ -79,7 +75,7 @@ class IndentList(list):
 
   def __init__(self, indent, *args, **kwargs):
     self._indent = indent
-    super(IndentList, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
 
   def IndentAppend(self, size, data):
     self.append('%s%s' % (self._indent * size, data))
@@ -104,7 +100,7 @@ class Term(aclgenerator.Term):
              'dscp': 'dscp'}
 
   def __init__(self, term, from_zone, to_zone, expresspath=False, verbose=True):
-    super(Term, self).__init__(term)
+    super().__init__(term)
     self.term = term
     self.from_zone = from_zone
     self.to_zone = to_zone
@@ -306,7 +302,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     self.from_zone = ''
     self.to_zone = ''
     self.addr_book_type = set()
-    super(JuniperSRX, self).__init__(pol, exp_info)
+    super().__init__(pol, exp_info)
 
   def _BuildTokens(self):
     """Build supported tokens for platform.
@@ -314,8 +310,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(
-        JuniperSRX, self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {'dscp_except',
                          'dscp_match',
@@ -511,7 +506,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         if self._GLOBAL_ADDR_BOOK in self.addr_book_type:
           for zone in self.addressbook:
             for unused_name, ips in sorted(
-                six.iteritems(self.addressbook[zone])):
+                self.addressbook[zone].items()):
               ips = [i for i in ips]
               if term.source_address == ips:
                 term.source_address = ips
@@ -871,6 +866,12 @@ class JuniperSRX(aclgenerator.ACLGenerator):
         done_apps.append(app)
         if app_list:
           target.extend(app_list)
+
+
+    if len(done_apps) == 0:
+      target.clear()
+      target.append('delete: applications;')
+      return target
 
     target.extend(apps_set_list)
     target.append('}\n')

@@ -14,17 +14,12 @@
 
 """Unittest for ACL rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
-import unittest
+from absl.testing import absltest
+from unittest import mock
 
 from capirca.lib import aclgenerator
 from capirca.lib import naming
 from capirca.lib import policy
-import mock
 
 
 GOOD_HEADER_1 = """
@@ -92,10 +87,10 @@ class ACLMock(aclgenerator.ACLGenerator):
     pass
 
 
-class ACLGeneratorTest(unittest.TestCase):
+class ACLGeneratorTest(absltest.TestCase):
 
   def setUp(self):
-    super(ACLGeneratorTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testEstablishedNostate(self):
@@ -199,7 +194,11 @@ class ACLGeneratorTest(unittest.TestCase):
     self.assertListEqual(
         ['%sId:%s' % ('$', '$')],
         aclgenerator.AddRepositoryTags(date=False, revision=False))
+    # Wrap the Date: tag.
+    self.assertListEqual(
+        ['"%sDate:%s"' % ('$', '$')],
+        aclgenerator.AddRepositoryTags(revision=False, rid=False, wrap=True))
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

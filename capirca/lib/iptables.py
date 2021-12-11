@@ -15,11 +15,6 @@
 
 """Iptables generator."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 import re
 from string import Template  # pylint: disable=g-importing-member
@@ -85,7 +80,7 @@ class Term(aclgenerator.Term):
     Raises:
       UnsupportedFilterError: Filter is not supported.
     """
-    super(Term, self).__init__(term)
+    super().__init__(term)
     self._action_table = {
         'accept': '-j ACCEPT',
         'deny': '-j DROP',
@@ -646,7 +641,7 @@ class Iptables(aclgenerator.ACLGenerator):
 
   def __init__(self, pol, exp_info):
     self.iptables_policies = []
-    super(Iptables, self).__init__(pol, exp_info)
+    super().__init__(pol, exp_info)
 
   def _BuildTokens(self):
     """Build supported tokens for platform.
@@ -654,8 +649,7 @@ class Iptables(aclgenerator.ACLGenerator):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(
-        Iptables, self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {'counter',
                          'destination_interface',

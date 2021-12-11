@@ -14,22 +14,16 @@
 
 """Unittest for iptables rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 import re
-import unittest
+from absl.testing import absltest
+from unittest import mock
 
 from capirca.lib import aclgenerator
 from capirca.lib import iptables
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
-import mock
-from six.moves import range
 
 
 GOOD_HEADER_1 = """
@@ -568,15 +562,15 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class FakeTerm(object):
+class FakeTerm:
   name = ''
   protocol = ['tcp']
 
 
-class AclCheckTest(unittest.TestCase):
+class AclCheckTest(absltest.TestCase):
 
   def setUp(self):
-    super(AclCheckTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   @mock.patch.object(iptables.logging, 'warning')
@@ -1252,4 +1246,4 @@ class AclCheckTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

@@ -14,22 +14,16 @@
 #
 """Unittest for junipermsmpc acl rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 import re
-import unittest
+from absl.testing import absltest
+from unittest import mock
 
 from absl.testing import parameterized
 from capirca.lib import junipermsmpc
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
-import mock
-from six.moves import range
 
 GOOD_HEADER = """
 header {
@@ -252,6 +246,12 @@ term good-term-36 {
   action:: accept
 }
 """
+GOOD_TERM_NUMERIC_PROTOCOL = """
+term good-term-numeric {
+  protocol:: %s
+  action:: accept
+}
+"""
 GOOD_TERM_COMMENT = """
 term good-term-comment {
   comment:: "This is a COMMENT"
@@ -303,6 +303,49 @@ term good-term {
   destination-address:: SOME_OTHER_HOST
   action:: accept
 }
+"""
+
+MIXED_TESTING_TERM_ICMP = """
+term good-term-icmp {
+  protocol:: icmp
+  source-address:: SOME_HOST
+  destination-address:: SOME_OTHER_HOST
+  action:: accept
+}
+
+term good-term-icmp-2 {
+  protocol:: icmp
+  action:: accept
+}
+
+term good-term-icmpv6 {
+  protocol:: icmpv6
+  source-address:: SOME_HOST
+  destination-address:: SOME_OTHER_HOST
+  action:: accept
+}
+
+term good-term-icmpv6-2 {
+  protocol:: icmpv6
+  action:: accept
+}
+
+term good-term-both-icmp-and-icmpv6 {
+  protocol:: icmp
+  protocol:: icmpv6
+  source-address:: SOME_HOST
+  destination-address:: SOME_OTHER_HOST
+  action:: accept
+}
+
+term good-term-both-icmp-and-icmpv6-2 {
+  protocol:: icmp
+  protocol:: icmpv6
+  source-address:: SOME_HOST
+  destination-address:: SOME_OTHER_HOST
+  action:: accept
+}
+
 """
 LOGGING_TERM = """
 term good-term-1 {
@@ -394,7 +437,7 @@ EXP_INFO = 2
 class JuniperMSMPCTest(parameterized.TestCase):
 
   def setUp(self):
-    super(JuniperMSMPCTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testTermAndFilterName(self):
@@ -906,48 +949,61 @@ class JuniperMSMPCTest(parameterized.TestCase):
     self.assertEqual('[ 99 101-199 ];', msmpc._Group([99, (101, 199)]))
 
   @parameterized.named_parameters(
-      ('MIXED_TO_V4',
-       [[nacaddr.IPv4('0.0.0.0/1'),
-         nacaddr.IPv6('2001::/33')], [nacaddr.IPv4('192.168.0.0/24')]], [
-             '                    term good-term-inet {\n' +
-             '                        from {\n' +
-             '                            source-address {\n' +
-             '                                0.0.0.0/1;\n' +
-             '                            }\n' +
-             '                            destination-address {\n' +
-             '                                192.168.0.0/24;\n' +
-             '                            }'
-         ], ['2001::/33']),
-      ('V4_TO_MIXED', [
-          [nacaddr.IPv4('192.168.0.0/24')],
-          [nacaddr.IPv4('0.0.0.0/1'),
-           nacaddr.IPv6('2001::/33')],
-      ], [
-          '                    term good-term-inet {\n' +
-          '                        from {\n' +
-          '                            source-address {\n' +
-          '                                192.168.0.0/24;\n' +
-          '                            }\n' +
-          '                            destination-address {\n' +
-          '                                0.0.0.0/1;\n' +
-          '                            }'
-      ], ['2001::/33']),
-      ('MIXED_TO_V6',
-       [[nacaddr.IPv4('0.0.0.0/1'),
-         nacaddr.IPv6('2001::/33')], [nacaddr.IPv6('2201::/48')]], [
-             '                    term good-term-inet6 {\n' +
-             '                        from {\n' +
-             '                            source-address {\n' +
-             '                                2001::/33;\n' +
-             '                            }\n' +
-             '                            destination-address {\n' +
-             '                                2201::/48;\n' +
-             '                            }'
-         ], ['0.0.0.0/1']),
-      ('V6_TO_MIXED', [[
-          nacaddr.IPv6('2201::/48')
-      ], [nacaddr.IPv4('0.0.0.0/1'),
-          nacaddr.IPv6('2001::/33')]], [
+      dict(
+          testcase_name='MIXED_TO_V4',
+          addresses=[[nacaddr.IPv4('0.0.0.0/1'),
+                      nacaddr.IPv6('2001::/33')],
+                     [nacaddr.IPv4('192.168.0.0/24')]],
+          expected=[
+              '                    term good-term-inet {\n' +
+              '                        from {\n' +
+              '                            source-address {\n' +
+              '                                0.0.0.0/1;\n' +
+              '                            }\n' +
+              '                            destination-address {\n' +
+              '                                192.168.0.0/24;\n' +
+              '                            }'
+          ],
+          notexpected=['2001::/33']),
+      dict(
+          testcase_name='V4_TO_MIXED',
+          addresses=[
+              [nacaddr.IPv4('192.168.0.0/24')],
+              [nacaddr.IPv4('0.0.0.0/1'),
+               nacaddr.IPv6('2001::/33')],
+          ],
+          expected=[
+              '                    term good-term-inet {\n' +
+              '                        from {\n' +
+              '                            source-address {\n' +
+              '                                192.168.0.0/24;\n' +
+              '                            }\n' +
+              '                            destination-address {\n' +
+              '                                0.0.0.0/1;\n' +
+              '                            }'
+          ],
+          notexpected=['2001::/33']),
+      dict(
+          testcase_name='MIXED_TO_V6',
+          addresses=[[nacaddr.IPv4('0.0.0.0/1'),
+                      nacaddr.IPv6('2001::/33')], [nacaddr.IPv6('2201::/48')]],
+          expected=[
+              '                    term good-term-inet6 {\n' +
+              '                        from {\n' +
+              '                            source-address {\n' +
+              '                                2001::/33;\n' +
+              '                            }\n' +
+              '                            destination-address {\n' +
+              '                                2201::/48;\n' +
+              '                            }'
+          ],
+          notexpected=['0.0.0.0/1']),
+      dict(
+          testcase_name='V6_TO_MIXED',
+          addresses=[[nacaddr.IPv6('2201::/48')],
+                     [nacaddr.IPv4('0.0.0.0/1'),
+                      nacaddr.IPv6('2001::/33')]],
+          expected=[
               '                    term good-term-inet6 {\n' +
               '                        from {\n' +
               '                            source-address {\n' +
@@ -956,12 +1012,17 @@ class JuniperMSMPCTest(parameterized.TestCase):
               '                            destination-address {\n' +
               '                                2001::/33;\n' +
               '                            }'
-          ], ['0.0.0.0/1']),
-      ('MIXED_TO_MIXED', [[
-          nacaddr.IPv4('0.0.0.0/1'),
-          nacaddr.IPv6('2001::/33')
-      ], [nacaddr.IPv4('192.168.0.0/24'),
-          nacaddr.IPv6('2201::/48')]], [
+          ],
+          notexpected=['0.0.0.0/1']),
+      dict(
+          testcase_name='MIXED_TO_MIXED',
+          addresses=[[nacaddr.IPv4('0.0.0.0/1'),
+                      nacaddr.IPv6('2001::/33')],
+                     [
+                         nacaddr.IPv4('192.168.0.0/24'),
+                         nacaddr.IPv6('2201::/48')
+                     ]],
+          expected=[
               '                    term good-term-inet {\n' +
               '                        from {\n' +
               '                            source-address {\n' +
@@ -978,46 +1039,67 @@ class JuniperMSMPCTest(parameterized.TestCase):
               '                            destination-address {\n' +
               '                                2201::/48;\n' +
               '                            }'
-          ], []),
-      ('V4_TO_V4', [[nacaddr.IPv4('0.0.0.0/1')],
-                    [nacaddr.IPv4('192.168.0.0/24')]], [
-                        '                    term good-term {\n' +
-                        '                        from {\n' +
-                        '                            source-address {\n' +
-                        '                                0.0.0.0/1;\n' +
-                        '                            }\n' +
-                        '                            destination-address {\n' +
-                        '                                192.168.0.0/24;\n' +
-                        '                            }'
-                    ], []),
-      ('V6_TO_V6', [[nacaddr.IPv6('2001::/33')], [nacaddr.IPv6('2201::/48')]], [
-          '                    term good-term {\n' +
-          '                        from {\n' +
-          '                            source-address {\n' +
-          '                                2001::/33;\n' +
-          '                            }\n' +
-          '                            destination-address {\n' +
-          '                                2201::/48;\n' +
-          '                            }'
-      ], []),
-      (
-          'V4_TO_V6',
-          [[nacaddr.IPv4('0.0.0.0/1')], [nacaddr.IPv6('2201::/48')]],
-          [],
-          ['0.0.0.0/1', '192.168.0.0/24', '2001::/33', '2201::/48'],
+          ],
+          notexpected=[]),
+      dict(
+          testcase_name='V4_TO_V4',
+          addresses=[[nacaddr.IPv4('0.0.0.0/1')],
+                     [nacaddr.IPv4('192.168.0.0/24')]],
+          expected=[
+              '                    term good-term {\n' +
+              '                        from {\n' +
+              '                            source-address {\n' +
+              '                                0.0.0.0/1;\n' +
+              '                            }\n' +
+              '                            destination-address {\n' +
+              '                                192.168.0.0/24;\n' +
+              '                            }'
+          ],
+          notexpected=[]),
+      dict(
+          testcase_name='V6_TO_V6',
+          addresses=[[nacaddr.IPv6('2001::/33')], [nacaddr.IPv6('2201::/48')]],
+          expected=[
+              '                    term good-term {\n' +
+              '                        from {\n' +
+              '                            source-address {\n' +
+              '                                2001::/33;\n' +
+              '                            }\n' +
+              '                            destination-address {\n' +
+              '                                2201::/48;\n' +
+              '                            }'
+          ],
+          notexpected=[]),
+      dict(
+          testcase_name='V4_TO_V6',
+          addresses=[[nacaddr.IPv4('0.0.0.0/1')], [nacaddr.IPv6('2201::/48')]],
+          expected=[],
+          notexpected=['0.0.0.0/1', '192.168.0.0/24', '2001::/33', '2201::/48'],
       ),
-      (
-          'V6_TO_V4',
-          [[nacaddr.IPv6('2001::/33')], [nacaddr.IPv4('192.168.0.0/24')]],
-          [],
-          ['0.0.0.0/1', '192.168.0.0/24', '2001::/33', '2201::/48'],
+      dict(
+          testcase_name='V6_TO_V4',
+          addresses=[[nacaddr.IPv6('2001::/33')],
+                     [nacaddr.IPv4('192.168.0.0/24')]],
+          expected=[],
+          notexpected=['0.0.0.0/1', '192.168.0.0/24', '2001::/33', '2201::/48'],
+      ),
+      dict(
+          testcase_name='PARTLY_UNSPECIFIED',
+          addresses=[[nacaddr.IPv6('2001::/33')],
+                     [nacaddr.IPv4('192.168.0.0/24')]],
+          expected=['term good_term_25 '],
+          notexpected=[
+              '0.0.0.0/1', '192.168.0.0/24', '2001::/33', '2201::/48',
+              'term good-term-both-icmp-and-icmpv6-'
+          ],
       ),
   )
   def testMixed(self, addresses, expected, notexpected):
     self.naming.GetNetAddr.side_effect = addresses
     self.naming.GetServiceByProto.return_value = ['25']
     msmpc = junipermsmpc.JuniperMSMPC(
-        policy.ParsePolicy(GOOD_HEADER_MIXED + MIXED_TESTING_TERM, self.naming),
+        policy.ParsePolicy(
+            GOOD_HEADER_MIXED + MIXED_TESTING_TERM + GOOD_TERM_25, self.naming),
         EXP_INFO)
     output = str(msmpc)
     for expect in expected:
@@ -1026,12 +1108,429 @@ class JuniperMSMPCTest(parameterized.TestCase):
       self.assertNotIn(notexpect, output, output)
 
   @parameterized.named_parameters(
-      ('true', 'true', True),
-      ('True', 'True', True),
-      ('syslog', 'syslog', True),
-      ('local', 'local', True),
-      ('disable', 'disable', False),
-      ('log-both', 'log-both', True),
+      dict(
+          testcase_name='MIXED_TO_V4',
+          addresses=[[nacaddr.IPv4('0.0.0.0/1'),
+                      nacaddr.IPv6('2001::/33')],
+                     [nacaddr.IPv4('192.168.0.0/24')]],
+          expected=[
+              '                    term good-term-icmp-inet {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                0.0.0.0/1;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                192.168.0.0/24;\n'
+              '                            }\n'
+              '                            application-sets test-filtergood-term-icmp-app;\n'
+              '                        }',
+              '                    term good-term-icmp-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmp-app;\n'
+              '                        }',
+              '                    term good-term-icmpv6-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-both-icmp-and-icmpv6-inet {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                0.0.0.0/1;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                192.168.0.0/24;\n'
+              '                            }\n'
+              '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-both-icmp-and-icmpv6-2-inet {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                0.0.0.0/1;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                192.168.0.0/24;\n'
+              '                            }\n'
+              '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+              '                        }',
+          ],
+          notexpected=['2001::/33']),
+      dict(
+          testcase_name='V4_TO_MIXED',
+          addresses=[
+              [nacaddr.IPv4('192.168.0.0/24')],
+              [nacaddr.IPv4('0.0.0.0/1'),
+               nacaddr.IPv6('2001::/33')],
+          ],
+          expected=[
+              '                    term good-term-icmp-inet {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                192.168.0.0/24;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                0.0.0.0/1;\n'
+              '                            }\n'
+              '                            application-sets test-filtergood-term-icmp-app;\n'
+              '                        }',
+              '                    term good-term-icmp-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmp-app;\n'
+              '                        }',
+              '                    term good-term-icmpv6-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-both-icmp-and-icmpv6-inet {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                192.168.0.0/24;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                0.0.0.0/1;\n'
+              '                            }\n'
+              '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-both-icmp-and-icmpv6-2-inet {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                192.168.0.0/24;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                0.0.0.0/1;\n'
+              '                            }\n'
+              '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+              '                        }',
+          ],
+          notexpected=['2001::/33']),
+      dict(
+          testcase_name='MIXED_TO_V6',
+          addresses=[[nacaddr.IPv4('0.0.0.0/1'),
+                      nacaddr.IPv6('2001::/33')], [nacaddr.IPv6('2201::/48')]],
+          expected=[
+              '                    term good-term-icmp-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmp-app;\n'
+              '                        }',
+              '                    term good-term-icmpv6-inet6 {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                2001::/33;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                2201::/48;\n'
+              '                            }\n'
+              '                            application-sets test-filtergood-term-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-icmpv6-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-both-icmp-and-icmpv6-inet6 {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                2001::/33;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                2201::/48;\n'
+              '                            }\n'
+              '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-both-icmp-and-icmpv6-2-inet6 {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                2001::/33;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                2201::/48;\n'
+              '                            }\n'
+              '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+              '                        }',
+          ],
+          notexpected=['0.0.0.0/1']),
+      dict(
+          testcase_name='V6_TO_MIXED',
+          addresses=[[nacaddr.IPv6('2201::/48')],
+                     [nacaddr.IPv4('0.0.0.0/1'),
+                      nacaddr.IPv6('2001::/33')]],
+          expected=[
+              '                    term good-term-icmp-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmp-app;\n'
+              '                        }',
+              '                    term good-term-icmpv6-inet6 {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                2201::/48;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                2001::/33;\n'
+              '                            }\n'
+              '                            application-sets test-filtergood-term-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-icmpv6-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-both-icmp-and-icmpv6-inet6 {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                2201::/48;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                2001::/33;\n'
+              '                            }\n'
+              '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-both-icmp-and-icmpv6-2-inet6 {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                2201::/48;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                2001::/33;\n'
+              '                            }\n'
+              '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+              '                        }',
+          ],
+          notexpected=['0.0.0.0/1']),
+      dict(
+          testcase_name='MIXED_TO_MIXED',
+          addresses=[[nacaddr.IPv4('0.0.0.0/1'),
+                      nacaddr.IPv6('2001::/33')],
+                     [
+                         nacaddr.IPv4('192.168.0.0/24'),
+                         nacaddr.IPv6('2201::/48')
+                     ]],
+          expected=[
+              '                    term good-term-icmp-inet {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                0.0.0.0/1;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                192.168.0.0/24;\n'
+              '                            }\n'
+              '                            application-sets test-filtergood-term-icmp-app;\n'
+              '                        }',
+              '                    term good-term-icmp-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmp-app;\n'
+              '                        }',
+              '                    term good-term-icmpv6-inet6 {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                2001::/33;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                2201::/48;\n'
+              '                            }\n'
+              '                            application-sets test-filtergood-term-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-icmpv6-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-both-icmp-and-icmpv6-inet {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                0.0.0.0/1;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                192.168.0.0/24;\n'
+              '                            }\n'
+              '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-both-icmp-and-icmpv6-inet6 {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                2001::/33;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                2201::/48;\n'
+              '                            }\n'
+              '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-both-icmp-and-icmpv6-2-inet {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                0.0.0.0/1;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                192.168.0.0/24;\n'
+              '                            }\n'
+              '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-both-icmp-and-icmpv6-2-inet6 {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                2001::/33;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                2201::/48;\n'
+              '                            }\n'
+              '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+              '                        }',
+          ],
+          notexpected=[]),
+      dict(
+          testcase_name='V4_TO_V4',
+          addresses=[[nacaddr.IPv4('0.0.0.0/1')],
+                     [nacaddr.IPv4('192.168.0.0/24')]],
+          expected=[
+              '                    term good-term-icmp {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                0.0.0.0/1;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                192.168.0.0/24;\n'
+              '                            }\n'
+              '                            application-sets test-filtergood-term-icmp-app;\n'
+              '                        }',
+              '                    term good-term-icmp-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmp-app;\n'
+              '                        }',
+              '                    term good-term-icmpv6-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-both-icmp-and-icmpv6 {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                0.0.0.0/1;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                192.168.0.0/24;\n'
+              '                            }\n'
+              '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-both-icmp-and-icmpv6-2 {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                0.0.0.0/1;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                192.168.0.0/24;\n'
+              '                            }\n'
+              '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+              '                        }',
+          ],
+          notexpected=[]),
+      dict(
+          testcase_name='V6_TO_V6',
+          addresses=[[nacaddr.IPv6('2001::/33')], [nacaddr.IPv6('2201::/48')]],
+          expected=[
+              '                    term good-term-icmp-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmp-app;\n'
+              '                        }',
+              '                    term good-term-icmpv6 {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                2001::/33;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                2201::/48;\n'
+              '                            }\n'
+              '                            application-sets test-filtergood-term-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-icmpv6-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-both-icmp-and-icmpv6 {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                2001::/33;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                2201::/48;\n'
+              '                            }\n'
+              '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+              '                        }',
+              '                    term good-term-both-icmp-and-icmpv6-2 {\n'
+              '                        from {\n'
+              '                            source-address {\n'
+              '                                2001::/33;\n'
+              '                            }\n'
+              '                            destination-address {\n'
+              '                                2201::/48;\n'
+              '                            }\n'
+              '                            application-sets test-filterd-term-both-icmp-and-icmpv6-app;\n'
+              '                        }',
+          ],
+          notexpected=[]),
+      dict(
+          testcase_name='V4_TO_V6',
+          addresses=[[nacaddr.IPv4('0.0.0.0/1')], [nacaddr.IPv6('2201::/48')]],
+          expected=[
+              '                    term good-term-icmp-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmp-app;\n'
+              '                        }',
+              '                    term good-term-icmpv6-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmpv6-app;\n'
+              '                        }',
+          ],
+          notexpected=['0.0.0.0/1', '192.168.0.0/24', '2001::/33', '2201::/48'],
+      ),
+      dict(
+          testcase_name='V6_TO_V4',
+          addresses=[[nacaddr.IPv6('2001::/33')],
+                     [nacaddr.IPv4('192.168.0.0/24')]],
+          expected=[
+              '                    term good-term-icmp-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmp-app;\n'
+              '                        }',
+              '                    term good-term-icmpv6-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmpv6-app;\n'
+              '                        }',
+          ],
+          notexpected=['0.0.0.0/1', '192.168.0.0/24', '2001::/33', '2201::/48'],
+      ),
+      dict(
+          testcase_name='PARTLY_UNSPECIFIED',
+          addresses=[[nacaddr.IPv6('2001::/33')],
+                     [nacaddr.IPv4('192.168.0.0/24')]],
+          expected=[
+              '                    term good-term-icmp-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmp-app;\n'
+              '                        }',
+              '                    term good-term-icmpv6-2 {\n'
+              '                        from {\n'
+              '                            application-sets test-filtergood-term-icmpv6-app;\n'
+              '                        }',
+          ],
+          notexpected=[
+              '0.0.0.0/1', '192.168.0.0/24', '2001::/33', '2201::/48',
+              'term good-term-icmp-i', 'term good-term-icmpv6-i',
+              'term good-term-both-icmp-and-icmpv6-'
+          ],
+      ),
+  )
+  def testMixedICMP(self, addresses, expected, notexpected):
+    self.naming.GetNetAddr.side_effect = addresses * 4
+    msmpc = junipermsmpc.JuniperMSMPC(
+        policy.ParsePolicy(GOOD_HEADER_MIXED + MIXED_TESTING_TERM_ICMP,
+                           self.naming), EXP_INFO)
+    output = str(msmpc)
+    for expect in expected:
+      self.assertIn(expect, output, output)
+    for notexpect in notexpected:
+      self.assertNotIn(notexpect, output, output)
+
+  @parameterized.named_parameters(
+      dict(testcase_name='true', option='true', want_logging=True),
+      dict(testcase_name='True', option='True', want_logging=True),
+      dict(testcase_name='syslog', option='syslog', want_logging=True),
+      dict(testcase_name='local', option='local', want_logging=True),
+      dict(testcase_name='disable', option='disable', want_logging=False),
+      dict(testcase_name='log-both', option='log-both', want_logging=True),
   )
   def testLogging(self, option, want_logging):
     self.naming.GetNetAddr.return_value = [nacaddr.IPv4('192.168.0.0/24')]
@@ -1047,7 +1546,7 @@ class JuniperMSMPCTest(parameterized.TestCase):
         'test-filtergood-term-1-app;\n' + '                        }\n' +
         '                        then {\n' +
         '                            accept;\n' +
-        '                            syslog;\n' +
+        ('                            syslog;\n' if want_logging else '') +
         '                        }\n' + '                    }\n' +
         '                }\n' + '            }\n' + '        }\n' +
         '        applications {\n' +
@@ -1061,14 +1560,19 @@ class JuniperMSMPCTest(parameterized.TestCase):
         policy.ParsePolicy(GOOD_HEADER_MIXED_IMPLICIT + (LOGGING_TERM % option),
                            self.naming), EXP_INFO)
     output = str(msmpc)
-    if want_logging:
-      self.assertIn(expected_output, output, output)
-    else:
-      self.assertNotIn(expected_output, output, output)
+    self.assertIn(expected_output, output, output)
 
-  @parameterized.named_parameters(('default', GOOD_HEADER, 'input-output'),
-                                  ('ingress', GOOD_HEADER_INGRESS, 'input'),
-                                  ('egress', GOOD_HEADER_EGRESS, 'output'))
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='default', header=GOOD_HEADER,
+          direction='input-output'),
+      dict(
+          testcase_name='ingress',
+          header=GOOD_HEADER_INGRESS,
+          direction='input'),
+      dict(
+          testcase_name='egress', header=GOOD_HEADER_EGRESS,
+          direction='output'))
   def testDirection(self, header, direction):
     msmpc = junipermsmpc.JuniperMSMPC(
         policy.ParsePolicy(header + GOOD_TERM_3, self.naming), EXP_INFO)
@@ -1146,6 +1650,28 @@ class JuniperMSMPCTest(parameterized.TestCase):
     self.assertIn(expectedv4, output, output)
     self.assertIn(expectedv6, output, output)
 
+  @parameterized.named_parameters(
+      dict(testcase_name='tcp', protoname='tcp', protonum='tcp'),
+      dict(testcase_name='hopopt', protoname='hopopt', protonum='0'),
+      dict(testcase_name='vrrp', protoname='vrrp', protonum='112'),
+  )
+  def testProtocolAsNumber(self, protoname, protonum):
+    expected = ('            application test-filtergood-term-numeric-app1 {\n'
+                + '                protocol %s;') % protonum
+
+    msmpc = junipermsmpc.JuniperMSMPC(
+        policy.ParsePolicy(
+            GOOD_HEADER_MIXED + GOOD_TERM_NUMERIC_PROTOCOL % protoname,
+            self.naming), EXP_INFO)
+    output = str(msmpc)
+    self.assertIn(expected, output, output)
+
+  def testSupportedNamedProtocols(self):
+    supported_as_names = junipermsmpc.Term._SUPPORTED_PROTOCOL_NAMES
+    all_supported_protocols = junipermsmpc.Term.PROTO_MAP.keys()
+    for want in supported_as_names:
+      self.assertIn(want, all_supported_protocols)
+
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

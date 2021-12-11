@@ -13,18 +13,13 @@
 # limitations under the License.
 """Unittest for Cisco XR acl rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
-import unittest
+from absl.testing import absltest
+from unittest import mock
 
 from capirca.lib import ciscoxr
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
-import mock
 
 
 GOOD_HEADER_1 = """
@@ -125,6 +120,7 @@ SUPPORTED_TOKENS = {
     'platform',
     'platform_exclude',
     'protocol',
+    'restrict_address_family',
     'source_address',
     'source_address_exclude',
     'source_port',
@@ -188,10 +184,10 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class CiscoXRTest(unittest.TestCase):
+class CiscoXRTest(absltest.TestCase):
 
   def setUp(self):
-    super(CiscoXRTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testRemark(self):
@@ -334,4 +330,4 @@ class CiscoXRTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

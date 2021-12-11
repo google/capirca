@@ -1,0 +1,111 @@
+header {
+  comment:: "This is sample IPv6 policy for GCP HF"
+  target:: gcp_hf testhf INGRESS inet6 ga 200
+}
+
+term folder-ssh-v6 {
+  comment:: "Allow SSH into folder-test"
+  source-address:: PUBLIC_IPV6_SERVERS
+  protocol:: tcp
+  destination-port:: SSH
+  action:: next
+}
+
+term test-folder-ssh-v4 {
+  comment:: "This term should not be rendered since it is IPv4 only."
+  source-address:: PUBLIC_NAT
+  protocol:: tcp
+  destination-port:: SSH
+  action:: next
+}
+
+term folder-rdp {
+  comment:: "Allow RDP to targetResources. Making long comment to show truncation."
+  source-address:: PUBLIC_IPV6_SERVERS
+  protocol:: tcp
+  destination-port:: RDP
+  target-resources:: (proj-1,vpc1)
+  action:: next
+}
+
+term test-multiple-protocols {
+  comment:: "Allow high port access from a public IPv6 server."
+  source-address:: PUBLIC_IPV6_SERVERS
+  protocol:: tcp udp
+  destination-port:: HIGH_PORTS
+  action:: accept
+}
+
+term test-multiple-protocols-tcp-icmpv6 {
+  comment:: "Allow all tcp and icmpv6 from IPv6 Server."
+  source-address:: PUBLIC_IPV6_SERVERS
+  protocol:: tcp icmpv6
+  action:: accept
+}
+
+term test-multiple-protocols-tcp-icmp {
+  comment:: "Allow all tcp and icmp from IPv6 server. This should only render"
+  comment:: "tcp."
+  source-address:: PUBLIC_IPV6_SERVERS
+  protocol:: tcp icmp
+  action:: accept
+}
+
+term test-icmp {
+  comment:: "Allow ICMP from company. This should not be rendered."
+  source-address:: PUBLIC_NAT
+  protocol:: icmp
+  action:: accept
+}
+
+term test-icmpv6 {
+  comment:: "Allow ICMPv6 from IPv6 server."
+  source-address:: PUBLIC_IPV6_SERVERS
+  protocol:: icmpv6
+  action:: accept
+}
+
+term test-igmp {
+  comment:: "Allow IGMP from IPv6 server. This should not be rendered."
+  source-address:: PUBLIC_IPV6_SERVERS
+  protocol:: igmp
+  action:: accept
+}
+
+term default-deny {
+  action:: deny
+}
+
+header {
+  comment:: "This is sample IPv6 policy for GCP HF"
+  target:: gcp_hf testhf EGRESS inet6 ga 200
+}
+
+term folder-smtp{
+  comment:: "Outbound SMTP to IPv6 Server."
+  protocol:: tcp
+  destination-port:: SMTP
+  destination-address:: PUBLIC_IPV6_SERVERS
+  action:: next
+}
+
+term folder-ssh-nat{
+  comment:: "Outbound to IPv6 Server."
+  protocol:: tcp
+  destination-port:: SSH
+  destination-address:: PUBLIC_IPV6_SERVERS
+  target-resources:: (proj-2,vpc2)
+  action:: next
+}
+
+term test-egress-address-v4-only {
+  comment:: "Outbound to RFC1918. This should not be rendered."
+  protocol:: tcp
+  destination-port:: SSH
+  destination-address:: RFC1918
+  action:: accept
+}
+
+term egress-default-deny {
+  action:: deny
+}

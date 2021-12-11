@@ -16,11 +16,6 @@
 """Parses the generic policy files and return a policy object for acl rendering.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 import os
 import sys
@@ -30,8 +25,6 @@ from capirca.lib import nacaddr
 from capirca.lib import naming
 from ply import lex
 from ply import yacc
-from six.moves import map
-from six.moves import range
 
 
 DEFINITIONS = None
@@ -166,7 +159,7 @@ def TranslatePorts(ports, protocols, term_name):
 
 
 # classes for storing the object types in the policy files.
-class Policy(object):
+class Policy:
   """The policy object contains everything found in a given policy file."""
 
   def __init__(self, header, terms):
@@ -302,7 +295,7 @@ class Policy(object):
     return self.__str__()
 
 
-class Term(object):
+class Term:
   """The Term object is used to store each of the terms.
 
   Args:
@@ -313,6 +306,7 @@ class Term(object):
       VarType.(S|D)?ADDRESS's
     address_exclude/source_address_exclude/destination_address_exclude: list of
       VarType.(S|D)?ADDEXCLUDE's
+    restrict-address-family: VarType.RESTRICT_ADDRESS_FAMILY
     port/source_port/destination_port: list of VarType.(S|D)?PORT's
     options: list of VarType.OPTION's.
     protocol: list of VarType.PROTOCOL's.
@@ -410,6 +404,7 @@ class Term(object):
     self.action = []
     self.address = []
     self.address_exclude = []
+    self.restrict_address_family = None
     self.comment = []
     self.counter = None
     self.expiration = None
@@ -1129,7 +1124,9 @@ class Term(object):
                   type(x), x.value))
     else:
       # stupid no switch statement in python
-      if obj.var_type is VarType.COMMENT:
+      if obj.var_type is VarType.RESTRICT_ADDRESS_FAMILY:
+        self.restrict_address_family = obj.value
+      elif obj.var_type is VarType.COMMENT:
         self.comment.append(str(obj))
       elif obj.var_type is VarType.OWNER:
         self.owner = obj.value
@@ -1449,7 +1446,7 @@ class Term(object):
     return True
 
 
-class VarType(object):
+class VarType:
   """Generic object meant to store lots of basic policy types."""
 
   COMMENT = 0
@@ -1514,6 +1511,8 @@ class VarType(object):
   TARGET_SERVICE_ACCOUNTS = 60
   ENCAPSULATE = 61
   FILTER_TERM = 62
+  RESTRICT_ADDRESS_FAMILY = 63
+
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1538,7 +1537,7 @@ class VarType(object):
     return id(self)
 
 
-class Header(object):
+class Header:
   """The header of the policy file contains the targets and a global comment."""
 
   def __init__(self):
@@ -1646,7 +1645,7 @@ class Header(object):
 # b/c we're almost certainly going to have to do something more exotic with
 # it shortly to account for various rendering options like default iptables
 # policies or output file names, etc. etc.
-class Target(object):
+class Target:
   """The type of acl to be rendered from this policy file."""
 
   def __init__(self, target):
@@ -1671,6 +1670,7 @@ tokens = (
     'ACTION',
     'ADDR',
     'ADDREXCLUDE',
+    'RESTRICT_ADDRESS_FAMILY',
     'COMMENT',
     'COUNTER',
     'DADDR',
@@ -1757,6 +1757,7 @@ reserved = {
     'action': 'ACTION',
     'address': 'ADDR',
     'address-exclude': 'ADDREXCLUDE',
+    'restrict-address-family': 'RESTRICT_ADDRESS_FAMILY',
     'comment': 'COMMENT',
     'counter': 'COUNTER',
     'destination-address': 'DADDR',
@@ -1944,6 +1945,7 @@ def p_terms(p):
 def p_term_spec(p):
   """ term_spec : term_spec action_spec
                 | term_spec addr_spec
+                | term_spec restrict_address_family_spec
                 | term_spec comment_spec
                 | term_spec counter_spec
                 | term_spec traffic_class_count_spec
@@ -1997,6 +1999,9 @@ def p_term_spec(p):
     else:
       p[0] = Term(p[2])
 
+def p_restrict_address_family_spec(p):
+  """ restrict_address_family_spec : RESTRICT_ADDRESS_FAMILY ':' ':' STRING """
+  p[0] = VarType(VarType.RESTRICT_ADDRESS_FAMILY, p[4])
 
 def p_routinginstance_spec(p):
   """ routinginstance_spec : ROUTING_INSTANCE ':' ':' STRING """

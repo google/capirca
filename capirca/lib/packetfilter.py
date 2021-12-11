@@ -15,11 +15,6 @@
 
 """PacketFilter (PF) generator."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import collections
 import copy
 import datetime
@@ -107,7 +102,7 @@ class Term(aclgenerator.Term):
     Raises:
       aclgenerator.UnsupportedFilterError: Filter is not supported.
     """
-    super(Term, self).__init__(term)
+    super().__init__(term)
     self.term = term  # term object
     self.filter = filter_name  # actual name of filter
     self.options = []
@@ -396,8 +391,7 @@ class PacketFilter(aclgenerator.ACLGenerator):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(
-        PacketFilter, self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {'logging'}
     supported_sub_tokens.update({

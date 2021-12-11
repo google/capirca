@@ -12,22 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
-import unittest
+from absl.testing import absltest
 
 from absl import logging
 from capirca.lib import policy_simple
-from six.moves import range
 
 
-class FieldTest(unittest.TestCase):
+class FieldTest(absltest.TestCase):
 
   def setUp(self):
-    super(FieldTest, self).setUp()
+    super().setUp()
     logging.debug('======> %s <======', self.id())
 
   def testAppendAppends(self):
@@ -109,10 +104,10 @@ class FieldTest(unittest.TestCase):
     self.assertEqual(expected_str, str(f))
 
 
-class BlockTest(unittest.TestCase):
+class BlockTest(absltest.TestCase):
 
   def setUp(self):
-    super(BlockTest, self).setUp()
+    super().setUp()
     logging.debug('======> %s <======', self.id())
 
   def testRejectsNonField(self):
@@ -143,10 +138,10 @@ class BlockTest(unittest.TestCase):
     self.assertEqual([a, b, c], list(block))
 
 
-class PolicyTest(unittest.TestCase):
+class PolicyTest(absltest.TestCase):
 
   def setUp(self):
-    super(PolicyTest, self).setUp()
+    super().setUp()
     logging.debug('======> %s <======', self.id())
 
   def testAddMember(self):
@@ -176,10 +171,10 @@ class PolicyTest(unittest.TestCase):
     self.assertEqual([a, b, c], list(pol))
 
 
-class PolicyParserTest(unittest.TestCase):
+class PolicyParserTest(absltest.TestCase):
 
   def setUp(self):
-    super(PolicyParserTest, self).setUp()
+    super().setUp()
     logging.debug('======> %s <======', self.id())
 
   def Parser(self, data):
@@ -232,4 +227,4 @@ class PolicyParserTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

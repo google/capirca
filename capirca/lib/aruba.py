@@ -15,11 +15,6 @@
 
 """Aruba generator."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 import logging
 
@@ -71,7 +66,7 @@ class Term(aclgenerator.Term):
   }
 
   def __init__(self, term, filter_type, verbose=True):
-    super(Term, self).__init__(term)
+    super().__init__(term)
     self.term = term
     self.filter_type = filter_type
     self.netdestinations = []
@@ -255,7 +250,7 @@ class Aruba(aclgenerator.ACLGenerator):
     Returns:
       Tuple containing both supported tokens and sub tokens.
     """
-    supported_tokens, supported_sub_tokens = super(Aruba, self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens -= {
         'destination_address_exclude',

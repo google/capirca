@@ -13,19 +13,14 @@
 # limitations under the License.
 """Unittest for windows_ipsec rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
-import unittest
+from absl.testing import absltest
+from unittest import mock
 
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
 from capirca.lib import windows_ipsec
-import mock
 
 
 GOOD_HEADER = """
@@ -121,17 +116,17 @@ SUPPORTED_SUB_TOKENS = {'action': {'accept', 'deny'}}
 EXP_INFO = 2
 
 
-class WindowsIPSecTest(unittest.TestCase):
+class WindowsIPSecTest(absltest.TestCase):
 
   def setUp(self):
-    super(WindowsIPSecTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   # pylint: disable=invalid-name
   def assertTrue(self, strings, result, term):
     for string in strings:
       fullstring = 'netsh ipsec static add %s' % (string)
-      super(WindowsIPSecTest, self).assertIn(
+      super().assertIn(
           fullstring, result,
           'did not find "%s" for %s' % (fullstring, term))
 
@@ -241,4 +236,4 @@ class WindowsIPSecTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

@@ -14,11 +14,6 @@
 
 """Generic Windows security policy generator; requires subclassing."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import datetime
 import string
 
@@ -52,7 +47,7 @@ class Term(aclgenerator.Term):
     Raises:
       UnsupportedFilterError: Filter is not supported.
     """
-    super(Term, self).__init__(term)
+    super().__init__(term)
     self.term = term  # term object
     self.filter = filter_name  # actual name of filter
     self.default_action = filter_action
@@ -235,8 +230,7 @@ class WindowsGenerator(aclgenerator.ACLGenerator):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
-    supported_tokens, supported_sub_tokens = super(
-        WindowsGenerator, self)._BuildTokens()
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {'option'}
     supported_tokens -= {'verbatim'}

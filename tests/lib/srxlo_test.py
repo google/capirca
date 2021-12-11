@@ -14,17 +14,12 @@
 
 """Unittest for Srxlo rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
-import unittest
+from absl.testing import absltest
+from unittest import mock
 
 from capirca.lib import naming
 from capirca.lib import policy
 from capirca.lib import srxlo
-import mock
 
 
 GOOD_HEADER_1 = """
@@ -104,6 +99,7 @@ SUPPORTED_TOKENS = {
     'protocol',
     'protocol_except',
     'qos',
+    'restrict_address_family',
     'routing_instance',
     'source_address',
     'source_address_exclude',
@@ -178,10 +174,10 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class SRXloTest(unittest.TestCase):
+class SRXloTest(absltest.TestCase):
 
   def setUp(self):
-    super(SRXloTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testIcmp(self):
@@ -235,4 +231,4 @@ class SRXloTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

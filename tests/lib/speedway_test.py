@@ -14,17 +14,12 @@
 
 """Unittest for Speedway rendering module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
-import unittest
+from absl.testing import absltest
+from unittest import mock
 
 from capirca.lib import naming
 from capirca.lib import policy
 from capirca.lib import speedway
-import mock
 
 
 GOOD_HEADER_1 = """
@@ -149,10 +144,10 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 
-class SpeedwayTest(unittest.TestCase):
+class SpeedwayTest(absltest.TestCase):
 
   def setUp(self):
-    super(SpeedwayTest, self).setUp()
+    super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
   def testSpeedwayOutputFormat(self):
@@ -189,4 +184,4 @@ class SpeedwayTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()

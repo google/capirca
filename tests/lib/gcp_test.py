@@ -1,11 +1,6 @@
-# Lint as: python3
 """Unittest for GCP Firewall Generator module."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import unittest
+from absl.testing import absltest
 
 from absl.testing import parameterized
 
@@ -51,6 +46,13 @@ class HelperFunctionsTest(parameterized.TestCase):
   def testIsVPCNameValidFails(self, vpc):
     self.assertFalse(gcp.IsVPCNameValid(vpc))
 
+  @parameterized.named_parameters(
+      ('term', 'good-term', 'good-term-v6'),
+      ('term_with_v6_suffix', 'good-term-v6', 'good-term-v6-v6'),
+      ('one_letter', 'v', 'v-v6'))
+  def testGetIpv6TermName(self, term_name, expected):
+    self.assertEqual(expected, gcp.GetIpv6TermName(term_name))
+
 
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()
