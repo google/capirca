@@ -506,6 +506,31 @@ term timeout-term {
 }
 """
 
+PLATFORM_EXCLUDE_TERM = """
+term platform-exclude-term {
+  protocol:: tcp udp
+  platform-exclude:: srx
+  action:: accept
+}
+"""
+
+PLATFORM_TERM = """
+term platform-term {
+  protocol:: tcp udp
+  platform:: srx juniper
+  action:: accept
+}
+"""
+
+PLATFORM_EXCLUDE_ADDRESS_TERM = """
+term platform-exclude-term {
+  protocol:: tcp udp
+  source-address:: FOO
+  platform-exclude:: srx
+  action:: accept
+}
+"""
+
 SUPPORTED_TOKENS = {
     'action',
     'comment',
@@ -1320,6 +1345,51 @@ class JuniperSRXTest(absltest.TestCase):
     self.assertIn(
         'address GOOD_TERM_19_SRC_EXCLUDE_3 10.0.8.0/21;', output, output)
     self.assertNotIn('10.0.0.0/24', output)
+
+  def testPlatformExclude(self):
+    large = [nacaddr.IP('10.0.0.0/20', 'LARGE', 'LARGE')]
+    small = [nacaddr.IP('10.0.0.0/24', 'SMALL', 'SMALL')]
+    self.naming.GetNetAddr.side_effect = [large, small]
+
+    pol = policy.ParsePolicy(GOOD_HEADER + PLATFORM_EXCLUDE_TERM + GOOD_TERM_19,
+                             self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    self.assertIn('good_term_19', output,
+                  output)
+    self.assertNotIn('platform-exclude-term', output)
+
+  def testPlatformTerm(self):
+    large = [nacaddr.IP('10.0.0.0/20', 'LARGE', 'LARGE')]
+    small = [nacaddr.IP('10.0.0.0/24', 'SMALL', 'SMALL')]
+    self.naming.GetNetAddr.side_effect = [large, small]
+
+    pol = policy.ParsePolicy(GOOD_HEADER + PLATFORM_TERM + GOOD_TERM_19,
+                             self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    self.assertIn('good_term_19', output,
+                  output)
+    self.assertIn('platform-term', output, output)
+
+  def testPlatformExcludeWithSourceExclude(self):
+    foo = [nacaddr.IP('192.1.0.0/20', 'FOO', 'FOO')]
+    large = [nacaddr.IP('10.0.0.0/20', 'LARGE', 'LARGE')]
+    small = [nacaddr.IP('10.0.0.0/24', 'SMALL', 'SMALL')]
+    self.naming.GetNetAddr.side_effect = [foo, large, small]
+
+    pol = policy.ParsePolicy(
+        GOOD_HEADER + PLATFORM_EXCLUDE_ADDRESS_TERM + GOOD_TERM_19, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    self.assertIn('address GOOD_TERM_19_SRC_EXCLUDE_0 10.0.1.0/24;', output,
+                  output)
+    self.assertIn('address GOOD_TERM_19_SRC_EXCLUDE_1 10.0.2.0/23;', output,
+                  output)
+    self.assertIn('address GOOD_TERM_19_SRC_EXCLUDE_2 10.0.4.0/22;', output,
+                  output)
+    self.assertIn('address GOOD_TERM_19_SRC_EXCLUDE_3 10.0.8.0/21;', output,
+                  output)
+    self.assertNotIn('10.0.0.0/24', output)
+    self.assertNotIn('192.1.0.0/20', output)
+    self.assertNotIn('platform-exclude-term', output)
 
   def testMixedVersionIcmp(self):
     pol = policy.ParsePolicy(GOOD_HEADER + ICMP_TYPE_TERM_1 + IPV6_ICMP_TERM,
