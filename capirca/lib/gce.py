@@ -409,8 +409,6 @@ class GCE(gcp.GCP):
 
     # remove unsupported things
     supported_tokens -= {'icmp_type',
-                         'platform',
-                         'platform_exclude',
                          'verbatim'}
     # easier to make a new structure
     supported_sub_tokens = {'action': {'accept', 'deny'}}
@@ -510,6 +508,14 @@ class GCE(gcp.GCP):
         if term.option:
           raise GceFirewallError(
               'GCE firewall does not support term options.')
+
+        # Only generate the term if it's for the appropriate platform
+        if term.platform:
+          if 'gce' not in term.platform:
+            continue
+        if term.platform_exclude:
+          if 'gce' in term.platform_exclude:
+            continue
 
         # Handle mixed for each indvidual term as inet and inet6.
         # inet/inet6 are treated the same.

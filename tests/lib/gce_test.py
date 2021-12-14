@@ -599,6 +599,8 @@ SUPPORTED_TOKENS = {
     'source_port',
     'source_tag',
     'translated',
+    'platform',
+    'platform_exclude',
 }
 
 SUPPORTED_SUB_TOKENS = {'action': {'accept', 'deny'}}
