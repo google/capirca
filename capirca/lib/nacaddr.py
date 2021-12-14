@@ -413,7 +413,7 @@ def RemoveAddressFromList(superset, exclude):
       ret_array.extend(IP(x) for x in iputils.exclude_address(addr, exclude))
     else:
       ret_array.append(addr)
-  return sorted(ret_array)
+  return SortAddrList(ret_array)
 
 
 def AddressListExclude(superset, excludes, collapse_addrs=True):
