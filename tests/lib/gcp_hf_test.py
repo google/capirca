@@ -215,6 +215,24 @@ term allow-internal-traffic {
 }
 """
 
+TERM_PLATFORM_ALLOW_ALL_INTERNAL = """
+term allow-internal-traffic {
+  comment:: "Generic description"
+  protocol:: tcp icmp udp
+  action:: next
+  platform:: gcp_hf
+}
+"""
+
+TERM_PLATFORM_EXCLUDE = """
+term allow-internal-traffic {
+  comment:: "Generic description"
+  protocol:: tcp icmp udp
+  action:: next
+  platform-exclude:: gcp_hf
+}
+"""
+
 TERM_ALLOW_MULTIPLE_PROTOCOL = """
 term allow-internal-traffic {
   comment:: "Generic description"
@@ -2457,6 +2475,8 @@ SUPPORTED_TOKENS = frozenset({
     'stateless_reply',
     'target_resources',
     'translated',
+    'platform',
+    'platform_exclude',
 })
 
 SUPPORTED_SUB_TOKENS = {
@@ -2769,6 +2789,28 @@ class GcpHfTest(parameterized.TestCase):
                            self.naming),
         EXP_INFO)
     self.assertEqual([], json.loads(self._StripAclHeaders(str(acl))))
+
+  def testIgnoreTermWithPlatformExclude(self):
+    """Test that a term with platform exclude is ignored."""
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(
+            HEADER_OPTION_AF + TERM_PLATFORM_EXCLUDE + TERM_ALLOW_ALL_INTERNAL,
+            self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_BETA)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testTermWithPlatformExists(self):
+    """Test that a term with platform is rendered."""
+    self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(
+            HEADER_OPTION_AF + TERM_PLATFORM_ALLOW_ALL_INTERNAL,
+            self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_BETA)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testIgnoreTermWithICMPv6(self):
     """Test that a term with only an icmpv6 protocol is not rendered."""

@@ -334,8 +334,8 @@ class HierarchicalFirewall(gcp.GCP):
     }
 
     supported_tokens -= {
-        'destination_address_exclude', 'expiration', 'icmp_type', 'platform',
-        'platform_exclude', 'source_address_exclude', 'verbatim'
+        'destination_address_exclude', 'expiration', 'icmp_type',
+        'source_address_exclude', 'verbatim'
     }
 
     supported_sub_tokens = {'action': {'accept', 'deny', 'next'}}
@@ -479,6 +479,14 @@ class HierarchicalFirewall(gcp.GCP):
               ]
         term.name = self.FixTermLength(term.name)
         term.direction = direction
+
+        # Only generate the term if it's for the appropriate platform
+        if term.platform:
+          if self._PLATFORM not in term.platform:
+            continue
+        if term.platform_exclude:
+          if self._PLATFORM in term.platform_exclude:
+            continue
 
         for term_af in term_address_families:
           rules = Term(

@@ -511,10 +511,10 @@ class GCE(gcp.GCP):
 
         # Only generate the term if it's for the appropriate platform
         if term.platform:
-          if 'gce' not in term.platform:
+          if self._PLATFORM not in term.platform:
             continue
         if term.platform_exclude:
-          if 'gce' in term.platform_exclude:
+          if self._PLATFORM in term.platform_exclude:
             continue
 
         # Handle mixed for each indvidual term as inet and inet6.

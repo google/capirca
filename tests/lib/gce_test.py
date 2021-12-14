@@ -209,6 +209,28 @@ term good-term-1 {
 }
 """
 
+GOOD_PLATFORM_EXCLUDE_TERM = """
+term good-platform-exclude-term {
+  comment:: "DNS access from corp."
+  destination-tag:: dns-servers
+  protocol:: udp tcp
+  action:: accept
+  platform-exclude:: gce
+}
+"""
+
+GOOD_PLATFORM_TERM = """
+term good-platform-term {
+  comment:: "DNS access from corp."
+  source-address:: CORP_EXTERNAL
+  destination-tag:: dns-servers
+  destination-port:: DNS
+  protocol:: udp tcp
+  action:: accept
+  platform:: gce
+}
+"""
+
 
 GOOD_TERM_JSON = """
 [
@@ -1420,6 +1442,32 @@ class GCETest(parameterized.TestCase):
         policy.ParsePolicy(GOOD_HEADER_MIXED + GOOD_TERM_NO_PROTOCOL,
                            self.naming), EXP_INFO)
     self.assertIn('all', str(acl))
+
+  def testPlatformExclude(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(
+            GOOD_HEADER_INET + GOOD_PLATFORM_EXCLUDE_TERM + GOOD_TERM,
+            self.naming), EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertIn('10.2.3.4/32', str(acl))
+    self.assertNotIn('2001:4860:8000::5/128', str(acl))
+    self.assertIn('good-term-1', str(acl))
+    self.assertNotIn('good-platform-exclude-term', str(acl))
+
+  def testPlatform(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER_INET + GOOD_PLATFORM_TERM, self.naming),
+        EXP_INFO)
+    self.assertIn('INGRESS', str(acl))
+    self.assertNotIn('EGRESS', str(acl))
+    self.assertIn('10.2.3.4/32', str(acl))
+    self.assertNotIn('2001:4860:8000::5/128', str(acl))
+    self.assertIn('good-platform-term', str(acl))
 
   def testTermOwners(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
