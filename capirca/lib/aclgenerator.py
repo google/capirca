@@ -219,6 +219,7 @@ class ACLGenerator:
       'restrict_address_family',
       'counter',
       'destination_tag',
+      'filter_term',
       'logging',
       'loss_priority',
       'owner',

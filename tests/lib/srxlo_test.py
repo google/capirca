@@ -76,6 +76,7 @@ SUPPORTED_TOKENS = {
     'dscp_set',
     'ether_type',
     'expiration',
+    'filter_term',
     'forwarding_class',
     'forwarding_class_except',
     'fragment_offset',
