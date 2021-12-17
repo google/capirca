@@ -21,9 +21,9 @@ defaults = {
 def yaml_loader(filename):
   with open(filename, 'r') as f:
     try:
-      data = yaml.load(f, Loader=yaml.CLoader)
+      data = yaml.safe_load(f)
     except AttributeError:
-      data = yaml.load(f, Loader=yaml.Loader)
+      data = yaml.safe_load(f)
 
   return data
 
