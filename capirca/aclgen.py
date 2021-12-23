@@ -44,6 +44,7 @@ from capirca.lib import junipersrx
 from capirca.lib import naming
 from capirca.lib import nftables
 from capirca.lib import nsxv
+from capirca.lib import openconfig
 from capirca.lib import packetfilter
 from capirca.lib import paloaltofw
 from capirca.lib import pcap
@@ -179,6 +180,7 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
   msmpc = False
   spd = False
   nsx = False
+  oc = False
   pcap_accept = False
   pcap_deny = False
   pf = False
@@ -238,6 +240,8 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
     msmpc = copy.deepcopy(pol)
   if 'nsxv' in platforms:
     nsx = copy.deepcopy(pol)
+  if 'openconfig' in platforms:
+    oc = copy.deepcopy(pol)
   if 'packetfilter' in platforms:
     pf = copy.deepcopy(pol)
   if 'pcap' in platforms:
@@ -326,6 +330,11 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
           write_files)
     if nsx:
       acl_obj = nsxv.Nsxv(nsx, exp_info)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
+    if oc:
+      acl_obj = openconfig.OpenConfig(oc, exp_info)
       RenderACL(
           str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
           write_files)
