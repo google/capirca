@@ -206,7 +206,7 @@ class Term(gcp.Term):
       for proto in filtered_protocols:
         # If the protocol name is not supported, use the protocol number.
         if proto not in self._ALLOW_PROTO_NAME:
-          proto = self.PROTO_MAP[proto]
+          proto = str(self.PROTO_MAP[proto])
           logging.info('INFO: Term %s is being rendered using protocol number',
                        self.term.name)
         proto_ports = {'ipProtocol': proto}
@@ -412,10 +412,6 @@ class HierarchicalFirewall(gcp.GCP):
       if max_cost > 65536:
         raise gcp.HeaderError(
             'Default maximum cost cannot be higher than 65536')
-
-      if api_version == 'beta' and address_family != 'inet':
-        raise gcp.HeaderError(
-            'Beta compute API does not support IPv6, only inet is supported')
 
       display_name = ApiVersionSyntaxMap.SYNTAX_MAP[api_version]['display_name']
 

@@ -137,13 +137,6 @@ header {
 }
 """
 
-BAD_HEADER_OPTION_BETA_AF = """
-header {
-  comment:: "The general policy comment."
-  target:: gcp_hf displayname inet6 beta
-}
-"""
-
 BAD_HEADER_NO_DISPLAYNAME = """
 header {
   comment:: "Header without a policy name."
@@ -2211,7 +2204,7 @@ EXPECTED_ONE_RULE_NUMBERED_PROTOCOL_BETA = """
           "config": {
             "layer4Configs": [
               {
-                "ipProtocol": 2
+                "ipProtocol": "2"
               }
             ],
             "srcIpRanges": ["0.0.0.0/0"]
@@ -2443,7 +2436,7 @@ EXPECTED_MULTIPLE_MIXED_RULE_INGRESS_WITH_ICMPV6_GA = """
               "ipProtocol": "tcp"
             },
             {
-              "ipProtocol": 58
+              "ipProtocol": "58"
             },
             {
               "ipProtocol": "udp"
@@ -2593,14 +2586,6 @@ class GcpHfTest(parameterized.TestCase):
                            self.naming), EXP_INFO)
     expected = json.loads(EXPECTED_ONE_RULE_INGRESS_BETA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
-
-  def testRaisesHeaderErrorOnIcompatibleApiVersionAndAFOption(self):
-    """Test that an unknown header option raises a HeaderError."""
-    with self.assertRaises(gcp.HeaderError):
-      gcp_hf.HierarchicalFirewall(
-          policy.ParsePolicy(
-              BAD_HEADER_OPTION_BETA_AF + TERM_ALLOW_ALL_INTERNAL, self.naming),
-          EXP_INFO)
 
   def testRaisesHeaderErrorOnUnknownOption(self):
     """Test that an unknown header option raises a HeaderError."""
