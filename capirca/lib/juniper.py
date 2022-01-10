@@ -939,11 +939,14 @@ class Juniper(aclgenerator.ACLGenerator):
       interface_specific = 'not-interface-specific' not in filter_options[1:]
       enable_dsmo = 'enable_dsmo' in filter_options[1:]
       noverbose = 'noverbose' in filter_options[1:]
+      filter_enhanced_mode = 'filter_enhanced_mode' in filter_options[1:]
 
       if not interface_specific:
         filter_options.remove('not-interface-specific')
       if enable_dsmo:
         filter_options.remove('enable_dsmo')
+      if filter_enhanced_mode:
+        filter_options.remove('filter_enhanced_mode')
 
       # default to inet4 filters
       filter_type = 'inet'
@@ -1004,12 +1007,12 @@ class Juniper(aclgenerator.ACLGenerator):
           new_terms.append(self._TERM(term, filter_type, enable_dsmo, noverbose))
 
         self.juniper_policies.append((header, filter_name + filter_name_suffix, filter_type,
-                                      interface_specific, new_terms))
+                                      interface_specific, filter_enhanced_mode, new_terms))
 
   def __str__(self):
     config = Config()
 
-    for (header, filter_name, filter_type, interface_specific, terms
+    for (header, filter_name, filter_type, interface_specific, filter_enhanced_mode, terms
         ) in self.juniper_policies:
       # add the header information
       config.Append('firewall {')
@@ -1032,6 +1035,8 @@ class Juniper(aclgenerator.ACLGenerator):
       config.Append('replace: filter %s {' % filter_name)
       if interface_specific:
         config.Append('interface-specific;')
+      if filter_enhanced_mode:
+        config.Append('enhanced-mode;')
 
       for term in terms:
         term_str = str(term)

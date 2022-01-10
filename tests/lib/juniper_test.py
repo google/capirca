@@ -58,6 +58,11 @@ header {
   target:: juniper test-filter enable_dsmo
 }
 """
+GOOD_FILTER_ENHANCED_MODE_HEADER = """
+header {
+  target:: juniper test-filter filter_enhanced_mode
+}
+"""
 GOOD_NOVERBOSE_V4_HEADER = """
 header {
   target:: juniper test-filter inet noverbose
@@ -848,6 +853,19 @@ class JuniperTest(parameterized.TestCase):
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.assertIn('interface-specific;', output, output)
+
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
+    self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
+  def testFilterEnhancedModeHeader(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
+    self.naming.GetServiceByProto.return_value = ['25']
+
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(GOOD_FILTER_ENHANCED_MODE_HEADER + GOOD_TERM_1,
+                           self.naming), EXP_INFO)
+    output = str(jcl)
+    self.assertIn('enhanced-mode;', output, output)
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
