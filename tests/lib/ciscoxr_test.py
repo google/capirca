@@ -36,11 +36,18 @@ header {
 }
 """
 
-OBJECT_GROUP_HEADER = """
+OBJECT_GROUP_HEADER_1 = """
 header {
   target:: ciscoxr foo object-group
 }
 """
+
+OBJECT_GROUP_HEADER_2 = """
+header {
+  target:: ciscoxr foo object-group-inet6
+}
+"""
+
 GOOD_TERM_1 = """
 term good-term-1 {
   source-address:: SOME_HOST
@@ -324,9 +331,17 @@ class CiscoXRTest(absltest.TestCase):
 
   def testVerbatimObjectGroup(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
-    pol = policy.ParsePolicy(OBJECT_GROUP_HEADER + VERBATIM_TERM, self.naming)
+    pol = policy.ParsePolicy(OBJECT_GROUP_HEADER_1 + VERBATIM_TERM, self.naming)
     acl = ciscoxr.CiscoXR(pol, EXP_INFO)
     self.assertIn('permit tcp any', str(acl))
+
+
+  def testVerbatimObjectGroupIPv6(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('2001::3/128')]
+    pol = policy.ParsePolicy(OBJECT_GROUP_HEADER_2 + VERBATIM_TERM, self.naming)
+    acl = ciscoxr.CiscoXR(pol, EXP_INFO)
+    self.assertIn('permit tcp any', str(acl))
+    self.assertIn('ipv6 access-list foo', str(acl))
 
 
 if __name__ == '__main__':

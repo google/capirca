@@ -927,8 +927,8 @@ class Cisco(aclgenerator.ACLGenerator):
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     # a mixed filter outputs both ipv4 and ipv6 acls in the same output file
-    good_filters = ['extended', 'standard', 'object-group', 'inet6',
-                    'mixed', 'enable_dsmo']
+    good_filters = ['extended', 'standard', 'object-group', 
+                    'object-group-inet6', 'inet6', 'mixed', 'enable_dsmo']
 
     for header, terms in pol.filters:
       if self._PLATFORM not in header.platforms:
@@ -1019,6 +1019,10 @@ class Cisco(aclgenerator.ACLGenerator):
             obj_target.AddTerm(term)
             new_terms.append(self._GetObjectGroupTerm(term, filter_name,
                                                       verbose=self.verbose))
+          elif next_filter == 'object-group-inet6':
+            obj_target.AddTerm(term)
+            new_terms.append(self._GetObjectGroupTerm(term, filter_name,
+                                                      verbose=self.verbose))
           elif next_filter == 'inet6':
             new_terms.append(
                 Term(
@@ -1061,7 +1065,7 @@ class Cisco(aclgenerator.ACLGenerator):
     elif filter_type == 'object-group':
       target.append('no ip access-list extended %s' % filter_name)
       target.append('ip access-list extended %s' % filter_name)
-    elif filter_type == 'inet6':
+    elif filter_type == 'inet6' or filter_type == 'object-group-inet6':
       target.append('no ipv6 access-list %s' % filter_name)
       target.append('ipv6 access-list %s' % filter_name)
     else:
@@ -1091,7 +1095,7 @@ class Cisco(aclgenerator.ACLGenerator):
         ) in self.cisco_policies:
       for filter_type in filter_list:
         target.extend(self._AppendTargetByFilterType(filter_name, filter_type))
-        if filter_type == 'object-group':
+        if filter_type == 'object-group' or filter_type == 'object-group-inet6':
           obj_target.AddName(filter_name)
 
         # Add the Perforce Id/Date tags, these must come after

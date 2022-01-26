@@ -37,7 +37,7 @@ class CiscoXR(cisco.Cisco):
       list of strings
     """
     target = []
-    if filter_type == 'inet6':
+    if filter_type == 'inet6' or filter_type == 'object-group-inet6':
       target.append('no ipv6 access-list %s' % filter_name)
       target.append('ipv6 access-list %s' % filter_name)
     else:
