@@ -66,7 +66,7 @@ class CiscoNX(cisco.Cisco):
     elif filter_type == 'object-group':
       target.append('no ip access-list %s' % filter_name)
       target.append('ip access-list %s' % filter_name)
-    elif filter_type == 'inet6':
+    elif filter_type == 'inet6' or filter_type == 'object-group-inet6':
       target.append('no ipv6 access-list %s' % filter_name)
       target.append('ipv6 access-list %s' % filter_name)
     else:
