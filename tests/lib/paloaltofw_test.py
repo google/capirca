@@ -180,6 +180,14 @@ term test-icmp {
 }
 """
 
+ICMP_TYPE_TERM_2 = """
+term test-icmp-2 {
+  protocol:: icmp
+  icmp-type:: echo-request echo-reply unreachable
+  action:: accept
+}
+"""
+
 ICMPV6_ONLY_TERM = """
 term test-icmpv6-only {
   protocol:: icmpv6
@@ -564,6 +572,37 @@ class PaloAltoFWTest(absltest.TestCase):
     output = str(paloalto)
     x = paloalto.config.find(PATH_RULES +
                              "/entry[@name='test-icmp']/application")
+    self.assertIsNotNone(x, output)
+    members = []
+    for node in x:
+      self.assertEqual(node.tag, 'member', output)
+      members.append(node.text)
+
+    self.assertCountEqual(
+        ['icmp-echo-reply', 'icmp-echo-request', 'icmp-unreachable'], members,
+        output)
+
+  def testIcmpTypesMultiplePolicies(self):
+    pol = policy.ParsePolicy(
+        GOOD_HEADER_1 + ICMP_TYPE_TERM_1 + GOOD_HEADER_2 + ICMP_TYPE_TERM_2,
+        self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.find(PATH_RULES +
+                             "/entry[@name='test-icmp']/application")
+    self.assertIsNotNone(x, output)
+    members = []
+    for node in x:
+      self.assertEqual(node.tag, 'member', output)
+      members.append(node.text)
+
+    self.assertCountEqual(
+        ['icmp-echo-reply', 'icmp-echo-request', 'icmp-unreachable'], members,
+        output)
+
+    # Check second policy as well.
+    x = paloalto.config.find(PATH_RULES +
+                             "/entry[@name='test-icmp-2']/application")
     self.assertIsNotNone(x, output)
     members = []
     for node in x:

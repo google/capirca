@@ -618,21 +618,24 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
                     "term with bad icmp type: %s, icmp_type: %s" %
                     (term.name, term_icmp_type_name))
               term_icmp_type = policy.Term.ICMP_TYPE[6][term_icmp_type_name]
-            if icmp_app_name in self.application_refs:
-              # the custom icmp application already exists
-              continue
-            app_entry = {
-                "category": "networking",
-                "subcategory": "ip-protocol",
-                "technology": "network-protocol",
-                "description": icmp_app_name,
-                "default": {
-                    icmp_type_keyword: "%d" % term_icmp_type,
-                },
-                "risk": "%d" % risk_level,
-            }
-            self.application_refs[icmp_app_name] = app_entry
-            self.applications.append(icmp_app_name)
+            if icmp_app_name not in self.application_refs:
+              # the custom icmp application doesn't already exist
+              app_entry = {
+                  "category": "networking",
+                  "subcategory": "ip-protocol",
+                  "technology": "network-protocol",
+                  "description": icmp_app_name,
+                  "default": {
+                      icmp_type_keyword: "%d" % term_icmp_type,
+                  },
+                  "risk": "%d" % risk_level,
+              }
+              self.application_refs[icmp_app_name] = app_entry
+              self.applications.append(icmp_app_name)
+
+            # always add the ICMP application to the term, it either already
+            # existed due to a previous policy, or it was created in the
+            # previous loop.
             if icmp_app_name not in term.pan_application:
               term.pan_application.append(icmp_app_name)
 
