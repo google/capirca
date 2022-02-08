@@ -31,6 +31,7 @@ DEFINITIONS = None
 DEFAULT_DEFINITIONS = './def'
 ACTIONS = set(('accept', 'count', 'deny', 'reject', 'next',
                'reject-with-tcp-rst'))
+PROTOS_WITH_PORTS = frozenset(('tcp', 'udp', 'udplite', 'sctp'))
 _FLEXIBLE_MATCH_RANGE_ATTRIBUTES = {'byte-offset',
                                     'bit-offset',
                                     'bit-length',
@@ -123,7 +124,7 @@ class InvalidTermTTLValue(Error):
 
 
 class MixedPortandNonPortProtos(Error):
-  """Error when TCP or UDP are used with protocols that do not use ports."""
+  """Error when protocols that use ports are mixed with protocols that do not"""
 
 
 def TranslatePorts(ports, protocols, term_name):
@@ -1242,11 +1243,19 @@ class Term:
       if self.filter_term and self.action:
         raise InvalidTermActionError('term "%s" has both filter and action tokens.' % self.name)
       # have we specified a port with a protocol that doesn't support ports?
-      if self.source_port or self.destination_port or self.port:
-        if not any(proto in self.protocol for proto in ['tcp', 'udp', 'sctp']):
+      protos_no_ports = {p for p in self.protocol if p not in PROTOS_WITH_PORTS}
+      if protos_no_ports != set() and (self.source_port or
+                                       self.destination_port or self.port):
+        if set(self.protocol) - protos_no_ports != set():
+          # This is a more specific error - some protocols support, but not all
+          raise MixedPortandNonPortProtos(
+              'Term %s contains mixed uses of protocols with and without port '
+              'numbers\nProtocols: %s' % (self.name, self.protocol))
+        else:
           raise TermPortProtocolError(
-              'ports specified with a protocol that doesn\'t support ports. '
-              'Term: %s ' % self.name)
+              'ports specified with protocol(s) that don\'t support ports. '
+              'Term: %s Protocols: %s ' % (self.name, protos_no_ports))
+
     # TODO(pmoody): do we have mutually exclusive options?
     # eg. tcp-established + tcp-initial?
 
@@ -1286,12 +1295,6 @@ class Term:
             self.ICMP_TYPE[6]):
           raise TermInvalidIcmpType('Term %s contains an invalid icmp-type:'
                                     '%s' % (self.name, icmptype))
-    proto_copy = [p for p in self.protocol if p != 'tcp' and p != 'udp']
-    if ('tcp'in self.protocol or 'udp' in self.protocol) and proto_copy:
-      if self.source_port or self.destination_port or self.port:
-        raise MixedPortandNonPortProtos(
-            'Term %s contains mixed uses of protocols with and without port '
-            'numbers.\nProtocols: %s' % (self.name, self.protocol))
 
     if self.ttl:
       if not _MIN_TTL <= self.ttl <= _MAX_TTL:
