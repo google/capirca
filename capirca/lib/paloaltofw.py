@@ -554,6 +554,30 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
             else:
               exclude_address_family.append(4)
 
+        # Substitute large IPv6 ranges (/1, /2) with equivalent subnets.
+        # Do this separately from address book building, or during policy
+        # translation to account for both address-objects and no-address-objects
+        if term.source_address:
+          saddr_split = []
+          for saddr in term.source_address:
+            if saddr.version == 6 and 0 < saddr.prefixlen < 3:
+              for saddr2 in saddr.subnets(new_prefix=3):
+                saddr2.parent_token = saddr.parent_token
+                saddr_split.append(saddr2)
+            else:
+              saddr_split.append(saddr)
+          term.source_address = saddr_split
+        if term.destination_address:
+          daddr_split = []
+          for daddr in term.destination_address:
+            if daddr.version == 6 and 0 < daddr.prefixlen < 3:
+              for daddr2 in daddr.subnets(new_prefix=3):
+                daddr2.parent_token = daddr.parent_token
+                daddr_split.append(daddr2)
+            else:
+              daddr_split.append(daddr)
+          term.destination_address = daddr_split
+
         # Build address book for the addresses referenced in the term.
         for addr in term.source_address:
           if addr.version in exclude_address_family:

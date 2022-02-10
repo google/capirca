@@ -506,6 +506,8 @@ PATH_VSYS = "./devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vs
 PATH_RULES = PATH_VSYS + '/rulebase/security/rules'
 PATH_TAG = PATH_VSYS + '/tag'
 PATH_SERVICE = PATH_VSYS + '/service'
+PATH_ADDRESSES = PATH_VSYS + '/address'
+PATH_ADDRESS_GROUP = PATH_VSYS + '/address-group'
 
 
 class PaloAltoFWTest(absltest.TestCase):
@@ -1383,6 +1385,8 @@ term rule-1 {
     definitions._ParseLine('NET4 = 2001:db8:0:aa::/64', 'networks')
     definitions._ParseLine('       2001:db8:0:bb::/64', 'networks')
     definitions._ParseLine('NET5 = NET3 NET4', 'networks')
+    definitions._ParseLine('NET6 = 4000::/2', 'networks')
+    definitions._ParseLine('NET7 = 8000::/1', 'networks')
 
     POL = """
 header {
@@ -1452,6 +1456,24 @@ term rule-1 {
     self.assertEqual({"10.3.1.0/24", "10.3.2.0/24",
                       "2001:db8:0:aa::/64", "2001:db8:0:bb::/64"},
                      addrs, output)
+    T = """
+  source-address:: NET6
+  destination-address:: NET7
+"""
+    pol = policy.ParsePolicy(POL % ("mixed", T), definitions)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findall(PATH_RULES +
+                                "/entry[@name='rule-1']/source/member")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"4000::/3", "6000::/3"}, addrs, output)
+    x = paloalto.config.findall(PATH_RULES +
+                                "/entry[@name='rule-1']/destination/member")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"8000::/3",
+                      "a000::/3", "c000::/3", "e000::/3"}, addrs, output)
 
     POL = """
 header {
@@ -1477,6 +1499,135 @@ term rule-1 {
                            'option in a single policy file$',
                            paloaltofw.PaloAltoFW, pol, EXP_INFO)
 
+  def testAddrObj(self):
+    definitions = naming.Naming()
+    definitions._ParseLine('NET1 = 10.1.0.0/24', 'networks')
+    definitions._ParseLine('NET2 = 10.2.0.0/24', 'networks')
+    definitions._ParseLine('NET3 = 10.3.1.0/24', 'networks')
+    definitions._ParseLine('       10.3.2.0/24', 'networks')
+    definitions._ParseLine('NET4 = 4000::/128', 'networks')
+    definitions._ParseLine('NET5 = 4000::/2', 'networks')
+
+    POL = """
+header {
+  target:: paloalto from-zone trust to-zone untrust %s addr-obj
+}
+term rule-1 {
+%s
+  action:: accept
+  protocol:: tcp
+}"""
+
+    T = """
+  source-address:: NET1
+  destination-address:: NET2 NET3
+"""
+
+    pol = policy.ParsePolicy(POL % ("inet", T), definitions)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findall(PATH_RULES +
+                                "/entry[@name='rule-1']/source/member")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"NET1"}, addrs, output)
+    x = paloalto.config.findall(PATH_ADDRESS_GROUP +
+                                "/entry[@name='NET1']/static/member")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"NET1_0"}, addrs, output)
+    x = paloalto.config.findall(PATH_ADDRESSES +
+                                "/entry[@name='NET1_0']/ip-netmask")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"10.1.0.0/24"}, addrs, output)
+    x = paloalto.config.findall(PATH_RULES +
+                                "/entry[@name='rule-1']/destination/member")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"NET2",
+                      "NET3"}, addrs, output)
+    x = paloalto.config.findall(PATH_ADDRESS_GROUP +
+                                "/entry[@name='NET2']/static/member")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"NET2_0"}, addrs, output)
+    x = paloalto.config.findall(PATH_ADDRESSES +
+                                "/entry[@name='NET2_0']/ip-netmask")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"10.2.0.0/24"}, addrs, output)
+    x = paloalto.config.findall(PATH_ADDRESS_GROUP +
+                                "/entry[@name='NET3']/static/member")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"NET3_0", "NET3_1"}, addrs, output)
+    x = paloalto.config.findall(PATH_ADDRESSES +
+                                "/entry[@name='NET3_0']/ip-netmask")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"10.3.1.0/24"}, addrs, output)
+    x = paloalto.config.findall(PATH_ADDRESSES +
+                                "/entry[@name='NET3_1']/ip-netmask")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"10.3.2.0/24"}, addrs, output)
+
+    # These tests check that large IP ranges are broken into equivalent subnets.
+    T = """
+  source-address:: NET5
+"""
+    pol = policy.ParsePolicy(POL % ("mixed", T), definitions)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findall(PATH_RULES +
+                                "/entry[@name='rule-1']/source/member")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"NET5"}, addrs, output)
+    x = paloalto.config.findall(PATH_ADDRESS_GROUP +
+                                "/entry[@name='NET5']/static/member")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"NET5_0", "NET5_1"}, addrs, output)
+    x = paloalto.config.findall(PATH_ADDRESSES +
+                                "/entry[@name='NET5_0']/ip-netmask")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"4000::/3"}, addrs, output)
+    x = paloalto.config.findall(PATH_ADDRESSES +
+                                "/entry[@name='NET5_1']/ip-netmask")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"6000::/3"}, addrs, output)
+
+    T = """
+  source-address:: NET4
+  destination-address:: NET5
+"""
+    pol = policy.ParsePolicy(POL % ("mixed", T), definitions)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findall(PATH_RULES +
+                                "/entry[@name='rule-1']/destination/member")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"NET5"}, addrs, output)
+    x = paloalto.config.findall(PATH_ADDRESS_GROUP +
+                                "/entry[@name='NET5']/static/member")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"NET5_0", "NET5_1"}, addrs, output)
+    x = paloalto.config.findall(PATH_ADDRESSES +
+                                "/entry[@name='NET5_0']/ip-netmask")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"4000::/3"}, addrs, output)
+    x = paloalto.config.findall(PATH_ADDRESSES +
+                                "/entry[@name='NET5_1']/ip-netmask")
+    self.assertTrue(len(x) > 0, output)
+    addrs = {elem.text for elem in x}
+    self.assertEqual({"6000::/3"}, addrs, output)
 
 if __name__ == '__main__':
   absltest.main()
