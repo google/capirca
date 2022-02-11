@@ -340,6 +340,23 @@ term good_term_23 {
   action:: accept
 }
 """
+GOOD_TERM_24 = """
+term good_term_24 {
+  protocol:: icmp
+  source-address:: SOME_HOST
+  icmp-type:: echo-reply
+  action:: accept
+}
+"""
+GOOD_TERM_25 = """
+term good_term_25 {
+  protocol:: icmp
+  source-address:: SOME_HOST
+  icmp-type:: unreachable
+  icmp-code:: 13
+  action:: accept
+}
+"""
 LONG_COMMENT_TERM = """
 term long-comment-term {
   comment:: "%s "
@@ -656,6 +673,21 @@ class CiscoTest(absltest.TestCase):
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
                                              mock.call('SOME_HOST')])
     self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
+  
+  def testObjectGroupIcmp(self):
+    ip_grp = ['object-group network ipv4 SOME_HOST']
+    ip_grp.append(' 10.0.0.0/8')
+    ip_grp.append('exit')
+
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IP('10.0.0.0/8', token='SOME_HOST')]
+
+    pol = policy.ParsePolicy(
+        GOOD_OBJGRP_HEADER + GOOD_TERM_24 + GOOD_TERM_25, self.naming)
+    acl = cisco.Cisco(pol, EXP_INFO)
+
+    self.assertIn(' permit icmp net-group SOME_HOST any 0', str(acl))
+    self.assertIn(' permit icmp net-group SOME_HOST any 3 13', str(acl))
 
   def testInet6(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8'),
