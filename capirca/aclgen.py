@@ -41,6 +41,7 @@ from capirca.lib import iptables
 from capirca.lib import juniper
 from capirca.lib import junipermsmpc
 from capirca.lib import junipersrx
+from capirca.lib import k8s
 from capirca.lib import naming
 from capirca.lib import nftables
 from capirca.lib import nsxv
@@ -191,6 +192,7 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
   nxacl = False
   xacl = False
   paloalto = False
+  k8s_pol = False
 
   try:
     with open(input_file) as f:
@@ -269,6 +271,8 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
     paloalto = copy.deepcopy(pol)
   if 'cloudarmor' in platforms:
     gca = copy.deepcopy(pol)
+  if 'k8s' in platforms:
+    k8s_pol = copy.deepcopy(pol)
 
   acl_obj: aclgenerator.ACLGenerator
 
@@ -404,6 +408,13 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
       RenderACL(
           str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
           write_files)
+
+    if k8s_pol:
+      acl_obj = k8s.K8s(k8s_pol, exp_info)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
+
   # TODO(robankeny) add additional errors.
   except (
       juniper.Error,
@@ -418,7 +429,8 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
       aruba.Error,
       nftables.Error,
       gce.Error,
-      cloudarmor.Error) as e:
+      cloudarmor.Error,
+      k8s.Error) as e:
     raise ACLGeneratorError('Error generating target ACL for %s:\n%s' %
                             (input_file, e))
 

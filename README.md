@@ -414,6 +414,7 @@ generators:
 *   [`juniper`](./doc/generators/juniper.md): Juniper
 *   [`junipermsmpc`](./doc/generators/junipermsmpc.md): Juniper
 *   [`junipersrx`](./doc/generators/junipersrx.md): Juniper SRX
+*   [`k8s`](./doc/generators/k8s.md): Kubernetes NetworkPolicy
 *   [`nftables`](./doc/generators/nftables.md): nftables
 *   [`nsxv`](./doc/generators/nsxv.md): NSX
 *   [`packetfilter`](./doc/generators/packetfilter.md): PacketFilter

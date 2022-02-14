@@ -86,6 +86,7 @@ class TestAclGenDemo(absltest.TestCase):
         'sample_stateful_multitarget_simple.srx',
         'sample_stateful_multitarget_complex.xml',
         'sample_stateful_multitarget_complex.srx',
+        'sample_k8s.yml',
     ]
     expected = [
         mock.call(pathlib.Path(self.test_subdirectory, f), mock.ANY)
