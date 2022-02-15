@@ -2609,9 +2609,26 @@ class GcpHfTest(parameterized.TestCase):
     """Test that a maximum default cost over 2^16 raises a HeaderError."""
     with self.assertRaises(gcp.HeaderError):
       gcp_hf.HierarchicalFirewall(
-          policy.ParsePolicy(BAD_HEADER_INVALID_MAX_COST
-                             + TERM_ALLOW_ALL_INTERNAL,
-                             self.naming),
+          policy.ParsePolicy(
+              BAD_HEADER_INVALID_MAX_COST + TERM_ALLOW_ALL_INTERNAL,
+              self.naming), EXP_INFO)
+
+  def testRaisesHeaderErrorOnUnequalMaxCostInMultiplePolicies(self):
+    """Test that unequal max costs across multiple policies raises a HeaderError."""
+    with self.assertRaises(gcp.HeaderError):
+      gcp_hf.HierarchicalFirewall(
+          policy.ParsePolicy(
+              HEADER_OPTION_MAX + TERM_ALLOW_ALL_INTERNAL +
+              HEADER_OPTION_HIGH_QUOTA + TERM_ALLOW_ALL_INTERNAL, self.naming),
+          EXP_INFO)
+
+  def testRaisesHeaderErrorOnUnequalMaxCostInMultiplePoliciesWithDefault(self):
+    """Test that unspecified, and set max costs across multiple policies raises a HeaderError."""
+    with self.assertRaises(gcp.HeaderError):
+      gcp_hf.HierarchicalFirewall(
+          policy.ParsePolicy(
+              HEADER_OPTION_MAX + TERM_ALLOW_ALL_INTERNAL +
+              HEADER_NO_OPTIONS + TERM_ALLOW_ALL_INTERNAL, self.naming),
           EXP_INFO)
 
   def testRaisesHeaderErrorOnLongDisplayName(self):

@@ -368,6 +368,8 @@ class HierarchicalFirewall(gcp.GCP):
     is_policy_modified = False
     counter = 1
     total_cost = 0
+    policies_max_cost = self._DEFAULT_MAXIMUM_COST
+    previous_max_cost = -1
     for header, terms in pol.filters:
 
       if self._PLATFORM not in header.platforms:
@@ -412,6 +414,14 @@ class HierarchicalFirewall(gcp.GCP):
       if max_cost > 65536:
         raise gcp.HeaderError(
             'Default maximum cost cannot be higher than 65536')
+
+      if previous_max_cost != -1 and previous_max_cost != max_cost:
+        raise gcp.HeaderError(
+            'Maximum costs of each policy specified must be equal. '
+            'Unequal costs found: %d and %d' % (previous_max_cost, max_cost))
+
+      policies_max_cost = max_cost
+      previous_max_cost = max_cost
 
       display_name = ApiVersionSyntaxMap.SYNTAX_MAP[api_version]['display_name']
 
@@ -494,13 +504,15 @@ class HierarchicalFirewall(gcp.GCP):
             continue
           for dict_term in rules:
             total_cost += GetRuleTupleCount(dict_term, api_version)
-            if total_cost > max_cost:
-              raise ExceededCostError(
-                  'Policy cost (%d) for %s reached the '
-                  'maximum (%d)' %
-                  (total_cost, policy[display_name], max_cost))
             policy['rules'].append(dict_term)
           counter += len(rules)
+
+    # We want to check the total policy cost, not just per policy.
+    if total_cost > policies_max_cost:
+      raise ExceededCostError(
+          'Policy cost (%d) for %s reached the '
+          'maximum (%d)' %
+          (total_cost, policy[display_name], policies_max_cost))
 
     self.policies.append(policy)
 
