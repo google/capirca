@@ -66,6 +66,42 @@ term test-gre-protocol {
 }
 """
 
+AH_PROTO_TERM = """
+term test-ah-protocol {
+  comment:: "allow AH protocol to FOOBAR"
+  destination-address:: FOOBAR
+  protocol:: ah
+  action:: accept
+}
+"""
+
+AH_TCP_MIXED_PROTO_TERM = """
+term test-mixed-protocol {
+  source-address:: FOOBAR
+  protocol:: ah tcp
+  action:: accept
+  comment:: "Applications and Services should be split into separate terms."
+}
+"""
+
+ESP_PROTO_TERM = """
+term test-esp-protocol {
+  comment:: "allow ESP protocol to FOOBAR"
+  destination-address:: FOOBAR
+  protocol:: esp
+  action:: accept
+}
+"""
+
+ESP_TCP_MIXED_PROTO_TERM = """
+term test-mixed-protocol {
+  destination-address:: FOOBAR
+  protocol:: esp tcp
+  action:: accept
+  comment:: "Applications and Services should be split into separate terms."
+}
+"""
+
 GOOD_TERM_1 = """
 term good-term-1 {
   comment:: "This header is very very very very very very very very very very very very very very very very very very very very large"
@@ -879,6 +915,97 @@ term rule-1 {
     self.assertEqual(len(x), 1, output)
     self.assertEqual(x[0].tag, 'member', output)
     self.assertEqual(x[0].text, 'gre', output)
+
+  def testAhProtoTerm(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + AH_PROTO_TERM, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.find(PATH_RULES +
+                             "/entry[@name='test-ah-protocol']/application")
+    self.assertIsNotNone(x, output)
+    self.assertEqual(len(x), 1, output)
+    self.assertEqual(x[0].tag, 'member', output)
+    self.assertEqual(x[0].text, 'ipsec-ah', output)
+
+  def testAhTcpMixedProtoTerm(self):
+    pol = policy.ParsePolicy(
+        GOOD_HEADER_1 + AH_TCP_MIXED_PROTO_TERM, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    svc = paloalto.config.find(
+        PATH_RULES + "/entry[@name='test-mixed-protocol-1']/service")
+    self.assertIsNotNone(svc, output)
+    self.assertEqual(len(svc), 1, output)
+    self.assertEqual(svc[0].tag, 'member', output)
+    self.assertEqual(svc[0].text, 'any-tcp', output)
+
+    app = paloalto.config.find(
+        PATH_RULES + "/entry[@name='test-mixed-protocol-1']/application")
+    self.assertIsNotNone(app, output)
+    self.assertEqual(len(app), 1, output)
+    self.assertEqual(app[0].tag, 'member', output)
+    self.assertEqual(app[0].text, 'any', output)
+
+    # Check second policy as well.
+    svc = paloalto.config.find(
+        PATH_RULES + "/entry[@name='test-mixed-protocol-2']/service")
+    self.assertIsNotNone(svc, output)
+    self.assertEqual(len(svc), 1, output)
+    self.assertEqual(svc[0].tag, 'member', output)
+    self.assertEqual(svc[0].text, 'application-default', output)
+
+    app = paloalto.config.find(
+        PATH_RULES + "/entry[@name='test-mixed-protocol-2']/application")
+    self.assertIsNotNone(app, output)
+    self.assertEqual(len(app), 1, output)
+    self.assertEqual(app[0].tag, 'member', output)
+    self.assertEqual(app[0].text, 'ipsec-ah', output)
+
+
+  def testEspProtoTerm(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + ESP_PROTO_TERM, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.find(PATH_RULES +
+                             "/entry[@name='test-esp-protocol']/application")
+    self.assertIsNotNone(x, output)
+    self.assertEqual(len(x), 1, output)
+    self.assertEqual(x[0].tag, 'member', output)
+    self.assertEqual(x[0].text, 'ipsec-esp', output)
+
+  def testEspTcpMixedProtoTerm(self):
+    pol = policy.ParsePolicy(
+        GOOD_HEADER_1 + ESP_TCP_MIXED_PROTO_TERM, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    svc = paloalto.config.find(
+        PATH_RULES + "/entry[@name='test-mixed-protocol-1']/service")
+    self.assertIsNotNone(svc, output)
+    self.assertEqual(len(svc), 1, output)
+    self.assertEqual(svc[0].tag, 'member', output)
+    self.assertEqual(svc[0].text, 'any-tcp', output)
+
+    app = paloalto.config.find(
+        PATH_RULES + "/entry[@name='test-mixed-protocol-1']/application")
+    self.assertIsNotNone(app, output)
+    self.assertEqual(len(app), 1, output)
+    self.assertEqual(app[0].tag, 'member', output)
+    self.assertEqual(app[0].text, 'any', output)
+
+    # Check second policy as well.
+    svc = paloalto.config.find(
+        PATH_RULES + "/entry[@name='test-mixed-protocol-2']/service")
+    self.assertIsNotNone(svc, output)
+    self.assertEqual(len(svc), 1, output)
+    self.assertEqual(svc[0].tag, 'member', output)
+    self.assertEqual(svc[0].text, 'application-default', output)
+
+    app = paloalto.config.find(
+        PATH_RULES + "/entry[@name='test-mixed-protocol-2']/application")
+    self.assertIsNotNone(app, output)
+    self.assertEqual(len(app), 1, output)
+    self.assertEqual(app[0].tag, 'member', output)
+    self.assertEqual(app[0].text, 'ipsec-esp', output)
 
   def testHeaderComments(self):
     pol = policy.ParsePolicy(HEADER_COMMENTS, self.naming)

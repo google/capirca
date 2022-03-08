@@ -239,6 +239,10 @@ class Rule:
         if (proto_name in ["igmp", "sctp", "gre"] and
             proto_name not in options["application"]):
           options["application"].append(proto_name)
+        elif proto_name in ("ah", "esp"):
+          ipsec_app_proto = "ipsec-%s" % proto_name
+          if ipsec_app_proto not in options["application"]:
+            options["application"].append(ipsec_app_proto)
 
     return options, new_term
 
@@ -259,6 +263,8 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       "sctp",
       "igmp",
       "gre",
+      "ah",
+      "esp",
   ]
   _MAX_RULE_DESCRIPTION_LENGTH = 1024
   _MAX_TAG_COMMENTS_LENGTH = 1023
