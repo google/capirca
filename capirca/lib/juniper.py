@@ -445,13 +445,20 @@ class Term(aclgenerator.Term):
       if self.term.protocol:
         # both are supported on JunOS, but only icmp6 is supported
         # on SRX loopback stateless filter
-        config.Append(family_keywords['protocol'] +
-                      ' ' + self._Group(self.term.protocol))
+        if 'icmpv6' in self.term.protocol:
+          loc = self.term.protocol.index('icmpv6')
+          self.term.protocol[loc] = 'icmp6'
+        config.Append(family_keywords['protocol'] + ' ' +
+                      self._Group(self.term.protocol))
 
       # protocol
       if self.term.protocol_except:
         # same as above
-        config.Append(family_keywords['protocol-except'] + ' ' + self._Group(self.term.protocol_except))
+        if 'icmpv6' in self.term.protocol_except:
+          loc = self.term.protocol_except.index('icmpv6')
+          self.term.protocol_except[loc] = 'icmp6'
+        config.Append(family_keywords['protocol-except'] + ' ' +
+                      self._Group(self.term.protocol_except))
 
       # port
       if self.term.port:
