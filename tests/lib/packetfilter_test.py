@@ -304,12 +304,27 @@ term good-warning {
 }
 """
 
+SOURCE_INTERFACE_TERM = """
+term src-intf {
+  source-interface:: lo0
+  action:: accept
+}
+"""
+
+DESTINATION_INTERFACE_TERM = """
+term dest-intf {
+  destination-interface:: lo0
+  action:: accept
+}
+"""
+
 SUPPORTED_TOKENS = {
     'action',
     'comment',
     'destination_address',
     'destination_address_exclude',
     'destination_port',
+    'destination_interface',
     'expiration',
     'icmp_type',
     'stateless_reply',
@@ -322,6 +337,7 @@ SUPPORTED_TOKENS = {
     'source_address',
     'source_address_exclude',
     'source_port',
+    'source_interface',
     'translated',
     'verbatim',
 }
@@ -647,6 +663,28 @@ class PacketFilterTest(absltest.TestCase):
 
     self.naming.GetNetAddr.assert_called_once_with('PROD_NETWORK')
     self.naming.GetServiceByProto.assert_called_once_with('SMTP', 'tcp')
+
+  def testDirectionalSourceInterface(self):
+    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+        GOOD_HEADER_DIRECTIONAL + SOURCE_INTERFACE_TERM, self.naming), EXP_INFO)
+    result = str(acl)
+    self.assertIn('# term src-intf', result,
+                  'did not find comment for src-intf')
+    self.assertIn(
+        'pass in quick on lo0 from { any } to { any } flags S/SA keep state',
+        result,
+        'did not find actual term for src-intf')
+
+  def testDirectionalDestinationInterface(self):
+    acl = packetfilter.PacketFilter(policy.ParsePolicy(
+        GOOD_HEADER_DIRECTIONAL + DESTINATION_INTERFACE_TERM, self.naming), EXP_INFO)
+    result = str(acl)
+    self.assertIn('# term dest-intf', result,
+                  'did not find comment for dest-intf')
+    self.assertIn(
+        'pass out quick on lo0 from { any } to { any } flags S/SA keep state',
+        result,
+        'did not find actual term for dest-intf')
 
   def testMultipleHeader(self):
     acl = packetfilter.PacketFilter(policy.ParsePolicy(
