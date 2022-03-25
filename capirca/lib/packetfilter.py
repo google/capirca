@@ -239,6 +239,7 @@ class Term(aclgenerator.Term):
         self.term.action[0],
         self.direction,
         self.term.logging,
+        self.term.interface,
         self.af,
         protocol,
         term_saddr,
@@ -266,8 +267,8 @@ class Term(aclgenerator.Term):
         af_addrs.append(addr)
     return af_addrs
 
-  def _FormatPart(self, action, direction, log, af, proto, src_addr, src_port,
-                  dst_addr, dst_port, tcp_flags_set, tcp_flags_check,
+  def _FormatPart(self, action, direction, log, interface, af, proto, src_addr,
+                  src_port, dst_addr, dst_port, tcp_flags_set, tcp_flags_check,
                   icmp_types, options, stateful):
     """Format the string which will become a single PF entry."""
     line = ['%s' % self._ACTION_TABLE.get(action)]
@@ -285,6 +286,9 @@ class Term(aclgenerator.Term):
         line.append(logaction)
       else:
         line.append('log')
+
+    if interface:
+        line.append('on %s' % interface)
 
     if af != 'mixed':
       line.append(af)
@@ -393,7 +397,7 @@ class PacketFilter(aclgenerator.ACLGenerator):
     """
     supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
-    supported_tokens |= {'logging'}
+    supported_tokens |= {'logging', 'destination_interface', 'source_interface'}
     supported_sub_tokens.update({
         'action': {'accept', 'deny', 'reject', 'next'},
         'option': {
@@ -520,8 +524,21 @@ class PacketFilter(aclgenerator.ACLGenerator):
                             'will not be rendered.', term.name, filter_name)
             continue
 
+        if term.destination_interface and term.source_interface:
+            raise Error("packetfilter only supports destination interface XOR source interface per term")
+
+        term_direction = direction
+        if term.destination_interface:
+          term_direction = 'out'
+          term.interface = term.destination_interface
+        elif term.source_interface:
+          term_direction = 'in'
+          term.interface = term.source_interface
+        else:
+          term.interface = None
+
         new_terms.append(self._TERM(term, filter_name, all_protocols_stateful,
-                                    filter_type, direction))
+                                    filter_type, term_direction))
 
       self.pf_policies.append((header, filter_name, filter_type, new_terms))
 

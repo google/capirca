@@ -3,16 +3,22 @@
 Note: The PF generator is currently in alpha testing. The output should be compatible with OpenBSD v4.7 PF and later.
 
 ```
-target:: packetfilter {inet|inet6|mixed}
+target:: packetfilter filter-name {inet|inet6|mixed} {in|out} {nostate}
 ```
+  * _filter-name_: a short, descriptive policy identifier
   * _inet_: specifies that the resulting filter should only render IPv4 addresses.
   * _inet6_: specifies that the resulting filter should only render IPv6 addresses.
   * _mixed_: specifies that the resulting filter should only render IPv4 and IPv6 addresses (default).
+  * _in_: match ingoing packets (default: both directions).
+  * _out_: match outgoing packets (default: both directions).
+  * _nostate_: do not keep state on connections (default: keep state).
 ## Term Format
 * _action::_ The action to take when matched. See Actions section for valid options.
 * _comment::_ A text comment enclosed in double-quotes.  The comment can extend over multiple lines if desired, until a closing quote is encountered.
 * _destination-address::_ One or more destination address tokens
 * _destination-exclude::_ Exclude one or more address tokens from the specified destination-address
+* _destination-interface::_ Specify the destination interface. Implicitly changes the term direction to *out* for this term. Mutually exclusive with _source-interface::_.
+* _source-interface::_ Specify the source interface. Implicitly changes the term direction to *in* for this term. Mutually exclusive with _destination-interface::_.
 * _destination-port::_ One or more service definition tokens
 * _expiration::_ stop rendering this term after specified date. [YYYY](YYYY.md)-[MM](MM.md)-[DD](DD.md)
 * _icmp-type::_ Specify icmp-type code to match, see section [ICMP TYPES](PolicyFormat#ICMP_TYPES.md) for list of valid arguments
