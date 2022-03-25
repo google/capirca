@@ -31,6 +31,9 @@ class Term(juniper.Term):
     super().__init__(*args, **kwargs)
     self.term.protocol = ['icmp6' if x == 'icmpv6' else x
                           for x in self.term.protocol]
+    self.term.protocol_except = [
+        'icmp6' if x == 'icmpv6' else x for x in self.term.protocol_except
+    ]
 
   def NormalizeIcmpTypes(self, icmp_types, protocols, af):
     protocols = ['icmpv6' if x == 'icmp6' else x for x in protocols]
