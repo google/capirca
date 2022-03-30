@@ -239,6 +239,14 @@ term test-icmpv6-types {
 }
 """
 
+ICMPV6_ABBREVIATION_TYPE_TERM = """
+term test-icmpv6-abbreviation-types {
+  protocol:: icmpv6
+  icmp-type:: echo-request echo-reply destination-unreachable inverse-neighbor-discovery-solicitation inverse-neighbor-discovery-advertisement version-2-multicast-listener-report home-agent-address-discovery-reply
+  action:: accept
+}
+"""
+
 BAD_ICMPV6_TYPE_TERM = """
 term test-icmp {
   protocol:: icmpv6
@@ -666,6 +674,27 @@ class PaloAltoFWTest(absltest.TestCase):
     self.assertCountEqual([
         'icmp6-echo-reply', 'icmp6-echo-request',
         'icmp6-destination-unreachable'
+    ], members, output)
+
+  def testIcmpV6ApplicationAbbreviation(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_MIXED + ICMPV6_ABBREVIATION_TYPE_TERM,
+                             self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.find(
+        PATH_RULES +
+        "/entry[@name='test-icmpv6-abbreviation-types']/application")
+    self.assertIsNotNone(x, output)
+    members = []
+    for node in x:
+      self.assertEqual(node.tag, 'member', output)
+      members.append(node.text)
+
+    self.assertCountEqual([
+        'icmp6-echo-reply', 'icmp6-echo-request',
+        'icmp6-destination-unreachable', 'icmp6-INV-NBR-DSCVR-SOL',
+        'icmp6-INV-NBR-DSCVR-ADV', 'icmp6-version-2-MCAST-LSNR-repo',
+        'icmp6-home-agent-ADDR-DSCVR-RPL'
     ], members, output)
 
   def testBadICMP(self):

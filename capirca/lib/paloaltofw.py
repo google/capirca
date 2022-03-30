@@ -271,6 +271,43 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
   _TAG_NAME_FORMAT = "{from_zone}_{to_zone}_policy-comment-{num}"
   _MAX_RULE_SRC_DST_MEMBERS = 65535
 
+  _ABBREVIATION_TABLE = [
+      # Service abbreviations first.
+      ("experiment", "EXP"),
+      ("wifi-radius", "W-R"),
+      ("customer", "CUST"),
+      ("server", "SRV"),
+      # Next, common routing terms
+      ("global", "GBL"),
+      ("google", "GOOG"),
+      ("service", "SVC"),
+      ("router", "RTR"),
+      ("internal", "INT"),
+      ("external", "EXT"),
+      ("transit", "TRNS"),
+      ("management", "MGMT"),
+      # State info
+      ("established", "EST"),
+      ("unreachable", "UNR"),
+      ("fragment", "FRAG"),
+      ("accept", "ACC"),
+      ("discard", "DISC"),
+      ("reject", "REJ"),
+      ("replies", "RPLS"),
+      ("reply", "RPL"),
+      ("request", "REQ"),
+      # ICMP types specific
+      ("inverse", "INV"),
+      ("neighbor", "NBR"),
+      ("discovery", "DSCVR"),
+      ("advertisement", "ADV"),
+      ("solicitation", "SOL"),
+      ("multicast", "MCAST"),
+      ("certification", "CERT"),
+      ("listener", "LSNR"),
+      ("address", "ADDR"),
+  ]
+
   INDENT = "  "
 
   def __init__(self, pol, exp_info):
@@ -636,6 +673,10 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           for term_icmp_type_name in term.icmp_type:
             if icmp_version == "icmp":
               icmp_app_name = "icmp-%s" % term_icmp_type_name
+              # This is to abbreviate the Application name where possible.
+              # The limit is defined by _TERM_MAX_LENGTH = 31.
+              if len(icmp_app_name) > self._TERM_MAX_LENGTH:
+                icmp_app_name = self.FixTermLength(icmp_app_name, True, True)
               if term_icmp_type_name not in policy.Term.ICMP_TYPE[4]:
                 raise PaloAltoFWBadIcmpTypeError(
                     "term with bad icmp type: %s, icmp_type: %s" %
@@ -643,6 +684,10 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
               term_icmp_type = policy.Term.ICMP_TYPE[4][term_icmp_type_name]
             else:
               icmp_app_name = "icmp6-%s" % term_icmp_type_name
+              # This is to abbreviate the Application name where possible.
+              # The limit is defined by _TERM_MAX_LENGTH = 31.
+              if len(icmp_app_name) > self._TERM_MAX_LENGTH:
+                icmp_app_name = self.FixTermLength(icmp_app_name, True, True)
               if term_icmp_type_name not in policy.Term.ICMP_TYPE[6]:
                 raise PaloAltoFWBadIcmpTypeError(
                     "term with bad icmp type: %s, icmp_type: %s" %
