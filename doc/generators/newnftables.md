@@ -1,6 +1,6 @@
-# nftables
+# newnftables
 
-WARNING: A complete rewrite of nftables is in progress.
+**WARNING: A complete rewrite of nftables is in progress. DO NOT USE IN PRODUCTION.**
 
 This file will be updated as functionality extends and may be useful for reference during code reviews.
 

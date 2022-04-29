@@ -1,0 +1,71 @@
+#
+# This is a WIP example policy for capirca/nftables
+# Policy terms will be added as code evolves to handle them.
+#
+header {
+  comment:: "Noverbose + custom priority policy example"
+  target:: newnftables inet6 OUTPUT 300 noverbose
+}
+
+term default-accept {
+  comment:: "non-protocol specific allow anything test"
+  action:: accept
+}
+
+header {
+  comment:: "Inbound traffic nftables policy example"
+  target:: newnftables inet INPUT
+}
+
+term allow-anything {
+  action:: accept
+}
+
+header {
+  comment:: "2 Inbound traffic nftables policy example"
+  target:: newnftables inet INPUT ACCEPT
+}
+
+term allow-anything {
+  action:: accept
+}
+
+header {
+  comment:: "Outbound dual-stack traffic nftables policy example"
+  target:: newnftables mixed OUTPUT
+}
+
+term default-deny {
+  action:: deny
+}
+
+header {
+  comment:: "Outbound IPv6 traffic nftables policy example"
+  target:: newnftables inet6 OUTPUT
+}
+
+term default-deny {
+  action:: deny
+}
+
+header {
+  comment:: "Priority outbound IPv6"
+  target:: newnftables inet6 OUTPUT 100
+}
+
+term awesome-term {
+  comment:: "Awesomeness."
+  action:: accept
+}
+
+term awesome-term2 {
+  comment:: "Awesomeness."
+  action:: accept
+}
+
+term awesome-term3 {
+  comment:: "Awesomeness."
+  action:: accept
+}
+
+
