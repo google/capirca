@@ -23,7 +23,6 @@ from typing import Iterator, List, Tuple
 from absl import app
 from absl import flags
 from absl import logging
-
 from capirca.lib import aclgenerator
 from capirca.lib import arista
 from capirca.lib import arista_tp
@@ -53,7 +52,6 @@ from capirca.lib import policy
 from capirca.lib import speedway
 from capirca.lib import srxlo
 from capirca.lib import windows_advfirewall
-
 from capirca.utils import config
 
 FLAGS = flags.FLAGS

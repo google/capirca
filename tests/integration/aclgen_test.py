@@ -82,6 +82,8 @@ class TestAclGenDemo(absltest.TestCase):
         'sample_speedway.ipt',
         'sample_srx.srx',
         'sample_paloalto.xml',
+        'sample_nftables.nft',
+        'sample_nftables-icmp.nft',
         'sample_stateful_multitarget_simple.xml',
         'sample_stateful_multitarget_simple.srx',
         'sample_stateful_multitarget_complex.xml',
