@@ -43,6 +43,13 @@ term good-term-2 {
   policer:: batman
 }
 """
+GOOD_TERM_3 = """
+term good-term-3 {
+  verbatim:: ciscoasa "asa had a little lamb"
+  verbatim:: ciscoasa "asa had a second lamb"
+  verbatim:: ciscoasa "asa had a third lamb"
+}
+"""
 
 SUPPORTED_TOKENS = {
     'action',
@@ -139,6 +146,12 @@ class CiscoASATest(absltest.TestCase):
     self.assertEqual(st, SUPPORTED_TOKENS)
     self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
+  def testVerbatimTerm(self):
+    pol1 = ciscoasa.CiscoASA(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_3,
+                                                self.naming), EXP_INFO)
+    self.assertIn("asa had a little lamb", str(pol1), str(pol1))
+    self.assertIn("asa had a second lamb", str(pol1), str(pol1))
+    self.assertIn("asa had a third lamb", str(pol1), str(pol1))
 
 if __name__ == '__main__':
   absltest.main()
