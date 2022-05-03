@@ -1,0 +1,67 @@
+#
+# NFTables generator policy example.
+# Intended to render ICMP terms for both IPv4 and IPv6 families.
+#
+
+header {
+  comment:: "This policy expected to test every combination of REQUIRED keywords."
+  target:: newnftables mixed INPUT
+}
+
+term multi-all-families {
+  comment:: "Validate multiple protocols."
+  protocol:: udp tcp icmp icmpv6
+  action:: accept
+}
+
+term multi-proto-term {
+  comment:: "Validate multiple protocols. IPv6 icmp should not render."
+  protocol:: udp tcp icmp
+  action:: accept
+}
+
+term test-tcp-icmp {
+  comment:: "Allow ICMP from company."
+  source-address:: PUBLIC_NAT
+  protocol:: udp tcp icmp
+  action:: accept
+}
+
+term test-icmp {
+  comment:: "Allow ICMP from source-address."
+  source-address:: PUBLIC_NAT
+  protocol:: icmp
+  action:: accept
+}
+
+term test-icmp-type-ip4 {
+  comment:: "IPv4 icmp-type test"
+  icmp-type:: echo-request echo-reply
+  protocol:: icmp
+  action:: accept
+}
+
+term test-icmp-type-ip6 {
+  comment:: "IPv6 icmp-type test"
+  icmp-type:: multicast-listener-done router-solicit router-advertisement
+  protocol:: icmpv6
+  action:: accept
+}
+
+term full-combo-term {
+  comment:: "Test src/dest 80 - No addresses"
+  source-address:: CLOUDFLARE_PUBLIC_DNS
+  destination-address:: GOOGLE_PUBLIC_DNS_ANYCAST
+  protocol:: tcp
+  source-port:: HTTP
+  destination-port:: HTTP
+  action:: accept
+}
+
+term base-traceroute-in {
+  comment:: "Ensure we can output a port-range."
+  protocol:: udp
+  source-port:: TRACEROUTE
+  destination-port:: HIGH_PORTS
+  action:: accept
+}

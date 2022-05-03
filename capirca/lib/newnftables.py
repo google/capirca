@@ -15,11 +15,62 @@
 """NFtables policy generator for capirca."""
 
 import collections
+import copy
 import datetime
 import logging
 
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
+
+# NFTables and capirca have conflicting definitions of 'address family'
+# In capirca:
+# 'mixed' refers to a 'mixed address policy IPv4/IPv6'
+# 'inet6' refers to IPv6 only.
+# 'inet' refers to IPv4 only.
+# In nftables:
+# 'inet' refers to mixed IPv4/IPv6 policies.
+# 'ip6' IPv6 only.
+# 'ip' IPv4 only.
+# Therefore; we use static global variables in this generator to refer to the
+# real intent, values are the NFtable AF format.
+ip4 = 'ip'
+ip6 = 'ip6'
+mixed = 'inet'
+
+
+def TabSpacer(number_spaces, string):
+  """Configuration indentation utility function."""
+  blank_space = ' '
+  return (blank_space * number_spaces) + string
+
+
+def Add(statement):
+  """Prefix space appending utility to handle text joins."""
+  if statement:
+    return TabSpacer(1, statement)
+  else:
+    return statement
+
+
+def ChainFormat(kind, name, ruleset):
+  """Builds a chain in NFtables configuration format.
+
+  Args:
+    kind: type string (chain or counter)
+    name: name to give the chain.
+    ruleset: the list returned from RulesetGenerator function.
+
+  Returns:
+    chain_strings: multi-line string nftable configuration for the chain.
+  """
+  header_sp = 4
+  content_sp = 8
+  chain_output = []
+  chain_output.append(TabSpacer(header_sp, '%s %s {' % (kind, name)))
+  for line in ruleset:
+    chain_output.append(TabSpacer(content_sp, line))
+  chain_output.append(TabSpacer(header_sp, '}'))
+  return '\n'.join(chain_output)
 
 
 class Error(Exception):
@@ -38,6 +89,10 @@ class UnsupportedFilterTypeError(Error):
   """Raised when an unsupported filter type is specified."""
 
 
+class UnsupportedExpressionError(Error):
+  """Raised when an unsupported expression is specified."""
+
+
 class Term(aclgenerator.Term):
   """Representation of an individual NFT term.
 
@@ -50,13 +105,7 @@ class Term(aclgenerator.Term):
       'tcp', 'udp', 'icmp', 'esp', 'udp', 'ah', 'comp', 'udplite', 'dccp',
       'sctp', 'icmpv6'
   ])
-  _ACTIONS = {
-      'accept': 'allow',
-      'deny': 'discard',
-      'reject': 'say go away to',
-      'next': 'pass it onto the next term',
-      'reject-with-tcp-rst': 'reset'
-  }
+  _ACTIONS = {'accept': 'accept', 'deny': 'drop'}
 
   def __init__(self, term, nf_af, nf_hook, verbose=True):
     """Individual instances of a Term for NFtables.
@@ -73,26 +122,270 @@ class Term(aclgenerator.Term):
     self.hook = nf_hook
     self.verbose = verbose
 
-  def CreateAnonymousSet(self, string_elements):
+  def MapICMPtypes(self, af, term_icmp_types):
+    """Normalize certain ICMP_TYPES for NFTables rendering.
+
+    If we encounter certain keyword values in policy.Term.ICMP_TYPE keywords,
+    we override them with NFTable specific values in order for rendered
+    policy to be semantically correct with what NFT expects.
+    https://www.netfilter.org/projects/nftables/manpage.html
+
+    Function is used inside PortsAndProtocols.
+
+    Args:
+      term_icmp_types: ICMP types keywords.
+
+    Returns:
+      normalized list of icmp_types.
+    """
+    ICMP_TYPE_REMAP = {
+        6: {
+            'multicast-listener-query': 'mld-listener-query',
+            'multicast-listener-report': 'mld-listener-report',
+            'multicast-listener-done': 'mld-listener-done',
+            'router-solicit': 'nd-router-solicit',
+            'router-advertisement': 'nd-router-advert',
+            'neighbor-solicit': 'nd-neighbor-solicit',
+            'neighbor-advertisement': 'nd-neighbor-advert',
+            'redirect-message': 'nd-redirect',
+            'inverse-neighbor-discovery-solicitation': 'ind-neighbor-solicit',
+            'inverse-neighbor-discovery-advertisement': 'ind-neighbor-advert',
+            'version-2-multicast-listener-report': 'mld2-listener-report',
+        },
+        4: {
+            # IPv4 exceptions below
+            'unreachable': 'destination-unreachable',
+            'information-request': 'info-request',
+            'information-reply': 'info-reply',
+            'mask-request': 'address-mask-request',
+            'mask-reply': 'address-mask-reply',
+        }
+    }
+
+    for item in term_icmp_types:
+      if af == ip4:
+        # IPv4 ICMP
+        if item in ICMP_TYPE_REMAP[4]:
+          # Replace with NFT expected value.
+          term_icmp_types[term_icmp_types.index(item)] = ICMP_TYPE_REMAP[4].get(item)
+      if af == ip6:
+        # IPv6 ICMP
+        if item in ICMP_TYPE_REMAP[6]:
+          # Replace with NFT expected value.
+          term_icmp_types[term_icmp_types.index(item)] = ICMP_TYPE_REMAP[6].get(item)
+    return term_icmp_types
+
+  def CreateAnonymousSet(self, data):
     """Build a nftables anonymous set from some elements.
 
     Anonymous are formatted using curly braces then some data. These sets are
     bound to a rule, have no specific name and cannot be updated.
 
     Args:
-      string_elements: a list of strings to format.
+      data: a list of strings to format.
 
     Returns:
       formatted string of items as anonymous set.
     """
-    nfset = ''
-    if len(string_elements) == 1:
-      nfset = str(string_elements)
-    if len(string_elements) > 1:
-      nfset = ', '.join(string_elements)
-    return '{{ %s }}' % nfset
+    nfset = []
+    if len(data) == 1:
+      nfset = data[0]
+      return nfset
+    if len(data) > 1:
+      nfset = ', '.join(data)
+      return '{{ {0} }}'.format(nfset)
 
-  def _RulesetGenerator(self, term):
+  def PortsAndProtocols(self, address_family, protocol, src_ports, dst_ports,
+                        icmp_type):
+    """Handling protocol specific NFTable statements.
+
+    Args:
+      address_family: term address family.
+      protocol: term protocol.
+      src_ports: raw term source port.
+      dst_ports: raw term dest port.
+      icmp_type: special ICMP type flag.
+
+    Returns:
+      list of statements related to ports and protocols.
+
+    """
+    def PortStatement(protocol, source, destination):
+      """NFT port statement. Returns empty if no ports defined."""
+      ports_list = []
+
+      # SOURCE PORTS.
+      if source:
+        ports_list.append('%s sport %s' % (protocol, source))
+
+      # DESTINATION PORTS.
+      if destination:
+        ports_list.append('%s dport %s' % (protocol, destination))
+
+      # Normalize ports into single nft statement.
+      if ports_list:
+        ports_statement = ' '.join(ports_list)
+      else:
+        ports_statement = ''
+      return ports_statement  # end PortStatement.
+
+    ip_protocol = copy.deepcopy(protocol)
+    ip6_protocol = copy.deepcopy(protocol)
+    # Normalize term.ports objects.
+    src_p = self._Group(src_ports)
+    dst_p = self._Group(dst_ports)
+    statement_lines = []
+
+    # Normalize ICMP types.
+    # TODO(gfm): Call self.NormalizeIcmpTypes.
+    icmp_type = self.MapICMPtypes(address_family, icmp_type)
+
+    if address_family == mixed:
+      # The way we handle mixed is we call ourselves twice.
+      ipv4_list = self.PortsAndProtocols(ip4, protocol, src_ports, dst_ports,
+                                         icmp_type)
+      ipv6_list = self.PortsAndProtocols(ip6, protocol, src_ports, dst_ports,
+                                         icmp_type)
+      return ipv4_list + ipv6_list
+
+    if address_family == 'ip':
+      # IPv4 stuff.
+      if icmp_type and ('icmp' in ip_protocol):
+        if len(icmp_type) > 1:
+          statement_lines.append('icmp type' +
+                                 Add(self.CreateAnonymousSet(icmp_type)))
+        else:
+          statement_lines.append('icmp type' + Add(icmp_type))
+        ip_protocol.remove('icmp')
+      if 'icmpv6' in ip_protocol:
+        # No IPv6 protocols in IPv4 family.
+        ip_protocol.remove('icmpv6')
+      if ip_protocol:
+        # Multi-protocol and zero-ports.
+        if len(ip_protocol) > 1 and not (src_ports and dst_ports):
+          statement_lines.append('ip protocol' +
+                                 Add(self.CreateAnonymousSet(ip_protocol)))
+        else:
+          for proto in ip_protocol:
+            if (src_ports and dst_ports):
+              statement_lines.append(PortStatement(proto, src_p, dst_p))
+            else:
+              statement_lines.append('ip protocol' + Add(proto))
+
+    if address_family == 'ip6':
+      # IPv6 stuff.
+      if icmp_type and ('icmpv6' in ip6_protocol):
+        if len(icmp_type) > 1:
+          statement_lines.append('icmpv6 type' +
+                                 Add(self.CreateAnonymousSet(icmp_type)))
+        else:
+          statement_lines.append('icmpv6 type' + Add(icmp_type))
+        ip6_protocol.remove('icmpv6')
+      if 'icmp' in ip6_protocol:
+        # No IPv4 protocols in IPv6 family.
+        ip6_protocol.remove('icmp')
+      if ip6_protocol:
+        # NFT IPv6 protocol matching is complex. Using 'ip6 nexthdr' only
+        # matches if ipv6 packet does not contain any extension headers.
+        # we use meta l4proto here to walk down the headers until real transport
+        # protocol is found. This allows us to use Sets here too.
+        # https://wiki.nftables.org/wiki-nftables/index.php/Matching_packet_headers
+        if len(ip6_protocol) > 1 and not (src_ports and dst_ports):
+          statement_lines.append('meta l4proto' +
+                                 Add(self.CreateAnonymousSet(ip6_protocol)))
+        else:
+          # We avoid using th (transport header), instead we use single
+          # statements for each protocol.
+          for proto in ip6_protocol:
+            if (src_ports or dst_ports):
+              statement_lines.append(PortStatement(proto, src_p, dst_p))
+            else:
+              # Single proto, no ports.
+              statement_lines.append('meta l4proto' + Add(proto))
+
+    return statement_lines
+
+  def GroupExpressions(self, address_expr, pp_expr, verdict):
+    """Combines all expressions with a verdict (decision).
+
+    The inputs are already pre-sanitized by RulesetGenerator.
+
+    Args:
+      address_expr: pre-processed list of nftable statements of network
+        addresses.
+      pp_expr: pre-processed list of nftables protocols and ports.
+      verdict: action to take on resulting final statement (allow/deny).
+
+    Returns:
+      list of strings representing valid nftables statements.
+    """
+    statement = []
+    if address_expr:
+      for addr in address_expr:
+        if pp_expr:
+          for pstat in pp_expr:
+            if pstat.startswith('icmp type') or addr.startswith('ip '):
+              # Handle IPv4 ports and proto statements.
+              if addr.startswith('ip '):
+                statement.append(addr + Add(pstat) + Add(verdict))
+            elif pstat.startswith('icmpv6 type') or addr.startswith('ip6'):
+              if addr.startswith('ip6'):
+                statement.append(addr + Add(pstat) + Add(verdict))
+        else:
+          statement.append(addr + Add(verdict))
+    elif pp_expr:
+      # Handle statement without addresses but has ports & protocols.
+      for pstat in pp_expr:
+        statement.append(pstat + Add(verdict))
+    else:
+      # If no addresses or ports & protocol. Verdict only statement.
+      statement.append(verdict)
+    return statement
+
+  def _AddrStatement(self, address_family, src_addr, dst_addr):
+    """Builds an NFTables address statement.
+
+    returns: list
+    """
+    address_statement = []
+    src_addr_book = self._AddressClassifier(src_addr)
+    dst_addr_book = self._AddressClassifier(dst_addr)
+
+    if src_addr and dst_addr:
+      # Condition where term has both defined.
+      if address_family == 'inet' or address_family == 'ip':
+        if src_addr_book['ip'] and dst_addr_book['ip']:
+          address_statement.append(
+              'ip saddr ' + self.CreateAnonymousSet(src_addr_book['ip']) + ' ' +
+              'ip daddr ' + self.CreateAnonymousSet(dst_addr_book['ip']))
+      if address_family == 'inet' or address_family == 'ip6':
+        if src_addr_book['ip6'] and dst_addr_book['ip6']:
+          address_statement.append(
+              'ip6 saddr ' + self.CreateAnonymousSet(src_addr_book['ip6']) +
+              ' ' + 'ip6 daddr ' +
+              self.CreateAnonymousSet(dst_addr_book['ip6']))
+    elif src_addr:
+      # Term has only src defined.
+      if address_family == 'inet' or address_family == 'ip':
+        if src_addr_book['ip']:
+          address_statement.append('ip saddr ' +
+                                   self.CreateAnonymousSet(src_addr_book['ip']))
+      if address_family == 'inet' or address_family == 'ip6':
+        if src_addr_book['ip6']:
+          address_statement.append(
+              'ip6 saddr ' + self.CreateAnonymousSet(src_addr_book['ip6']))
+    elif dst_addr:
+      if address_family == 'inet' or address_family == 'ip':
+        if dst_addr_book['ip']:
+          address_statement.append('ip daddr ' +
+                                   self.CreateAnonymousSet(dst_addr_book['ip']))
+      if address_family == 'inet' or address_family == 'ip6':
+        if dst_addr_book['ip6']:
+          address_statement.append(
+              'ip6 daddr ' + self.CreateAnonymousSet(dst_addr_book['ip6']))
+    return address_statement
+
+  def RulesetGenerator(self, term):
     """Generate string rules of a given Term.
 
     Rules are constructed from Terms() and are contained within chains.
@@ -105,41 +398,40 @@ class Term(aclgenerator.Term):
 
     Returns:
       list of strings. Representing a ruleset for later formatting.
+
     """
     term_ruleset = []
-    src_addr_book = self._AddressClassifier(term.source_address)
-    dst_addr_book = self._AddressClassifier(term.destination_address)
 
-    def ICMP(nf_family, protocol, icmp_code, src_addr, dst_addr):
-      """ICMP Term handling.
-
-      Args:
-        nf_family: nftables address family (ip, ip6, inet for mixed)
-        protocol: list of protocols for term
-        icmp_code: icmp specific option
-        src_addr: source networks in dict[nf_family] format.
-        dst_addr: destination networks in dict[nf_family] format.
-
-      Returns:
-        list of strings containing rule in specific format.
-      """
-
+    address_list = []
     # COMMENT handling.
     if self.verbose:
       for line in self.term.comment:
         term_ruleset.append('comment "%s"' % line)
 
-    # Protocol handling.
-    # TODO(gfm): CL 2 handles protocols.
+    # ADDRESS handling.
+    address_list = self._AddrStatement(self.address_family,
+                                       self.term.source_address,
+                                       self.term.destination_address)
 
-    # TODO(gfm): Handle rules with network addresses.
+    # PORTS and PROTOCOLS handling.
+    proto_and_ports = self.PortsAndProtocols(self.address_family,
+                                             self.term.protocol,
+                                             self.term.source_port,
+                                             self.term.destination_port,
+                                             self.term.icmp_type)
+
+    # STATEMENT VERDICT / ACTION.
+    verdict = self._ACTIONS[self.term.action[0]]
+    # TODO(gfm): If verdict is not supported, drop nftable_rule for it.
+    nftable_rule = self.GroupExpressions(address_list, proto_and_ports, verdict)
+    term_ruleset.extend(nftable_rule)
     return term_ruleset
 
   def _AddressClassifier(self, address_to_classify):
     """Organizes network addresses according to IP family in a dict.
 
     Args:
-      address_to_classify: list of network addresses
+      address_to_classify: nacaddr.IP list of network addresses.
 
     Returns:
       dictionary of network addresses classified by AF.
@@ -147,9 +439,9 @@ class Term(aclgenerator.Term):
     addresses = collections.defaultdict(list)
     for addr in address_to_classify:
       if addr.version == 4:
-        addresses['ip'].append(addr)
+        addresses['ip'].append(str(addr))
       if addr.version == 6:
-        addresses['ip6'].append(addr)
+        addresses['ip6'].append(str(addr))
     return addresses
 
   def _Group(self, group):
@@ -174,37 +466,26 @@ class Term(aclgenerator.Term):
 
     if len(group) > 1:
       rval = [_FormatPorts(x) for x in group]
-    else:
+    elif len(group) == 1:
       rval = _FormatPorts(group[0])
+    else:
+      # Ports undefined/empty.
+      rval = ''
     return rval
 
   def __str__(self):
-    """Terms printing function."""
+    """Terms printing function.
 
-    # Things we need to do in this section:
-    # 1) validate term IPv4 or IPv6 = the family of the table its going in.
-    # 2)
-    # Verify platform specific terms. Skip whole term if platform does not
-    # match.
+    Not implemented for NFTables format due to complexity.
+    """
     if self.term.platform:
       if 'newnftables' not in self.term.platform:
         return ''
     if self.term.platform_exclude:
       if 'newnftables' in self.term.platform_exclude:
         return ''
-
-    # Terms printing.
-    print('TERM = ', self.term)
-    self._RulesetGenerator(self.term)
-
-    # Create nftables IP family dictionaries.
-    if self.term.source_address:
-      source_addresses = self._AddressClassifier(self.term.source_address)
-    if self.term.destination_address:
-      destination_address = self._AddressClassifier(
-          self.term.destination_address)
-
-    return ''
+    return ChainFormat('chain', self.term.name,
+                       self.RulesetGenerator(self.term))
 
 
 class NewNftables(aclgenerator.ACLGenerator):
@@ -221,6 +502,9 @@ class NewNftables(aclgenerator.ACLGenerator):
       'expiration',
   ])
 
+  _AF_MAP = {'inet': (4,),
+             'inet6': (6,),
+             'mixed': (4, 6)}
   # Below mapping converts capirca HEADER native to nftables table.
   # In Nftables 'inet' contains both IPv4 and IPv6 addresses and rules.
   NF_TABLE_AF_MAP = {'inet': 'ip', 'inet6': 'ip6', 'mixed': 'inet'}
@@ -238,59 +522,9 @@ class NewNftables(aclgenerator.ACLGenerator):
     Raises:
       TermError: Raised when policy term requirements are not met.
     """
-    self.nftables_policies = []
+    self.newnftables_policies = []
 
-    def ProcessHeader(header_options):
-      """Capirca policy header processing.
-
-      Args:
-        header_options: capirca policy header data (filter_options)
-
-      Raises:
-        HeaderError: Raised when the policy header format requirements are not
-        met.
-
-      Returns:
-        netfilter_family: x. filter_options[0]
-        netfilter_hook: x. filter_options[1].lower()
-        netfilter_priority: numbers = [x for x in filter_options if x.isdigit()]
-        policy_default_action: nftable action to take on unmatched packets.
-        verbose: header and term verbosity.
-      """
-      if len(header_options) < 2:
-        raise HeaderError(
-            'Invalid header for Nftables. Required fields missing.')
-      # First header element should dictate type of policy.
-      if header_options[0] not in NewNftables._HEADER_AF:
-        raise HeaderError(
-            'Invalid address family in header: %s. Supported: %s' %
-            (header_options[0], NewNftables._HEADER_AF))
-      netfilter_family = self.NF_TABLE_AF_MAP.get(header_options[0])
-      policy_default_action = 'drop'
-      if 'ACCEPT' in header_options:
-        policy_default_action = 'accept'
-      netfilter_hook = header_options[1].lower()
-      if netfilter_hook not in self._SUPPORTED_HOOKS:
-        raise HeaderError(
-            '%s is not a supported nftables hook. Supported hooks: %s' %
-            (netfilter_hook, list(self._SUPPORTED_HOOKS)))
-      if len(header_options) >= 2:
-        numbers = [x for x in header_options if x.isdigit()]
-        if not numbers:
-          netfilter_priority = self._HOOK_PRIORITY_DEFAULT
-          logging.info(
-              'INFO: NFtables priority not specified in header.'
-              'Defaulting to %s', self._HOOK_PRIORITY_DEFAULT)
-        if len(numbers) == 1:
-          # A single integer value is used to set priority.
-          netfilter_priority = numbers[0]
-        if len(numbers) > 1:
-          raise HeaderError('Too many integers in header.')
-      verbose = True
-      if 'noverbose' in header_options:
-        verbose = False
-        header_options.remove('noverbose')
-      return netfilter_family, netfilter_hook, netfilter_priority, policy_default_action, verbose
+    pol_counter = 0
 
     current_date = datetime.date.today()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
@@ -298,11 +532,15 @@ class NewNftables(aclgenerator.ACLGenerator):
       if self._PLATFORM not in header.platforms:
         continue
       filter_options = header.FilterOptions('newnftables')
-      nf_af, nf_hook, nf_priority, filter_policy_default_action, verbose = ProcessHeader(
+      nf_af, nf_hook, nf_priority, filter_policy_default_action, verbose = self._ProcessHeader(
           filter_options)
 
+      # Base chain determine name based on iteration of header.
+      base_chain_name = self._BASE_CHAIN_PREFIX + str(pol_counter)
+      child_chains = collections.defaultdict(dict)
       term_names = set()
       new_terms = []
+      # TODO(gfm): Add checks for ICMP and address families.
       for term in terms:
         if term.name in term_names:
           raise TermError('Duplicate term name')
@@ -325,45 +563,123 @@ class NewNftables(aclgenerator.ACLGenerator):
           term.destination_address = nacaddr.RemoveAddressFromList(
               term.destination_address, i)
         new_terms.append(Term(term, nf_af, nf_hook, verbose))
-      self.nftables_policies.append(
-          (header, nf_af, nf_hook, nf_priority, filter_policy_default_action,
-           verbose, new_terms))
+        # Instantiate object to call function from Term()
+        term_object = Term(term, nf_af, nf_hook, verbose)
+        child_chains[base_chain_name].update(
+            {term.name: term_object.RulesetGenerator(term)})
+      pol_counter += 1
+      self.newnftables_policies.append(
+          (header, base_chain_name, nf_af, nf_hook, nf_priority,
+           filter_policy_default_action, verbose, child_chains))
 
-  def __str__(self):
-    """Render the policy as Nftables configuration."""
-    self.tables = collections.defaultdict(list)
-    self.chains = collections.defaultdict(list)
-    nft_config = []
+  def _ProcessHeader(self, header_options):
+    """Capirca policy header processing.
 
-    # output = self._BuildTables(self.nftables_policies)
-    for (header, nf_af, nf_hook, nf_priority, filter_policy_default_action,
-         verbose, new_terms) in self.nftables_policies:
+    Args:
+      header_options: capirca policy header data (filter_options)
+
+    Raises:
+      HeaderError: Raised when the policy header format requirements are not
+      met.
+
+    Returns:
+      netfilter_family: x. filter_options[0]
+      netfilter_hook: x. filter_options[1].lower()
+      netfilter_priority: numbers = [x for x in filter_options if x.isdigit()]
+      policy_default_action: nftable action to take on unmatched packets.
+      verbose: header and term verbosity.
+    """
+    if len(header_options) < 2:
+      raise HeaderError('Invalid header for Nftables. Required fields missing.')
+    # First header element should dictate type of policy.
+    if header_options[0] not in NewNftables._HEADER_AF:
+      raise HeaderError('Invalid address family in header: %s. Supported: %s' %
+                        (header_options[0], NewNftables._HEADER_AF))
+    netfilter_family = self.NF_TABLE_AF_MAP.get(header_options[0])
+    policy_default_action = 'drop'
+    if 'ACCEPT' in header_options:
+      policy_default_action = 'accept'
+    netfilter_hook = header_options[1].lower()
+    if netfilter_hook not in self._SUPPORTED_HOOKS:
+      raise HeaderError(
+          '%s is not a supported nftables hook. Supported hooks: %s' %
+          (netfilter_hook, list(self._SUPPORTED_HOOKS)))
+    if len(header_options) >= 2:
+      numbers = [x for x in header_options if x.isdigit()]
+      if not numbers:
+        netfilter_priority = self._HOOK_PRIORITY_DEFAULT
+        logging.info(
+            'INFO: NFtables priority not specified in header.'
+            'Defaulting to %s', self._HOOK_PRIORITY_DEFAULT)
+      if len(numbers) == 1:
+        # A single integer value is used to set priority.
+        netfilter_priority = numbers[0]
+      if len(numbers) > 1:
+        raise HeaderError('Too many integers in header.')
+    verbose = True
+    if 'noverbose' in header_options:
+      verbose = False
+      header_options.remove('noverbose')
+    return netfilter_family, netfilter_hook, netfilter_priority, policy_default_action, verbose
+
+  def _ConfigurationDictionary(self, nft_pol):
+    """NFTables configuration object.
+
+    Organizes policies into a data structure that can keep relationships with
+    NFTables address family (tables) and the parent base chain (+ child chains).
+
+    Args:
+      nft_pol: Object containing pre-processed data from _TranslatePolicy.
+
+    Returns:
+      nftables: dictionary of dictionaries NFTables policy object.
+    """
+    nftables = collections.defaultdict(dict)
+    for (header, base_chain_name, nf_af, nf_hook, nf_priority,
+         filter_policy_default_action, verbose, child_chains) in nft_pol:
       base_chain_comment = ''
       # Add max character checking on header.comment later if needed.
       if verbose:
         base_chain_comment = header.comment
-      self.tables[nf_af].append(
-          (nf_hook, nf_priority, filter_policy_default_action,
-           base_chain_comment, new_terms))
+      nftables[nf_af][base_chain_name] = {
+          'hook': nf_hook,
+          'comment': base_chain_comment,
+          'priority': nf_priority,
+          'policy': filter_policy_default_action,
+          'rules': child_chains,
+      }
+    return nftables
 
-    for nf_af in self.tables:
-      nft_config.append('table %s filtering_policies {' % nf_af)
-      for count, elem in enumerate(self.tables[nf_af]):
-        base_chain_name = self._BASE_CHAIN_PREFIX + str(count)
+  def __str__(self):
+    """Render the policy as Nftables configuration."""
+    nft_config = []
+    configuration = self._ConfigurationDictionary(self.newnftables_policies)
 
-        nft_config.append('\tchain %s {' % base_chain_name)
-        if str(elem[1]):
-          nft_config.append('\t\tcomment "%s"' % elem[0][0])
-        nft_config.append('\t\ttype filter hook %s priority %s; policy %s;' %
-                          (elem[0], elem[1], elem[2]))
-        base_chain_terms = elem[4]
-        for valid_term in base_chain_terms:
-          # Here we call Term(str)
-          term_output = str(valid_term)
-          if term_output:
-            nft_config.append(term_output)
-            print(term_output)  # space then term_rule.
-        nft_config.append('\t}')  # chain_end
+    for address_family in configuration:
+      nft_config.append('table %s filtering_policies {' % address_family)
+      base_chain_dict = configuration[address_family]
+      for item in base_chain_dict:
+        # TODO(gfm): Add counter chain processing here.
+        for k, v in base_chain_dict[item]['rules'][item].items():
+          nft_config.append(ChainFormat('chain', k, v))
+        # base chain header and contents.
+        nft_config.append(TabSpacer(4, 'chain %s {' % item))
+        if base_chain_dict[item]['comment']:
+          # Handle multi-line comments
+          for comment in base_chain_dict[item]['comment']:
+            nft_config.append(TabSpacer(8, 'comment "%s"' % comment))
+        nft_config.append(
+            TabSpacer(
+                8, 'type filter hook %s priority %s; policy %s;' %
+                (base_chain_dict[item]['hook'],
+                 base_chain_dict[item]['priority'],
+                 base_chain_dict[item]['policy'])))
+        # Reference the child chains with jump.
+        for child_chain in base_chain_dict[item]['rules'][item].keys():
+          nft_config.append(TabSpacer(8, 'jump %s' % child_chain))
+        nft_config.append(TabSpacer(4, '}'))  # chain_end
       nft_config.append('}')  # table_end
 
-    return '\n '.join(nft_config)
+    # Terminating newline.
+    nft_config.append('\n')
+    return '\n'.join(nft_config)

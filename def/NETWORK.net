@@ -76,6 +76,8 @@ GOOGLE_PUBLIC_DNS_ANYCAST = 8.8.4.4/32               # IPv4 Anycast
                             2001:4860:4860::8888/128 # IPv6 Anycast
 GOOGLE_DNS = GOOGLE_PUBLIC_DNS_ANYCAST
 
+CLOUDFLARE_PUBLIC_DNS = 2606:4700:4700::1111/128
+                        1.1.1.1
 
 # The following are sample entires intended for us in the included
 # sample policy file.  These should be removed.

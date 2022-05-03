@@ -16,3 +16,5 @@ Unless otherwise stated, all fields are required unless they're marked optional.
   * default_policy_override: **OPTIONAL** defines the default action (ACCEPT, DROP) for non-matching packets. Default behavior is DROP.
   * priority:  **OPTIONAL** By default, this generator creates base chains with a starting priority of 0. Defining an integer value will override this behavior.
   * noverbose: **OPTIONAL** Disable header and term comments in final ACL output. Default behavior is verbose.
+
+
