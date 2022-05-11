@@ -328,6 +328,7 @@ class Term:
     logging: VarType.LOGGING
     log_name: VarType.LOG_NAME
     next-ip: VarType.NEXT_IP
+    port-mirror: VarType.PORT_MIRROR
     qos: VarType.QOS
     pan-application: VarType.PAN_APPLICATION
     policer: VarType.POLICER
@@ -455,6 +456,7 @@ class Term:
     self.destination_prefix_except = []
     self.inactive = False
     self.encapsulate = None
+    self.port_mirror = None
     # srx specific
     self.vpn = None
     # gce specific
@@ -656,6 +658,9 @@ class Term:
           return False
       else:
         return False
+    if self.port_mirror:
+      if not other.port_mirror:
+        return False
     if self.icmp_type:
       if sorted(self.icmp_type) is not sorted(other.icmp_type):
         return False
@@ -735,6 +740,8 @@ class Term:
       ret_str.append('  owner: %s' % self.owner)
     if self.port:
       ret_str.append('  port: %s' % sorted(self.port))
+    if self.port_mirror:
+      ret_str.append('  port_mirror: %s' % self.port_mirror)
     if self.source_port:
       ret_str.append('  source_port: %s' % sorted(self.source_port))
     if self.destination_port:
@@ -924,6 +931,10 @@ class Term:
 
     # flexible_match
     if self.flexible_match_range != other.flexible_match_range:
+      return False
+
+    # port_mirror
+    if self.port_mirror != other.port_mirror:
       return False
 
     return True
@@ -1157,6 +1168,8 @@ class Term:
         self.counter = obj
       elif obj.var_type is VarType.ENCAPSULATE:
         self.encapsulate = obj.value
+      elif obj.var_type is VarType.PORT_MIRROR:
+        self.port_mirror = obj.value
       elif obj.var_type is VarType.TRAFFIC_CLASS_COUNT:
         self.traffic_class_count = obj
       elif obj.var_type is VarType.ICMP_TYPE:
@@ -1238,7 +1251,8 @@ class Term:
             'term "%s" has both verbatim and non-verbatim tokens.' % self.name)
     else:
       if (not self.action and not self.routing_instance and not self.next_ip and
-          not self.encapsulate and not self.filter_term):
+          not self.encapsulate and not self.filter_term and
+          not self.port_mirror):
         raise TermNoActionError('no action specified for term %s' % self.name)
       if self.filter_term and self.action:
         raise InvalidTermActionError('term "%s" has both filter and action tokens.' % self.name)
@@ -1515,6 +1529,7 @@ class VarType:
   ENCAPSULATE = 61
   FILTER_TERM = 62
   RESTRICT_ADDRESS_FAMILY = 63
+  PORT_MIRROR = 64
 
 
   def __init__(self, var_type, value):
@@ -1720,6 +1735,7 @@ tokens = (
     'PLATFORMEXCLUDE',
     'POLICER',
     'PORT',
+    'PORT_MIRROR',
     'PRECEDENCE',
     'PRIORITY',
     'PROTOCOL',
@@ -1800,6 +1816,7 @@ reserved = {
     'platform-exclude': 'PLATFORMEXCLUDE',
     'policer': 'POLICER',
     'port': 'PORT',
+    'port-mirror': 'PORT_MIRROR',
     'precedence': 'PRECEDENCE',
     'priority': 'PRIORITY',
     'protocol': 'PROTOCOL',
@@ -1979,6 +1996,7 @@ def p_term_spec(p):
                 | term_spec platform_spec
                 | term_spec policer_spec
                 | term_spec port_spec
+                | term_spec port_mirror_spec
                 | term_spec precedence_spec
                 | term_spec priority_spec
                 | term_spec prefix_list_spec
@@ -2085,6 +2103,11 @@ def p_next_ip_spec(p):
 def p_encapsulate_spec(p):
   """ encapsulate_spec : ENCAPSULATE ':' ':' STRING """
   p[0] = VarType(VarType.ENCAPSULATE, p[4])
+
+
+def p_port_mirror_spec(p):
+  """ port_mirror_spec : PORT_MIRROR ':' ':' STRING """
+  p[0] = VarType(VarType.PORT_MIRROR, p[4])
 
 
 def p_icmp_type_spec(p):

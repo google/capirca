@@ -135,7 +135,8 @@ class Term(aclgenerator.Term):
              'reject': 'reject',
              'next': 'next term',
              'reject-with-tcp-rst': 'reject tcp-reset',
-             'encapsulate': 'encapsulate'}
+             'encapsulate': 'encapsulate',
+             'port-mirror': 'port-mirror'}
 
   # the following lookup table is used to map between the various types of
   # filters the juniper generator can render.  As new differences are
@@ -556,10 +557,12 @@ class Term(aclgenerator.Term):
     if self.term.encapsulate:
       unique_actions.add('encapsulate')
     if len(unique_actions) <= 1:
-      for action in [self.term.logging, self.term.routing_instance,
-                     self.term.counter, self.term.policer, self.term.qos,
-                     self.term.loss_priority, self.term.dscp_set,
-                     self.term.next_ip, self.term.traffic_class_count]:
+      for action in [
+          self.term.logging, self.term.routing_instance, self.term.counter,
+          self.term.policer, self.term.qos, self.term.loss_priority,
+          self.term.dscp_set, self.term.next_ip, self.term.traffic_class_count,
+          self.term.port_mirror
+      ]:
         if action:
           try:
             unique_actions.update(action)
@@ -630,6 +633,8 @@ class Term(aclgenerator.Term):
       if self.term.qos:
         config.Append('forwarding-class %s;' % self.term.qos)
 
+      if self.term.port_mirror:
+        config.Append('port-mirror;')
       if self.term.loss_priority:
         config.Append('loss-priority %s;' % self.term.loss_priority)
       if self.term.next_ip:
@@ -899,6 +904,7 @@ class Juniper(aclgenerator.ACLGenerator):
                          'packet_length',
                          'policer',
                          'port',
+                         'port_mirror',
                          'precedence',
                          'protocol_except',
                          'qos',

@@ -425,6 +425,12 @@ term good-term-46 {
   encapsulate:: stuff_and_things
 }
 """
+GOOD_TERM_47 = """
+term good-term-47 {
+  protocol:: icmp tcp udp gre esp ah sctp
+  port-mirror:: true
+}
+"""
 GOOD_TERM_V6_1 = """
 term good-term-v6-1 {
   hop-limit:: 5
@@ -1230,6 +1236,11 @@ class PolicyTest(absltest.TestCase):
     pol = HEADER + GOOD_TERM_46
     result = policy.ParsePolicy(pol, self.naming)
     self.assertIn('encapsulate: stuff_and_things', str(result))
+
+  def testPortMirror(self):
+    pol = HEADER + GOOD_TERM_47
+    result = policy.ParsePolicy(pol, self.naming)
+    self.assertIn('port_mirror: true', str(result))
 
   def testTTL(self):
     pol = HEADER + GOOD_TERM_43

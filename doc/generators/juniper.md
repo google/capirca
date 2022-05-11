@@ -65,6 +65,7 @@ The default format is _inet4_, and is implied if not other argument is given.
 *_platform-exclude:: one or more target platforms for which this term should NEVER be rendered.
 * _policer::_ specify which policer to apply to matching packets.
 * _port::_ Matches on source or destination ports. Takes a service token.
+* _port-mirror::_ Sends copies of the packets to a remote port, boolean value is used to render this config.
 * _precedence::_ specify precedence of range 0-7.  May be a single integer, or a space separated list.
 * _protocol::_ the network protocols this term will match, such as tcp, udp, icmp, or a numeric value.
 * _protocol\_except::_ allow all protocol "except" specified.

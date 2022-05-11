@@ -476,6 +476,20 @@ term bad-term-2 {
   routing-instance:: instance-name
 }
 """
+PORTMIRROR_GOOD_TERM_1 = """
+term good-term-1 {
+  protocol:: tcp
+  port-mirror:: true
+}
+"""
+PORTMIRROR_GOOD_TERM_2 = """
+term good-term-2 {
+  protocol:: tcp
+  port-mirror:: true
+  counter:: count-name
+  action:: deny
+}
+"""
 LONG_COMMENT_TERM_1 = """
 term long-comment-term-1 {
   comment:: "this is very very very very very very very very very very very
@@ -609,6 +623,7 @@ SUPPORTED_TOKENS = frozenset([
     'platform_exclude',
     'policer',
     'port',
+    'port_mirror',
     'precedence',
     'protocol',
     'protocol_except',
@@ -792,6 +807,20 @@ class JuniperTest(parameterized.TestCase):
         policy.ParsePolicy(GOOD_HEADER + ENCAPSULATE_BAD_TERM_2, self.naming),
         EXP_INFO)
     self.assertRaises(juniper.JuniperMultipleTerminatingActionError, str, jcl)
+
+  def testPortMirror(self):
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(GOOD_HEADER + PORTMIRROR_GOOD_TERM_1, self.naming),
+        EXP_INFO)
+    output = str(jcl)
+    self.assertIn('port-mirror;', output, output)
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(GOOD_HEADER + PORTMIRROR_GOOD_TERM_2, self.naming),
+        EXP_INFO)
+    output = str(jcl)
+    self.assertIn('port-mirror;', output, output)
+    self.assertIn('count count-name;', output, output)
+    self.assertIn('discard;', output, output)
 
   def testIcmpType(self):
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_3,

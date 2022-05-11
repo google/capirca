@@ -242,6 +242,10 @@ class Policer(Field):
   """A rate-limit-icmp field."""
 
 
+class PortMirror(Field):
+  """A port-mirror field."""
+
+
 class Precedence(Field):
   """A precedence field."""
 
@@ -352,6 +356,7 @@ field_map = {
     'platform-exclude': PlatformExclude,
     'policer': Policer,
     'port': Port,
+    'port-mirror': PortMirror,
     'precedence': Precedence,
     'protocol': Protocol,
     'protocol-except': ProtocolExcept,
