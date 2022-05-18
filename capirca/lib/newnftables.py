@@ -167,12 +167,14 @@ class Term(aclgenerator.Term):
         # IPv4 ICMP
         if item in ICMP_TYPE_REMAP[4]:
           # Replace with NFT expected value.
-          term_icmp_types[term_icmp_types.index(item)] = ICMP_TYPE_REMAP[4].get(item)
+          term_icmp_types[term_icmp_types.index(item)] = ICMP_TYPE_REMAP[4].get(
+              item)
       if af == ip6:
         # IPv6 ICMP
         if item in ICMP_TYPE_REMAP[6]:
           # Replace with NFT expected value.
-          term_icmp_types[term_icmp_types.index(item)] = ICMP_TYPE_REMAP[6].get(item)
+          term_icmp_types[term_icmp_types.index(item)] = ICMP_TYPE_REMAP[6].get(
+              item)
     return term_icmp_types
 
   def CreateAnonymousSet(self, data):
@@ -188,7 +190,11 @@ class Term(aclgenerator.Term):
       formatted string of items as anonymous set.
     """
     nfset = []
+    if isinstance(data, str):
+      # Handle single string. No params.
+      return data
     if len(data) == 1:
+      # Handle a list of a single element.
       nfset = data[0]
       return nfset
     if len(data) > 1:
@@ -210,17 +216,20 @@ class Term(aclgenerator.Term):
       list of statements related to ports and protocols.
 
     """
+
     def PortStatement(protocol, source, destination):
       """NFT port statement. Returns empty if no ports defined."""
       ports_list = []
 
       # SOURCE PORTS.
       if source:
-        ports_list.append('%s sport %s' % (protocol, source))
+        ports_list.append('%s sport %s' %
+                          (protocol, self.CreateAnonymousSet(source)))
 
       # DESTINATION PORTS.
       if destination:
-        ports_list.append('%s dport %s' % (protocol, destination))
+        ports_list.append('%s dport %s' %
+                          (protocol, self.CreateAnonymousSet(destination)))
 
       # Normalize ports into single nft statement.
       if ports_list:
@@ -237,7 +246,7 @@ class Term(aclgenerator.Term):
     statement_lines = []
 
     # Normalize ICMP types.
-    # TODO(gfm): Call self.NormalizeIcmpTypes.
+    # TODO: Call self.NormalizeIcmpTypes.
     icmp_type = self.MapICMPtypes(address_family, icmp_type)
 
     if address_family == mixed:
@@ -305,15 +314,67 @@ class Term(aclgenerator.Term):
 
     return statement_lines
 
-  def GroupExpressions(self, address_expr, pp_expr, verdict):
+  def _OptionsHandler(self, term):
+    """Term 'option' handler.
+
+    Function used to evaluate term.logging and also term.option values. Then
+    it builds any statement that would be appended before a veredict.
+    Results of this function are then used in GroupExpressions() to combine
+    a final valid NFTables chain.
+
+    Args:
+      term: capirca Term data.
+
+    Returns:
+      list of statements related to generator options.
+    """
+    options = []
+    conntrack = []
+
+    # 'option' handling.
+    if term.option:
+      for opt in term.option:
+        if 'tcp-established' in opt or 'established' in opt:
+          # Conntrack for UDP and TCP protocols.
+          for proto in term.protocol:
+            if 'tcp' in proto or 'udp' in proto:
+              conntrack.append('ct state { ESTABLISHED, RELATED }')
+      # Remove duplicate conntracks for multi-proto terms.
+      options.extend(list(set(conntrack)))
+
+    # 'logging' handling.
+    if term.logging:
+      # str() trick to circumvent VarType class attr comparison checks.
+      if 'disable' not in str(term.logging):
+        # Simple syslogging implementation.
+        options.append('log prefix "%s"' % term.name)
+
+    # 'counter' handling.
+    # https://wiki.nftables.org/wiki-nftables/index.php/Counters
+    # We don't use named counters here because we already structure NFT ruleset
+    # in child chains per each rule. So simply looking at term_child_chain is
+    # easy to tell the counter stats for that ruleset.
+    if term.counter:
+      options.append('counter')
+
+    # Build the final statement to be returned.
+    if options:
+      return ' '.join(options)
+    else:
+      return ''
+
+  def GroupExpressions(self, address_expr, pp_expr, options, verdict):
     """Combines all expressions with a verdict (decision).
 
-    The inputs are already pre-sanitized by RulesetGenerator.
+    The inputs are already pre-sanitized by RulesetGenerator. NFTables processes
+    rules from left-to-right - ending in a verdict. We form our ruleset then
+    towards the end append any term.options from _OptionsHandler.
 
     Args:
       address_expr: pre-processed list of nftable statements of network
         addresses.
       pp_expr: pre-processed list of nftables protocols and ports.
+      options: string value to append before verdict for NFT special options.
       verdict: action to take on resulting final statement (allow/deny).
 
     Returns:
@@ -327,25 +388,33 @@ class Term(aclgenerator.Term):
             if pstat.startswith('icmp type') or addr.startswith('ip '):
               # Handle IPv4 ports and proto statements.
               if addr.startswith('ip '):
-                statement.append(addr + Add(pstat) + Add(verdict))
+                statement.append(addr + Add(pstat) + Add(options) +
+                                 Add(verdict))
             elif pstat.startswith('icmpv6 type') or addr.startswith('ip6'):
               if addr.startswith('ip6'):
-                statement.append(addr + Add(pstat) + Add(verdict))
+                statement.append(addr + Add(pstat) + Add(options) +
+                                 Add(verdict))
         else:
-          statement.append(addr + Add(verdict))
+          statement.append(addr + Add(options) + Add(verdict))
     elif pp_expr:
       # Handle statement without addresses but has ports & protocols.
       for pstat in pp_expr:
-        statement.append(pstat + Add(verdict))
+        statement.append(pstat + Add(options) + Add(verdict))
     else:
       # If no addresses or ports & protocol. Verdict only statement.
-      statement.append(verdict)
+      statement.append((Add(options) + verdict))
     return statement
 
   def _AddrStatement(self, address_family, src_addr, dst_addr):
     """Builds an NFTables address statement.
 
-    returns: list
+    Args:
+      address_family: NFTables address family.
+      src_addr: prefiltered list of src addresses.
+      dst_addr: prefiltered list of dst addresses.
+
+    Returns:
+      list of strings representing valid nftables address statements (IPv4/6).
     """
     address_statement = []
     src_addr_book = self._AddressClassifier(src_addr)
@@ -420,10 +489,13 @@ class Term(aclgenerator.Term):
                                              self.term.destination_port,
                                              self.term.icmp_type)
 
+    # OPTIONS / LOGGING / COUNTERS
+    opt = self._OptionsHandler(term)
     # STATEMENT VERDICT / ACTION.
     verdict = self._ACTIONS[self.term.action[0]]
-    # TODO(gfm): If verdict is not supported, drop nftable_rule for it.
-    nftable_rule = self.GroupExpressions(address_list, proto_and_ports, verdict)
+    # TODO: If verdict is not supported, drop nftable_rule for it.
+    nftable_rule = self.GroupExpressions(address_list, proto_and_ports, opt,
+                                         verdict)
     term_ruleset.extend(nftable_rule)
     return term_ruleset
 
@@ -476,7 +548,8 @@ class Term(aclgenerator.Term):
   def __str__(self):
     """Terms printing function.
 
-    Not implemented for NFTables format due to complexity.
+    Each term is expressed as its own chain. Later referenced to a parent chain
+    with filter directionality (input/output).
     """
     if self.term.platform:
       if 'newnftables' not in self.term.platform:
@@ -496,18 +569,62 @@ class NewNftables(aclgenerator.ACLGenerator):
   _HEADER_AF = frozenset(('inet', 'inet6', 'mixed'))
   _SUPPORTED_HOOKS = frozenset(('input', 'output'))
   _HOOK_PRIORITY_DEFAULT = 0
-  _BASE_CHAIN_PREFIX = 'root'  # TODO(gfm): will be changed.
+  _BASE_CHAIN_PREFIX = 'root'
+  _LOGGING = set()
 
   _OPTIONAL_SUPPORTED_KEYWORDS = frozenset([
       'expiration',
   ])
 
-  _AF_MAP = {'inet': (4,),
-             'inet6': (6,),
-             'mixed': (4, 6)}
+  _AF_MAP = {'inet': (4,), 'inet6': (6,), 'mixed': (4, 6)}
   # Below mapping converts capirca HEADER native to nftables table.
   # In Nftables 'inet' contains both IPv4 and IPv6 addresses and rules.
   NF_TABLE_AF_MAP = {'inet': 'ip', 'inet6': 'ip6', 'mixed': 'inet'}
+
+  def _BuildTokens(self):
+    """NFTables generator list of supported tokens and sub tokens.
+
+    Returns:
+      tuple containing both supported tokens and sub tokens
+    """
+    # Set of supported keywords for a given platform.  Values should be in
+    # undercase form, eg, icmp_type (not icmp-type)
+    supported_tokens = {
+        'action',
+        'comment',
+        'destination_address',
+        'destination_address_exclude',
+        'destination_port',
+        'expiration',
+        'icmp_type',
+        'name',  # obj attribute, not token
+        'option',
+        'protocol',
+        'platform',
+        'platform_exclude',
+        'source_address',
+        'source_address_exclude',
+        'source_port',
+        'translated',  # obj attribute, not token
+    }
+
+    # These keys must be also listed in supported_tokens.
+    # Keys should be in undercase form, eg, icmp_type (not icmp-type). Values
+    # should be in dash form, icmp-type (not icmp_type)
+    supported_sub_tokens = {
+        'option': {
+            'established',
+            'tcp-established',
+        },
+        'action': {
+            'accept',
+            'deny',
+        },
+        'icmp_type':
+            set(
+                list(Term.ICMP_TYPE[4].keys()) + list(Term.ICMP_TYPE[6].keys()))
+    }
+    return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):
     """Translates a Capirca policy file into NFtables specific data structure.
@@ -540,7 +657,7 @@ class NewNftables(aclgenerator.ACLGenerator):
       child_chains = collections.defaultdict(dict)
       term_names = set()
       new_terms = []
-      # TODO(gfm): Add checks for ICMP and address families.
+      # TODO: Add checks for ICMP and address families.
       for term in terms:
         if term.name in term_names:
           raise TermError('Duplicate term name')
@@ -659,7 +776,7 @@ class NewNftables(aclgenerator.ACLGenerator):
       nft_config.append('table %s filtering_policies {' % address_family)
       base_chain_dict = configuration[address_family]
       for item in base_chain_dict:
-        # TODO(gfm): Add counter chain processing here.
+        # TODO: If we ever add NFTables 'named counters' it would go here.
         for k, v in base_chain_dict[item]['rules'][item].items():
           nft_config.append(ChainFormat('chain', k, v))
         # base chain header and contents.

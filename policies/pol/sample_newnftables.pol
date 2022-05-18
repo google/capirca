@@ -160,6 +160,8 @@ term test-src-rdp {
   comment:: "Test source port RDP 3389/tcp - No addresses"
   protocol:: tcp
   source-port:: RDP
+  logging:: syslog
+  counter:: somecountername
   action:: accept
 }
 

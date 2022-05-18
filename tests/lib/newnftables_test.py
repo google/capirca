@@ -24,6 +24,91 @@ from capirca.lib import naming
 from capirca.lib import newnftables
 from capirca.lib import policy
 
+
+class DictObj:
+  """Helper class to use a dictionary of dictionaries to form an object.
+
+  We can then specifically test using it.
+  """
+
+  def __init__(self, in_dict: dict):
+    assert isinstance(in_dict, dict)
+    for key, val in in_dict.items():
+      if isinstance(val, (list, tuple)):
+        setattr(self, key,
+                [DictObj(x) if isinstance(x, dict) else x for x in val])
+      else:
+        setattr(self, key, DictObj(val) if isinstance(val, dict) else val)
+
+# "logging" is not a token.
+SUPPORTED_TOKENS = frozenset({
+    'action',
+    'comment',
+    'destination_address',
+    'destination_address_exclude',
+    'destination_port',
+    'expiration',
+    'icmp_type',
+    'name',  # obj attribute, not token
+    'option',
+    'protocol',
+    'platform',
+    'platform_exclude',
+    'source_address',
+    'source_address_exclude',
+    'source_port',
+    'translated',  # obj attribute, not token
+})
+
+SUPPORTED_SUB_TOKENS = {
+    'action': {'accept', 'deny'},
+    'option': {'established', 'tcp-established'},
+    'icmp_type': {
+        'alternate-address',
+        'certification-path-advertisement',
+        'certification-path-solicitation',
+        'conversion-error',
+        'destination-unreachable',
+        'echo-reply',
+        'echo-request',
+        'mobile-redirect',
+        'home-agent-address-discovery-reply',
+        'home-agent-address-discovery-request',
+        'icmp-node-information-query',
+        'icmp-node-information-response',
+        'information-request',
+        'inverse-neighbor-discovery-advertisement',
+        'inverse-neighbor-discovery-solicitation',
+        'mask-reply',
+        'mask-request',
+        'information-reply',
+        'mobile-prefix-advertisement',
+        'mobile-prefix-solicitation',
+        'multicast-listener-done',
+        'multicast-listener-query',
+        'multicast-listener-report',
+        'multicast-router-advertisement',
+        'multicast-router-solicitation',
+        'multicast-router-termination',
+        'neighbor-advertisement',
+        'neighbor-solicit',
+        'packet-too-big',
+        'parameter-problem',
+        'redirect',
+        'redirect-message',
+        'router-advertisement',
+        'router-renumbering',
+        'router-solicit',
+        'router-solicitation',
+        'source-quench',
+        'time-exceeded',
+        'timestamp-reply',
+        'timestamp-request',
+        'unreachable',
+        'version-2-multicast-listener-report',
+    },
+}
+
 HEADER_TEMPLATE = """
 header {
   target:: newnftables %s
@@ -160,19 +245,25 @@ class NftablesTest(parameterized.TestCase):
       (['200.1.1.3/32'], '200.1.1.3/32'),
       (['1.1.1.1', '8.8.8.8'], '{ 1.1.1.1, 8.8.8.8 }'),
       (['tcp', 'udp', 'icmp'], '{ tcp, udp, icmp }'),
+      (['80', '443'], '{ 80, 443 }'),
+      ('53', '53'),
   )
   def testCreateAnonymousSet(self, input_data, expected):
     result = self.dummyterm.CreateAnonymousSet(input_data)
     self.assertEqual(result, expected)
 
   @parameterized.parameters(
-      (['ip6 saddr 2606:4700:4700::1111/128 ip6 daddr { 2001:4860:4860::8844/128, 2001:4860:4860::8888/128'], ['tcp sport 80 tcp dport 80'], 'accept',
-       ['ip6 saddr 2606:4700:4700::1111/128 ip6 daddr { 2001:4860:4860::8844/128, 2001:4860:4860::8888/128 tcp sport 80 tcp dport 80 accept']),
-  )
-  def testGroupExpressions(self, address_expr, porst_proto_expr, verdict,
+      ([
+          'ip6 saddr 2606:4700:4700::1111/128 ip6 daddr { 2001:4860:4860::8844/128, 2001:4860:4860::8888/128'
+      ], ['tcp sport 80 tcp dport 80'],
+       'ct state { ESTABLISHED, RELATED } log prefix "combo_cnt_log_established" counter',
+       'accept', [
+           'ip6 saddr 2606:4700:4700::1111/128 ip6 daddr { 2001:4860:4860::8844/128, 2001:4860:4860::8888/128 tcp sport 80 tcp dport 80 ct state { ESTABLISHED, RELATED } log prefix "combo_cnt_log_established" counter accept'
+       ]),)
+  def testGroupExpressions(self, address_expr, porst_proto_expr, opt, verdict,
                            expected_output):
     result = self.dummyterm.GroupExpressions(address_expr, porst_proto_expr,
-                                             verdict)
+                                             opt, verdict)
     self.assertEqual(result, expected_output)
 
   def testDuplicateTerm(self):
@@ -190,12 +281,15 @@ class NftablesTest(parameterized.TestCase):
     result = self.dummyterm._Group(data)
     self.assertEqual(result, expected_output)
 
-  @parameterized.parameters(('inet', ['tcp'], [(3199, 3199)], [(80, 80)], [], [
-      'tcp sport 3199 tcp dport 80',
-      'tcp sport 3199 tcp dport 80'
-  ]), ('inet', ['tcp'], [], [], [], ['ip protocol tcp', 'meta l4proto tcp']),
-  ('ip6', ['tcp'], [], [], [], ['meta l4proto tcp']),
-  ('inet', ['tcp', 'udp'], [], [], [], ['ip protocol { tcp, udp }', 'meta l4proto { tcp, udp }']),)
+  @parameterized.parameters(
+      ('inet', ['tcp'], [(3199, 3199)], [
+          (80, 80)
+      ], [], ['tcp sport 3199 tcp dport 80', 'tcp sport 3199 tcp dport 80']),
+      ('inet', ['tcp'], [], [], [], ['ip protocol tcp', 'meta l4proto tcp']),
+      ('ip6', ['tcp'], [], [], [], ['meta l4proto tcp']),
+      ('inet', ['tcp', 'udp'], [], [], [],
+       ['ip protocol { tcp, udp }', 'meta l4proto { tcp, udp }']),
+  )
   def testPortsAndProtocols(self, af, proto, src_p, dst_p, icmp_type, expected):
     result = self.dummyterm.PortsAndProtocols(af, proto, src_p, dst_p,
                                               icmp_type)
@@ -261,16 +355,85 @@ class NftablesTest(parameterized.TestCase):
 
   @parameterized.parameters(
       ('ip6', ['multicast-listener-query'], ['mld-listener-query']),
-      ('ip6', ['echo-request', 'multicast-listener-query'],
-       ['echo-request', 'mld-listener-query']),
-      ('ip6',
-       ['router-solicit', 'multicast-listener-done', 'router-advertisement'],
-       ['nd-router-solicit', 'mld-listener-done', 'nd-router-advert']),
+      ('ip6', ['echo-request', 'multicast-listener-query'
+              ], ['echo-request', 'mld-listener-query']),
+      ('ip6', [
+          'router-solicit', 'multicast-listener-done', 'router-advertisement'
+      ], ['nd-router-solicit', 'mld-listener-done', 'nd-router-advert']),
       ('ip4', ['echo-request', 'echo-reply'], ['echo-request', 'echo-reply']),
-      )
+  )
   def testMapICMPtypes(self, af, icmp_types, expected_output):
     result = self.dummyterm.MapICMPtypes(af, icmp_types)
     self.assertEqual(result, expected_output)
+
+  @parameterized.parameters(
+      ({
+          'name': 'tcp_established',
+          'option': ['tcp-established', 'established'],
+          'counter': None,
+          'logging': [],
+          'protocol': ['tcp', 'icmp']
+      }, 'ct state { ESTABLISHED, RELATED }'),
+      ({
+          'name': 'dont_render_tcp_established',
+          'option': ['tcp-established', 'established'],
+          'counter': None,
+          'logging': [],
+          'protocol': ['icmp']
+      }, ''),
+      ({
+          'name': 'blank_option_donothing',
+          'option': [],
+          'counter': None,
+          'logging': [],
+          'protocol': ['icmp']
+      }, ''),
+      ({
+          'name': 'syslog',
+          'option': [],
+          'counter': None,
+          'logging': ['syslog'],
+          'protocol': ['tcp']
+      }, 'log prefix "syslog"'),
+      ({
+          'name': 'logging_disabled',
+          'option': [],
+          'counter': None,
+          'logging': ['disable'],
+          'protocol': ['tcp']
+      }, ''),
+      ({
+          'name': 'combo_logging_tcp_established',
+          'option': ['tcp-established'],
+          'counter': None,
+          'logging': ['true'],
+          'protocol': ['tcp']
+      },
+       'ct state { ESTABLISHED, RELATED } log prefix "combo_logging_tcp_established"'
+      ),
+      ({
+          'name': 'combo_cnt_log_established',
+          'option': ['tcp-established'],
+          'counter': 'whatever-name-you-want',
+          'logging': ['true'],
+          'protocol': ['tcp']
+      },
+       'ct state { ESTABLISHED, RELATED } log prefix "combo_cnt_log_established" counter'
+      ),
+  )
+  def testOptionsHandler(self, term_dict, expected_output):
+    term = DictObj(term_dict)
+    result = self.dummyterm._OptionsHandler(term)
+    self.assertEqual(result, expected_output)
+
+  def testBuildTokens(self):
+    self.naming.GetServiceByProto.side_effect = [['25'], ['26']]
+    pol1 = newnftables.NewNftables(
+        policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1, self.naming), EXP_INFO)
+    st, sst = pol1._BuildTokens()
+    self.assertEqual(st, SUPPORTED_TOKENS)
+    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
+
 
 if __name__ == '__main__':
   absltest.main()
