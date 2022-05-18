@@ -369,6 +369,11 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
       RenderACL(
           str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
           write_files)
+    if newnft:
+      acl_obj = newnftables.NewNftables(newnft, exp_info)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if jsl:
       acl_obj = srxlo.SRXlo(jsl, exp_info)
       RenderACL(
