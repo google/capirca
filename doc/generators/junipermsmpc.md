@@ -1,9 +1,9 @@
 # Juniper MSMPC
 
-The juniper header designation has the following format:
+The msmpc header designation has the following format:
 
 ```
-target:: juniper [filter name] {inet|inet6|mixed} {noverbose} {ingress|egress}
+target:: msmpc [filter name] {inet|inet6|mixed} {noverbose} {ingress|egress}
 filter name: defines the name of the juniper msmpc filter.
 inet6: specifies the output be for IPv6 only filters.
 mixed: specifies the output be for IPv4 and IPv6 filters. This is the default format.
