@@ -1,4 +1,4 @@
-# Copyright 2014 Google Inc. All Rights Reserved.
+# Copyright 2022 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,232 +11,58 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Unittest for Nftables rendering module."""
 
 import datetime
-from absl.testing import absltest
 from unittest import mock
-
 from absl import logging
+from absl.testing import absltest
+from absl.testing import parameterized
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
+from capirca.lib import naming
 from capirca.lib import nftables
 from capirca.lib import policy
 
 
-BAD_HEADER = """
-header {
-  target:: nftables %s
-}
-"""
+class DictObj:
+  """Helper class to use a dictionary of dictionaries to form an object.
 
-GOOD_HEADER_1 = """
-header {
-  target:: nftables chain_name input 0 inet
-}
-"""
+  We can then specifically test using it.
+  """
 
-GOOD_HEADER_2 = """
-header {
-  target:: nftables chain_name input 0 inet6
-}
-"""
+  def __init__(self, in_dict: dict):
+    assert isinstance(in_dict, dict)
+    for key, val in in_dict.items():
+      if isinstance(val, (list, tuple)):
+        setattr(self, key,
+                [DictObj(x) if isinstance(x, dict) else x for x in val])
+      else:
+        setattr(self, key, DictObj(val) if isinstance(val, dict) else val)
 
-GOOD_TERM_1 = """
-term good-term-1 {
-  action:: accept
-}
-"""
-
-IPV6_TERM_1 = """
-term inet6-icmp {
-  protocol:: icmpv6
-  icmp-type:: destination-unreachable time-exceeded echo-reply
-  action:: deny
-}
-"""
-
-IPV6_TERM_2 = """
-term inet6-icmp {
-  action:: deny
-}
-"""
-
-EXPIRED_TERM = """
-term is_expired {
-    expiration:: 2001-01-01
-    action:: accept
-}
-"""
-
-EXPIRING_TERM = """
-term is_expiring {
-  expiration:: %s
-  action:: accept
-}
-"""
-
-GOOD_TERM_2 = """
-term good-term-2 {
-  source-address:: SOURCE_NETWORK
-  destination-address:: DESTINATION_NETWORK
-  action:: accept
-}
-"""
-
-GOOD_TERM_3 = """
-term good-term-3 {
-  source-address:: SOURCE_NETWORK
-  destination-address:: DESTINATION_NETWORK
-  action:: %s
-}
-"""
-
-GOOD_TERM_4 = """
-term good-term-4 {
-  action:: accept
-  comment:: "comment first line"
-  comment:: "comment second line"
-  owner:: owner@enterprise.com
-}
-"""
-
-GOOD_TERM_5 = """
-term good-term-5 {
-  protocol:: ah esp
-  action:: accept
-}
-"""
-
-GOOD_TERM_6 = """
-term good-term-6 {
-  protocol:: ah
-  action:: accept
-}
-"""
-
-GOOD_TERM_7 = """
-term good-term-7 {
-  destination-port:: SMTP
-  protocol:: tcp
-  action:: accept
-}
-"""
-
-GOOD_TERM_8 = """
-term good-term-8 {
-  source-port:: SMTP
-  protocol:: tcp
-  action:: accept
-}
-"""
-
-GOOD_TERM_9 = """
-term good-term-9 {
-  protocol:: icmp
-  icmp-type:: echo-request echo-reply
-  action:: accept
-}
-"""
-
-GOOD_TERM_10 = """
-term good-term-10 {
-  verbatim:: nftables "mary had a little lamb"
-  verbatim:: cisco "mary had second lamb"
-  verbatim:: juniper "mary had third lamb"
-}
-"""
-
-GOOD_TERM_11 = """
-term good-term-11 {
-  source-address:: SOURCE_NETWORK
-  source-exclude:: SOURCE_EXCLUDE_NETWORK
-  destination-address:: DESTINATION_NETWORK
-  destination-exclude:: DESTINATION_EXCLUDE_NETWORK
-  action:: accept
-}
-"""
-
-GOOD_TERM_12 = """
-term good-term-12 {
-  policer:: batman
-  action:: accept
-}
-"""
-
-GOOD_TERM_13 = """
-term good-term-13 {
-  protocol:: icmp
-  action:: accept
-  logging:: true
-}
-"""
-
-GOOD_TERM_14 = """
-term good-term-14 {
-  protocol:: icmp
-  action:: accept
-  log_name:: "my log prefix"
-}
-"""
-
-GOOD_TERM_15 = """
-term good-term-15 {
-  protocol:: icmp
-  action:: accept
-  logging:: true
-  log_name:: "my log prefix"
-}
-"""
-GOOD_TERM_16 = """
-term good-term-16 {
-  protocol:: icmp
-  action:: accept
-  counter:: string_content_unused
-}
-"""
-
-GOOD_TERM_17 = """
-term good-term-17 {
-  action:: accept
-  comment:: "%(long_line)s:"
-}
-""" % {'long_line': 'A' * 128}
-
-SUPPORTED_TOKENS = {
+# "logging" is not a token.
+SUPPORTED_TOKENS = frozenset({
     'action',
     'comment',
-    'counter',
     'destination_address',
     'destination_address_exclude',
     'destination_port',
     'expiration',
     'icmp_type',
-    'stateless_reply',
-    'logging',
-    'log_name',
-    'name',
+    'name',  # obj attribute, not token
     'option',
-    'owner',
+    'protocol',
     'platform',
     'platform_exclude',
-    'protocol',
     'source_address',
     'source_address_exclude',
     'source_port',
-    'translated',
-    'verbatim',
-}
+    'translated',  # obj attribute, not token
+})
 
 SUPPORTED_SUB_TOKENS = {
-    'action': {
-        'accept',
-        'deny',
-        'next',
-        'reject',
-        'reject-with-tcp-rst',
-    },
+    'action': {'accept', 'deny'},
+    'option': {'established', 'tcp-established'},
     'icmp_type': {
         'alternate-address',
         'certification-path-advertisement',
@@ -283,270 +109,327 @@ SUPPORTED_SUB_TOKENS = {
     },
 }
 
+HEADER_TEMPLATE = """
+header {
+  target:: nftables %s
+}
+"""
+
+HEAD_OVERRIDE_DEFAULT_ACTION = """
+header {
+  target:: nftables inet output ACCEPT
+}
+"""
+
+HEADER_COMMENT = """
+header {
+  comment:: "Noverbose + custom priority policy example"
+  target:: nftables inet output ACCEPT
+}
+"""
+
+# TODO(gfm): Noverbose testing once Term handling is added.
+HEADER_NOVERBOSE = """
+header {
+  target:: nftables mixed output noverbose
+}
+"""
+
+GOOD_HEADER_1 = """
+header {
+  target:: nftables inet6 INPUT
+}
+"""
+
+GOOD_HEADER_2 = """
+header {
+  target:: nftables mixed output accept
+}
+"""
+
+ICMP_TERM = """
+term good-icmp {
+  protocol:: icmp
+  action:: accept
+}
+"""
+
+GOOD_TERM_1 = """
+term good-term-1 {
+  action:: accept
+}
+"""
+
+IPV6_TERM_2 = """
+term inet6-icmp {
+  action:: deny
+}
+"""
+
+EXCLUDE = {'ip6': [nacaddr.IP('::/3'), nacaddr.IP('::/0')]}
+
 # Print a info message when a term is set to expire in that many weeks.
 # This is normally passed from command line.
 EXP_INFO = 2
 
 
-class NftablesTest(absltest.TestCase):
+def IPhelper(addresses):
+  """Helper for string to nacaddr.IP conversion for parametized tests."""
+  normalized = []
+  if not addresses:
+    # if empty list of addresses.
+    return addresses
+  else:
+    for addr in addresses:
+      normalized.append(nacaddr.IP(addr))
+    return normalized
+
+
+class NftablesTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.mock_naming = mock.MagicMock()
+    self.naming = mock.create_autospec(naming.Naming)
+    self.dummyterm = nftables.Term('', '', '')
 
-  def testBadHeader(self):
-    cases = [
-        'chain_name input 0 inet extraneous_target_option',
-        'chain_name input 0 unsupported_af',
-        'chain_name input not_an_int_priority',
-        'chain_name invalid_hook_name 0',
-        'chain_name input'
-        'chain_name',
-        '',
-    ]
-    for case in cases:
-      logging.info('Testing bad header case %s.', case)
-      header = BAD_HEADER % case
-      pol = policy.ParsePolicy(header + GOOD_TERM_1, self.mock_naming)
-      self.assertRaises(nftables.InvalidTargetOption,
-                        nftables.Nftables.__init__,
-                        nftables.Nftables.__new__(nftables.Nftables),
-                        pol, EXP_INFO)
+  @parameterized.parameters(('ip protocol tcp', ' ip protocol tcp'), ('', ''))
+  def testAdd(self, statement, expected_output):
+    result = nftables.Add(statement)
+    self.assertEqual(result, expected_output)
 
-  def testBadAddressFamily(self):
-    cases = [
-        'chain_name input 0 mixed',
-    ]
-    for case in cases:
-      logging.info('Testing bad address family case %s.', case)
-      header = BAD_HEADER % case
-      pol = policy.ParsePolicy(header + GOOD_TERM_1, self.mock_naming)
-      self.assertRaises(aclgenerator.UnsupportedAFError,
-                        nftables.Nftables.__init__,
-                        nftables.Nftables.__new__(nftables.Nftables),
-                        pol, EXP_INFO)
+  @parameterized.parameters((2, 'chain acl_name', '  chain acl_name'))
+  def testTabSpacer(self, num_spaces, statement, expected_output):
+    result = nftables.TabSpacer(num_spaces, statement)
+    self.assertEqual(result, expected_output)
+
+  @parameterized.parameters(
+      ('inet', ['200.1.1.3/32', '9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84'], [
+          '200.1.1.3/32', '2606:4700:4700::1111'
+      ], [
+          'ip saddr 200.1.1.3/32 ip daddr 200.1.1.3/32',
+          'ip6 saddr 9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84/128 ip6 daddr 2606:4700:4700::1111/128'
+      ]),
+      ('inet', ['9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84'], [
+          '200.1.1.3/32', '2606:4700:4700::1111'
+      ], [
+          'ip6 saddr 9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84/128 ip6 daddr 2606:4700:4700::1111/128'
+      ]),
+      ('inet', ['200.1.1.3/32', '9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84'
+               ], ['200.1.1.3/32'], [
+                   'ip saddr 200.1.1.3/32 ip daddr 200.1.1.3/32',
+               ]),
+      ('ip', ['200.1.1.3/32', '9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84'], [
+          '200.1.1.3/32', '2606:4700:4700::1111'
+      ], ['ip saddr 200.1.1.3/32 ip daddr 200.1.1.3/32']),
+      ('ip6', ['8.8.8.8', '9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84'], [
+          '200.1.1.3/32', '2606:4700:4700::1111'
+      ], [
+          'ip6 saddr 9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84/128 ip6 daddr 2606:4700:4700::1111/128'
+      ]),
+      ('inet', [], ['200.1.1.3/32', '2606:4700:4700::1111'],
+       ['ip daddr 200.1.1.3/32', 'ip6 daddr 2606:4700:4700::1111/128']),
+      ('inet', ['9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84'], [],
+       ['ip6 saddr 9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84/128']),
+      ('inet', [], [], []),
+  )
+  def test_AddrStatement(self, af, src_addr, dst_addr, expected):
+    # Necessary object format.
+    src_obj = IPhelper(src_addr)
+    dst_obj = IPhelper(dst_addr)
+    result = self.dummyterm._AddrStatement(af, src_obj, dst_obj)
+    self.assertEqual(result, expected)
+
+  @parameterized.parameters(
+      (['nd-router-advert', 'nd-neighbor-solicit', 'nd-neighbor-advert'
+       ], '{ nd-router-advert, nd-neighbor-solicit, nd-neighbor-advert }'),
+      (['200.1.1.3/32'], '200.1.1.3/32'),
+      (['1.1.1.1', '8.8.8.8'], '{ 1.1.1.1, 8.8.8.8 }'),
+      (['tcp', 'udp', 'icmp'], '{ tcp, udp, icmp }'),
+      (['80', '443'], '{ 80, 443 }'),
+      ('53', '53'),
+  )
+  def testCreateAnonymousSet(self, input_data, expected):
+    result = self.dummyterm.CreateAnonymousSet(input_data)
+    self.assertEqual(result, expected)
+
+  @parameterized.parameters(
+      ([
+          'ip6 saddr 2606:4700:4700::1111/128 ip6 daddr { 2001:4860:4860::8844/128, 2001:4860:4860::8888/128'
+      ], ['tcp sport 80 tcp dport 80'],
+       'ct state { ESTABLISHED, RELATED } log prefix "combo_cnt_log_established" counter',
+       'accept', [
+           'ip6 saddr 2606:4700:4700::1111/128 ip6 daddr { 2001:4860:4860::8844/128, 2001:4860:4860::8888/128 tcp sport 80 tcp dport 80 ct state { ESTABLISHED, RELATED } log prefix "combo_cnt_log_established" counter accept'
+       ]),)
+  def testGroupExpressions(self, address_expr, porst_proto_expr, opt, verdict,
+                           expected_output):
+    result = self.dummyterm.GroupExpressions(address_expr, porst_proto_expr,
+                                             opt, verdict)
+    self.assertEqual(result, expected_output)
+
+  def testDuplicateTerm(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1 + GOOD_TERM_1,
+                             self.naming)
+    with self.assertRaises(nftables.TermError):
+      nftables.Nftables.__init__(
+          nftables.Nftables.__new__(nftables.Nftables), pol,
+          EXP_INFO)
+
+  @parameterized.parameters(([(80, 80)], '80'), ([(1024, 65535)], '1024-65535'),
+                            ([], ''))
+  def testGroup(self, data, expected_output):
+    """Test _Group function we use in Ports."""
+    result = self.dummyterm._Group(data)
+    self.assertEqual(result, expected_output)
+
+  @parameterized.parameters(
+      ('inet', ['tcp'], [(3199, 3199)], [
+          (80, 80)
+      ], [], ['tcp sport 3199 tcp dport 80', 'tcp sport 3199 tcp dport 80']),
+      ('inet', ['tcp'], [], [], [], ['ip protocol tcp', 'meta l4proto tcp']),
+      ('ip6', ['tcp'], [], [], [], ['meta l4proto tcp']),
+      ('inet', ['tcp', 'udp'], [], [], [],
+       ['ip protocol { tcp, udp }', 'meta l4proto { tcp, udp }']),
+  )
+  def testPortsAndProtocols(self, af, proto, src_p, dst_p, icmp_type, expected):
+    result = self.dummyterm.PortsAndProtocols(af, proto, src_p, dst_p,
+                                              icmp_type)
+    self.assertEqual(result, expected)
+
+  @parameterized.parameters(
+      'chain_name input 0 inet extraneous_target_option',
+      'ip6 OUTPUT 300 400'  # pylint: disable=implicit-str-concat
+      'mixed input',
+      'ip forwarding',
+      'ip7 0 spaghetti',
+      'ip6 prerouting',
+      'chain_name',
+      '',
+  )
+  def testBadHeader(self, case):
+    logging.info('Testing bad header case %s.', case)
+    header = HEADER_TEMPLATE % case
+    pol = policy.ParsePolicy(header + GOOD_TERM_1, self.naming)
+    with self.assertRaises(nftables.HeaderError):
+      nftables.Nftables.__init__(
+          nftables.Nftables.__new__(nftables.Nftables), pol,
+          EXP_INFO)
+
+  @parameterized.parameters((HEADER_NOVERBOSE, False), (HEADER_COMMENT, True))
+  def testVerboseHeader(self, header_to_use, expected_output):
+    pol = policy.ParsePolicy(header_to_use + GOOD_TERM_1, self.naming)
+    data = nftables.Nftables(pol, EXP_INFO)
+    for (_, _, _, _, _, _, verbose, _) in data.nftables_policies:
+      result = verbose
+    self.assertEqual(result, expected_output)
 
   def testGoodHeader(self):
-    nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
-                                         self.mock_naming), EXP_INFO)
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1 +
-                                                   GOOD_HEADER_2 + IPV6_TERM_2,
-                                                   self.mock_naming),
-                                EXP_INFO))
-    self.assertIn('flush table ip table_filter', nft)
-    self.assertIn(
-        'table ip table_filter {\n\tchain chain_name {\n\t\ttype filter '
-        'hook input priority 0;\n\t\taccept\n\t}\n}', nft)
-    self.assertIn('flush table ip6 table_filter', nft)
-    self.assertIn(
-        'table ip6 table_filter {\n\tchain chain_name {\n\t\ttype filter '
-        'hook input priority 0;\n\t\tdrop\n\t}\n}', nft)
+    nftables.Nftables(
+        policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1, self.naming), EXP_INFO)
+    nft = str(
+        nftables.Nftables(
+            policy.ParsePolicy(
+                GOOD_HEADER_1 + GOOD_TERM_1 + GOOD_HEADER_2 + IPV6_TERM_2,
+                self.naming), EXP_INFO))
+    self.assertIn('type filter hook input', nft)
 
-  @mock.patch.object(logging, 'warning')
-  def testExpired(self, mock_logging_warn):
-    nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + EXPIRED_TERM,
-                                         self.mock_naming), EXP_INFO)
-    mock_logging_warn.assert_called_once_with('Term %s in policy %s is expired '
-                                              'and will not be rendered.',
-                                              'is_expired', 'chain_name')
+  def testOverridePolicyHeader(self):
+    expected_output = 'accept'
 
-  @mock.patch.object(logging, 'info')
-  def testExpiring(self, mock_logging_info):
-    exp_date = datetime.date.today() + datetime.timedelta(weeks=EXP_INFO)
-    nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + EXPIRING_TERM %
-                                         exp_date.strftime('%Y-%m-%d'),
-                                         self.mock_naming), EXP_INFO)
-    mock_logging_info.assert_called_once_with('Term %s in policy %s '
-                                              'expires in less than %d weeks.',
-                                              'is_expiring', 'chain_name',
-                                              EXP_INFO)
+    pol = policy.ParsePolicy(HEAD_OVERRIDE_DEFAULT_ACTION + GOOD_TERM_1,
+                             self.naming)
+    data = nftables.Nftables(pol, EXP_INFO)
+    for (_, _, _, _, _, default_policy, _, _) in data.nftables_policies:
+      result = default_policy
+    self.assertEqual(result, expected_output)
 
-  @mock.patch.object(logging, 'debug')
-  def testIcmpv6InetMismatch(self, mock_logging_debug):
-    str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + IPV6_TERM_1,
-                                             self.mock_naming), EXP_INFO))
-    mock_logging_debug.assert_called_once_with('Term inet6-icmp will not be '
-                                               'rendered, as it has '
-                                               'icmpv6 match specified '
-                                               'but the ACL is of inet address '
-                                               'family.')
+  @parameterized.parameters((['127.0.0.1', '8.8.8.8'], {
+      'ip': ['127.0.0.1/32', '8.8.8.8/32']
+  }), (['0.0.0.0/8', '2001:db8::/32'], {
+      'ip': ['0.0.0.0/8'],
+      'ip6': ['2001:db8::/32']
+  }))
+  def testAddressClassifier(self, addr_to_classify, expected_output):
+    result = nftables.Term._AddressClassifier(self,
+                                                 IPhelper(addr_to_classify))
+    self.assertEqual(result, expected_output)
 
-  def testSingleSourceDestIp(self):
-    source_network = [nacaddr.IPv4('172.16.0.0/24')]
-    destination_network = [nacaddr.IPv4('10.0.0.0/24')]
-    self.mock_naming.GetNetAddr.side_effect = [source_network,
-                                               destination_network]
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
-                                                   self.mock_naming), EXP_INFO))
-    self.assertIn('ip saddr 172.16.0.0/24 ip daddr 10.0.0.0/24', nft)
+  @parameterized.parameters(
+      ('ip6', ['multicast-listener-query'], ['mld-listener-query']),
+      ('ip6', ['echo-request', 'multicast-listener-query'
+              ], ['echo-request', 'mld-listener-query']),
+      ('ip6', [
+          'router-solicit', 'multicast-listener-done', 'router-advertisement'
+      ], ['nd-router-solicit', 'mld-listener-done', 'nd-router-advert']),
+      ('ip4', ['echo-request', 'echo-reply'], ['echo-request', 'echo-reply']),
+  )
+  def testMapICMPtypes(self, af, icmp_types, expected_output):
+    result = self.dummyterm.MapICMPtypes(af, icmp_types)
+    self.assertEqual(result, expected_output)
 
-  def testMultipleSourceDestIp(self):
-    source_network = [nacaddr.IPv4('172.16.0.0/24'),
-                      nacaddr.IPv4('172.16.2.0/24')]
-    destination_network = [nacaddr.IPv4('10.0.0.0/24'),
-                           nacaddr.IPv4('10.0.2.0/24')]
-    self.mock_naming.GetNetAddr.side_effect = [source_network,
-                                               destination_network]
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_2,
-                                                   self.mock_naming), EXP_INFO))
-    self.assertIn('ip saddr { 172.16.0.0/24, 172.16.2.0/24} ip daddr '
-                  '{ 10.0.0.0/24, 10.0.2.0/24}', nft)
-
-  def testSingleProtocol(self):
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_5,
-                                                   self.mock_naming), EXP_INFO))
-    self.assertIn('ip protocol { ah, esp}', nft)
-
-  def testMultiProtocol(self):
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_6,
-                                                   self.mock_naming), EXP_INFO))
-    self.assertIn('ip protocol ah', nft)
-
-  def testSingleDport(self):
-    destination_ports = ['25']
-    self.mock_naming.GetServiceByProto.return_value = destination_ports
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_7,
-                                                   self.mock_naming), EXP_INFO))
-    self.assertIn('dport 25', nft)
-
-  def testMultiDport(self):
-    destination_ports = ['25', '80', '6610', '6611', '6612']
-    self.mock_naming.GetServiceByProto.return_value = destination_ports
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_7,
-                                                   self.mock_naming), EXP_INFO))
-    self.assertIn('dport { 25, 80, 6610-6612}', nft)
-
-  def testSingleSport(self):
-    source_ports = ['25']
-    self.mock_naming.GetServiceByProto.return_value = source_ports
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_8,
-                                                   self.mock_naming), EXP_INFO))
-    self.assertIn('sport 25', nft)
-
-  def testMultiSport(self):
-    source_ports = ['25', '80', '6610', '6611', '6612']
-    self.mock_naming.GetServiceByProto.return_value = source_ports
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_8,
-                                                   self.mock_naming), EXP_INFO))
-    self.assertIn('sport { 25, 80, 6610-6612}', nft)
-
-  def testIcmpType(self):
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_9,
-                                                   self.mock_naming), EXP_INFO))
-    self.assertIn('icmp type { echo-reply, echo-request}', nft)
-
-  def testAction(self):
-    cases = {'accept': 'accept',
-             'deny': 'drop',
-             'reject': 'reject',
-             'next': 'continue',
-             'reject-with-tcp-rst': 'reject with tcp reset'}
-    for case in cases:
-      logging.info('Testing action case %s.', case)
-      nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 +
-                                                     GOOD_TERM_3 % case,
-                                                     self.mock_naming),
-                                  EXP_INFO))
-      self.assertIn(cases[case], nft)
-
-  def testCommentOwner(self):
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_4,
-                                                   self.mock_naming), EXP_INFO))
-    self.assertIn('comment "comment first line comment second line '
-                  'Owner: owner@enterprise.com"', nft)
-
-  @mock.patch.object(logging, 'warning')
-  def testCommentTruncate(self, mock_logging_warn):
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_17,
-                                                   self.mock_naming), EXP_INFO))
-    mock_logging_warn.assert_called_once_with(
-        'Term %s in policy is too long (>%d characters) and will be'
-        ' truncated', 'good-term-17', nftables.Term.MAX_CHARACTERS)
-    # Ensure that the truncate did happen and stripped off the ':'
-    self.assertIn('comment "%(long_line)s' % {'long_line': 'A' * 127}, nft)
-
-  def testLogTerm(self):
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_13,
-                                                   self.mock_naming), EXP_INFO))
-    self.assertIn(' icmp log accept', nft)
-
-  def testLogNameTerm(self):
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_14,
-                                                   self.mock_naming), EXP_INFO))
-    self.assertIn('log prefix "my log prefix: " ', nft)
-
-  def testLogAndLogNameTerm(self):
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_15,
-                                                   self.mock_naming), EXP_INFO))
-    self.assertIn('log prefix "my log prefix: " ', nft)
-
-  def testCounterTerm(self):
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_16,
-                                                   self.mock_naming), EXP_INFO))
-    self.assertIn(' icmp counter accept', nft)
-
-  def testVerbatimTerm(self):
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_10,
-                                                   self.mock_naming), EXP_INFO))
-    self.assertIn('mary had a little lamb', nft)
-    # check if another platforms verbatim shows up
-    self.assertNotIn('mary had a second lamb', nft)
-    self.assertNotIn('mary had a third lamb', nft)
-
-  def testSourceDestExclude(self):
-    source_network = [nacaddr.IPv4('192.168.0.0/24')]
-    source_exclude_network = [nacaddr.IPv4('192.168.0.0/27')]
-    destination_network = [nacaddr.IPv4('10.0.0.0/24')]
-    destination_exclude_network = [nacaddr.IPv4('10.0.0.0/27')]
-    self.mock_naming.GetNetAddr.side_effect = [source_network,
-                                               source_exclude_network,
-                                               destination_network,
-                                               destination_exclude_network]
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_11,
-                                                   self.mock_naming), EXP_INFO))
-    self.assertIn('ip saddr { 192.168.0.32/27, 192.168.0.64/26, '
-                  '192.168.0.128/25}', nft)
-    self.assertIn('ip daddr { 10.0.0.32/27, 10.0.0.64/26, '
-                  '10.0.0.128/25}', nft)
-
-  def testSourceDestExcludeFromAllIps(self):
-    source_network = []
-    source_exclude_network = [nacaddr.IPv4('192.168.0.0/27')]
-    destination_network = []
-    destination_exclude_network = [nacaddr.IPv4('10.0.0.0/27')]
-    self.mock_naming.GetNetAddr.side_effect = [source_network,
-                                               source_exclude_network,
-                                               destination_network,
-                                               destination_exclude_network]
-    nft = str(nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_11,
-                                                   self.mock_naming), EXP_INFO))
-    self.assertIn('ip saddr { 0.0.0.0/1, 128.0.0.0/2, 192.0.0.0/9, '
-                  '192.128.0.0/11, 192.160.0.0/13, 192.168.0.32/27, '
-                  '192.168.0.64/26, 192.168.0.128/25, 192.168.1.0/24, '
-                  '192.168.2.0/23, 192.168.4.0/22, 192.168.8.0/21, '
-                  '192.168.16.0/20, 192.168.32.0/19, 192.168.64.0/18, '
-                  '192.168.128.0/17, 192.169.0.0/16, 192.170.0.0/15, '
-                  '192.172.0.0/14, 192.176.0.0/12, 192.192.0.0/10, '
-                  '193.0.0.0/8, 194.0.0.0/7, 196.0.0.0/6, 200.0.0.0/5, '
-                  '208.0.0.0/4, 224.0.0.0/3}', nft)
-    self.assertIn('ip daddr { 0.0.0.0/5, 8.0.0.0/7, 10.0.0.32/27, '
-                  '10.0.0.64/26, 10.0.0.128/25, 10.0.1.0/24, 10.0.2.0/23, '
-                  '10.0.4.0/22, 10.0.8.0/21, 10.0.16.0/20, 10.0.32.0/19, '
-                  '10.0.64.0/18, 10.0.128.0/17, 10.1.0.0/16, 10.2.0.0/15, '
-                  '10.4.0.0/14, 10.8.0.0/13, 10.16.0.0/12, 10.32.0.0/11, '
-                  '10.64.0.0/10, 10.128.0.0/9, 11.0.0.0/8, 12.0.0.0/6, '
-                  '16.0.0.0/4, 32.0.0.0/3, 64.0.0.0/2, 128.0.0.0/1}', nft)
+  @parameterized.parameters(
+      ({
+          'name': 'tcp_established',
+          'option': ['tcp-established', 'established'],
+          'counter': None,
+          'logging': [],
+          'protocol': ['tcp', 'icmp']
+      }, 'ct state { ESTABLISHED, RELATED }'),
+      ({
+          'name': 'dont_render_tcp_established',
+          'option': ['tcp-established', 'established'],
+          'counter': None,
+          'logging': [],
+          'protocol': ['icmp']
+      }, ''),
+      ({
+          'name': 'blank_option_donothing',
+          'option': [],
+          'counter': None,
+          'logging': [],
+          'protocol': ['icmp']
+      }, ''),
+      ({
+          'name': 'syslog',
+          'option': [],
+          'counter': None,
+          'logging': ['syslog'],
+          'protocol': ['tcp']
+      }, 'log prefix "syslog"'),
+      ({
+          'name': 'logging_disabled',
+          'option': [],
+          'counter': None,
+          'logging': ['disable'],
+          'protocol': ['tcp']
+      }, ''),
+      ({
+          'name': 'combo_logging_tcp_established',
+          'option': ['tcp-established'],
+          'counter': None,
+          'logging': ['true'],
+          'protocol': ['tcp']
+      },
+       'ct state { ESTABLISHED, RELATED } log prefix "combo_logging_tcp_established"'
+      ),
+      ({
+          'name': 'combo_cnt_log_established',
+          'option': ['tcp-established'],
+          'counter': 'whatever-name-you-want',
+          'logging': ['true'],
+          'protocol': ['tcp']
+      },
+       'ct state { ESTABLISHED, RELATED } log prefix "combo_cnt_log_established" counter'
+      ),
+  )
+  def testOptionsHandler(self, term_dict, expected_output):
+    term = DictObj(term_dict)
+    result = self.dummyterm._OptionsHandler(term)
+    self.assertEqual(result, expected_output)
 
   def testBuildTokens(self):
-    pol1 = nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1,
-                                                self.mock_naming), EXP_INFO)
-    st, sst = pol1._BuildTokens()
-    self.assertEqual(st, SUPPORTED_TOKENS)
-    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
-
-  def testBuildWarningTokens(self):
-    pol1 = nftables.Nftables(policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_12,
-                                                self.mock_naming), EXP_INFO)
+    self.naming.GetServiceByProto.side_effect = [['25'], ['26']]
+    pol1 = nftables.Nftables(
+        policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1, self.naming), EXP_INFO)
     st, sst = pol1._BuildTokens()
     self.assertEqual(st, SUPPORTED_TOKENS)
     self.assertEqual(sst, SUPPORTED_SUB_TOKENS)

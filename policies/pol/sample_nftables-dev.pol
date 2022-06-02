@@ -6,7 +6,7 @@
 header {
   comment:: "This policy validates handling of term.option tcp-established."
   comment:: "and UDP 'established'"
-  target:: newnftables inet6 INPUT
+  target:: nftables inet6 INPUT
 }
 
 term accept-webserver-traffic {
