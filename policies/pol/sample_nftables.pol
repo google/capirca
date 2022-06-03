@@ -4,7 +4,7 @@
 #
 header {
   comment:: "Noverbose + custom priority policy example"
-  target:: newnftables mixed OUTPUT 300 noverbose
+  target:: nftables mixed OUTPUT 300 noverbose
 }
 
 term default-accept {

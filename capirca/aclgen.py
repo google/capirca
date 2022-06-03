@@ -42,7 +42,6 @@ from capirca.lib import junipermsmpc
 from capirca.lib import junipersrx
 from capirca.lib import k8s
 from capirca.lib import naming
-from capirca.lib import newnftables
 from capirca.lib import nftables
 from capirca.lib import nsxv
 from capirca.lib import openconfig
@@ -187,7 +186,6 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
   srx = False
   jsl = False
   nft = False
-  newnft = False
   win_afw = False
   nxacl = False
   xacl = False
@@ -263,8 +261,6 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
     xacl = copy.deepcopy(pol)
   if 'nftables' in platforms:
     nft = copy.deepcopy(pol)
-  if 'newnftables' in platforms:
-    newnft = copy.deepcopy(pol)
   if 'gce' in platforms:
     gcefw = copy.deepcopy(pol)
   if 'gcp_hf' in platforms:
@@ -369,11 +365,6 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
       RenderACL(
           str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
           write_files)
-    if newnft:
-      acl_obj = newnftables.NewNftables(newnft, exp_info)
-      RenderACL(
-          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
-          write_files)
     if jsl:
       acl_obj = srxlo.SRXlo(jsl, exp_info)
       RenderACL(
@@ -435,7 +426,6 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
       aclgenerator.Error,
       aruba.Error,
       nftables.Error,
-      newnftables.Error,
       gce.Error,
       cloudarmor.Error,
       k8s.Error) as e:

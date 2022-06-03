@@ -1,8 +1,11 @@
-# Test rendering for multiple nftables policies.
+#
+# NFTables generator policy example.
+# Intended to render ICMP terms for both IPv4 and IPv6 families.
+#
 
 header {
-  comment:: "Noverbose + custom priority policy example"
-  target:: newnftables mixed INPUT 300
+  comment:: "This policy expected to test every combination of REQUIRED keywords."
+  target:: nftables mixed INPUT
 }
 
 term multi-all-families {
@@ -17,11 +20,6 @@ term multi-proto-term {
   action:: accept
 }
 
-header {
-  comment:: "Noverbose + custom priority policy example"
-  target:: newnftables mixed INPUT 400
-}
-
 term test-tcp-icmp {
   comment:: "Allow ICMP from company."
   source-address:: PUBLIC_NAT
@@ -29,13 +27,8 @@ term test-tcp-icmp {
   action:: accept
 }
 
-header {
-  comment:: "Noverbose + custom priority policy example"
-  target:: newnftables mixed OUTPUT
-}
-
 term test-icmp {
-  comment:: "Allow ICMP from company."
+  comment:: "Allow ICMP from source-address."
   source-address:: PUBLIC_NAT
   protocol:: icmp
   action:: accept
@@ -56,18 +49,12 @@ term test-icmp-type-ip6 {
 }
 
 term full-combo-term {
-  comment:: "Test src/dest 80 - with addresses"
+  comment:: "Test src/dest 80 - No addresses"
   source-address:: CLOUDFLARE_PUBLIC_DNS
   destination-address:: GOOGLE_PUBLIC_DNS_ANYCAST
   protocol:: tcp
   source-port:: HTTP
   destination-port:: HTTP
-  action:: accept
-}
-
-term multi-all-families {
-  comment:: "Validate multiple protocols."
-  protocol:: udp tcp icmp icmpv6
   action:: accept
 }
 
