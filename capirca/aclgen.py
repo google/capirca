@@ -109,6 +109,10 @@ def SetupFlags():
   flags.DEFINE_multi_string(
       'config_file', None,
       'A yaml file with the configuration options for capirca')
+  flags.DEFINE_boolean(
+      'apply_groups', None,
+      'Whether to generate apply-groups \n(default: \'%s\')'
+      % str(config.defaults['apply_groups']).lower())
 
 
 class Error(Exception):
@@ -144,8 +148,8 @@ def SkipLines(text, skip_line_func=False):
 
 def RenderFile(base_directory: str, input_file: pathlib.Path,
                output_directory: pathlib.Path, definitions: naming.Naming,
-               exp_info: int, optimize: bool, shade_check: bool,
-               write_files: WriteList):
+               exp_info: int, apply_groups: bool, optimize: bool,
+               shade_check: bool, write_files: WriteList):
   """Render a single file.
 
   Args:
@@ -155,6 +159,7 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
     definitions: the definitions from naming.Naming().
     exp_info: print a info message when a term is set to expire in that many
       weeks.
+    apply_groups: whether to generate apply-groups.
     optimize: a boolean indicating if we should turn on optimization or not.
     shade_check: should we raise an error if a term is completely shaded
     write_files: a list of file tuples, (output_file, acl_text), to write
@@ -285,7 +290,7 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
           str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
           write_files)
     if msmpc:
-      acl_obj = junipermsmpc.JuniperMSMPC(msmpc, exp_info)
+      acl_obj = junipermsmpc.JuniperMSMPC(msmpc, exp_info, apply_groups)
       RenderACL(
           str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
           write_files)
@@ -571,7 +576,7 @@ def _WriteFile(output_file: pathlib.Path, file_contents: str):
 
 
 def Run(base_directory: str, definitions_directory: str, policy_file: str,
-        output_directory: str, exp_info: int, max_renderers: int,
+        output_directory: str, exp_info: int, apply_groups: bool, max_renderers: int,
         ignore_directories: List[str], optimize: bool, shade_check: bool,
         context: multiprocessing.context.BaseContext):
   """Generate ACLs.
@@ -584,6 +589,7 @@ def Run(base_directory: str, definitions_directory: str, policy_file: str,
     output_directory: directory in which rendered files are placed.
     exp_info: print a info message when a term is set to expire in that many
       weeks.
+    apply_groups: whether to generate apply-groups.
     max_renderers: the number of renderers to run in parallel.
     ignore_directories: directories to ignore when searching for policy files.
     optimize: a boolean indicating if we should turn on optimization or not.
@@ -608,14 +614,15 @@ def Run(base_directory: str, definitions_directory: str, policy_file: str,
     # render just one file
     logging.info('rendering one file')
     RenderFile(base_directory, pathlib.Path(policy_file),
-               pathlib.Path(output_directory), definitions, exp_info, optimize,
+               pathlib.Path(output_directory), definitions, exp_info, apply_groups,
+               optimize,
                shade_check, write_files)
   elif max_renderers == 1:
     # If only one process, run it sequentially
     policies = DescendDirectory(base_directory, ignore_directories)
     for pol in policies:
       RenderFile(base_directory, pol, pathlib.Path(output_directory),
-                 definitions, exp_info, optimize, shade_check, write_files)
+                 definitions, exp_info, apply_groups, optimize, shade_check, write_files)
   else:
     # render all files in parallel
     policies = DescendDirectory(base_directory, ignore_directories)
@@ -626,7 +633,7 @@ def Run(base_directory: str, definitions_directory: str, policy_file: str,
           pool.apply_async(
               RenderFile,
               args=(base_directory, pol, output_directory, definitions,
-                    exp_info, optimize, shade_check, write_files)))
+                    exp_info, apply_groups, optimize, shade_check, write_files)))
     pool.close()
     pool.join()
 
@@ -668,7 +675,7 @@ def main(argv):
 
   Run(configs['base_directory'], configs['definitions_directory'],
       configs['policy_file'], configs['output_directory'], configs['exp_info'],
-      configs['max_renderers'], configs['ignore_directories'],
+      configs['apply_groups'], configs['max_renderers'], configs['ignore_directories'],
       configs['optimize'], configs['shade_check'], context)
 
 

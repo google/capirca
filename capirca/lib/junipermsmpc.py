@@ -334,8 +334,9 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
       'expiration',
   ])
 
-  def __init__(self, pol, exp_info):
+  def __init__(self, pol, exp_info, apply_groups):
     self.applications = {}
+    self.apply_groups = apply_groups
     super().__init__(pol, exp_info)
 
   def _BuildTokens(self):
@@ -652,10 +653,13 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
     target = juniper.Config()
     for (header, filter_name, filter_direction,
          terms) in self.junipermsmpc_policies:
-      target.Append('groups {')
-      target.Append('replace:')
+      if self.apply_groups:
+        target.Append('groups {')
+        target.Append('replace:')
       target.Append('/*')
 
+      if self.apply_groups:
+        target.Append('%s {' % filter_name)
       # we want the acl to contain id and date tags, but p4 will expand
       # the tags here when we submit the generator, so we have to trick
       # p4 into not knowing these words.  like taking c-a-n-d-y from a
@@ -669,7 +673,6 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
           target.Append('** ' + line)
       target.Append('*/')
 
-      target.Append('%s {' % filter_name)
       target.Append('services {')
       target.Append('stateful-firewall {')
       target.Append('rule %s {' % filter_name)
@@ -681,11 +684,13 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
       target.Append('}')  # rule { ... }
       target.Append('}')  # stateful-firewall { ... }
       target.Append('}')  # services { ... }
-      for line in self._GenerateApplications(filter_name):
-        target.Append(line)
-      target.Append('}')  # filter_name { ... }
-      target.Append('}')  # groups { ... }
-      target.Append('apply-groups %s;' % filter_name)
+
+      if self.apply_groups:
+        for line in self._GenerateApplications(filter_name):
+          target.Append(line)
+        target.Append('}')  # filter_name { ... }
+        target.Append('}')  # filter_name { ... }
+        target.Append('apply-groups %s;' % filter_name)
     return str(target) + '\n'
 
 

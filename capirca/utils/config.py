@@ -14,7 +14,8 @@ defaults = {
     'ignore_directories': ['DEPRECATED', 'def'],
     'max_renderers': 10,
     'shade_check': False,
-    'exp_info': 2
+    'exp_info': 2,
+    'apply_groups': True,
 }
 
 
@@ -42,6 +43,7 @@ def flags_to_dict(absl_flags):
       'max_renderers': absl_flags.max_renderers,
       'shade_check': absl_flags.shade_check,
       'exp_info': absl_flags.exp_info,
+      'apply_groups': absl_flags.apply_groups,
   }
 
   return {
