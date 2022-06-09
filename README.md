@@ -412,6 +412,7 @@ generators:
 *   [`ipset`](./doc/generators/ipset.md): ipset
 *   [`iptables`](./doc/generators/iptables.md): iptables
 *   [`juniper`](./doc/generators/juniper.md): Juniper
+*   [`juniperevo`](./doc/generators/juniperevo.md): Juniper EVO
 *   [`junipermsmpc`](./doc/generators/junipermsmpc.md): Juniper
 *   [`junipersrx`](./doc/generators/junipersrx.md): Juniper SRX
 *   [`k8s`](./doc/generators/k8s.md): Kubernetes NetworkPolicy

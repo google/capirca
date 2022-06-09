@@ -509,6 +509,12 @@ term good-term-1 {
   action:: accept
 }
 """
+HOPOPT_TERM_EXCEPT = """
+term good-term-1 {
+  protocol-except:: hopopt
+  action:: accept
+}
+"""
 FRAGOFFSET_TERM = """
 term good-term-1 {
   fragment-offset:: 1-7
@@ -1569,6 +1575,14 @@ class JuniperTest(parameterized.TestCase):
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.assertIn('protocol hop-by-hop;', output, output)
+    self.assertNotIn('protocol hopopt;', output, output)
+
+  def testHopOptProtocolExcept(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + HOPOPT_TERM_EXCEPT,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.assertIn('protocol-except hop-by-hop;', output, output)
+    self.assertNotIn('protocol-except hopopt;', output, output)
 
   def testFlexibleMatch(self):
     jcl = juniper.Juniper(policy.ParsePolicy(

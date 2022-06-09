@@ -38,6 +38,7 @@ from capirca.lib import gcp_hf
 from capirca.lib import ipset
 from capirca.lib import iptables
 from capirca.lib import juniper
+from capirca.lib import juniperevo
 from capirca.lib import junipermsmpc
 from capirca.lib import junipersrx
 from capirca.lib import k8s
@@ -165,6 +166,7 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
 
   pol = None
   jcl = False
+  evojcl = False
   acl = False
   atp = False
   asacl = False
@@ -220,6 +222,8 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
 
   if 'juniper' in platforms:
     jcl = copy.deepcopy(pol)
+  if 'juniperevo' in platforms:
+    evojcl = copy.deepcopy(pol)
   if 'cisco' in platforms:
     acl = copy.deepcopy(pol)
   if 'ciscoasa' in platforms:
@@ -277,6 +281,11 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
   try:
     if jcl:
       acl_obj = juniper.Juniper(jcl, exp_info)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
+    if evojcl:
+      acl_obj = juniperevo.JuniperEvo(evojcl, exp_info)
       RenderACL(
           str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
           write_files)
