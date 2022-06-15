@@ -1,7 +1,5 @@
 # Nftables
 
-This file will be updated as functionality extends and may be useful for reference during code reviews.
-
 The NFTables header designation has the following format:
 
 ```
@@ -15,6 +13,14 @@ Unless otherwise stated, all fields are required unless they're marked optional.
 - default_policy_override: **OPTIONAL** defines the default action (ACCEPT, DROP) for non-matching packets. Default behavior is DROP.
 - priority: **OPTIONAL** By default, this generator creates base chains with a starting priority of 0. Defining an integer value will override this behavior.
 - noverbose: **OPTIONAL** Disable header and term comments in final ACL output. Default behavior is verbose.
+
+#### Important: stateful firewall only
+
+This NFTables ACL generator generates stateful policies via  [conntrack](https://wiki.nftables.org/wiki-nftables/index.php/Matching_connection_tracking_stateful_metainformation). Each NFTables base chain will accept valid return packets via (`ct state established,related accept`).
+
+When a non-deny term is processed for ACL generation, the `ct state new` is added to the resulting policy to ensure only valid incoming connections for that term is accepted. This means invalid state packets are dropped by default.
+
+An implementation design for this generator is that terms with options 'established', 'tcp-established' will not rendered in the final NFT configuration.
 
 #### Reporting bugs
 
@@ -123,4 +129,4 @@ source: https://www.netfilter.org/projects/nftables/manpage.html
 
 ### Option
 
-- _tcp-established_ and _established_ enables conntrack, accept packets that are part of a established connection and related packets. Technically, implements and uses `ESTABLISHED, RELATED` types.
+- _tcp-established_ and _established_ will cause the term to not be rendered in the final NFT configuration. See 'Important' section above.

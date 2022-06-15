@@ -329,18 +329,13 @@ class Term(aclgenerator.Term):
       list of statements related to generator options.
     """
     options = []
-    conntrack = []
 
-    # 'option' handling.
-    if term.option:
-      for opt in term.option:
-        if 'tcp-established' in opt or 'established' in opt:
-          # Conntrack for UDP and TCP protocols.
-          for proto in term.protocol:
-            if 'tcp' in proto or 'udp' in proto:
-              conntrack.append('ct state { ESTABLISHED, RELATED }')
-      # Remove duplicate conntracks for multi-proto terms.
-      options.extend(list(set(conntrack)))
+    # Stateful firewall, Accept only NEW traffic for the specific term.
+    # Base chain already allows all return traffic of
+    # state (ESTABLISHED, RELATED)
+    # This should prevent invalid, untracked packets from being accepted.
+    if 'deny' not in term.action:
+      options.append('ct state new')
 
     # 'logging' handling.
     if term.logging:
@@ -587,6 +582,7 @@ class Nftables(aclgenerator.ACLGenerator):
     Returns:
       tuple containing both supported tokens and sub tokens
     """
+    supported_tokens, supported_sub_tokens = super()._BuildTokens()
     # Set of supported keywords for a given platform.  Values should be in
     # undercase form, eg, icmp_type (not icmp-type)
     supported_tokens = {
@@ -606,6 +602,7 @@ class Nftables(aclgenerator.ACLGenerator):
         'source_address_exclude',
         'source_port',
         'translated',  # obj attribute, not token
+        'stateless_reply',
     }
 
     # These keys must be also listed in supported_tokens.
@@ -662,6 +659,23 @@ class Nftables(aclgenerator.ACLGenerator):
         if term.name in term_names:
           raise TermError('Duplicate term name')
         term_names.add(term.name)
+        if term.stateless_reply:
+          logging.warning(
+              'WARNING: Term %s is a stateless reply '
+              'term and will not be rendered.', term.name)
+          continue
+        # This generator is stateful, we don't do stateless rules.
+        # Stateful firewalls don't require a reverse rule/term; thus skip.
+        if 'established' in term.option:
+          logging.warning(
+              'WARNING: Term %s is a established '
+              'term and will not be rendered.', term.name)
+          continue
+        if 'tcp-established' in term.option:
+          logging.warning(
+              'WARNING: Term %s is a tcp-established '
+              'term and will not be rendered.', term.name)
+          continue
         if term.expiration:
           if term.expiration <= exp_info_date:
             logging.info(
@@ -791,6 +805,8 @@ class Nftables(aclgenerator.ACLGenerator):
                 (base_chain_dict[item]['hook'],
                  base_chain_dict[item]['priority'],
                  base_chain_dict[item]['policy'])))
+        # stateful firewall: allow reply traffic.
+        nft_config.append(TabSpacer(8, 'ct state established,related accept'))
         # Reference the child chains with jump.
         for child_chain in base_chain_dict[item]['rules'][item].keys():
           nft_config.append(TabSpacer(8, 'jump %s' % child_chain))

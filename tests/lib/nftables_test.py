@@ -58,6 +58,7 @@ SUPPORTED_TOKENS = frozenset({
     'source_address_exclude',
     'source_port',
     'translated',  # obj attribute, not token
+    'stateless_reply',
 })
 
 SUPPORTED_SUB_TOKENS = {
@@ -144,6 +145,22 @@ header {
 GOOD_HEADER_2 = """
 header {
   target:: nftables mixed output accept
+}
+"""
+
+ESTABLISHED_OPTION_TERM = """
+term established-term {
+  protocol:: udp
+  option:: established
+  action:: accept
+}
+"""
+
+TCP_ESTABLISHED_OPTION_TERM = """
+term tcp-established-term {
+  protocol:: tcp
+  option:: tcp-established
+  action:: accept
 }
 """
 
@@ -332,6 +349,16 @@ class NftablesTest(parameterized.TestCase):
                 self.naming), EXP_INFO))
     self.assertIn('type filter hook input', nft)
 
+  def testStatefulFirewall(self):
+    nftables.Nftables(
+        policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1, self.naming), EXP_INFO)
+    nft = str(
+        nftables.Nftables(
+            policy.ParsePolicy(
+                GOOD_HEADER_1 + GOOD_TERM_1 + GOOD_HEADER_2 + IPV6_TERM_2,
+                self.naming), EXP_INFO))
+    self.assertIn('ct state established,related accept', nft)
+
   def testOverridePolicyHeader(self):
     expected_output = 'accept'
 
@@ -349,8 +376,7 @@ class NftablesTest(parameterized.TestCase):
       'ip6': ['2001:db8::/32']
   }))
   def testAddressClassifier(self, addr_to_classify, expected_output):
-    result = nftables.Term._AddressClassifier(self,
-                                                 IPhelper(addr_to_classify))
+    result = nftables.Term._AddressClassifier(self, IPhelper(addr_to_classify))
     self.assertEqual(result, expected_output)
 
   @parameterized.parameters(
@@ -372,54 +398,57 @@ class NftablesTest(parameterized.TestCase):
           'option': ['tcp-established', 'established'],
           'counter': None,
           'logging': [],
-          'protocol': ['tcp', 'icmp']
-      }, 'ct state { ESTABLISHED, RELATED }'),
+          'protocol': ['tcp', 'icmp'],
+          'action': ['deny'],
+      }, ''),
       ({
           'name': 'dont_render_tcp_established',
           'option': ['tcp-established', 'established'],
           'counter': None,
           'logging': [],
-          'protocol': ['icmp']
-      }, ''),
+          'protocol': ['icmp'],
+          'action': ['accept'],
+      }, 'ct state new'),
       ({
           'name': 'blank_option_donothing',
           'option': [],
           'counter': None,
           'logging': [],
-          'protocol': ['icmp']
-      }, ''),
+          'protocol': ['icmp'],
+          'action': ['accept'],
+      }, 'ct state new'),
       ({
           'name': 'syslog',
           'option': [],
           'counter': None,
           'logging': ['syslog'],
-          'protocol': ['tcp']
-      }, 'log prefix "syslog"'),
+          'protocol': ['tcp'],
+          'action': ['accept'],
+      }, 'ct state new log prefix "syslog"'),
       ({
           'name': 'logging_disabled',
           'option': [],
           'counter': None,
           'logging': ['disable'],
-          'protocol': ['tcp']
-      }, ''),
+          'protocol': ['tcp'],
+          'action': ['accept'],
+      }, 'ct state new'),
       ({
           'name': 'combo_logging_tcp_established',
           'option': ['tcp-established'],
           'counter': None,
           'logging': ['true'],
-          'protocol': ['tcp']
-      },
-       'ct state { ESTABLISHED, RELATED } log prefix "combo_logging_tcp_established"'
-      ),
+          'protocol': ['tcp'],
+          'action': ['accept'],
+      }, 'ct state new log prefix "combo_logging_tcp_established"'),
       ({
           'name': 'combo_cnt_log_established',
           'option': ['tcp-established'],
           'counter': 'whatever-name-you-want',
           'logging': ['true'],
-          'protocol': ['tcp']
-      },
-       'ct state { ESTABLISHED, RELATED } log prefix "combo_cnt_log_established" counter'
-      ),
+          'protocol': ['tcp'],
+          'action': ['deny'],
+      }, 'log prefix "combo_cnt_log_established" counter'),
   )
   def testOptionsHandler(self, term_dict, expected_output):
     term = DictObj(term_dict)
@@ -434,6 +463,20 @@ class NftablesTest(parameterized.TestCase):
     self.assertEqual(st, SUPPORTED_TOKENS)
     self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
 
+  @parameterized.parameters(
+      (ESTABLISHED_OPTION_TERM,'WARNING: Term established-term is a established term and will not be rendered.'),
+      (TCP_ESTABLISHED_OPTION_TERM, 'WARNING: Term tcp-established-term is a tcp-established term and will not be rendered.')
+  )
+  def testSkippedTerm(self, termdata, messagetxt):
+
+    with self.assertLogs() as ctx:
+      # run a policy object expected to be skipped and logged.
+      nft = nftables.Nftables(
+          policy.ParsePolicy(GOOD_HEADER_1 + termdata, self.naming),
+          EXP_INFO)
+    # self.assertEqual(len(ctx.records), 2)
+    record = ctx.records[1]
+    self.assertEqual(record.message, messagetxt)
 
 if __name__ == '__main__':
   absltest.main()
