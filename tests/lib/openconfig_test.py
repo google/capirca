@@ -91,7 +91,9 @@ GOOD_JSON_SADDR = """
 [
   {
     "actions": {
-      "forwarding-action": "ACCEPT"
+      "config": {
+        "forwarding-action": "ACCEPT"
+      }
     },
     "ipv4": {
       "config": {
@@ -106,7 +108,9 @@ GOOD_JSON_V6_SADDR = """
  [
   {
     "actions": {
-      "forwarding-action": "ACCEPT"
+      "config": {
+        "forwarding-action": "ACCEPT"
+      }
     },
     "ipv6": {
       "config": {
@@ -121,7 +125,9 @@ GOOD_JSON_DADDR = """
 [
   {
     "actions": {
-      "forwarding-action": "ACCEPT"
+      "config": {
+        "forwarding-action": "ACCEPT"
+      }
     },
     "ipv4": {
       "config": {
@@ -136,7 +142,9 @@ GOOD_JSON_V6_DADDR = """
  [
   {
     "actions": {
-      "forwarding-action": "ACCEPT"
+      "config": {
+        "forwarding-action": "ACCEPT"
+      }
     },
     "ipv6": {
       "config": {
@@ -151,7 +159,9 @@ GOOD_JSON_MIXED_DADDR = """
 [
   {
     "actions": {
-      "forwarding-action": "ACCEPT"
+      "config": {
+        "forwarding-action": "ACCEPT"
+      }
     },
     "ipv4": {
       "config": {
@@ -161,7 +171,9 @@ GOOD_JSON_MIXED_DADDR = """
   },
   {
     "actions": {
-      "forwarding-action": "ACCEPT"
+      "config": {
+        "forwarding-action": "ACCEPT"
+      }
     },
     "ipv6": {
       "config": {
@@ -176,7 +188,9 @@ GOOD_JSON_SPORT = """
 [
   {
     "actions": {
-      "forwarding-action": "ACCEPT"
+      "config": {
+        "forwarding-action": "ACCEPT"
+      }
     },
     "ipv4": {
       "config": {
@@ -195,7 +209,9 @@ GOOD_JSON_DPORT = """
 [
   {
     "actions": {
-      "forwarding-action": "ACCEPT"
+      "config": {
+        "forwarding-action": "ACCEPT"
+      }
     },
     "ipv4": {
       "config": {
@@ -214,7 +230,9 @@ GOOD_JSON_MULTI_PROTO_DPORT = """
 [
   {
     "actions": {
-      "forwarding-action": "ACCEPT"
+      "config": {
+        "forwarding-action": "ACCEPT"
+      }
     },
     "ipv4": {
       "config": {
@@ -228,7 +246,9 @@ GOOD_JSON_MULTI_PROTO_DPORT = """
   },
   {
     "actions": {
-      "forwarding-action": "ACCEPT"
+      "config": {
+        "forwarding-action": "ACCEPT"
+      }
     },
     "ipv4": {
       "config": {
@@ -247,7 +267,9 @@ GOOD_JSON_EVERYTHING = """
  [
   {
     "actions": {
-      "forwarding-action": "ACCEPT"
+      "config": {
+        "forwarding-action": "ACCEPT"
+      }
     },
     "ipv4": {
       "config": {
@@ -264,7 +286,9 @@ GOOD_JSON_EVERYTHING = """
   },
   {
     "actions": {
-      "forwarding-action": "ACCEPT"
+      "config": {
+        "forwarding-action": "ACCEPT"
+      }
     },
     "ipv4": {
       "config": {

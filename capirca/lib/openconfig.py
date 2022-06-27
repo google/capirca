@@ -104,7 +104,8 @@ class Term(aclgenerator.Term):
     # Action
     action = self.ACTION_MAP[self.term.action[0]]
     term_dict['actions'] = {}
-    term_dict['actions']['forwarding-action'] = action
+    term_dict['actions']['config'] = {}
+    term_dict['actions']['config']['forwarding-action'] = action
 
     # Ballot fatigue handling for 'any'.
     saddrs = self.term.GetAddressOfVersion('flattened_saddr', term_af)
