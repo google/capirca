@@ -1,9 +1,0 @@
-# Dependencies
-# Usage:
-#   $ pip install -r requirements.txt
-
-absl-py
-ipaddress>=1.0.22
-ply
-PyYAML
-six>=1.12.0
