@@ -22,7 +22,7 @@ import string
 
 from capirca.lib import policy
 import six
-
+import hashlib
 
 # generic error class
 class Error(Exception):
@@ -458,7 +458,11 @@ class ACLGenerator:
 
     return mod
 
-  def FixTermLength(self, term_name, abbreviate=False, truncate=False):
+  def FixTermLength(self,
+                    term_name,
+                    abbreviate=False,
+                    truncate=False,
+                    override_max_length=None):
     """Return a term name which is equal or shorter than _TERM_MAX_LENGTH.
 
        New term is obtained in two steps. First, if allowed, automatic
@@ -469,6 +473,7 @@ class ACLGenerator:
       term_name: Name to abbreviate if necessary.
       abbreviate: Whether to allow abbreviations to shorten the length.
       truncate: Whether to allow truncation to shorten the length.
+      override_max_length: Override the _TERM_MAX_LENGTH to a different value.
     Returns:
        A string based on term_name, that is equal or shorter than
        _TERM_MAX_LENGTH abbreviated and truncated as necessary.
@@ -477,22 +482,41 @@ class ACLGenerator:
        to be shorter than _TERM_MAX_LENGTH, or truncation is disabled.
     """
     new_term = term_name
+    if override_max_length is None:
+      override_max_length = self._TERM_MAX_LENGTH
     if abbreviate:
       for word, abbrev in self._ABBREVIATION_TABLE:
-        if len(new_term) <= self._TERM_MAX_LENGTH:
+        if len(new_term) <= override_max_length:
           return new_term
         new_term = re.sub(word, abbrev, new_term)
     if truncate:
-      new_term = new_term[:self._TERM_MAX_LENGTH]
-    if len(new_term) <= self._TERM_MAX_LENGTH:
+      new_term = new_term[:override_max_length]
+    if len(new_term) <= override_max_length:
       return new_term
     raise TermNameTooLongError('Term %s (originally %s) is '
                                'too long. Limit is %d characters (vs. %d) '
                                'and no abbreviations remain or abbreviations '
                                'disabled.' %
                                (new_term, term_name,
-                                self._TERM_MAX_LENGTH,
+                                override_max_length,
                                 len(new_term)))
+
+  def HexDigest(self, name, truncation_length=None):
+    """Return a hexadecimal digest of the name object.
+
+    Args:
+      name: Name to hash.
+      truncation_length: Truncation to shorten the digest length if necessary.
+    Returns:
+      A hexadecimal digest of the input name.
+    Raises:
+      N/A
+    """
+
+    if truncation_length is None:
+      truncation_length = 64
+    name_bytes = name.encode('UTF-8')
+    return hashlib.sha256(name_bytes).hexdigest()[:truncation_length]
 
 
 def ProtocolNameToNumber(protocols, proto_to_num, name_to_num_map):

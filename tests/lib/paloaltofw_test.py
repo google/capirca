@@ -50,6 +50,20 @@ header {
 }
 """
 
+GOOD_HEADER_TERM_PREFIXES_1 = """
+header {
+  comment:: "This is a test acl with a comment"
+  target:: paloalto from-zone trust to-zone untrust mixed no-addr-obj unique-term-prefixes
+}
+"""
+
+GOOD_HEADER_TERM_PREFIXES_2 = """
+header {
+  comment:: "This is a test acl with a comment"
+  target:: paloalto from-zone trust to-zone trust mixed no-addr-obj unique-term-prefixes
+}
+"""
+
 BAD_HEADER_1 = """
 header {
   comment:: "This header has two address families"
@@ -773,6 +787,21 @@ term rule-1 {
       members.append(node.text)
 
     self.assertEqual(['ipv6-icmp'], members, output)
+
+  def testUniqueTermsMultiplePolicies(self):
+    pol = policy.ParsePolicy(
+        GOOD_HEADER_TERM_PREFIXES_1 + ICMP_TYPE_TERM_1 +
+        GOOD_HEADER_TERM_PREFIXES_2 + ICMP_TYPE_TERM_1, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.find(
+        PATH_RULES + "/entry[@name='a5f554bb7a8276615edbd5de-test-icmp']")
+    self.assertIsNotNone(x, output)
+
+    # Check second policy as well.
+    x = paloalto.config.find(
+        PATH_RULES + "/entry[@name='e7d22ea748e04110eaf0495e-test-icmp']")
+    self.assertIsNotNone(x, output)
 
   def testSkipStatelessReply(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_4_STATELESS_REPLY,

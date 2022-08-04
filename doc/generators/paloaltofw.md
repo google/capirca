@@ -18,6 +18,9 @@ target:: paloalto from-zone [zone name] to-zone [zone name] [address family] [ad
       source and destination fields (default)
     - _no-addr-obj_: specifies network/mask definitions are used in the
        security policy source and destination fields
+  * _unique-term-prefixes_: specifies whether each term name should be generated
+     with unique prefixes. The unique prefix is a hexdigest of from_zone and
+     to_zone fields.
 
 ## Term Format
 * _action::_ The action to take when matched. See Actions section for valid options.

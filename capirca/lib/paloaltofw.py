@@ -254,7 +254,9 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
   SUFFIX = ".xml"
   _SUPPORTED_AF = set(("inet", "inet6", "mixed"))
   _AF_MAP = {"inet": (4,), "inet6": (6,), "mixed": (4, 6)}
-  _TERM_MAX_LENGTH = 31
+  _TERM_MAX_LENGTH = 63
+  _APPLICATION_NAME_MAX_LENGTH = 31
+  _TERM_PREFIX_LENGTH = 24
   _SUPPORTED_PROTO_NAMES = [
       "tcp",
       "udp",
@@ -423,6 +425,11 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
             '; expect {%s}' % (filter_options[5], '|'.join(valid_addr_obj)))
       no_addr_obj = True if (len(filter_options) > 5 and
                              filter_options[5] == "no-addr-obj") else False
+
+      unique_term_prefixes = True if (
+          len(filter_options) > 6 and
+          filter_options[6] == "unique-term-prefixes") else False
+
       if first_addr_obj is None:
         first_addr_obj = no_addr_obj
       if first_addr_obj != no_addr_obj:
@@ -462,6 +469,13 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           if self._PLATFORM in term.platform_exclude:
             continue
 
+        if unique_term_prefixes:
+          # Prefix hash of from_zone and to_zone to the term name to get mostly
+          # unique names across different policies.
+          # This is not crytopgraphically guaranteed.
+          # This modified term name should not exceed _TERM_MAX_LENGTH.
+          term.name = self.HexDigest(self.from_zone + self.to_zone,
+                                     self._TERM_PREFIX_LENGTH) + "-" + term.name
         term.name = self.FixTermLength(term.name)
         if term.name in term_dup_check:
           raise PaloAltoFWDuplicateTermError("You have a duplicate term: %s" %
@@ -674,9 +688,11 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
             if icmp_version == "icmp":
               icmp_app_name = "icmp-%s" % term_icmp_type_name
               # This is to abbreviate the Application name where possible.
-              # The limit is defined by _TERM_MAX_LENGTH = 31.
-              if len(icmp_app_name) > self._TERM_MAX_LENGTH:
-                icmp_app_name = self.FixTermLength(icmp_app_name, True, True)
+              # The limit is defined by _APPLICATION_NAME_MAX_LENGTH = 31.
+              if len(icmp_app_name) > self._APPLICATION_NAME_MAX_LENGTH:
+                icmp_app_name = self.FixTermLength(
+                    icmp_app_name, True, True,
+                    self._APPLICATION_NAME_MAX_LENGTH)
               if term_icmp_type_name not in policy.Term.ICMP_TYPE[4]:
                 raise PaloAltoFWBadIcmpTypeError(
                     "term with bad icmp type: %s, icmp_type: %s" %
@@ -685,9 +701,11 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
             else:
               icmp_app_name = "icmp6-%s" % term_icmp_type_name
               # This is to abbreviate the Application name where possible.
-              # The limit is defined by _TERM_MAX_LENGTH = 31.
-              if len(icmp_app_name) > self._TERM_MAX_LENGTH:
-                icmp_app_name = self.FixTermLength(icmp_app_name, True, True)
+              # The limit is defined by _APPLICATION_NAME_MAX_LENGTH = 31.
+              if len(icmp_app_name) > self._APPLICATION_NAME_MAX_LENGTH:
+                icmp_app_name = self.FixTermLength(
+                    icmp_app_name, True, True,
+                    self._APPLICATION_NAME_MAX_LENGTH)
               if term_icmp_type_name not in policy.Term.ICMP_TYPE[6]:
                 raise PaloAltoFWBadIcmpTypeError(
                     "term with bad icmp type: %s, icmp_type: %s" %

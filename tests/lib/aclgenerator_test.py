@@ -127,6 +127,8 @@ class ACLGeneratorTest(absltest.TestCase):
         self.assertEqual(term.name, result)
         result = acl.FixTermLength(term.name, False, False)
         self.assertEqual(term.name, result)
+        result = acl.FixTermLength(term.name, False, False, 30)
+        self.assertEqual(term.name, result)
 
   def testLongTermAbbreviation(self):
     # Term name that is above specified limit should come out abbreviated
@@ -138,6 +140,12 @@ class ACLGeneratorTest(absltest.TestCase):
         result = acl.FixTermLength(term.name, True, False)
         self.assertIn('-abbreviations', result,
                       'Our strings disappeared during abbreviation.')
+        # override the term max length and ensure there are no abbreviations.
+        result = acl.FixTermLength(term.name, True, False,
+                                   4 * acl._TERM_MAX_LENGTH)
+        self.assertNotIn(
+            'GOOG', result,
+            'Strings incorrect in abbreviation and length overriding.')
 
   def testTermNameTruncation(self):
     # Term name that is above specified limit should come out truncated
@@ -148,6 +156,26 @@ class ACLGeneratorTest(absltest.TestCase):
       for term in terms:
         result = acl.FixTermLength(term.name, False, True)
         self.assertEqual('google-experiment-abbrev', result)
+        result = acl.FixTermLength(term.name, True, False,
+                                   4 * acl._TERM_MAX_LENGTH)
+        self.assertIn(
+            'google-experiment-abbreviations', result,
+            'Strings incorrectly disappeared during abbreviation '
+            'and length overriding.')
+
+  def testHexDigest(self):
+    # Term name that is above specified limit should come out truncated
+    # when truncation is enabled.
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_LONG_TERM_NAME, self.naming)
+    acl = ACLMock(pol, EXP_INFO)
+    for _, terms in pol.filters:
+      for term in terms:
+        result = acl.HexDigest(term.name)
+        self.assertEqual(
+            '070582f8b50d3cb01aa432c26a55b5f378d281c98647f59dd7f3b0d8b1c9d0d5',
+            result)
+        result = acl.HexDigest(term.name, 32)
+        self.assertEqual('070582f8b50d3cb01aa432c26a55b5f3', result)
 
   def testLongTermName(self):
     # Term name that is above specified limit and is impossible to abbreviate
