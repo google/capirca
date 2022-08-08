@@ -15,6 +15,7 @@
 
 from unittest import mock
 from absl.testing import absltest
+from absl.testing import parameterized
 
 from capirca.lib import aclgenerator
 from capirca.lib import k8s
@@ -114,6 +115,26 @@ term good-term-expired {
   source-address:: CORP_EXTERNAL
   destination-tag:: ssh-servers
   destination-port:: SSH
+  protocol:: tcp
+  action:: accept
+}
+"""
+
+GOOD_TERM_EXCLUDE_SOURCE = """
+term good-term-exclude-source {
+  comment:: "term with source exclusions"
+  source-address:: ANY_IPS
+  source-exclude:: TEST_IPS
+  protocol:: tcp
+  action:: accept
+}
+"""
+
+GOOD_TERM_EXCLUDE_DEST = """
+term good-term-exclude-destination {
+  comment:: "term with destination exclusions"
+  destination-address:: ANY_IPS
+  destination-exclude:: TEST_IPS
   protocol:: tcp
   action:: accept
 }
@@ -248,12 +269,16 @@ TEST_EXCLUDE_RANGE = [nacaddr.IP('10.240.0.0/16')]
 
 ANY_IPS = [nacaddr.IP('0.0.0.0/0'), nacaddr.IP('::/0')]
 
+ANY_IPV4 = [nacaddr.IP('0.0.0.0/0')]
+
+ANY_IPV6 = [nacaddr.IP('::/0')]
+
 TEST_IPV4_ONLY = [nacaddr.IP('10.2.3.4/32')]
 
 TEST_IPV6_ONLY = [nacaddr.IP('2001:4860:8000::5/128')]
 
 
-class K8sTest(absltest.TestCase):
+class K8sTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -499,6 +524,112 @@ class K8sTest(absltest.TestCase):
         k8s.K8s,
         policy.ParsePolicy(GOOD_HEADER_EGRESS + BAD_TERM_NO_ADDR,
                            self.naming), EXP_INFO)
+
+  @parameterized.named_parameters(
+      {
+          'testcase_name': 'IPv4',
+          'ip_block_cidr': TEST_INCLUDE_RANGE,
+          'ip_block_exclude': TEST_EXCLUDE_RANGE,
+      }, {
+          'testcase_name': 'IPv6',
+          'ip_block_cidr': ANY_IPV6,
+          'ip_block_exclude': TEST_IPV6_ONLY,
+      }, {
+          'testcase_name': 'MultiExclude',
+          'ip_block_cidr': TEST_INCLUDE_IPS,
+          'ip_block_exclude': TEST_EXCLUDE_RANGE + TEST_EXCLUDE_IPS,
+      })
+  def testGoodSourceAddressExcludeTerm(self, ip_block_cidr, ip_block_exclude):
+    expected_peer_specs = []
+    expected_peer_spec_except = [str(ex) for ex in ip_block_exclude[::-1]]
+    for ip in ip_block_cidr:
+      expected_peer_specs.append(
+          {'ipBlock': {
+              'cidr': str(ip),
+              'except': expected_peer_spec_except
+          }})
+
+    expected = {
+        'apiVersion': k8s.Term._API_VERSION,
+        'kind': k8s.Term._RESOURCE_KIND,
+        'metadata': {
+            'name': 'good-term-exclude-source',
+            'annotations': {
+                'comment': 'term with source exclusions'
+            },
+        },
+        'spec': {
+            'ingress': [{
+                'from': expected_peer_specs,
+                'ports': [{
+                    'protocol': 'TCP'
+                }],
+            }],
+            'podSelector': {},
+            'policyTypes': ['Ingress'],
+        },
+    }
+    self.naming.GetNetAddr.side_effect = [ip_block_cidr, ip_block_exclude]
+    acl = k8s.K8s(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_EXCLUDE_SOURCE, self.naming),
+        EXP_INFO)
+
+    policy_list = yaml.safe_load(str(acl))
+    policies = policy_list['items']
+    self.assertDictEqual(expected, policies[0])
+
+  @parameterized.named_parameters(
+      {
+          'testcase_name': 'IPv4',
+          'ip_block_cidr': TEST_INCLUDE_RANGE,
+          'ip_block_exclude': TEST_EXCLUDE_RANGE,
+      }, {
+          'testcase_name': 'IPv6',
+          'ip_block_cidr': ANY_IPV6,
+          'ip_block_exclude': TEST_IPV6_ONLY,
+      }, {
+          'testcase_name': 'MultiExclude',
+          'ip_block_cidr': TEST_INCLUDE_IPS,
+          'ip_block_exclude': TEST_EXCLUDE_RANGE + TEST_EXCLUDE_IPS,
+      })
+  def testGoodDestAddressExcludeTerm(self, ip_block_cidr, ip_block_exclude):
+    expected_peer_specs = []
+    expected_peer_spec_except = [str(ex) for ex in ip_block_exclude[::-1]]
+    for ip in ip_block_cidr:
+      expected_peer_specs.append(
+          {'ipBlock': {
+              'cidr': str(ip),
+              'except': expected_peer_spec_except
+          }})
+
+    expected = {
+        'apiVersion': k8s.Term._API_VERSION,
+        'kind': k8s.Term._RESOURCE_KIND,
+        'metadata': {
+            'name': 'good-term-exclude-destination-e',
+            'annotations': {
+                'comment': 'term with destination exclusions'
+            },
+        },
+        'spec': {
+            'egress': [{
+                'to': expected_peer_specs,
+                'ports': [{
+                    'protocol': 'TCP'
+                }],
+            }],
+            'podSelector': {},
+            'policyTypes': ['Egress'],
+        },
+    }
+    self.naming.GetNetAddr.side_effect = [ip_block_cidr, ip_block_exclude]
+    acl = k8s.K8s(
+        policy.ParsePolicy(GOOD_HEADER_EGRESS + GOOD_TERM_EXCLUDE_DEST,
+                           self.naming), EXP_INFO)
+
+    policy_list = yaml.safe_load(str(acl))
+    policies = policy_list['items']
+    self.assertDictEqual(expected, policies[0])
 
   def testBadSourceAddressExcludeTerm(self):
     self.naming.GetNetAddr.return_value = TEST_IPV4_ONLY

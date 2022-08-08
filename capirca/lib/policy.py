@@ -987,11 +987,15 @@ class Term:
         counter += self._IPV4_BYTE_SIZE
     return counter
 
-  def FlattenAll(self):
+  def FlattenAll(self, mutate=True):
     """Reduce source, dest, and address fields to their post-exclude state.
 
     Populates the self.flattened_addr, self.flattened_saddr,
     self.flattened_daddr by removing excludes from includes.
+
+    Args:
+      mutate: Boolean value indicating if this method should mutate the original
+              address (address, destination_address, source_address)
     """
     # No excludes, set flattened attributes and move along.
     self.flattened = True
@@ -1007,17 +1011,20 @@ class Term:
           self.source_address,
           self.source_address_exclude,
           collapse_addrs=False)
-      self.source_address = self.flattened_saddr
+      if mutate:
+        self.source_address = self.flattened_saddr
     if self.destination_address_exclude:
       self.flattened_daddr = nacaddr.AddressListExclude(
           self.destination_address,
           self.destination_address_exclude,
           collapse_addrs=False)
-      self.destination_address = self.flattened_daddr
+      if mutate:
+        self.destination_address = self.flattened_daddr
     if self.address_exclude:
       self.flattened_addr = nacaddr.AddressListExclude(
           self.address, self.address_exclude, collapse_addrs=False)
-      self.address = self.flattened_addr
+      if mutate:
+        self.address = self.flattened_addr
 
   def GetAddressOfVersion(self, addr_type, af=None):
     """Returns addresses of the appropriate Address Family.

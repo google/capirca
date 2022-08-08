@@ -115,8 +115,8 @@ class Term(aclgenerator.Term):
     if (self.term.source_address_exclude and self.term.source_address or
         self.term.destination_address_exclude and
         self.term.destination_address):
-      self.term.FlattenAll()
-      if not self.term.source_address and self.term.direction == 'INGRESS':
+      self.term.FlattenAll(mutate=False)
+      if not self.term.flattened_saddr and self.term.direction == 'INGRESS':
         logging.error(
             'Kubernetes NetworkPolicy term %s no longer contains any source '
             'addresses after the prefixes in source_address_exclude were '
@@ -124,7 +124,7 @@ class Term(aclgenerator.Term):
         self.term = None
         return
 
-      if not self.term.destination_address and self.term.direction == 'EGRESS':
+      if not self.term.flattened_daddr and self.term.direction == 'EGRESS':
         logging.error(
             'Kubernetes NetworkPolicy term %s no longer contains any destination '
             'addresses after the prefixes in destination_address_exclude were '
@@ -205,11 +205,21 @@ class Term(aclgenerator.Term):
     if self.term.direction == 'INGRESS':
       for source_address in self.term.source_address:
         peer_selector = {'ipBlock': {'cidr': str(source_address)}}
+        for exclude in self.term.source_address_exclude:
+          if peer_selector['ipBlock'].get('except') is None:
+            peer_selector['ipBlock']['except'] = []
+
+          peer_selector['ipBlock']['except'].append(str(exclude))
         peer_selectors.append(peer_selector)
       peer_selector_key = 'from'
     else:
       for destination_address in self.term.destination_address:
         peer_selector = {'ipBlock': {'cidr': str(destination_address)}}
+        for exclude in self.term.destination_address_exclude:
+          if peer_selector['ipBlock'].get('except') is None:
+            peer_selector['ipBlock']['except'] = []
+
+          peer_selector['ipBlock']['except'].append(str(exclude))
         peer_selectors.append(peer_selector)
       peer_selector_key = 'to'
 
