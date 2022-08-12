@@ -35,7 +35,7 @@ setuptools.setup(
     url='https://github.com/google/capirca/',
     maintainer='Capirca Team',
     maintainer_email='capirca-dev@google.com',
-    packages=setuptools.find_packages(exclude=['tests*']),
+    packages=['capirca'],
     zip_safe=False,
     entry_points={
         'console_scripts': ['aclgen = capirca.aclgen:EntryPoint'],
