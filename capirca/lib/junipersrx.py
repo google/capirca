@@ -169,6 +169,22 @@ class Term(aclgenerator.Term):
       ret_str.IndentAppend(5, JunipersrxList('dscp-except',
                                              self.term.dscp_except))
 
+    # SOURCE-ZONE
+    if self.term.source_zone:
+      szone_check = set()
+      for szone in self.term.source_zone:
+        szone_check.add(szone)
+      szone_check = sorted(szone_check)
+      ret_str.IndentAppend(5, JunipersrxList('from-zone', szone_check))
+
+    # DESTINATION-ZONE
+    if self.term.destination_zone:
+      dzone_check = set()
+      for dzone in self.term.destination_zone:
+        dzone_check.add(dzone)
+      dzone_check = sorted(dzone_check)
+      ret_str.IndentAppend(5, JunipersrxList('to-zone', dzone_check))
+
     ret_str.IndentAppend(4, '}')
 
     # ACTIONS
@@ -307,9 +323,11 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     supported_tokens |= {'dscp_except',
                          'dscp_match',
                          'dscp_set',
+                         'destination_zone',
                          'logging',
                          'option',
                          'owner',
+                         'source_zone',
                          'timeout',
                          'verbatim',
                          'vpn'}
@@ -374,6 +392,14 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                                      (filter_options[3]))
       else:
         self.to_zone = filter_options[3]
+
+      # check if source-zone & destination-zone are only used with global policy
+      if filter_options[1] != 'all' or filter_options[3] != 'all':
+        for term in terms:
+          if term.source_zone or term.destination_zone:
+            raise UnsupportedFilterError('Term %s has either source-zone or '
+                                         'destination-zone which can only be '
+                                         'used with global policy' % term.name)
 
       # variables used to collect target-options and set defaults
       filter_type = ''

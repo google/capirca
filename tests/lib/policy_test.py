@@ -431,6 +431,14 @@ term good-term-47 {
   port-mirror:: true
 }
 """
+GOOD_TERM_48 = """
+term good-term-48 {
+  protocol:: icmp
+  source-zone:: zone1 zone2
+  destination-zone:: zone1 zone2
+  action:: accept
+}
+"""
 GOOD_TERM_V6_1 = """
 term good-term-v6-1 {
   hop-limit:: 5
@@ -1241,6 +1249,15 @@ class PolicyTest(absltest.TestCase):
     pol = HEADER + GOOD_TERM_47
     result = policy.ParsePolicy(pol, self.naming)
     self.assertIn('port_mirror: true', str(result))
+
+  def testSrxGLobalZone(self):
+    pol = HEADER + GOOD_TERM_48
+    result = policy.ParsePolicy(pol, self.naming)
+    zones = ['zone1', 'zone2']
+    expected_source = 'source_zone: %s' % zones
+    expected_destination = 'destination_zone: %s' % zones
+    self.assertIn(expected_source, str(result))
+    self.assertIn(expected_destination, str(result))
 
   def testTTL(self):
     pol = HEADER + GOOD_TERM_43

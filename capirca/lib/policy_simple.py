@@ -169,6 +169,8 @@ class DestinationPrefixExcept(Field):
 class DestinationTag(Field):
   """A destination tag field."""
 
+class DestinationZone(Field):
+  """A destination-zone field."""
 
 class DscpMatch(Field):
   """A dscp-match field."""
@@ -297,6 +299,8 @@ class SourcePrefixExcept(Field):
 class SourceTag(Field):
   """A source tag field."""
 
+class SourceZone(Field):
+  """A source-zone field."""
 
 class Target(Field):
   """A target field."""
@@ -337,6 +341,7 @@ field_map = {
     'destination-prefix': DestinationPrefix,
     'destination-prefix-except': DestinationPrefixExcept,
     'destination-tag': DestinationTag,
+    'destination-zone': DestinationZone,
     'dscp-match': DscpMatch,
     'dscp-set': DscpSet,
     'ether-type': EtherType,
@@ -370,6 +375,7 @@ field_map = {
     'source-prefix': SourcePrefix,
     'source-prefix-except': SourcePrefixExcept,
     'source-tag': SourceTag,
+    'source-zone': SourceZone,
     'target': Target,
     'timeout': Timeout,
     'traffic-class-count': TrafficClassCount,

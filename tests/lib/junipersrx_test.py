@@ -506,6 +506,16 @@ term timeout-term {
 }
 """
 
+GLOBAL_ZONE_TERM = """
+term global-zone-term {
+  protocol:: icmp
+  icmp-type:: echo-request
+  source-zone:: szone2 szone1
+  destination-zone:: dzone2 dzone1
+  action:: accept
+}
+"""
+
 PLATFORM_EXCLUDE_TERM = """
 term platform-exclude-term {
   protocol:: tcp udp
@@ -531,15 +541,17 @@ term platform-exclude-term {
 }
 """
 
-SUPPORTED_TOKENS = {
+SUPPORTED_TOKENS = frozenset({
     'action',
     'comment',
     'destination_address',
     'destination_address_exclude',
     'destination_port',
+    'destination_zone',
     'dscp_except',
     'dscp_match',
     'dscp_set',
+    'source_zone',
     'expiration',
     'icmp_type',
     'stateless_reply',
@@ -557,7 +569,7 @@ SUPPORTED_TOKENS = {
     'translated',
     'verbatim',
     'vpn'
-}
+})
 
 SUPPORTED_SUB_TOKENS = {
     'action': {'accept', 'deny', 'reject', 'count', 'log', 'dscp'},
@@ -910,6 +922,19 @@ class JuniperSRXTest(absltest.TestCase):
     pol = policy.ParsePolicy(GOOD_HEADER + TIMEOUT_TERM, self.naming)
     output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
     self.assertIn('timeout 77', output, output)
+
+  def testZoneGlobal(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_10 + GLOBAL_ZONE_TERM, self.naming)
+    output = str(junipersrx.JuniperSRX(pol, EXP_INFO))
+    self.assertIn('from-zone', output, output)
+    self.assertIn('szone1 szone2', output, output)
+    self.assertIn('to-zone', output, output)
+    self.assertIn('dzone1 dzone2', output, output)
+
+  def testZoneNonGlobal(self):
+    pol = policy.ParsePolicy(GOOD_HEADER + GLOBAL_ZONE_TERM, self.naming)
+    self.assertRaises(junipersrx.UnsupportedFilterError,
+                      junipersrx.JuniperSRX, pol, EXP_INFO)
 
   def testIcmpV6(self):
     pol = policy.ParsePolicy(GOOD_HEADER + IPV6_ICMP_TERM, self.naming)

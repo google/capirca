@@ -333,6 +333,8 @@ class Term:
     pan-application: VarType.PAN_APPLICATION
     policer: VarType.POLICER
     priority: VarType.PRIORITY
+    destination-zone: VarType.DZONE
+    source-zone: VarType.SZONE
     vpn: VarType.VPN
   """
   ICMP_TYPE = {4: {'echo-reply': 0,
@@ -458,6 +460,8 @@ class Term:
     self.encapsulate = None
     self.port_mirror = None
     # srx specific
+    self.destination_zone = []
+    self.source_zone = []
     self.vpn = None
     # gce specific
     self.source_tag = []
@@ -677,6 +681,14 @@ class Term:
       if sorted(self.platform_exclude) is not sorted(other.platform_exclude):
         return False
 
+    if self.source_zone:
+      if sorted(self.source_zone) is not sorted(other.source_zone):
+        return False
+
+    if self.destination_zone:
+      if sorted(self.destination_zone) is not sorted(other.destination_zone):
+        return False
+
     # we have containment
     return True
 
@@ -790,6 +802,10 @@ class Term:
                        (vpn_name, pair_policy))
       else:
         ret_str.append('  vpn: name = %s' % vpn_name)
+    if self.source_zone:
+      ret_str.append('  source_zone: %s' % sorted(self.source_zone))
+    if self.destination_zone:
+      ret_str.append('  destination_zone: %s' % sorted(self.destination_zone))
 
     return '\n'.join(ret_str)
 
@@ -935,6 +951,14 @@ class Term:
 
     # port_mirror
     if self.port_mirror != other.port_mirror:
+      return False
+
+    # source_zone
+    if sorted(self.source_zone) != sorted(other.source_zone):
+      return False
+
+    # destination_zone
+    if sorted(self.destination_zone) != sorted(other.destination_zone):
       return False
 
     return True
@@ -1137,6 +1161,10 @@ class Term:
           self.target_resources.append(x.value)
         elif x.var_type is VarType.TARGET_SERVICE_ACCOUNTS:
           self.target_service_accounts.append(x.value)
+        elif x.var_type is VarType.SZONE:
+          self.source_zone.append(x.value)
+        elif x.var_type is VarType.DZONE:
+          self.destination_zone.append(x.value)
         else:
           raise TermObjectTypeError(
               '%s isn\'t a type I know how to deal with (contains \'%s\')' % (
@@ -1537,6 +1565,8 @@ class VarType:
   FILTER_TERM = 62
   RESTRICT_ADDRESS_FAMILY = 63
   PORT_MIRROR = 64
+  SZONE = 65
+  DZONE = 66
 
 
   def __init__(self, var_type, value):
@@ -1711,6 +1741,7 @@ tokens = (
     'DSCP_RANGE',
     'DSCP_SET',
     'DTAG',
+    'DZONE',
     'ENCAPSULATE',
     'ESCAPEDSTRING',
     'ETHER_TYPE',
@@ -1758,6 +1789,7 @@ tokens = (
     'SPFX',
     'ESPFX',
     'SPORT',
+    'SZONE',
     'STAG',
     'STRING',
     'TARGET',
@@ -1793,6 +1825,7 @@ reserved = {
     'destination-prefix-except': 'EDPFX',
     'destination-port': 'DPORT',
     'destination-tag': 'DTAG',
+    'destination-zone': 'DZONE',
     'dscp-except': 'DSCP_EXCEPT',
     'dscp-match': 'DSCP_MATCH',
     'dscp-set': 'DSCP_SET',
@@ -1838,6 +1871,7 @@ reserved = {
     'source-prefix-except': 'ESPFX',
     'source-port': 'SPORT',
     'source-tag': 'STAG',
+    'source-zone': 'SZONE',
     'target': 'TARGET',
     'target-resources': 'TARGET_RESOURCES',
     'target-service-accounts': 'TARGET_SERVICE_ACCOUNTS',
@@ -2011,6 +2045,7 @@ def p_term_spec(p):
                 | term_spec qos_spec
                 | term_spec pan_application_spec
                 | term_spec routinginstance_spec
+                | term_spec term_zone_spec
                 | term_spec tag_list_spec
                 | term_spec target_resources_spec
                 | term_spec target_service_accounts_spec
@@ -2365,6 +2400,15 @@ def p_verbatim_spec(p):
                     | VERBATIM ':' ':' STRING ESCAPEDSTRING """
   p[0] = VarType(VarType.VERBATIM, [p[4], p[5].strip('"').replace('\\"', '"')])
 
+def p_term_zone_spec(p):
+  """ term_zone_spec : SZONE ':' ':' one_or_more_strings
+                     | DZONE ':' ':' one_or_more_strings """
+  p[0] = []
+  for zone in p[4]:
+    if p[1].find('source-zone') >= 0:
+      p[0].append(VarType(VarType.SZONE, zone))
+    elif p[1].find('destination-zone') >= 0:
+      p[0].append(VarType(VarType.DZONE, zone))
 
 def p_vpn_spec(p):
   """ vpn_spec : VPN ':' ':' STRING STRING

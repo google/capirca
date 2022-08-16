@@ -13,6 +13,7 @@ target:: srx from-zone [zone name] to-zone [zone name] {inet}
 * _destination-address::_ One or more destination address tokens
 * _destination-exclude::_ Exclude one or more address tokens from the specified destination-address
 * _destination-port::_ One or more service definition tokens
+* _destination-zone::_ one or more destination zones tokens. Only supported by global policy
 * _dscp_except::_ Do not match the DSCP number.
 * _dscp_match::_ Match a DSCP number.
 * _dscp_set::_ Match a DSCP set.
@@ -36,6 +37,7 @@ target:: srx from-zone [zone name] to-zone [zone name] {inet}
 * _source-address::_ one or more source address tokens.
 * _source-exclude::_ exclude one or more address tokens from the specified source-address.
 * _source-port::_ one or more service definition tokens.
+* _source-zone::_ one or more source zones tokens. Only supported by global policy
 * _timeout::_ specify application timeout. (default 60)
 * _verbatim::_ this specifies that the text enclosed within quotes should be rendered into the output without interpretation or modification.  This is sometimes used as a temporary workaround while new required features are being added.
 * _vpn::_ Encapsulate outgoing IP packets and decapsulate incomfing IP packets.
