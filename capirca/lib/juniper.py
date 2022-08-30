@@ -140,6 +140,7 @@ class Term(aclgenerator.Term):
              'next': 'next term',
              'reject-with-tcp-rst': 'reject tcp-reset',
              'encapsulate': 'encapsulate',
+             'decapsulate': 'decapsulate',
              'port-mirror': 'port-mirror'}
 
   # the following lookup table is used to map between the various types of
@@ -566,6 +567,8 @@ class Term(aclgenerator.Term):
       unique_actions.update(self.term.action)
     if self.term.encapsulate:
       unique_actions.add('encapsulate')
+    if self.term.decapsulate:
+      unique_actions.add('decapsulate')
     if len(unique_actions) <= 1:
       for action in [
           self.term.logging, self.term.routing_instance, self.term.counter,
@@ -609,6 +612,10 @@ class Term(aclgenerator.Term):
       elif current_action == 'encapsulate':
         config.Append('then {')
         config.Append('encapsulate %s;' % str(self.term.encapsulate))
+        config.Append('}')
+      elif current_action == 'decapsulate':
+        config.Append('then {')
+        config.Append('decapsulate %s;' % str(self.term.decapsulate))
         config.Append('}')
       else:
         config.Append('then %s;' % current_action)
@@ -655,6 +662,8 @@ class Term(aclgenerator.Term):
           config.Append('next-ip6 %s;' % str(self.term.next_ip[0]))
       if self.term.encapsulate:
         config.Append('encapsulate %s;' % str(self.term.encapsulate))
+      if self.term.decapsulate:
+        config.Append('decapsulate %s;' % str(self.term.decapsulate))
       for action in self.extra_actions:
         config.Append(action + ';')
 
@@ -689,6 +698,8 @@ class Term(aclgenerator.Term):
     action = set(self.term.action)
     if self.term.encapsulate:
       action.add(self.term.encapsulate)
+    if self.term.decapsulate:
+      action.add(self.term.decapsulate)
     if self.term.routing_instance:
       action.add(self.term.routing_instance)
     if len(action) > 1:
@@ -893,6 +904,7 @@ class Juniper(aclgenerator.ACLGenerator):
     supported_tokens |= {'address',
                          'restrict_address_family',
                          'counter',
+                         'decapsulate',
                          'destination_prefix',
                          'destination_prefix_except',
                          'dscp_except',

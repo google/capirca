@@ -57,6 +57,8 @@ class SRXlo(juniper.Juniper):
     supported_tokens.remove('flexible_match_range')
     # currently only support 'encapsulate' in juniper
     supported_tokens.remove('encapsulate')
+    # currently only support 'decapsulate' in juniper
+    supported_tokens.remove('decapsulate')
     # currently only support 'port-mirror' in juniper
     supported_tokens.remove('port_mirror')
     return supported_tokens, supported_sub_tokens

@@ -319,6 +319,7 @@ class Term:
     dscp-except: VarType.DSCP_EXCEPT
     comments: VarType.COMMENT
     encapsulate: VarType.ENCAPSULATE
+    decapsulate: VarType.DECAPSULATE
     filter-term: VarType.FILTER_TERM
     flexible-match-range: VarType.FLEXIBLE_MATCH_RANGE
     forwarding-class: VarType.FORWARDING_CLASS
@@ -458,6 +459,7 @@ class Term:
     self.destination_prefix_except = []
     self.inactive = False
     self.encapsulate = None
+    self.decapsulate = None
     self.port_mirror = None
     # srx specific
     self.destination_zone = []
@@ -631,6 +633,9 @@ class Term:
     if self.encapsulate:
       if not other.encapsulate:
         return False
+    if self.decapsulate:
+      if not other.decapsulate:
+        return False
     if self.fragment_offset:
       # fragment_offset looks like 'integer-integer' or just, 'integer'
       sfo = sorted([int(x) for x in self.fragment_offset.split('-')])
@@ -744,6 +749,8 @@ class Term:
       ret_str.append('  next_ip: %s' % self.next_ip)
     if self.encapsulate:
       ret_str.append('  encapsulate: %s' % self.encapsulate)
+    if self.decapsulate:
+      ret_str.append('  decapsulate: %s' % self.decapsulate)
     if self.protocol:
       ret_str.append('  protocol: %s' % sorted(self.protocol))
     if self.protocol_except:
@@ -943,6 +950,10 @@ class Term:
 
     # encapsulate
     if self.encapsulate != other.encapsulate:
+      return False
+
+    # decapsulate
+    if self.decapsulate != other.decapsulate:
       return False
 
     # flexible_match
@@ -1203,6 +1214,8 @@ class Term:
         self.counter = obj
       elif obj.var_type is VarType.ENCAPSULATE:
         self.encapsulate = obj.value
+      elif obj.var_type is VarType.DECAPSULATE:
+        self.decapsulate = obj.value
       elif obj.var_type is VarType.PORT_MIRROR:
         self.port_mirror = obj.value
       elif obj.var_type is VarType.TRAFFIC_CLASS_COUNT:
@@ -1286,7 +1299,7 @@ class Term:
             'term "%s" has both verbatim and non-verbatim tokens.' % self.name)
     else:
       if (not self.action and not self.routing_instance and not self.next_ip and
-          not self.encapsulate and not self.filter_term and
+          not self.encapsulate and not self.decapsulate and not self.filter_term and
           not self.port_mirror):
         raise TermNoActionError('no action specified for term %s' % self.name)
       if self.filter_term and self.action:
@@ -1567,6 +1580,7 @@ class VarType:
   PORT_MIRROR = 64
   SZONE = 65
   DZONE = 66
+  DECAPSULATE = 67
 
 
   def __init__(self, var_type, value):
@@ -1730,6 +1744,7 @@ tokens = (
     'COUNTER',
     'DADDR',
     'DADDREXCLUDE',
+    'DECAPSULATE',
     'DINTERFACE',
     'DPFX',
     'EDPFX',
@@ -1818,6 +1833,7 @@ reserved = {
     'restrict-address-family': 'RESTRICT_ADDRESS_FAMILY',
     'comment': 'COMMENT',
     'counter': 'COUNTER',
+    'decapsulate': 'DECAPSULATE',
     'destination-address': 'DADDR',
     'destination-exclude': 'DADDREXCLUDE',
     'destination-interface': 'DINTERFACE',
@@ -2013,6 +2029,7 @@ def p_term_spec(p):
                 | term_spec dscp_set_spec
                 | term_spec dscp_match_spec
                 | term_spec dscp_except_spec
+                | term_spec decapsulate_spec
                 | term_spec encapsulate_spec
                 | term_spec ether_type_spec
                 | term_spec exclude_spec
@@ -2145,6 +2162,11 @@ def p_next_ip_spec(p):
 def p_encapsulate_spec(p):
   """ encapsulate_spec : ENCAPSULATE ':' ':' STRING """
   p[0] = VarType(VarType.ENCAPSULATE, p[4])
+
+
+def p_decapsulate_spec(p):
+  """ decapsulate_spec : DECAPSULATE ':' ':' STRING """
+  p[0] = VarType(VarType.DECAPSULATE, p[4])
 
 
 def p_port_mirror_spec(p):

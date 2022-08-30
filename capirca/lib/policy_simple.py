@@ -142,6 +142,10 @@ class Encapsulate(Field):
   """An encapsulate field."""
 
 
+class Decapsulate(Field):
+  """An decapsulate field."""
+
+
 class DestinationAddress(Address):
   """A destination-address field."""
 
@@ -383,6 +387,7 @@ field_map = {
     'verbatim': Verbatim,
     'vpn': Vpn,
     'encapsulate': Encapsulate,
+    'decapsulate': Decapsulate,
 }
 
 
