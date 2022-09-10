@@ -457,6 +457,12 @@ term good-term-v6-1 {
   action:: accept
 }
 """
+GOOD_TERM_V6_HOP_LIMIT_EXCEPT = """
+term good-term-v6-1 {
+  hop-limit-except:: 5
+  action:: accept
+}
+"""
 
 TERM_SUPER_2 = """
 term term-super {
@@ -694,6 +700,13 @@ class PolicyTest(absltest.TestCase):
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertEqual(str(terms[0].hop_limit[2]), '7')
+
+  def testHopLimitExcept(self):
+    pol = HEADER_V6 + GOOD_TERM_V6_HOP_LIMIT_EXCEPT
+    ret = policy.ParsePolicy(pol, self.naming)
+    self.assertEqual(len(ret.filters), 1)
+    _, terms = ret.filters[0]
+    self.assertEqual(str(terms[0].hop_limit_except[0]), '5')
 
   def testBadPortProtocols(self):
     pol = HEADER + BAD_TERM_3

@@ -54,6 +54,7 @@ The default format is _inet4_, and is implied if not other argument is given.
 * _forwarding-class_except::_ Do not match the specified forwarding classes.
 * _fragement-offset::_ specify a fragment offset of a fragmented packet
 * _hop-limit::_ Match the hop limit to the specified hop limit or set of hop limits.
+* _hop-limit-except::_ Allow all hop limits "except" the one specified.
 * _icmp-code::_ Specifies the ICMP code to filter on.
 * _icmp-type::_ Specify icmp-type code to match, see section [ICMP TYPES](PolicyFormat#ICMP_TYPES.md) for list of valid arguments
 * _logging::_ Specify that this packet should be logged via syslog.

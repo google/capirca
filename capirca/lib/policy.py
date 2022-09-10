@@ -444,6 +444,7 @@ class Term:
     self.packet_length = None
     self.fragment_offset = None
     self.hop_limit = None
+    self.hop_limit_except = None
     self.icmp_type = []
     self.icmp_code = []
     self.ether_type = []
@@ -904,6 +905,8 @@ class Term:
       return False
     if self.hop_limit != other.hop_limit:
       return False
+    if self.hop_limit_except != other.hop_limit_except:
+      return False
     if sorted(self.icmp_type) != sorted(other.icmp_type):
       return False
     if sorted(self.icmp_code) != sorted(other.icmp_code):
@@ -1240,6 +1243,8 @@ class Term:
         self.fragment_offset = obj.value
       elif obj.var_type is VarType.HOP_LIMIT:
         self.hop_limit = obj.value
+      elif obj.var_type is VarType.HOP_LIMIT_EXCEPT:
+        self.hop_limit_except = obj.value
       elif obj.var_type is VarType.SINTERFACE:
         self.source_interface = obj.value
       elif obj.var_type is VarType.DINTERFACE:
@@ -1582,6 +1587,7 @@ class VarType:
   SZONE = 65
   DZONE = 66
   TTL_EXCEPT = 67
+  HOP_LIMIT_EXCEPT = 68
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1766,6 +1772,7 @@ tokens = (
     'FORWARDING_CLASS_EXCEPT',
     'FRAGMENT_OFFSET',
     'HOP_LIMIT',
+    'HOP_LIMIT_EXCEPT',
     'APPLY_GROUPS',
     'APPLY_GROUPS_EXCEPT',
     'HEADER',
@@ -1854,6 +1861,7 @@ reserved = {
     'fragment-offset': 'FRAGMENT_OFFSET',
     'hex': 'HEX',
     'hop-limit': 'HOP_LIMIT',
+    'hop-limit-except': 'HOP_LIMIT_EXCEPT',
     'apply-groups': 'APPLY_GROUPS',
     'apply-groups-except': 'APPLY_GROUPS_EXCEPT',
     'header': 'HEADER',
@@ -2039,6 +2047,7 @@ def p_term_spec(p):
                 | term_spec forwarding_class_except_spec
                 | term_spec fragment_offset_spec
                 | term_spec hop_limit_spec
+                | term_spec hop_limit_except_spec
                 | term_spec icmp_type_spec
                 | term_spec icmp_code_spec
                 | term_spec interface_spec
@@ -2207,6 +2216,9 @@ def p_hop_limit_spec(p):
   else:
     p[0] = VarType(VarType.HOP_LIMIT, str(p[4]) + '-' + str(p[6]))
 
+def p_hop_limit_except_spec(p):
+  """ hop_limit_except_spec : HOP_LIMIT_EXCEPT ':' ':' INTEGER"""
+  p[0] = VarType(VarType.HOP_LIMIT_EXCEPT, p[4])
 
 def p_one_or_more_dscps(p):
   """ one_or_more_dscps : one_or_more_dscps DSCP_RANGE

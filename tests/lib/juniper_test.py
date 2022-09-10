@@ -251,6 +251,12 @@ term good-term-v6-hl {
   action:: accept
 }
 """
+GOOD_TERM_V6_HOP_LIMIT_EXCEPT = """
+term good-term-v6-hl {
+  hop-limit-except:: 25
+  action:: accept
+}
+"""
 GOOD_TERM_20_V6 = """
 term good-term-20-v6 {
   protocol-except:: icmpv6
@@ -588,7 +594,6 @@ term bad_term_filter {
   action:: deny
 }
 """
-
 MIXED_TESTING_TERM = """
 term good-term {
   protocol:: tcp
@@ -621,6 +626,7 @@ SUPPORTED_TOKENS = frozenset([
     'forwarding_class_except',
     'fragment_offset',
     'hop_limit',
+    'hop_limit_except',
     'icmp_code',
     'icmp_type',
     'stateless_reply',
@@ -925,6 +931,20 @@ class JuniperTest(parameterized.TestCase):
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.assertNotIn('hop-limit 25;', output, output)
+
+  def testHopLimitExcept(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 +
+                                             GOOD_TERM_V6_HOP_LIMIT_EXCEPT,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.assertIn('hop-limit-except 25;', output, output)
+
+  def testHopLimitExceptInet(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER +
+                                             GOOD_TERM_V6_HOP_LIMIT_EXCEPT,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.assertNotIn('hop-limit-except 25;', output, output)
 
   def testProtocolExcept(self):
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_7,

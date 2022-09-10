@@ -313,6 +313,7 @@ class Term(aclgenerator.Term):
                           self.term.forwarding_class_except or
                           self.term.fragment_offset or
                           self.term.hop_limit or
+                          self.term.hop_limit_except or
                           self.term.next_ip or
                           self.term.port or
                           self.term.precedence or
@@ -543,6 +544,11 @@ class Term(aclgenerator.Term):
         # Only generate a hop-limit if inet6, inet4 has not hop-limit.
         if self.term_type == 'inet6':
           config.Append('hop-limit %s;' % (self.term.hop_limit))
+
+      if self.term.hop_limit_except:
+        # Only generate a hop-limit-except if inet6, inet4 has not hop-limit-except.
+        if self.term_type == 'inet6':
+          config.Append('hop-limit-except %s;' % (self.term.hop_limit_except))
 
       # flexible-match
       if self.term.flexible_match_range:
@@ -911,6 +917,7 @@ class Juniper(aclgenerator.ACLGenerator):
                          'forwarding_class_except',
                          'fragment_offset',
                          'hop_limit',
+                         'hop_limit_except',
                          'icmp_code',
                          'logging',
                          'loss_priority',
