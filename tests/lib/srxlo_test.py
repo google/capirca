@@ -93,6 +93,7 @@ SUPPORTED_TOKENS = {
     'forwarding_class_except',
     'fragment_offset',
     'hop_limit',
+    'hop_limit_except',
     'icmp_code',
     'icmp_type',
     'stateless_reply',
@@ -122,6 +123,7 @@ SUPPORTED_TOKENS = {
     'traffic_type',
     'translated',
     'ttl',
+    'ttl_except',
     'verbatim',
 }
 

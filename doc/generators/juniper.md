@@ -54,6 +54,7 @@ The default format is _inet4_, and is implied if not other argument is given.
 * _forwarding-class_except::_ Do not match the specified forwarding classes.
 * _fragement-offset::_ specify a fragment offset of a fragmented packet
 * _hop-limit::_ Match the hop limit to the specified hop limit or set of hop limits.
+* _hop-limit-except::_ Allow all hop limits "except" the one specified.
 * _icmp-code::_ Specifies the ICMP code to filter on.
 * _icmp-type::_ Specify icmp-type code to match, see section [ICMP TYPES](PolicyFormat#ICMP_TYPES.md) for list of valid arguments
 * _logging::_ Specify that this packet should be logged via syslog.
@@ -81,6 +82,7 @@ The default format is _inet4_, and is implied if not other argument is given.
 * _traffic-class-count::_
 * _traffic-type::_ specify traffic-type
 * _ttl::_ Matches on TTL.
+* _ttl-except::_ Allow all TTL "except" specified.
 * _verbatim::_ this specifies that the text enclosed within quotes should be rendered into the output without interpretation or modification.  This is sometimes used as a temporary workaround while new required features are being added.
 ## Sub Tokens
 ### Actions

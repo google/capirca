@@ -439,6 +439,12 @@ term good-term-48 {
   action:: accept
 }
 """
+GOOD_TERM_49 = """
+term good-term-59 {
+  ttl-except:: 10
+  action:: accept
+}
+"""
 GOOD_TERM_V6_1 = """
 term good-term-v6-1 {
   hop-limit:: 5
@@ -448,6 +454,12 @@ term good-term-v6-1 {
 GOOD_TERM_V6_2 = """
 term good-term-v6-1 {
   hop-limit:: 5-7
+  action:: accept
+}
+"""
+GOOD_TERM_V6_HOP_LIMIT_EXCEPT = """
+term good-term-v6-1 {
+  hop-limit-except:: 5
   action:: accept
 }
 """
@@ -584,6 +596,12 @@ term bad-term-16 {
   action:: accept
 }
 """
+BAD_TERM_17 = """
+term bad-term-17 {
+  ttl-except:: 257
+  action:: accept
+}
+"""
 
 # pylint: disable=maybe-no-member
 
@@ -682,6 +700,13 @@ class PolicyTest(absltest.TestCase):
     self.assertEqual(len(ret.filters), 1)
     _, terms = ret.filters[0]
     self.assertEqual(str(terms[0].hop_limit[2]), '7')
+
+  def testHopLimitExcept(self):
+    pol = HEADER_V6 + GOOD_TERM_V6_HOP_LIMIT_EXCEPT
+    ret = policy.ParsePolicy(pol, self.naming)
+    self.assertEqual(len(ret.filters), 1)
+    _, terms = ret.filters[0]
+    self.assertEqual(str(terms[0].hop_limit_except[0]), '5')
 
   def testBadPortProtocols(self):
     pol = HEADER + BAD_TERM_3
@@ -1266,6 +1291,16 @@ class PolicyTest(absltest.TestCase):
 
   def testInvalidTTL(self):
     pol = HEADER + BAD_TERM_15
+    self.assertRaises(policy.InvalidTermTTLValue, policy.ParsePolicy,
+                      pol, self.naming)
+
+  def testTTLExcept(self):
+    pol = HEADER + GOOD_TERM_49
+    result = policy.ParsePolicy(pol, self.naming)
+    self.assertIn('ttl_except: 10', str(result))
+
+  def testInvalidTTLExcept(self):
+    pol = HEADER + BAD_TERM_17
     self.assertRaises(policy.InvalidTermTTLValue, policy.ParsePolicy,
                       pol, self.naming)
 

@@ -313,6 +313,7 @@ class Term(aclgenerator.Term):
                           self.term.forwarding_class_except or
                           self.term.fragment_offset or
                           self.term.hop_limit or
+                          self.term.hop_limit_except or
                           self.term.next_ip or
                           self.term.port or
                           self.term.precedence or
@@ -323,7 +324,8 @@ class Term(aclgenerator.Term):
                           self.term.source_prefix or
                           self.term.source_prefix_except or
                           self.term.traffic_type or
-                          self.term.ttl)
+                          self.term.ttl or
+                          self.term.ttl_except)
 
     if has_match_criteria:
       config.Append('from {')
@@ -452,6 +454,10 @@ class Term(aclgenerator.Term):
       if self.term.ttl and self.term_type == 'inet':
         config.Append('ttl %s;' % self.term.ttl)
 
+      # ttl-except, same logic as ttl above.
+      if self.term.ttl_except and self.term_type == 'inet':
+        config.Append('ttl-except %s;' % self.term.ttl_except)
+
       # protocol
       if self.term.protocol:
         # both are supported on JunOS, but only icmp6 is supported
@@ -538,6 +544,11 @@ class Term(aclgenerator.Term):
         # Only generate a hop-limit if inet6, inet4 has not hop-limit.
         if self.term_type == 'inet6':
           config.Append('hop-limit %s;' % (self.term.hop_limit))
+
+      if self.term.hop_limit_except:
+        # Only generate a hop-limit-except if inet6, inet4 has not hop-limit-except.
+        if self.term_type == 'inet6':
+          config.Append('hop-limit-except %s;' % (self.term.hop_limit_except))
 
       # flexible-match
       if self.term.flexible_match_range:
@@ -906,6 +917,7 @@ class Juniper(aclgenerator.ACLGenerator):
                          'forwarding_class_except',
                          'fragment_offset',
                          'hop_limit',
+                         'hop_limit_except',
                          'icmp_code',
                          'logging',
                          'loss_priority',
@@ -923,7 +935,8 @@ class Juniper(aclgenerator.ACLGenerator):
                          'source_prefix_except',
                          'traffic_type',
                          'traffic_class_count',
-                         'ttl'}
+                         'ttl',
+                         'ttl_except'}
     supported_sub_tokens.update({
         'option': {
             'established',

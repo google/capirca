@@ -251,6 +251,12 @@ term good-term-v6-hl {
   action:: accept
 }
 """
+GOOD_TERM_V6_HOP_LIMIT_EXCEPT = """
+term good-term-v6-hl {
+  hop-limit-except:: 25
+  action:: accept
+}
+"""
 GOOD_TERM_20_V6 = """
 term good-term-20-v6 {
   protocol-except:: icmpv6
@@ -389,6 +395,12 @@ GOOD_TERM_37 = """
 term good-term-37 {
   destination-address:: SOME_HOST
   restrict-address-family:: inet
+  action:: accept
+}
+"""
+GOOD_TERM_38 = """
+term good-term-38 {
+  ttl-except:: 10
   action:: accept
 }
 """
@@ -582,7 +594,6 @@ term bad_term_filter {
   action:: deny
 }
 """
-
 MIXED_TESTING_TERM = """
 term good-term {
   protocol:: tcp
@@ -615,6 +626,7 @@ SUPPORTED_TOKENS = frozenset([
     'forwarding_class_except',
     'fragment_offset',
     'hop_limit',
+    'hop_limit_except',
     'icmp_code',
     'icmp_type',
     'stateless_reply',
@@ -645,6 +657,7 @@ SUPPORTED_TOKENS = frozenset([
     'traffic_type',
     'translated',
     'ttl',
+    'ttl_except',
     'verbatim'])
 
 SUPPORTED_SUB_TOKENS = {
@@ -918,6 +931,20 @@ class JuniperTest(parameterized.TestCase):
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.assertNotIn('hop-limit 25;', output, output)
+
+  def testHopLimitExcept(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 +
+                                             GOOD_TERM_V6_HOP_LIMIT_EXCEPT,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.assertIn('hop-limit-except 25;', output, output)
+
+  def testHopLimitExceptInet(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER +
+                                             GOOD_TERM_V6_HOP_LIMIT_EXCEPT,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.assertNotIn('hop-limit-except 25;', output, output)
 
   def testProtocolExcept(self):
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_7,
@@ -1504,11 +1531,23 @@ class JuniperTest(parameterized.TestCase):
     output = str(jcl)
     self.assertIn('ttl 10;', output)
 
+  def testTTLExcept(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_38,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.assertIn('ttl-except 10;', output)
+
   def testTTLInet6(self):
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_21,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.assertNotIn('ttl 10;', output)
+
+  def testTTLExceptInet6(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_38,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.assertNotIn('ttl-except 10;', output)
 
   def testNextIpFormat(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
