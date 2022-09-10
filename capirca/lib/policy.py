@@ -438,6 +438,7 @@ class Term:
     self.source_port = []
     self.source_prefix = []
     self.ttl = None
+    self.ttl_except = None
     self.verbatim = []
     # juniper specific.
     self.packet_length = None
@@ -793,6 +794,8 @@ class Term:
       ret_str.append('  platform_exclude: %s' % self.platform_exclude)
     if self.ttl:
       ret_str.append('  ttl: %s' % self.ttl)
+    if self.ttl_except:
+      ret_str.append('  ttl_except: %s' % self.ttl_except)
     if self.timeout:
       ret_str.append('  timeout: %s' % self.timeout)
     if self.vpn:
@@ -882,6 +885,9 @@ class Term:
       return False
 
     if self.ttl != other.ttl:
+      return False
+
+    if self.ttl_except != other.ttl_except:
       return False
 
     if sorted(self.logging) != sorted(other.logging):
@@ -1246,6 +1252,8 @@ class Term:
         self.vpn = (obj.value[0], obj.value[1])
       elif obj.var_type is VarType.TTL:
         self.ttl = int(obj.value)
+      elif obj.var_type is VarType.TTL_EXCEPT:
+        self.ttl_except = int(obj.value)
       elif obj.var_type is VarType.TARGET_RESOURCES:
         self.target_resources.append(obj.value)
       elif obj.var_type is VarType.TARGET_SERVICE_ACCOUNTS:
@@ -1350,6 +1358,12 @@ class Term:
 
         raise InvalidTermTTLValue('Term %s contains invalid TTL: %s'
                                   % (self.name, self.ttl))
+
+    if self.ttl_except:
+      if not _MIN_TTL <= self.ttl_except <= _MAX_TTL:
+
+        raise InvalidTermTTLValue('Term %s contains invalid TTL: %s'
+                                  % (self.name, self.ttl_except))
 
   def AddressCleanup(self, optimize=True, addressbook=False):
     """Do Address and Port collapsing.
@@ -1567,7 +1581,7 @@ class VarType:
   PORT_MIRROR = 64
   SZONE = 65
   DZONE = 66
-
+  TTL_EXCEPT = 67
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1800,6 +1814,7 @@ tokens = (
     'TRAFFIC_CLASS_COUNT',
     'TRAFFIC_TYPE',
     'TTL',
+    'TTL_EXCEPT',
     'VERBATIM',
     'VPN',
 )
@@ -1880,6 +1895,7 @@ reserved = {
     'traffic-class-count': 'TRAFFIC_CLASS_COUNT',
     'traffic-type': 'TRAFFIC_TYPE',
     'ttl': 'TTL',
+    'ttl-except': 'TTL_EXCEPT',
     'verbatim': 'VERBATIM',
     'vpn': 'VPN',
 }
@@ -2051,6 +2067,7 @@ def p_term_spec(p):
                 | term_spec target_service_accounts_spec
                 | term_spec timeout_spec
                 | term_spec ttl_spec
+                | term_spec ttl_except_spec
                 | term_spec traffic_type_spec
                 | term_spec verbatim_spec
                 | term_spec vpn_spec
@@ -2474,6 +2491,10 @@ def p_timeout_spec(p):
 def p_ttl_spec(p):
   """ ttl_spec : TTL ':' ':' INTEGER """
   p[0] = VarType(VarType.TTL, p[4])
+
+def p_ttl_except_spec(p):
+  """ ttl_except_spec : TTL_EXCEPT ':' ':' INTEGER """
+  p[0] = VarType(VarType.TTL_EXCEPT, p[4])
 
 def p_filter_term_spec(p):
   """ filter_term_spec : FILTER_TERM ':' ':' STRING """

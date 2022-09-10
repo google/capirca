@@ -439,6 +439,12 @@ term good-term-48 {
   action:: accept
 }
 """
+GOOD_TERM_49 = """
+term good-term-59 {
+  ttl-except:: 10
+  action:: accept
+}
+"""
 GOOD_TERM_V6_1 = """
 term good-term-v6-1 {
   hop-limit:: 5
@@ -581,6 +587,12 @@ BAD_TERM_16 = """
 term bad-term-16 {
   destination-port:: FOO
   protocol:: tcp udp gre
+  action:: accept
+}
+"""
+BAD_TERM_17 = """
+term bad-term-17 {
+  ttl-except:: 257
   action:: accept
 }
 """
@@ -1266,6 +1278,16 @@ class PolicyTest(absltest.TestCase):
 
   def testInvalidTTL(self):
     pol = HEADER + BAD_TERM_15
+    self.assertRaises(policy.InvalidTermTTLValue, policy.ParsePolicy,
+                      pol, self.naming)
+
+  def testTTLExcept(self):
+    pol = HEADER + GOOD_TERM_49
+    result = policy.ParsePolicy(pol, self.naming)
+    self.assertIn('ttl_except: 10', str(result))
+
+  def testInvalidTTLExcept(self):
+    pol = HEADER + BAD_TERM_17
     self.assertRaises(policy.InvalidTermTTLValue, policy.ParsePolicy,
                       pol, self.naming)
 

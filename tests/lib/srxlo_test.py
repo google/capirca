@@ -122,6 +122,7 @@ SUPPORTED_TOKENS = {
     'traffic_type',
     'translated',
     'ttl',
+    'ttl_except',
     'verbatim',
 }
 

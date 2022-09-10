@@ -323,7 +323,8 @@ class Term(aclgenerator.Term):
                           self.term.source_prefix or
                           self.term.source_prefix_except or
                           self.term.traffic_type or
-                          self.term.ttl)
+                          self.term.ttl or
+                          self.term.ttl_except)
 
     if has_match_criteria:
       config.Append('from {')
@@ -451,6 +452,10 @@ class Term(aclgenerator.Term):
       # Only generate ttl if inet, inet6 uses hop-limit instead.
       if self.term.ttl and self.term_type == 'inet':
         config.Append('ttl %s;' % self.term.ttl)
+
+      # ttl-except, same logic as ttl above.
+      if self.term.ttl_except and self.term_type == 'inet':
+        config.Append('ttl-except %s;' % self.term.ttl_except)
 
       # protocol
       if self.term.protocol:
@@ -923,7 +928,8 @@ class Juniper(aclgenerator.ACLGenerator):
                          'source_prefix_except',
                          'traffic_type',
                          'traffic_class_count',
-                         'ttl'}
+                         'ttl',
+                         'ttl_except'}
     supported_sub_tokens.update({
         'option': {
             'established',

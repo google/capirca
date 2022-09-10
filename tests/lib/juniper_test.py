@@ -392,6 +392,12 @@ term good-term-37 {
   action:: accept
 }
 """
+GOOD_TERM_38 = """
+term good-term-38 {
+  ttl-except:: 10
+  action:: accept
+}
+"""
 GOOD_TERM_COMMENT = """
 term good-term-comment {
   comment:: "This is a COMMENT"
@@ -645,6 +651,7 @@ SUPPORTED_TOKENS = frozenset([
     'traffic_type',
     'translated',
     'ttl',
+    'ttl_except',
     'verbatim'])
 
 SUPPORTED_SUB_TOKENS = {
@@ -1504,11 +1511,23 @@ class JuniperTest(parameterized.TestCase):
     output = str(jcl)
     self.assertIn('ttl 10;', output)
 
+  def testTTLExcept(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_38,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.assertIn('ttl-except 10;', output)
+
   def testTTLInet6(self):
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_21,
                                              self.naming), EXP_INFO)
     output = str(jcl)
     self.assertNotIn('ttl 10;', output)
+
+  def testTTLExceptInet6(self):
+    jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_38,
+                                             self.naming), EXP_INFO)
+    output = str(jcl)
+    self.assertNotIn('ttl-except 10;', output)
 
   def testNextIpFormat(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]

@@ -81,6 +81,7 @@ The default format is _inet4_, and is implied if not other argument is given.
 * _traffic-class-count::_
 * _traffic-type::_ specify traffic-type
 * _ttl::_ Matches on TTL.
+* _ttl-except::_ Allow all TTL "except" specified.
 * _verbatim::_ this specifies that the text enclosed within quotes should be rendered into the output without interpretation or modification.  This is sometimes used as a temporary workaround while new required features are being added.
 ## Sub Tokens
 ### Actions
