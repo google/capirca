@@ -18,7 +18,7 @@ import copy
 import multiprocessing
 import pathlib
 import sys
-from typing import Iterator, List, Tuple
+from typing import Iterator, List, Tuple, cast
 
 from absl import app
 from absl import flags
@@ -599,7 +599,7 @@ def Run(base_directory: str, definitions_directory: str, policy_file: str,
 
   # thead-safe list for storing files to write
   manager: multiprocessing.managers.SyncManager = context.Manager()
-  write_files: WriteList = manager.list()
+  write_files: WriteList = cast(WriteList, manager.list())
 
   with_errors = False
   logging.info('finding policies...')

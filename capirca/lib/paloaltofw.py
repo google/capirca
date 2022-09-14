@@ -931,7 +931,6 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
 
     tag_num = 0
 
-    # pytype: disable=key-error
     # pylint: disable=unused-variable
     for (header, pa_rules, filter_options) in self.pafw_policies:
       tag_name = None
@@ -1095,8 +1094,6 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           if "log-end" in options["logging"]:
             log = etree.SubElement(entry, "log-end")
             log.text = "yes"
-
-    # pytype: enable=key-error
 
     if no_addr_obj:
       address_book_groups_dict = {}
