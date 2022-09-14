@@ -710,6 +710,18 @@ class CiscoTest(absltest.TestCase):
                                              mock.call('SOME_HOST')])
     self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
 
+    # There should be no ipv4 addresses
+    self.naming.GetNetAddr.reset_mock()
+    self.naming.GetNetAddr.return_value = [
+      nacaddr.IP('192.168.0.1/32', token='SOME_HOST'),
+    ]
+    pol = policy.ParsePolicy(
+        GOOD_OBJGRP_HEADER_2 + GOOD_TERM_2 + GOOD_TERM_18, self.naming)
+    acl = cisco.Cisco(pol, EXP_INFO)
+    self.assertNotIn(' permit ip net-group SOME_HOST net-group SOME_HOME', str(acl))
+    self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
+                                             mock.call('SOME_HOST')])
+
   def testInet6(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8'),
                                            nacaddr.IP('2001:4860:8000::/33')]
