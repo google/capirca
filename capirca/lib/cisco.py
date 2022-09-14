@@ -947,7 +947,7 @@ class Cisco(aclgenerator.ACLGenerator):
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     # a mixed filter outputs both ipv4 and ipv6 acls in the same output file
-    good_filters = ['extended', 'standard', 'object-group', 
+    good_filters = ['extended', 'standard', 'object-group',
                     'object-group-inet6', 'inet6', 'mixed', 'enable_dsmo']
 
     for header, terms in pol.filters:

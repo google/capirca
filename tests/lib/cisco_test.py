@@ -718,7 +718,7 @@ class CiscoTest(absltest.TestCase):
     pol = policy.ParsePolicy(
         GOOD_OBJGRP_HEADER_2 + GOOD_TERM_2 + GOOD_TERM_18, self.naming)
     acl = cisco.Cisco(pol, EXP_INFO)
-    self.assertNotIn(' permit ip net-group SOME_HOST net-group SOME_HOME', str(acl))
+    self.assertNotIn(' permit ip net-group SOME_HOST net-group SOME_HOST', str(acl))
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
                                              mock.call('SOME_HOST')])
 
