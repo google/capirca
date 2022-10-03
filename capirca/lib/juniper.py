@@ -452,18 +452,6 @@ class Term(aclgenerator.Term):
       if self.term.ttl and self.term_type == 'inet':
         config.Append('ttl %s;' % self.term.ttl)
 
-      # protocol
-      if self.term.protocol:
-        # both are supported on JunOS, but only icmp6 is supported
-        # on SRX loopback stateless filter
-        config.Append(family_keywords['protocol'] +
-                      ' ' + self._Group(self.term.protocol))
-
-      # protocol
-      if self.term.protocol_except:
-        # same as above
-        config.Append(family_keywords['protocol-except'] + ' ' + self._Group(self.term.protocol_except))
-
       # port
       if self.term.port:
         config.Append('port %s' % self._Group(self.term.port))
@@ -501,6 +489,24 @@ class Term(aclgenerator.Term):
       if self.term.ether_type:
         config.Append('ether-type %s' %
                       self._Group(self.term.ether_type))
+      # protocol
+      if self.term.protocol:
+        # both are supported on JunOS, but only icmp6 is supported
+        # on SRX loopback stateless filter, so set all instances of icmpv6 to icmp6.
+        if 'icmpv6' in self.term.protocol:
+          loc = self.term.protocol.index('icmpv6')
+          self.term.protocol[loc] = 'icmp6'
+        config.Append(family_keywords['protocol'] + ' ' +
+                      self._Group(self.term.protocol))
+
+      # protocol
+      if self.term.protocol_except:
+        # same as above
+        if 'icmpv6' in self.term.protocol_except:
+          loc = self.term.protocol_except.index('icmpv6')
+          self.term.protocol_except[loc] = 'icmp6'
+        config.Append(family_keywords['protocol-except'] + ' ' +
+                      self._Group(self.term.protocol_except))
 
       if self.term.traffic_type:
         config.Append('traffic-type %s' %

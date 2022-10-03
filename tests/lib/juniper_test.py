@@ -861,7 +861,7 @@ class JuniperTest(parameterized.TestCase):
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_1_V6,
                                              self.naming), EXP_INFO)
     output = str(jcl)
-    self.assertTrue('next-header icmpv6;' in output and
+    self.assertTrue('next-header icmp6;' in output and
                     'next-header tcp;' in output, output)
 
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
@@ -929,7 +929,7 @@ class JuniperTest(parameterized.TestCase):
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER_V6 + GOOD_TERM_20_V6,
                                              self.naming), EXP_INFO)
     output = str(jcl)
-    self.assertIn('next-header-except icmpv6;', output, output)
+    self.assertIn('next-header-except icmp6;', output, output)
 
   def testProtocolCase(self):
     jcl = juniper.Juniper(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_5,
