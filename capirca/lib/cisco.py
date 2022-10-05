@@ -837,6 +837,15 @@ class ObjectGroupTerm(Term):
                   else self.PROTO_MAP.get(proto)
                   for proto in self.term.protocol]
 
+    # icmp lookups
+    icmp_types = ['']
+    if self.term.icmp_type:
+      icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type,
+                                           self.term.protocol, self.af)
+    icmp_codes = ['']
+    if self.term.icmp_code:
+      icmp_codes = self.term.icmp_code
+
     # addresses
     source_address = self.term.source_address
     if not self.term.source_address:
@@ -859,14 +868,24 @@ class ObjectGroupTerm(Term):
         for sport in source_port:
           for dport in destination_port:
             for proto in protocol:
-              ret_str.append(
-                  self._TermletToStr(_ACTION_TABLE.get(str(
-                      self.term.action[0])), proto, saddr, sport, daddr, dport))
+              # cisconx uses icmp for both ipv4 and ipv6
+              if self.platform == 'cisconx':
+                if self.af == 6:
+                  proto = 'icmp' if proto == 'icmpv6' else proto
+              for icmp_type in icmp_types:
+                for icmp_code in icmp_codes:
+                  ret_str.append(
+                      self._TermletToStr(_ACTION_TABLE.get(str(
+                          self.term.action[0])), proto, saddr, sport, daddr, dport, icmp_type, icmp_code))
 
     return '\n'.join(ret_str)
 
-  def _TermletToStr(self, action, proto, saddr, sport, daddr, dport):
+  def _TermletToStr(self, action, proto, saddr, sport, daddr, dport, icmp_type, icmp_code):
     """Output a portion of a cisco term/filter only, based on the 5-tuple."""
+    # str(icmp_type) is needed to ensure 0 maps to '0' instead of FALSE
+    icmp_type = str(icmp_type)
+    icmp_code = str(icmp_code)
+
     # Empty addr/port destinations should emit 'any'
     if saddr and saddr != 'any':
       saddr = 'net-group %s' % saddr
@@ -881,6 +900,11 @@ class ObjectGroupTerm(Term):
       dport = ' port-group %d-%d' % (dport[0], dport[1])
     else:
       dport = ''
+
+    if icmp_type:
+      if icmp_code:
+        return (' %s %s %s %s %s %s' % (action, proto, saddr, daddr, icmp_type, icmp_code)).rstrip()
+      return (' %s %s %s %s %s' % (action, proto, saddr, daddr, icmp_type)).rstrip()
 
     return (' %s %s %s%s %s%s' % (
         action, proto, saddr, sport, daddr, dport)).rstrip()
