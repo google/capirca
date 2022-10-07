@@ -143,6 +143,8 @@ This wrapping should also be present for the term name, and should be using
 Capirca’s
 [FixTermLength()](https://github.com/google/capirca/blob/b3e605a54f12efa1e6b0b1cfd179ee6078313c9d/capirca/lib/aclgenerator.py#L463).
 
+This includes counter name limits as well.
+
 ### Logging is supported correctly for different types of logging
 
 There are different values of logging already created in
