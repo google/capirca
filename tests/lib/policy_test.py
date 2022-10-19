@@ -439,6 +439,12 @@ term good-term-48 {
   action:: accept
 }
 """
+GOOD_TERM_49 = """
+term good-term-46 {
+  protocol:: udp
+  decapsulate:: mpls-in-udp
+}
+"""
 GOOD_TERM_V6_1 = """
 term good-term-v6-1 {
   hop-limit:: 5
@@ -1244,6 +1250,11 @@ class PolicyTest(absltest.TestCase):
     pol = HEADER + GOOD_TERM_46
     result = policy.ParsePolicy(pol, self.naming)
     self.assertIn('encapsulate: stuff_and_things', str(result))
+
+  def testDecapsulate(self):
+    pol = HEADER + GOOD_TERM_49
+    result = policy.ParsePolicy(pol, self.naming)
+    self.assertIn('decapsulate: mpls-in-udp', str(result))
 
   def testPortMirror(self):
     pol = HEADER + GOOD_TERM_47

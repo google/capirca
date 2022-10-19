@@ -476,6 +476,40 @@ term bad-term-2 {
   routing-instance:: instance-name
 }
 """
+DECAPSULATE_GOOD_TERM_1 = """
+term good-term-1 {
+  protocol:: udp
+  decapsulate:: template-name
+}
+"""
+DECAPSULATE_GOOD_TERM_2 = """
+term good-term-2 {
+  protocol:: udp
+  decapsulate:: template-name
+  counter:: count-name
+}
+"""
+DECAPSULATE_BAD_TERM_1 = """
+term bad-term-1 {
+  protocol:: udp
+  decapsulate:: template-name
+  action:: accept
+}
+"""
+DECAPSULATE_BAD_TERM_2 = """
+term bad-term-2 {
+  protocol:: udp
+  decapsulate:: template-name
+  routing-instance:: instance-name
+}
+"""
+DECAPSULATE_BAD_TERM_3 = """
+term bad-term-2 {
+  protocol:: udp
+  decapsulate:: template-name
+  encapsulate:: something
+}
+"""
 PORTMIRROR_GOOD_TERM_1 = """
 term good-term-1 {
   protocol:: tcp
@@ -606,6 +640,7 @@ SUPPORTED_TOKENS = frozenset([
     'dscp_except',
     'dscp_match',
     'dscp_set',
+    'decapsulate',
     'encapsulate',
     'ether_type',
     'expiration',
@@ -811,6 +846,33 @@ class JuniperTest(parameterized.TestCase):
     self.assertRaises(juniper.JuniperMultipleTerminatingActionError, str, jcl)
     jcl = juniper.Juniper(
         policy.ParsePolicy(GOOD_HEADER + ENCAPSULATE_BAD_TERM_2, self.naming),
+        EXP_INFO)
+    self.assertRaises(juniper.JuniperMultipleTerminatingActionError, str, jcl)
+
+  def testDecapsulate(self):
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(GOOD_HEADER + DECAPSULATE_GOOD_TERM_1, self.naming),
+        EXP_INFO)
+    output = str(jcl)
+    self.assertIn('decapsulate template-name;', output, output)
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(GOOD_HEADER + DECAPSULATE_GOOD_TERM_2, self.naming),
+        EXP_INFO)
+    output = str(jcl)
+    self.assertIn('decapsulate template-name;', output, output)
+    self.assertIn('count count-name;', output, output)
+
+  def testFailDecapsulate(self):
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(GOOD_HEADER + DECAPSULATE_BAD_TERM_1, self.naming),
+        EXP_INFO)
+    self.assertRaises(juniper.JuniperMultipleTerminatingActionError, str, jcl)
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(GOOD_HEADER + DECAPSULATE_BAD_TERM_2, self.naming),
+        EXP_INFO)
+    self.assertRaises(juniper.JuniperMultipleTerminatingActionError, str, jcl)
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(GOOD_HEADER + DECAPSULATE_BAD_TERM_3, self.naming),
         EXP_INFO)
     self.assertRaises(juniper.JuniperMultipleTerminatingActionError, str, jcl)
 
