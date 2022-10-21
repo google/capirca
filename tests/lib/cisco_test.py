@@ -340,6 +340,13 @@ term good_term_23 {
   action:: accept
 }
 """
+GOOD_TERM_24 = """
+term good_term_24 {
+  protocol:: ipip
+  destination-address:: SOME_HOST
+  action:: accept
+}
+"""
 LONG_COMMENT_TERM = """
 term long-comment-term {
   comment:: "%s "
@@ -896,7 +903,6 @@ class CiscoTest(absltest.TestCase):
         LONG_VERSION_HEADER + GOOD_TERM_7,
         self.naming)
     acl = cisco.Cisco(pol, EXP_INFO)
-    print(acl)
     self.assertIn('remark This long header should be split even on a', str(acl))
     self.assertIn(('remark looooooooooooooooooooooooooonnnnnnnnnnnnnnnnnn'
                    'gggggggggg string.'), str(acl))
@@ -907,6 +913,11 @@ class CiscoTest(absltest.TestCase):
     self.assertIn(('remark 5:0x169ef02a512c5b28!8m2!3d37.4220579!4d-122.084'
                    '0897'), str(acl))
 
+  def testIPIP(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/24')]
+    acl = cisco.Cisco(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_24,
+                                         self.naming), EXP_INFO)
+    self.assertIn('permit 4 ', str(acl))
 
 if __name__ == '__main__':
   absltest.main()

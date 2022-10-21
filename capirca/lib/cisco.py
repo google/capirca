@@ -467,6 +467,8 @@ class Term(aclgenerator.Term):
       self.text_af = 'inet'
     else:
       self.text_af = 'inet6'
+    self.ALLOWED_PROTO_STRINGS.extend([self.PROTO_MAP.get(x)
+                                       for x in self.ALWAYS_PROTO_NUM])
 
   def __str__(self):
     # Verify platform specific terms. Skip whole term if platform does not
