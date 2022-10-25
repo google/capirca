@@ -50,6 +50,7 @@ from capirca.lib import packetfilter
 from capirca.lib import paloaltofw
 from capirca.lib import pcap
 from capirca.lib import policy
+from capirca.lib import sonic
 from capirca.lib import speedway
 from capirca.lib import srxlo
 from capirca.lib import windows_advfirewall
@@ -192,6 +193,7 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
   nxacl = False
   xacl = False
   paloalto = False
+  sonic_pol = False
   k8s_pol = False
 
   try:
@@ -271,6 +273,8 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
     gcphf = copy.deepcopy(pol)
   if 'paloalto' in platforms:
     paloalto = copy.deepcopy(pol)
+  if 'sonic' in platforms:
+    sonic_pol = copy.deepcopy(pol)
   if 'cloudarmor' in platforms:
     gca = copy.deepcopy(pol)
   if 'k8s' in platforms:
@@ -410,6 +414,11 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
       RenderACL(
           str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
           write_files)
+    if sonic_pol:
+      acl_obj = sonic.Sonic(sonic_pol, exp_info)
+      RenderACL(
+          str(acl_obj), '.json', output_directory, input_file, write_files,
+          True)
     if gca:
       acl_obj = cloudarmor.CloudArmor(gca, exp_info)
       RenderACL(
@@ -432,6 +441,7 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
       iptables.Error,
       speedway.Error,
       pcap.Error,
+      sonic.Error,
       aclgenerator.Error,
       aruba.Error,
       nftables.Error,
