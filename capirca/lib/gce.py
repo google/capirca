@@ -68,7 +68,6 @@ def IsDefaultDeny(term):
   return True
 
 
-
 def GetNextPriority(priority):
   """Get the priority for the next rule."""
   return priority
@@ -247,9 +246,11 @@ class Term(gcp.Term):
 
     saddrs = sorted(self.term.GetAddressOfVersion('source_address', term_af),
                     key=ipaddress.get_mixed_type_key)
+    saddrs = gcp.FilterIPv4InIPv6FormatAddrs(saddrs)
     daddrs = sorted(
         self.term.GetAddressOfVersion('destination_address', term_af),
         key=ipaddress.get_mixed_type_key)
+    daddrs = gcp.FilterIPv4InIPv6FormatAddrs(daddrs)
 
     # If the address got filtered out and is empty due to address family, we
     # don't render the term. At this point of term processing, the direction

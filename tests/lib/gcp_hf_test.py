@@ -1,8 +1,8 @@
 """Tests for google3.third_party.py.capirca.lib.gcp_hf.py."""
 
 import json
-from absl.testing import absltest
 from unittest import mock
+from absl.testing import absltest
 
 from absl.testing import parameterized
 from capirca.lib import gcp
@@ -2481,8 +2481,19 @@ SUPPORTED_SUB_TOKENS = {
 EXP_INFO = 2
 
 TEST_IP = [nacaddr.IP('10.0.0.0/8')]
-TEST_IPV6_IP = [nacaddr.IP('2001:4860:8000::5/128')]
-TEST_MIXED_IPS = [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('2001:4860:8000::5/128')]
+TEST_IPV6_IP = [
+    nacaddr.IP('2001:4860:8000::5/128'),
+    nacaddr.IP('::ffff:a02:301/128'),  # IPv4-mapped
+    nacaddr.IP('2002::/16'),  # 6to4
+    nacaddr.IP('::0000:a02:301/128'),  # IPv4-compatible
+]
+TEST_MIXED_IPS = [
+    nacaddr.IP('10.0.0.0/8'),
+    nacaddr.IP('2001:4860:8000::5/128'),
+    nacaddr.IP('::ffff:a02:301/128'),  # IPv4-mapped
+    nacaddr.IP('2002::/16'),  # 6to4
+    nacaddr.IP('::0000:a02:301/128'),  # IPv4-compatible
+]
 ALL_IPV4_IPS = [nacaddr.IP('0.0.0.0/0')]
 ALL_IPV6_IPS = [nacaddr.IP('::/0')]
 MANY_IPS = [nacaddr.IP('192.168.' + str(x) +'.0/32') for x in range(
@@ -2730,8 +2741,10 @@ class GcpHfTest(parameterized.TestCase):
     """Test that a term with > 256 destination ports raises TermError."""
     self.naming.GetNetAddr.return_value = TEST_IP
 
-    # Create a list of 260 numbers to use as destination ports and raise an error
-    # Using even numbers ensures that the port list does not get condensed to a range.
+    # Create a list of 260 numbers to use as destination ports and raise an
+    # error.
+    # Using even numbers ensures that the port list does not get condensed to a
+    # range.
     se_array = []
     for x in range(2000, 2520):
       if x % 2 == 0:

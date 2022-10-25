@@ -3,6 +3,7 @@
 Base class for GCP firewalling products.
 """
 
+import ipaddress
 import json
 import re
 
@@ -34,9 +35,7 @@ class Term(aclgenerator.Term):
   # https://cloud.google.com/vpc/docs/firewalls#protocols_and_ports
   # 'all' is needed for the dedault deny, it should not be used in a pol file.
   _ALLOW_PROTO_NAME = frozenset(
-      ['tcp', 'udp', 'icmp', 'esp', 'ah', 'ipip', 'sctp',
-       'all'
-      ])
+      ['tcp', 'udp', 'icmp', 'esp', 'ah', 'ipip', 'sctp', 'all'])
 
   def _GetPorts(self):
     """Return a port or port range in string format."""
@@ -165,3 +164,28 @@ def GetIpv6TermName(term_name):
   """
 
   return '%s-%s' % (term_name, 'v6')
+
+
+def FilterIPv4InIPv6FormatAddrs(addrs):
+  """Returns addresses of the appropriate Address Family.
+
+  Args:
+    addrs: list of IP addresses.
+
+  Returns:
+    list of filtered IPs with no IPv4 in IPv6 format addresses.
+  """
+  filtered = []
+  for addr in addrs:
+    ipaddr = ipaddress.ip_interface(addr).ip
+    if isinstance(ipaddr, ipaddress.IPv6Address):
+      ipv6 = ipaddress.IPv6Address(ipaddr)
+      # Check if it's an IPv4-mapped or 6to4 address.
+      if ipv6.ipv4_mapped is not None or ipv6.sixtofour is not None:
+        continue
+      # Check if it's an IPv4-compatible address.
+      if ipv6.packed.hex(
+      )[:24] == '000000000000000000000000' and not ipv6.is_unspecified:
+        continue
+    filtered += [addr]
+  return filtered

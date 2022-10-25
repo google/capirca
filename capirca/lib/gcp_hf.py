@@ -234,6 +234,7 @@ class Term(gcp.Term):
 
     if self.term.direction == 'EGRESS':
       daddrs = self.term.GetAddressOfVersion('destination_address', ip_version)
+      daddrs = gcp.FilterIPv4InIPv6FormatAddrs(daddrs)
 
       # If the address got filtered out and is empty due to address family, we
       # don't render the term. At this point of term processing, the direction
@@ -267,7 +268,8 @@ class Term(gcp.Term):
         rules.append(rule)
         priority_index += 1
     else:
-      saddrs = self.term.GetAddressOfVersion('source_address', ip_version)
+      saddrs = gcp.FilterIPv4InIPv6FormatAddrs(
+          self.term.GetAddressOfVersion('source_address', ip_version))
 
       # If the address got filtered out and is empty due to address family, we
       # don't render the term. At this point of term processing, the direction
