@@ -421,6 +421,7 @@ generators:
 *   [`packetfilter`](./doc/generators/packetfilter.md): PacketFilter
 *   [`paloaltofw`](./doc/generators/paloaltofw.md): Palo Alto PANOS
 *   [`pcap`](./doc/generators/pcap.md): PcapFilter
+*   [`sonic`](./doc/generators/sonic.md): SONiC ACLs in config_db.json format
 *   [`speedway`](./doc/generators/speedway.md): Speedway
 *   [`srxlo`](./doc/generators/srxlo.md): Stateless Juniper ACL
 *   [`windows_advfirewall`](./doc/generators/windows_advfirewall.md): Windows
