@@ -222,6 +222,12 @@ class Term(gcp.Term):
         term_dict['targetTags'] = self.term.source_tag
     if self.term.destination_tag and self.term.direction == 'INGRESS':
       term_dict['targetTags'] = self.term.destination_tag
+    if self.term.target_service_accounts:
+      if 'targetTags' in term_dict or 'sourceTags' in term_dict:
+        raise GceFirewallError(
+            'targetServiceAccounts cannot be used at the same time as targetTags or sourceTags: %s'
+            % self.term.target_service_accounts)
+      term_dict['targetServiceAccounts'] = self.term.target_service_accounts
     if self.term.priority:
       term_dict['priority'] = self.term.priority
       # Update term priority for the inet6 rule.
@@ -389,9 +395,9 @@ class GCE(gcp.GCP):
   # is rendered (which can add proto and a counter).
   _TERM_MAX_LENGTH = 53
   _GOOD_DIRECTION = ['INGRESS', 'EGRESS']
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',
-                                      'destination_tag',
-                                      'source_tag'])
+  _OPTIONAL_SUPPORTED_KEYWORDS = frozenset([
+      'expiration', 'destination_tag', 'source_tag', 'target_service_accounts'
+  ])
 
   def _BuildTokens(self):
     """Build supported tokens for platform.
@@ -402,11 +408,10 @@ class GCE(gcp.GCP):
     supported_tokens, _ = super()._BuildTokens()
 
     # add extra things
-    supported_tokens |= {'destination_tag',
-                         'expiration',
-                         'owner',
-                         'priority',
-                         'source_tag'}
+    supported_tokens |= {
+        'destination_tag', 'expiration', 'owner', 'priority', 'source_tag',
+        'target_service_accounts'
+    }
 
     # remove unsupported things
     supported_tokens -= {'icmp_type',

@@ -373,6 +373,16 @@ term good-term-no-protocol {
 }
 """
 
+GOOD_TERM_INGRESS_TARGET_SERVICE_ACCOUNT = """
+term good-term-target-service-account {
+  comment:: "Test with a service account."
+  source-address:: CORP_EXTERNAL
+  target-service-accounts:: acct@blah.com
+  protocol:: udp tcp
+  action:: accept
+}
+"""
+
 BAD_TERM_NO_SOURCE = """
 term bad-term-no-source {
   comment:: "Management access from corp."
@@ -502,6 +512,17 @@ term bad-term-target-tags-count {{
 }}""".format(many_target_tags=SAMPLE_TAG *
              (gce.Term._TERM_TARGET_TAGS_LIMIT + 1))
 
+BAD_TERM_TARGET_TAGS_AND_SERVICE_ACCOUNTS = """
+term bad-term-tags-and-service-accounts {
+  comment:: "This term has both a tag and a service account."
+  source-address:: CORP_EXTERNAL
+  destination-tag:: dns-servers
+  protocol:: tcp
+  action:: accept
+  target-service-accounts:: acct1@blah.com
+}
+"""
+
 GOOD_TERM_EXCLUDE_RANGE = """
 [
   {
@@ -589,7 +610,7 @@ VALID_TERM_NAMES = [
     'google-web', 'zo6hmxkfibardh6tgbiy7ua6'
 ]
 
-SUPPORTED_TOKENS = {
+SUPPORTED_TOKENS = frozenset({
     'action',
     'comment',
     'destination_address',
@@ -607,10 +628,11 @@ SUPPORTED_TOKENS = {
     'source_address_exclude',
     'source_port',
     'source_tag',
+    'target_service_accounts',
     'translated',
     'platform',
     'platform_exclude',
-}
+})
 
 SUPPORTED_SUB_TOKENS = {'action': {'accept', 'deny'}}
 
@@ -979,6 +1001,17 @@ class GCETest(parameterized.TestCase):
     self.assertIn('sourceTags', str(acl))
     self.assertNotIn('targetTags', str(acl))
 
+  def testTargetServiceAccounts(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(
+            GOOD_HEADER_INGRESS + GOOD_TERM_INGRESS_TARGET_SERVICE_ACCOUNT,
+            self.naming), EXP_INFO)
+    self.assertIn('targetServiceAccounts', str(acl))
+    self.assertNotIn('targetTags', str(acl))
+    self.assertNotIn('sourceTags', str(acl))
+
   def testDestinationRanges(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
@@ -1268,6 +1301,16 @@ class GCETest(parameterized.TestCase):
         'bad-term-target-tags-count', gce.GCE,
         policy.ParsePolicy(GOOD_HEADER_INET + BAD_TERM_TARGET_TAGS_COUNT,
                            self.naming), EXP_INFO)
+
+  def testTargetTagsAndServiceAccountsError(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.assertRaisesRegex(
+        gce.GceFirewallError,
+        'targetServiceAccounts cannot be used at the same time as targetTags or sourceTags',
+        gce.GCE,
+        policy.ParsePolicy(
+            GOOD_HEADER_INET + BAD_TERM_TARGET_TAGS_AND_SERVICE_ACCOUNTS,
+            self.naming), EXP_INFO)
 
   def testMixed(self):
     self.naming.GetNetAddr.return_value = TEST_IPS

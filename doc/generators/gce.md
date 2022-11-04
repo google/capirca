@@ -27,6 +27,7 @@ target:: gce [filter name] [direction]
 * _source-exclude::_ exclude one or more address tokens from the specified source-address.
 * _source-port::_ one or more service definition tokens.
 * _source-tag::_ Tag name used for source filtering.
+* _target-service-accounts::_ A service account that may make network connections.
 
 ## Sub Tokens
 
