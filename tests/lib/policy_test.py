@@ -445,6 +445,13 @@ term good-term-46 {
   decapsulate:: mpls-in-udp
 }
 """
+GOOD_TERM_50 = """
+term good-term-45 {
+  source-address:: ANY
+  action:: accept
+  source-service-accounts:: acct1@blah.com
+}
+"""
 GOOD_TERM_V6_1 = """
 term good-term-v6-1 {
   hop-limit:: 5
@@ -1313,6 +1320,15 @@ class PolicyTest(absltest.TestCase):
     self.naming.GetServiceByProto.return_value = ['25']
     self.assertRaises(policy.MixedPortandNonPortProtos, policy.ParsePolicy,
                       pol, self.naming)
+
+  def testSourceServiceAccount(self):
+    pol = HEADER_HF_1 + GOOD_TERM_50
+
+    result = policy.ParsePolicy(pol, self.naming)
+    term = result.filters[0][1][0]
+    self.assertEqual(
+        ['acct1@blah.com'],
+        term.source_service_accounts)
 
   def testTargetServiceAccount(self):
     pol = HEADER_HF_1 + GOOD_TERM_45

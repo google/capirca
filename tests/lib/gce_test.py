@@ -373,6 +373,16 @@ term good-term-no-protocol {
 }
 """
 
+GOOD_TERM_INGRESS_SOURCE_SERVICE_ACCOUNT = """
+term good-term-source-service-account {
+  comment:: "Test with a service account."
+  source-address:: CORP_EXTERNAL
+  source-service-accounts:: acct@blah.com
+  protocol:: udp tcp
+  action:: accept
+}
+"""
+
 GOOD_TERM_INGRESS_TARGET_SERVICE_ACCOUNT = """
 term good-term-target-service-account {
   comment:: "Test with a service account."
@@ -512,14 +522,35 @@ term bad-term-target-tags-count {{
 }}""".format(many_target_tags=SAMPLE_TAG *
              (gce.Term._TERM_TARGET_TAGS_LIMIT + 1))
 
+BAD_TERM_SERVICE_ACCOUNTS_COUNT = """
+term bad-term-service-accounts-count {{
+  comment:: "This term has way too many source service accounts."
+  protocol:: tcp
+  action:: accept
+  source-tag:: ssh-bastion
+  source-service-accounts:: {many_service_accounts}
+}}""".format(many_service_accounts='acct1@blah.com ' *
+             (gce.Term._TERM_SERVICE_ACCOUNTS_LIMIT + 1))
+
 BAD_TERM_TARGET_TAGS_AND_SERVICE_ACCOUNTS = """
 term bad-term-tags-and-service-accounts {
-  comment:: "This term has both a tag and a service account."
+  comment:: "This term has both a tag and a target service account."
   source-address:: CORP_EXTERNAL
   destination-tag:: dns-servers
   protocol:: tcp
   action:: accept
   target-service-accounts:: acct1@blah.com
+}
+"""
+
+BAD_TERM_TARGET_TAGS_AND_SERVICE_ACCOUNTS2 = """
+term bad-term-tags-and-service-accounts {
+  comment:: "This term has both a tag and a source service account."
+  source-address:: CORP_EXTERNAL
+  destination-tag:: dns-servers
+  protocol:: tcp
+  action:: accept
+  source-service-accounts:: acct1@blah.com
 }
 """
 
@@ -627,6 +658,7 @@ SUPPORTED_TOKENS = frozenset({
     'source_address',
     'source_address_exclude',
     'source_port',
+    'source_service_accounts',
     'source_tag',
     'target_service_accounts',
     'translated',
@@ -1001,6 +1033,17 @@ class GCETest(parameterized.TestCase):
     self.assertIn('sourceTags', str(acl))
     self.assertNotIn('targetTags', str(acl))
 
+  def testSourceServiceAccounts(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(
+            GOOD_HEADER_INGRESS + GOOD_TERM_INGRESS_SOURCE_SERVICE_ACCOUNT,
+            self.naming), EXP_INFO)
+    self.assertIn('sourceServiceAccounts', str(acl))
+    self.assertNotIn('targetTags', str(acl))
+    self.assertNotIn('sourceTags', str(acl))
+
   def testTargetServiceAccounts(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
@@ -1302,7 +1345,26 @@ class GCETest(parameterized.TestCase):
         policy.ParsePolicy(GOOD_HEADER_INET + BAD_TERM_TARGET_TAGS_COUNT,
                            self.naming), EXP_INFO)
 
-  def testTargetTagsAndServiceAccountsError(self):
+  def testServiceAccountCountExceededError(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.assertRaisesRegex(
+        gce.GceFirewallError,
+        'GCE firewall rule exceeded number of service accounts per rule: ' +
+        'bad-term-service-accounts-count', gce.GCE,
+        policy.ParsePolicy(GOOD_HEADER_INET + BAD_TERM_SERVICE_ACCOUNTS_COUNT,
+                           self.naming), EXP_INFO)
+
+  def testTargetTagsAndSourceServiceAccountsError(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.assertRaisesRegex(
+        gce.GceFirewallError,
+        'sourceServiceAccounts cannot be used at the same time as targetTags or sourceTags',
+        gce.GCE,
+        policy.ParsePolicy(
+            GOOD_HEADER_INET + BAD_TERM_TARGET_TAGS_AND_SERVICE_ACCOUNTS2,
+            self.naming), EXP_INFO)
+
+  def testTargetTagsAndTargetServiceAccountsError(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.assertRaisesRegex(
         gce.GceFirewallError,
@@ -1618,15 +1680,16 @@ class GCETest(parameterized.TestCase):
       'allowed': [{
           'IPProtocol': 'icmp'
       }],
-  }, 3), ('1 ip, 2 protocols, 1 service account', {
+  }, 3), ('1 ip, 2 protocols, 2 service accounts', {
       'sourceRanges': ['10.128.0.0/10'],
       'allowed': [{
           'IPProtocol': 'tcp'
       }, {
           'IPProtocol': 'udp'
       }],
-      'targetServiceAccount': ['test@system.gserviceaccount.com'],
-  }, 4))
+      'sourceServiceAccounts': ['test@system.gserviceaccount.com'],
+      'targetServiceAccounts': ['test@system.gserviceaccount.com'],
+  }, 5))
   def testGetAttributeCount(self, dict_term, expected):
     self.assertEqual(gce.GetAttributeCount(dict_term), expected)
 

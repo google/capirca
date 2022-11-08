@@ -335,6 +335,8 @@ class Term:
     policer: VarType.POLICER
     priority: VarType.PRIORITY
     destination-zone: VarType.DZONE
+    source-service-accounts: VarType.SOURCE_SERVICE_ACCOUNTS
+    target-service-accounts: VarType.TARGET_SERVICE_ACCOUNTS
     source-zone: VarType.SZONE
     vpn: VarType.VPN
   """
@@ -469,13 +471,15 @@ class Term:
     self.source_tag = []
     self.destination_tag = []
     self.priority = None
+    self.source_service_accounts = []
+    self.target_service_accounts = []
     # iptables specific
     self.source_interface = None
     self.destination_interface = None
     self.platform = []
     self.platform_exclude = []
     self.target_resources = []
-    self.target_service_accounts = []
+
     self.timeout = None
     self.flattened = False
     self.flattened_addr = None
@@ -722,6 +726,9 @@ class Term:
       ret_str.append('  destination_tag: %s' % self.destination_tag)
     if self.target_resources:
       ret_str.append('  target_resources: %s' % self.target_resources)
+    if self.source_service_accounts:
+      ret_str.append('  source_service_accounts: %s' %
+                     self.source_service_accounts)
     if self.target_service_accounts:
       ret_str.append('  target_service_accounts: %s' %
                      self.target_service_accounts)
@@ -1170,6 +1177,8 @@ class Term:
           self.flexible_match_range.append(x.value)
         elif x.var_type is VarType.TARGET_RESOURCES:
           self.target_resources.append(x.value)
+        elif x.var_type is VarType.SOURCE_SERVICE_ACCOUNTS:
+          self.source_service_accounts.append(x.value)
         elif x.var_type is VarType.TARGET_SERVICE_ACCOUNTS:
           self.target_service_accounts.append(x.value)
         elif x.var_type is VarType.SZONE:
@@ -1261,6 +1270,8 @@ class Term:
         self.ttl = int(obj.value)
       elif obj.var_type is VarType.TARGET_RESOURCES:
         self.target_resources.append(obj.value)
+      elif obj.var_type is VarType.SOURCE_SERVICE_ACCOUNTS:
+        self.source_service_accounts.append(obj.value)
       elif obj.var_type is VarType.TARGET_SERVICE_ACCOUNTS:
         self.target_service_accounts.append(obj.value)
       elif obj.var_type is VarType.FILTER_TERM:
@@ -1581,6 +1592,7 @@ class VarType:
   SZONE = 65
   DZONE = 66
   DECAPSULATE = 67
+  SOURCE_SERVICE_ACCOUNTS = 68
 
 
   def __init__(self, var_type, value):
@@ -1801,6 +1813,7 @@ tokens = (
     'SADDR',
     'SADDREXCLUDE',
     'SINTERFACE',
+    'SOURCE_SERVICE_ACCOUNTS',
     'SPFX',
     'ESPFX',
     'SPORT',
@@ -1883,6 +1896,7 @@ reserved = {
     'source-address': 'SADDR',
     'source-exclude': 'SADDREXCLUDE',
     'source-interface': 'SINTERFACE',
+    'source-service-accounts': 'SOURCE_SERVICE_ACCOUNTS',
     'source-prefix': 'SPFX',
     'source-prefix-except': 'ESPFX',
     'source-port': 'SPORT',
@@ -2062,6 +2076,7 @@ def p_term_spec(p):
                 | term_spec qos_spec
                 | term_spec pan_application_spec
                 | term_spec routinginstance_spec
+                | term_spec source_service_accounts_spec
                 | term_spec term_zone_spec
                 | term_spec tag_list_spec
                 | term_spec target_resources_spec
@@ -2317,6 +2332,11 @@ def p_protocol_spec(p):
   for proto in p[4]:
     p[0].append(VarType(VarType.PROTOCOL, proto))
 
+def p_source_service_accounts_spec(p):
+  """ source_service_accounts_spec : SOURCE_SERVICE_ACCOUNTS ':' ':' one_or_more_strings """
+  p[0] = []
+  for service_account in p[4]:
+    p[0].append(VarType(VarType.SOURCE_SERVICE_ACCOUNTS, service_account))
 
 def p_tag_list_spec(p):
   """ tag_list_spec : DTAG ':' ':' one_or_more_strings

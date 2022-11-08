@@ -85,6 +85,7 @@ class Term(gcp.Term):
   _TERM_SOURCE_TAGS_LIMIT = 30
   _TERM_TARGET_TAGS_LIMIT = 70
   _TERM_PORTS_LIMIT = 256
+  _TERM_SERVICE_ACCOUNTS_LIMIT = 10
 
   # Firewall rule name has to match specific RE:
   # The first character must be a lowercase letter, and all following characters
@@ -214,6 +215,13 @@ class Term(gcp.Term):
       raise GceFirewallError(
           'GCE firewall rule exceeded number of target tags per rule: %s' %
           self.term.name)
+    if len(
+        self.term.source_service_accounts
+    ) > self._TERM_SERVICE_ACCOUNTS_LIMIT or len(
+        self.term.target_service_accounts) > self._TERM_SERVICE_ACCOUNTS_LIMIT:
+      raise GceFirewallError(
+          'GCE firewall rule exceeded number of service accounts per rule: %s' %
+          self.term.name)
 
     if self.term.source_tag:
       if self.term.direction == 'INGRESS':
@@ -222,6 +230,12 @@ class Term(gcp.Term):
         term_dict['targetTags'] = self.term.source_tag
     if self.term.destination_tag and self.term.direction == 'INGRESS':
       term_dict['targetTags'] = self.term.destination_tag
+    if self.term.source_service_accounts:
+      if 'targetTags' in term_dict or 'sourceTags' in term_dict:
+        raise GceFirewallError(
+            'sourceServiceAccounts cannot be used at the same time as targetTags or sourceTags: %s'
+            % self.term.source_service_accounts)
+      term_dict['sourceServiceAccounts'] = self.term.source_service_accounts
     if self.term.target_service_accounts:
       if 'targetTags' in term_dict or 'sourceTags' in term_dict:
         raise GceFirewallError(
@@ -396,7 +410,8 @@ class GCE(gcp.GCP):
   _TERM_MAX_LENGTH = 53
   _GOOD_DIRECTION = ['INGRESS', 'EGRESS']
   _OPTIONAL_SUPPORTED_KEYWORDS = frozenset([
-      'expiration', 'destination_tag', 'source_tag', 'target_service_accounts'
+      'expiration', 'destination_tag', 'source_tag', 'source_service_accounts',
+      'target_service_accounts'
   ])
 
   def _BuildTokens(self):
@@ -410,7 +425,7 @@ class GCE(gcp.GCP):
     # add extra things
     supported_tokens |= {
         'destination_tag', 'expiration', 'owner', 'priority', 'source_tag',
-        'target_service_accounts'
+        'source_service_accounts', 'target_service_accounts'
     }
 
     # remove unsupported things
@@ -588,7 +603,9 @@ def GetAttributeCount(dict_term: Dict[str, Any]) -> int:
     tags += 1
 
   service_accounts = 0
-  for _ in dict_term.get('targetServiceAccount', []):
+  for _ in dict_term.get('sourceServiceAccounts', []):
+    service_accounts += 1
+  for _ in dict_term.get('targetServiceAccounts', []):
     service_accounts += 1
 
   return addresses + proto_ports + tags + service_accounts
