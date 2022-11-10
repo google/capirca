@@ -57,10 +57,12 @@ class SonicTest(parameterized.TestCase):
     """
     expected = json.loads("""
     {
-      "MyPolicyName|RULE_10": {
-        "PRIORITY": "65526",
-        "PACKET_ACTION": "FORWARD",
-        "SRC_IP": "10.2.3.4/32"
+      "ACL_RULE": {
+        "MyPolicyName|RULE_10": {
+          "PRIORITY": "65526",
+          "PACKET_ACTION": "FORWARD",
+          "SRC_IP": "10.2.3.4/32"
+        }
       }
     }
     """)
@@ -80,11 +82,13 @@ class SonicTest(parameterized.TestCase):
     }
     """
     expected = json.loads("""{
-    "MyPolicyName|RULE_10": {
-      "PRIORITY": "65526",
-      "PACKET_ACTION": "FORWARD",
-      "SRC_IP": "10.2.3.4/32",
-      "DST_IP": "10.2.3.4/32"
+    "ACL_RULE": {
+      "MyPolicyName|RULE_10": {
+        "PRIORITY": "65526",
+        "PACKET_ACTION": "FORWARD",
+        "SRC_IP": "10.2.3.4/32",
+        "DST_IP": "10.2.3.4/32"
+      }
     }
     }""")
 
@@ -108,11 +112,13 @@ class SonicTest(parameterized.TestCase):
     }
     """
     expected = json.loads("""{
-    "MyPolicyName|RULE_10": {
-      "PRIORITY": "65526",
-      "PACKET_ACTION": "FORWARD",
-      "SRC_IPV6": "2001:4860:8000::5/128",
-      "DST_IPV6": "2001:4860:8000::5/128"
+    "ACL_RULE": {
+      "MyPolicyName|RULE_10": {
+        "PRIORITY": "65526",
+        "PACKET_ACTION": "FORWARD",
+        "SRC_IPV6": "2001:4860:8000::5/128",
+        "DST_IPV6": "2001:4860:8000::5/128"
+      }
     }
     }""")
 
@@ -134,15 +140,17 @@ class SonicTest(parameterized.TestCase):
     """
     expected = json.loads("""
     {
-      "MyPolicyName|RULE_10": {
-        "PRIORITY": "65526",
-        "PACKET_ACTION": "FORWARD",
-        "SRC_IP": "4.4.4.4/32"
-      },
-      "MyPolicyName|RULE_20": {
-        "PRIORITY": "65516",
-        "PACKET_ACTION": "FORWARD",
-        "SRC_IP": "10.2.3.4/32"
+      "ACL_RULE": {
+        "MyPolicyName|RULE_10": {
+          "PRIORITY": "65526",
+          "PACKET_ACTION": "FORWARD",
+          "SRC_IP": "4.4.4.4/32"
+        },
+        "MyPolicyName|RULE_20": {
+          "PRIORITY": "65516",
+          "PACKET_ACTION": "FORWARD",
+          "SRC_IP": "10.2.3.4/32"
+        }
       }
     }
     """)
@@ -159,29 +167,31 @@ class SonicTest(parameterized.TestCase):
     ]
     expected = json.loads("""
     {
-      "MyPolicyName|RULE_10": {
-        "DST_IP": "4.4.4.4/32",
-        "PACKET_ACTION": "FORWARD",
-        "PRIORITY": "65526",
-        "SRC_IP": "4.4.4.4/32"
-      },
-      "MyPolicyName|RULE_20": {
-        "DST_IP": "10.2.3.4/32",
-        "PACKET_ACTION": "FORWARD",
-        "PRIORITY": "65516",
-        "SRC_IP": "4.4.4.4/32"
-      },
-      "MyPolicyName|RULE_30": {
-        "DST_IP": "4.4.4.4/32",
-        "PACKET_ACTION": "FORWARD",
-        "PRIORITY": "65506",
-        "SRC_IP": "10.2.3.4/32"
-      },
-      "MyPolicyName|RULE_40": {
-        "DST_IP": "10.2.3.4/32",
-        "PACKET_ACTION": "FORWARD",
-        "PRIORITY": "65496",
-        "SRC_IP": "10.2.3.4/32"
+      "ACL_RULE": {
+        "MyPolicyName|RULE_10": {
+          "DST_IP": "4.4.4.4/32",
+          "PACKET_ACTION": "FORWARD",
+          "PRIORITY": "65526",
+          "SRC_IP": "4.4.4.4/32"
+        },
+        "MyPolicyName|RULE_20": {
+          "DST_IP": "10.2.3.4/32",
+          "PACKET_ACTION": "FORWARD",
+          "PRIORITY": "65516",
+          "SRC_IP": "4.4.4.4/32"
+        },
+        "MyPolicyName|RULE_30": {
+          "DST_IP": "4.4.4.4/32",
+          "PACKET_ACTION": "FORWARD",
+          "PRIORITY": "65506",
+          "SRC_IP": "10.2.3.4/32"
+        },
+        "MyPolicyName|RULE_40": {
+          "DST_IP": "10.2.3.4/32",
+          "PACKET_ACTION": "FORWARD",
+          "PRIORITY": "65496",
+          "SRC_IP": "10.2.3.4/32"
+        }
       }
     }
     """)
@@ -206,9 +216,11 @@ class SonicTest(parameterized.TestCase):
 
     expected = json.loads("""
     {
-      "MyPolicyName|RULE_10": {
-        "PRIORITY": "65526",
-        "PACKET_ACTION": "DROP"
+      "ACL_RULE": {
+        "MyPolicyName|RULE_10": {
+          "PRIORITY": "65526",
+          "PACKET_ACTION": "DROP"
+        }
       }
     }
     """)
@@ -232,15 +244,17 @@ class SonicTest(parameterized.TestCase):
 
     expected = json.loads("""
     {
-      "MyPolicyName|RULE_10": {
-        "PRIORITY": "65526",
-        "PACKET_ACTION": "FORWARD",
-        "SRC_IP": "10.2.3.4/32"
-      },
-      "MyPolicyName|RULE_20": {
-        "PRIORITY": "65516",
-        "PACKET_ACTION": "FORWARD",
-        "DST_IP": "10.2.3.4/32"
+      "ACL_RULE": {
+        "MyPolicyName|RULE_10": {
+          "PRIORITY": "65526",
+          "PACKET_ACTION": "FORWARD",
+          "SRC_IP": "10.2.3.4/32"
+        },
+        "MyPolicyName|RULE_20": {
+          "PRIORITY": "65516",
+          "PACKET_ACTION": "FORWARD",
+          "DST_IP": "10.2.3.4/32"
+        }
       }
     }
     """)
@@ -260,17 +274,19 @@ class SonicTest(parameterized.TestCase):
     """
     expected = json.loads("""
     {
-      "MyPolicyName|RULE_10": {
-        "IP_PROTOCOL": "6",
-        "PRIORITY": "65526",
-        "PACKET_ACTION": "FORWARD",
-        "SRC_IP": "10.2.3.4/32"
-      },
-      "MyPolicyName|RULE_20": {
-        "IP_PROTOCOL": "17",
-        "PRIORITY": "65516",
-        "PACKET_ACTION": "FORWARD",
-        "SRC_IP": "10.2.3.4/32"
+      "ACL_RULE": {
+        "MyPolicyName|RULE_10": {
+          "IP_PROTOCOL": "6",
+          "PRIORITY": "65526",
+          "PACKET_ACTION": "FORWARD",
+          "SRC_IP": "10.2.3.4/32"
+        },
+        "MyPolicyName|RULE_20": {
+          "IP_PROTOCOL": "17",
+          "PRIORITY": "65516",
+          "PACKET_ACTION": "FORWARD",
+          "SRC_IP": "10.2.3.4/32"
+        }
       }
     }
     """)
@@ -291,19 +307,21 @@ class SonicTest(parameterized.TestCase):
     """
     expected = json.loads("""
     {
-      "MyPolicyName|RULE_10": {
-        "ICMP_TYPE": "0",
-        "IP_PROTOCOL": "1",
-        "PRIORITY": "65526",
-        "PACKET_ACTION": "FORWARD",
-        "SRC_IP": "10.2.3.4/32"
-      },
-      "MyPolicyName|RULE_20": {
-        "ICMP_TYPE": "8",
-        "IP_PROTOCOL": "1",
-        "PRIORITY": "65516",
-        "PACKET_ACTION": "FORWARD",
-        "SRC_IP": "10.2.3.4/32"
+      "ACL_RULE": {
+        "MyPolicyName|RULE_10": {
+          "ICMP_TYPE": "0",
+          "IP_PROTOCOL": "1",
+          "PRIORITY": "65526",
+          "PACKET_ACTION": "FORWARD",
+          "SRC_IP": "10.2.3.4/32"
+        },
+        "MyPolicyName|RULE_20": {
+          "ICMP_TYPE": "8",
+          "IP_PROTOCOL": "1",
+          "PRIORITY": "65516",
+          "PACKET_ACTION": "FORWARD",
+          "SRC_IP": "10.2.3.4/32"
+        }
       }
     }
     """)
@@ -330,19 +348,21 @@ class SonicTest(parameterized.TestCase):
     """
     expected = json.loads("""
     {
-      "MyPolicyName|RULE_10": {
-        "ICMPV6_TYPE": "128",
-        "IP_PROTOCOL": "58",
-        "PACKET_ACTION": "FORWARD",
-        "PRIORITY": "65526",
-        "SRC_IPV6": "2001:4860:8000::5/128"
-      },
-      "MyPolicyName|RULE_20": {
-        "ICMPV6_TYPE": "129",
-        "IP_PROTOCOL": "58",
-        "PACKET_ACTION": "FORWARD",
-        "PRIORITY": "65516",
-        "SRC_IPV6": "2001:4860:8000::5/128"
+      "ACL_RULE": {
+        "MyPolicyName|RULE_10": {
+          "ICMPV6_TYPE": "128",
+          "IP_PROTOCOL": "58",
+          "PACKET_ACTION": "FORWARD",
+          "PRIORITY": "65526",
+          "SRC_IPV6": "2001:4860:8000::5/128"
+        },
+        "MyPolicyName|RULE_20": {
+          "ICMPV6_TYPE": "129",
+          "IP_PROTOCOL": "58",
+          "PACKET_ACTION": "FORWARD",
+          "PRIORITY": "65516",
+          "SRC_IPV6": "2001:4860:8000::5/128"
+        }
       }
     }""")
 
@@ -373,7 +393,7 @@ class SonicTest(parameterized.TestCase):
     acl = sonic.Sonic(
         policy.ParsePolicy(mixed_af_header + pol, self.naming), self.exp_info)
 
-    self.assertEmpty(json.loads(str(acl)))
+    self.assertEqual({"ACL_RULE": {}}, json.loads(str(acl)))
 
   def testICMPv6DoesNotRenderIPv4(self):
     mixed_af_header = """
@@ -397,7 +417,7 @@ class SonicTest(parameterized.TestCase):
     acl = sonic.Sonic(
         policy.ParsePolicy(mixed_af_header + pol, self.naming), self.exp_info)
 
-    self.assertEmpty(json.loads(str(acl)))
+    self.assertEqual({"ACL_RULE": {}}, json.loads(str(acl)))
 
   def testSrcPortSingle(self):
     pol = """
@@ -410,19 +430,21 @@ class SonicTest(parameterized.TestCase):
     """
     expected = json.loads("""
     {
-      "MyPolicyName|RULE_10": {
-        "IP_PROTOCOL": "6",
-        "PACKET_ACTION": "FORWARD",
-        "PRIORITY": "65526",
-        "SRC_IP": "10.2.3.4/32",
-        "L4_SRC_PORT": "22"
-      },
-      "MyPolicyName|RULE_20": {
-        "IP_PROTOCOL": "6",
-        "PACKET_ACTION": "FORWARD",
-        "PRIORITY": "65516",
-        "SRC_IP": "10.2.3.4/32",
-        "L4_SRC_PORT": "443"
+      "ACL_RULE": {
+        "MyPolicyName|RULE_10": {
+          "IP_PROTOCOL": "6",
+          "PACKET_ACTION": "FORWARD",
+          "PRIORITY": "65526",
+          "SRC_IP": "10.2.3.4/32",
+          "L4_SRC_PORT": "22"
+        },
+        "MyPolicyName|RULE_20": {
+          "IP_PROTOCOL": "6",
+          "PACKET_ACTION": "FORWARD",
+          "PRIORITY": "65516",
+          "SRC_IP": "10.2.3.4/32",
+          "L4_SRC_PORT": "443"
+        }
       }
     }
     """)
@@ -443,12 +465,14 @@ class SonicTest(parameterized.TestCase):
     """
     expected = json.loads("""
     {
-      "MyPolicyName|RULE_10": {
-        "IP_PROTOCOL": "17",
-        "PACKET_ACTION": "FORWARD",
-        "PRIORITY": "65526",
-        "SRC_IP": "10.2.3.4/32",
-        "L4_SRC_PORT_RANGE": "33434-33534"
+      "ACL_RULE": {
+        "MyPolicyName|RULE_10": {
+          "IP_PROTOCOL": "17",
+          "PACKET_ACTION": "FORWARD",
+          "PRIORITY": "65526",
+          "SRC_IP": "10.2.3.4/32",
+          "L4_SRC_PORT_RANGE": "33434-33534"
+        }
       }
     }
     """)
@@ -469,19 +493,21 @@ class SonicTest(parameterized.TestCase):
     """
     expected = json.loads("""
     {
-      "MyPolicyName|RULE_10": {
-        "IP_PROTOCOL": "6",
-        "PACKET_ACTION": "FORWARD",
-        "PRIORITY": "65526",
-        "SRC_IP": "10.2.3.4/32",
-        "L4_DST_PORT": "22"
-      },
-      "MyPolicyName|RULE_20": {
-        "IP_PROTOCOL": "6",
-        "PACKET_ACTION": "FORWARD",
-        "PRIORITY": "65516",
-        "SRC_IP": "10.2.3.4/32",
-        "L4_DST_PORT": "443"
+      "ACL_RULE": {
+        "MyPolicyName|RULE_10": {
+          "IP_PROTOCOL": "6",
+          "PACKET_ACTION": "FORWARD",
+          "PRIORITY": "65526",
+          "SRC_IP": "10.2.3.4/32",
+          "L4_DST_PORT": "22"
+        },
+        "MyPolicyName|RULE_20": {
+          "IP_PROTOCOL": "6",
+          "PACKET_ACTION": "FORWARD",
+          "PRIORITY": "65516",
+          "SRC_IP": "10.2.3.4/32",
+          "L4_DST_PORT": "443"
+        }
       }
     }
     """)
@@ -502,12 +528,14 @@ class SonicTest(parameterized.TestCase):
     """
     expected = json.loads("""
     {
-      "MyPolicyName|RULE_10": {
-        "IP_PROTOCOL": "17",
-        "PACKET_ACTION": "FORWARD",
-        "PRIORITY": "65526",
-        "SRC_IP": "10.2.3.4/32",
-        "L4_DST_PORT_RANGE": "33434-33534"
+      "ACL_RULE": {
+        "MyPolicyName|RULE_10": {
+          "IP_PROTOCOL": "17",
+          "PACKET_ACTION": "FORWARD",
+          "PRIORITY": "65526",
+          "SRC_IP": "10.2.3.4/32",
+          "L4_DST_PORT_RANGE": "33434-33534"
+        }
       }
     }
     """)
@@ -528,15 +556,17 @@ class SonicTest(parameterized.TestCase):
     """
     expected = json.loads("""
     {
-      "MyPolicyName|RULE_10": {
-        "IP_PROTOCOL": "6",
-        "PACKET_ACTION": "FORWARD",
-        "PRIORITY": "65526",
-        "SRC_IP": "10.2.3.4/32",
-        "TCP_FLAGS": [
-          "0x10/0x10",
-          "0x4/0x4"
-        ]
+      "ACL_RULE": {
+        "MyPolicyName|RULE_10": {
+          "IP_PROTOCOL": "6",
+          "PACKET_ACTION": "FORWARD",
+          "PRIORITY": "65526",
+          "SRC_IP": "10.2.3.4/32",
+          "TCP_FLAGS": [
+            "0x10/0x10",
+            "0x4/0x4"
+          ]
+        }
       }
     }
     """)
@@ -560,7 +590,7 @@ class SonicTest(parameterized.TestCase):
     acl = sonic.Sonic(
         policy.ParsePolicy(GOOD_HEADER + pol, self.naming), self.exp_info)
 
-    self.assertEmpty(json.loads(str(acl)))
+    self.assertEqual({"ACL_RULE": {}}, json.loads(str(acl)))
 
 
 if __name__ == "__main__":

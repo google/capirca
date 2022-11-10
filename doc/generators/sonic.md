@@ -13,9 +13,11 @@ target:: sonic filter-name {inet|inet6|mixed}
 
   ```
   {
-    'MyPolicy|RULE_10': {...},
-    'MyPolicy|RULE_20': {...},
-    ...
+    'ACL_RULE': {
+      'MyPolicy|RULE_10': {...},
+      'MyPolicy|RULE_20': {...},
+      ...
+    }
   }
   ```
 

@@ -262,6 +262,8 @@ class Sonic(aclgenerator.ACLGenerator):
             rule['PRIORITY'] = str(self._rule_priority)
             self.sonic_policy[rule_name] = rule
 
+      self.sonic_policy = {'ACL_RULE': self.sonic_policy}
+
   # This is what actually "renders" the policy into vendor-specific
   # representation!
   def __str__(self):
