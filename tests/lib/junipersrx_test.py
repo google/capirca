@@ -216,6 +216,19 @@ term good-term-5 {
 }
 """
 
+GOOD_TERM_COUNT_1 = """
+term good-term-6 {
+  counter:: good-counter
+  action:: accept
+}
+"""
+GOOD_TERM_COUNT_2 = """
+term good-term-6 {
+  counter:: good-counter
+  action:: deny
+}
+"""
+
 GOOD_TERM_10 = """
 term good-term-10 {
   destination-address:: SOME_HOST
@@ -544,6 +557,7 @@ term platform-exclude-term {
 SUPPORTED_TOKENS = frozenset({
     'action',
     'comment',
+    'counter',
     'destination_address',
     'destination_address_exclude',
     'destination_port',
@@ -822,6 +836,20 @@ class JuniperSRXTest(absltest.TestCase):
     output = str(srx)
     self.assertIn('session-init;', output)
     self.assertNotIn('session-close;', output)
+
+  def testCounterAccept(self):
+    srx = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER
+                                                   + GOOD_TERM_COUNT_1,
+                                                   self.naming), EXP_INFO)
+    output = str(srx)
+    self.assertIn('count good-counter;', output)
+
+  def testCounterDeny(self):
+    srx = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER
+                                                   + GOOD_TERM_COUNT_2,
+                                                   self.naming), EXP_INFO)
+    output = str(srx)
+    self.assertIn('count good-counter;', output)
 
   def testOwnerTerm(self):
     pol = policy.ParsePolicy(GOOD_HEADER + OWNER_TERM, self.naming)
