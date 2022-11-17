@@ -34,6 +34,7 @@ from capirca.lib import cisconx
 from capirca.lib import ciscoxr
 from capirca.lib import cloudarmor
 from capirca.lib import gce
+from capirca.lib import gce_vpc_tf
 from capirca.lib import gcp_hf
 from capirca.lib import ipset
 from capirca.lib import iptables
@@ -195,6 +196,7 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
   paloalto = False
   sonic_pol = False
   k8s_pol = False
+  gce_vpc_tf_pol = False
 
   try:
     with open(input_file) as f:
@@ -269,6 +271,8 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
     nft = copy.deepcopy(pol)
   if 'gce' in platforms:
     gcefw = copy.deepcopy(pol)
+  if 'gce_vpc_tf' in platforms:
+    gce_vpc_tf_pol = copy.deepcopy(pol)
   if 'gcp_hf' in platforms:
     gcphf = copy.deepcopy(pol)
   if 'paloalto' in platforms:
@@ -403,6 +407,11 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
       RenderACL(
           str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
           write_files)
+    if gce_vpc_tf_pol:
+      acl_obj = gce_vpc_tf.TerraformGCE(gce_vpc_tf_pol, exp_info)
+      RenderACL(
+          str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
+          write_files)
     if gcphf:
       acl_obj = gcp_hf.HierarchicalFirewall(gcphf, exp_info)
       RenderACL(
@@ -446,6 +455,7 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
       aruba.Error,
       nftables.Error,
       gce.Error,
+      gce_vpc_tf.Error,
       cloudarmor.Error,
       k8s.Error) as e:
     raise ACLGeneratorError('Error generating target ACL for %s:\n%s' %

@@ -1,0 +1,126 @@
+#
+# This is an example policy for capirca
+# Target defaults to INGRESS is not specified in the header
+#
+header {
+  comment:: "this is a sample policy to generate gce_vpc_tf config"
+  target:: gce_vpc_tf global/networks/default inet
+}
+
+term test-ssh {
+  comment:: "Allow SSH access to all instances from company."
+  source-address:: PUBLIC_NAT
+  protocol:: tcp
+  destination-port:: SSH
+  action:: accept
+}
+
+term test-web {
+  comment:: "Allow HTTP/S to instances with webserver tag."
+  source-address:: ANY
+  protocol:: tcp
+  destination-port:: HTTP
+  destination-tag:: webserver
+  action:: accept
+}
+
+term test-icmp {
+  comment:: "Allow ICMP from company."
+  source-address:: PUBLIC_NAT
+  protocol:: icmp
+  action:: accept
+}
+
+term test-icmpv6 {
+  comment:: "Allow ICMPv6 from company. This should not be rendered."
+  source-address:: PUBLIC_NAT
+  protocol:: icmpv6
+  action:: accept
+}
+
+term test-igmp {
+  comment:: "Allow IGMP from company."
+  source-address:: PUBLIC_NAT
+  protocol:: igmp
+  action:: accept
+}
+
+term test-multiple-protocols {
+  comment:: "Allow TCP/UDP access to all instances from company."
+  source-address:: PUBLIC_NAT
+  protocol:: tcp udp
+  destination-port:: HIGH_PORTS
+  action:: accept
+}
+
+term test-multiple-protocols-tcp-icmpv6 {
+  comment:: "Allow all tcp and icmpv6. This should only render tcp."
+  source-address:: PUBLIC_NAT
+  protocol:: tcp icmpv6
+  action:: accept
+}
+
+term test-multiple-protocols-tcp-icmp {
+  comment:: "Allow all tcp and icmp."
+  source-address:: PUBLIC_NAT
+  protocol:: tcp icmp
+  action:: accept
+}
+
+term test-internal {
+  comment:: "Allow all GCE network internal traffic."
+  source-address:: RFC1918
+  protocol:: tcp udp
+  action:: accept
+}
+
+term test-service-account {
+  comment:: "Allow Service account access to SSH."
+  source-address:: PUBLIC_NAT
+  protocol:: tcp
+  destination-port:: SSH
+  target-service-accounts:: acct@blah.com
+  action:: accept
+}
+
+term default-deny {
+  action:: deny
+}
+
+#
+# Sample EGRESS policy
+# If source-tag is included, it maps to targetTags in the GCP Egress rule
+#
+header {
+  comment:: "this is a sample policy to generate EGRESS GCE filter"
+  target:: gce EGRESS global/networks/default inet
+}
+
+term test-egress-address {
+  comment:: "Outbound to Mail Server"
+  protocol:: tcp
+  destination-port:: SMTP
+  destination-address:: MAIL_SERVERS
+  action:: accept
+}
+
+term test-egress-tag {
+  comment:: "Outbound to RFC1918"
+  protocol:: tcp
+  destination-port:: SSH
+  destination-address:: PUBLIC_NAT
+  source-tag:: webserver
+  action:: accept
+}
+
+term test-egress-address-v6-only {
+  comment:: "Outbound to IPv6 Server. This should not be rendered."
+  protocol:: tcp
+  destination-port:: SMTP
+  destination-address:: PUBLIC_IPV6_SERVERS
+  action:: accept
+}
+
+term default-deny {
+  action:: deny
+}
