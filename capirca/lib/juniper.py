@@ -170,6 +170,12 @@ class Term(aclgenerator.Term):
                            'protocol': 'ip-protocol',
                            'protocol-except': 'ip-protocol-except',
                            'tcp-est': 'tcp-flags "(ack|rst)"'}
+                'ethernet-switching': {'addr': 'ip-address',
+                           'saddr': 'ip-source-address',
+                           'daddr': 'ip-destination-address',
+                           'protocol': 'ip-protocol',
+                           'protocol-except': 'ip-protocol-except',
+                           'tcp-est': 'tcp-established'}
               }
 
   def __init__(self, term, term_type, enable_dsmo, noverbose, filter_direction=None, interface_type=None):
@@ -278,7 +284,8 @@ class Term(aclgenerator.Term):
           from_str.append('tcp-initial;')
         elif opt.startswith('first-fragment'):
           from_str.append('first-fragment;')
-
+        elif opt.startswith('no-syn-ack'):
+          from_str.append('tcp-flags "!(syn&ack)";')
         # we don't have a special way of dealing with this, so we output it and
         # hope the user knows what they're doing.
         else:
