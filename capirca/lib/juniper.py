@@ -169,7 +169,7 @@ class Term(aclgenerator.Term):
                            'daddr': 'ip-destination-address',
                            'protocol': 'ip-protocol',
                            'protocol-except': 'ip-protocol-except',
-                           'tcp-est': 'tcp-flags "(ack|rst)"'}
+                           'tcp-est': 'tcp-flags "(ack|rst)"'},
                 'ethernet-switching': {'addr': 'ip-address',
                            'saddr': 'ip-source-address',
                            'daddr': 'ip-destination-address',
