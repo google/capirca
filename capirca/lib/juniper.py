@@ -170,6 +170,12 @@ class Term(aclgenerator.Term):
                            'protocol': 'ip-protocol',
                            'protocol-except': 'ip-protocol-except',
                            'tcp-est': 'tcp-flags "(ack|rst)"'}
+                'ethernet-switching': {'addr': 'ip-address',
+                           'saddr': 'ip-source-address',
+                           'daddr': 'ip-destination-address',
+                           'protocol': 'ip-protocol',
+                           'protocol-except': 'ip-protocol-except',
+                           'tcp-est': 'tcp-established'}
               }
 
   def __init__(self, term, term_type, enable_dsmo, noverbose, filter_direction=None, interface_type=None):
