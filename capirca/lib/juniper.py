@@ -902,7 +902,7 @@ class Juniper(aclgenerator.ACLGenerator):
 
   _PLATFORM = 'juniper'
   _DEFAULT_PROTOCOL = 'ip'
-  _SUPPORTED_AF = frozenset(('inet', 'inet6', 'bridge', 'mixed'))
+  _SUPPORTED_AF = frozenset(('inet', 'inet6', 'bridge', 'ethernet-switching', 'mixed'))
   _TERM = Term
   SUFFIX = '.jcl'
 
