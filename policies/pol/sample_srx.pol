@@ -19,11 +19,6 @@ term test-icmp {
   logging:: true
 }
 
-term good-term-6 {
-  counter:: good-counter
-  action:: accept
-}
-
 term default-deny {
   action:: deny
   logging:: true
