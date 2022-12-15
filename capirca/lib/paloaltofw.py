@@ -904,7 +904,6 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     etree.SubElement(vsys_entry, "application-group")
 
     # SERVICES
-    vsys_entry.append(etree.Comment(" Services "))
     service = etree.SubElement(vsys_entry, "service")
     for k, v in self.service_map.entries.items():
       entry = etree.SubElement(service, "entry", {"name": v["name"]})
@@ -925,7 +924,6 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
         sport.text = tup.replace("'", "").replace(", ", ",")
 
     # RULES
-    vsys_entry.append(etree.Comment(" Rules "))
     rulebase = etree.SubElement(vsys_entry, "rulebase")
     security = etree.SubElement(rulebase, "security")
     rules = etree.SubElement(security, "rules")
@@ -1102,7 +1100,6 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       address_book_keys = {}
 
     # ADDRESS
-    vsys_entry.append(etree.Comment(" Address Groups "))
     addr_group = etree.SubElement(vsys_entry, "address-group")
 
     for group, address_list in address_book_groups_dict.items():
@@ -1112,7 +1109,6 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
         member = etree.SubElement(static, "member")
         member.text = name
 
-    vsys_entry.append(etree.Comment(" Addresses "))
     addr = etree.SubElement(vsys_entry, "address")
 
     for name in address_book_keys:
