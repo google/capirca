@@ -903,10 +903,8 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
                 dst_addr, dst_addr_ex)
 
             if dst_addr_ex:
-              fs = self._GenPrefixFieldset("dst", "%s" % term.name,
-                                           term.destination_address,
-                                           term.destination_address_exclude,
-                                           af_map_txt[ft])
+              fs = self._GenPrefixFieldset("dst", "%s" % term.name, dst_addr,
+                                           dst_addr_ex, af_map_txt[ft])
               policy_field_sets.append(fs)
 
           # generate the unique list of named counters
