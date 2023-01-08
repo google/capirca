@@ -223,6 +223,10 @@ class Term(aclgenerator.Term):
               ret_str.IndentAppend(6, 'session-init;')
         ret_str.IndentAppend(5, '}')
 
+      # COUNTER
+      if self.term.counter:
+        ret_str.IndentAppend(5, 'count;')
+
       ret_str.IndentAppend(4, '}')
 
       ret_str.IndentAppend(3, '}')
@@ -320,7 +324,8 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     """
     supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
-    supported_tokens |= {'dscp_except',
+    supported_tokens |= {'counter',
+                         'dscp_except',
                          'dscp_match',
                          'dscp_set',
                          'destination_zone',
