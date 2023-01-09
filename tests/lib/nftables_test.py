@@ -148,6 +148,12 @@ header {
 }
 """
 
+GOOD_HEADER_3 = """
+header {
+  target:: nftables inet input
+}
+"""
+
 ESTABLISHED_OPTION_TERM = """
 term established-term {
   protocol:: udp
@@ -171,9 +177,25 @@ term good-icmp {
 }
 """
 
+ICMPV6_TERM = """
+term good-icmpv6 {
+  protocol:: icmpv6
+  action:: accept
+}
+"""
+
 GOOD_TERM_1 = """
 term good-term-1 {
   action:: accept
+}
+"""
+
+GOOD_TERM_2 = """
+term good-term-2 {
+   protocol:: tcp
+   action:: accept
+   destination-port:: SSH
+   destination-address:: TEST_NET
 }
 """
 
@@ -189,6 +211,9 @@ EXCLUDE = {'ip6': [nacaddr.IP('::/3'), nacaddr.IP('::/0')]}
 # This is normally passed from command line.
 EXP_INFO = 2
 
+TEST_IPV4 = nacaddr.IP('10.2.3.4/32')
+TEST_IPV6 = nacaddr.IP('2001:4860:8000::5/128')
+TEST_IPS = [TEST_IPV4, TEST_IPV6]
 
 def IPhelper(addresses):
   """Helper for string to nacaddr.IP conversion for parametized tests."""
@@ -220,34 +245,24 @@ class NftablesTest(parameterized.TestCase):
     self.assertEqual(result, expected_output)
 
   @parameterized.parameters(
-      ('inet', ['200.1.1.3/32', '9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84'], [
-          '200.1.1.3/32', '2606:4700:4700::1111'
-      ], [
-          'ip saddr 200.1.1.3/32 ip daddr 200.1.1.3/32',
-          'ip6 saddr 9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84/128 ip6 daddr 2606:4700:4700::1111/128'
-      ]),
-      ('inet', ['9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84'], [
-          '200.1.1.3/32', '2606:4700:4700::1111'
-      ], [
-          'ip6 saddr 9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84/128 ip6 daddr 2606:4700:4700::1111/128'
-      ]),
-      ('inet', ['200.1.1.3/32', '9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84'
-               ], ['200.1.1.3/32'], [
-                   'ip saddr 200.1.1.3/32 ip daddr 200.1.1.3/32',
-               ]),
       ('ip', ['200.1.1.3/32', '9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84'], [
           '200.1.1.3/32', '2606:4700:4700::1111'
       ], ['ip saddr 200.1.1.3/32 ip daddr 200.1.1.3/32']),
+      ('ip', ['200.1.1.3/32', '200.1.1.4/32'], [
+          '200.1.1.3/32', '200.1.1.4/32'
+      ], [
+          'ip saddr { 200.1.1.3/32, 200.1.1.4/32 } ip daddr { 200.1.1.3/32, 200.1.1.4/32 }'
+      ]),
       ('ip6', ['8.8.8.8', '9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84'], [
           '200.1.1.3/32', '2606:4700:4700::1111'
       ], [
           'ip6 saddr 9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84/128 ip6 daddr 2606:4700:4700::1111/128'
       ]),
-      ('inet', [], ['200.1.1.3/32', '2606:4700:4700::1111'],
-       ['ip daddr 200.1.1.3/32', 'ip6 daddr 2606:4700:4700::1111/128']),
-      ('inet', ['9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84'], [],
-       ['ip6 saddr 9782:b30a:e5c6:1aa4:29ff:e57c:44a0:1b84/128']),
-      ('inet', [], [], []),
+      ('ip6', ['2606:4700:4700::1111', '2606:4700:4700::1112'], [
+          '2606:4700:4700::1111', '2606:4700:4700::1112'
+      ], [
+          'ip6 saddr { 2606:4700:4700::1111/128, 2606:4700:4700::1112/128 } ip6 daddr { 2606:4700:4700::1111/128, 2606:4700:4700::1112/128 }'
+      ]),
   )
   def test_AddrStatement(self, af, src_addr, dst_addr, expected):
     # Necessary object format.
@@ -299,13 +314,16 @@ class NftablesTest(parameterized.TestCase):
     self.assertEqual(result, expected_output)
 
   @parameterized.parameters(
-      ('inet', ['tcp'], [(3199, 3199)], [
-          (80, 80)
-      ], [], ['tcp sport 3199 tcp dport 80', 'tcp sport 3199 tcp dport 80']),
-      ('inet', ['tcp'], [], [], [], ['ip protocol tcp', 'meta l4proto tcp']),
+      ('ip', ['tcp'], [], [], [], ['ip protocol tcp']),
+      ('ip', ['tcp'], [(3198, 3199)], [
+          (80, 80), (443, 443)
+      ], [], ['tcp sport 3198-3199 tcp dport { 80, 443 }']),
+      ('ip', ['tcp, udp'], [], [], [], ['ip protocol tcp, udp']),
       ('ip6', ['tcp'], [], [], [], ['meta l4proto tcp']),
-      ('inet', ['tcp', 'udp'], [], [], [],
-       ['ip protocol { tcp, udp }', 'meta l4proto { tcp, udp }']),
+      ('ip6', ['tcp'], [(3198, 3199)], [
+          (80, 80), (443, 443)
+      ], [], ['tcp sport 3198-3199 tcp dport { 80, 443 }']),
+      ('ip6', ['tcp', 'udp'], [], [], [], ['meta l4proto { tcp, udp }']),
   )
   def testPortsAndProtocols(self, af, proto, src_p, dst_p, icmp_type, expected):
     result = self.dummyterm.PortsAndProtocols(af, proto, src_p, dst_p,
@@ -477,6 +495,42 @@ class NftablesTest(parameterized.TestCase):
     # self.assertEqual(len(ctx.records), 2)
     record = ctx.records[1]
     self.assertEqual(record.message, messagetxt)
+
+  @parameterized.parameters(
+      (GOOD_HEADER_1 + GOOD_TERM_2, 'inet6'),
+      (GOOD_HEADER_1 + ICMPV6_TERM, 'inet6'),
+      (GOOD_HEADER_2 + GOOD_TERM_2, 'mixed'),
+      (GOOD_HEADER_3 + GOOD_TERM_2, 'inet'),
+      (GOOD_HEADER_3 + ICMP_TERM, 'inet'),
+  )
+  def testRulesetGenerator(self, policy_data: str, expected_inet: str):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.return_value = ['22']
+
+    nft = nftables.Nftables(
+        policy.ParsePolicy(policy_data, self.naming), EXP_INFO)
+    for header, terms in nft.policy.filters:
+      filter_options = header.FilterOptions('nftables')
+      nf_af, nf_hook, _, _, verbose = nft._ProcessHeader(filter_options)
+      for term in terms:
+        term_object = nftables.Term(term, nf_af, nf_hook, verbose)
+
+        # Checks for address family consistency within terms
+        ruleset_list = term_object.RulesetGenerator(term)
+        self.assertNotEmpty(ruleset_list)
+        for ruleset in ruleset_list:
+          if expected_inet == 'inet':
+            self.assertNotIn(str(TEST_IPV6), ruleset)
+          elif expected_inet == 'inet6':
+            self.assertNotIn(str(TEST_IPV4), ruleset)
+
+          for rule in ruleset.split('\n'):
+            if rule.startswith('ip '):
+              self.assertNotIn('meta l4proto', rule)
+              self.assertNotIn('icmpv6', rule)
+            if rule.startswith('ip6 '):
+              self.assertNotIn('ip protocol', rule)
+              self.assertNotIn('icmp', rule)
 
 if __name__ == '__main__':
   absltest.main()

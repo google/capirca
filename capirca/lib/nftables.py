@@ -249,14 +249,6 @@ class Term(aclgenerator.Term):
     # TODO: Call self.NormalizeIcmpTypes.
     icmp_type = self.MapICMPtypes(address_family, icmp_type)
 
-    if address_family == mixed:
-      # The way we handle mixed is we call ourselves twice.
-      ipv4_list = self.PortsAndProtocols(ip4, protocol, src_ports, dst_ports,
-                                         icmp_type)
-      ipv6_list = self.PortsAndProtocols(ip6, protocol, src_ports, dst_ports,
-                                         icmp_type)
-      return ipv4_list + ipv6_list
-
     if address_family == 'ip':
       # IPv4 stuff.
       if icmp_type and ('icmp' in ip_protocol):
@@ -417,12 +409,12 @@ class Term(aclgenerator.Term):
 
     if src_addr and dst_addr:
       # Condition where term has both defined.
-      if address_family == 'inet' or address_family == 'ip':
+      if address_family == 'ip':
         if src_addr_book['ip'] and dst_addr_book['ip']:
           address_statement.append(
               'ip saddr ' + self.CreateAnonymousSet(src_addr_book['ip']) + ' ' +
               'ip daddr ' + self.CreateAnonymousSet(dst_addr_book['ip']))
-      if address_family == 'inet' or address_family == 'ip6':
+      if address_family == 'ip6':
         if src_addr_book['ip6'] and dst_addr_book['ip6']:
           address_statement.append(
               'ip6 saddr ' + self.CreateAnonymousSet(src_addr_book['ip6']) +
@@ -430,20 +422,20 @@ class Term(aclgenerator.Term):
               self.CreateAnonymousSet(dst_addr_book['ip6']))
     elif src_addr:
       # Term has only src defined.
-      if address_family == 'inet' or address_family == 'ip':
+      if address_family == 'ip':
         if src_addr_book['ip']:
           address_statement.append('ip saddr ' +
                                    self.CreateAnonymousSet(src_addr_book['ip']))
-      if address_family == 'inet' or address_family == 'ip6':
+      if address_family == 'ip6':
         if src_addr_book['ip6']:
           address_statement.append(
               'ip6 saddr ' + self.CreateAnonymousSet(src_addr_book['ip6']))
     elif dst_addr:
-      if address_family == 'inet' or address_family == 'ip':
+      if address_family == 'ip':
         if dst_addr_book['ip']:
           address_statement.append('ip daddr ' +
                                    self.CreateAnonymousSet(dst_addr_book['ip']))
-      if address_family == 'inet' or address_family == 'ip6':
+      if address_family == 'ip6':
         if dst_addr_book['ip6']:
           address_statement.append(
               'ip6 daddr ' + self.CreateAnonymousSet(dst_addr_book['ip6']))
@@ -466,32 +458,34 @@ class Term(aclgenerator.Term):
     """
     term_ruleset = []
 
-    address_list = []
     # COMMENT handling.
     if self.verbose:
       for line in self.term.comment:
         term_ruleset.append('comment "%s"' % line)
-
-    # ADDRESS handling.
-    address_list = self._AddrStatement(self.address_family,
-                                       self.term.source_address,
-                                       self.term.destination_address)
-
-    # PORTS and PROTOCOLS handling.
-    proto_and_ports = self.PortsAndProtocols(self.address_family,
-                                             self.term.protocol,
-                                             self.term.source_port,
-                                             self.term.destination_port,
-                                             self.term.icmp_type)
-
     # OPTIONS / LOGGING / COUNTERS
     opt = self._OptionsHandler(term)
     # STATEMENT VERDICT / ACTION.
     verdict = self._ACTIONS[self.term.action[0]]
-    # TODO: If verdict is not supported, drop nftable_rule for it.
-    nftable_rule = self.GroupExpressions(address_list, proto_and_ports, opt,
-                                         verdict)
-    term_ruleset.extend(nftable_rule)
+
+    address_families = [self.address_family
+                       ] if self.address_family != mixed else [ip4, ip6]
+    for address_family in address_families:
+      # ADDRESS handling.
+      address_list = self._AddrStatement(address_family,
+                                         self.term.source_address,
+                                         self.term.destination_address)
+
+      # PORTS and PROTOCOLS handling.
+      proto_and_ports = self.PortsAndProtocols(address_family,
+                                               self.term.protocol,
+                                               self.term.source_port,
+                                               self.term.destination_port,
+                                               self.term.icmp_type)
+
+      # TODO: If verdict is not supported, drop nftable_rule for it.
+      nftable_rule = self.GroupExpressions(address_list, proto_and_ports, opt,
+                                           verdict)
+      term_ruleset.extend(nftable_rule)
     return term_ruleset
 
   def _AddressClassifier(self, address_to_classify):
