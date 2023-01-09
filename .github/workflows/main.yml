@@ -18,7 +18,7 @@ jobs:
           - os-version: ubuntu-latest
           - python-version: 3.6
             os-version: ubuntu-20.04
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os-version }}
 
 
     steps:
