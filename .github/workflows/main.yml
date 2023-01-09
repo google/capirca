@@ -9,12 +9,17 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: true
       matrix:
-        python-version: [3.6.13, 3.7, 3.8, 3.9]
+        python-version: [3.6, 3.7, 3.8, 3.9]
+        include:
+          - os-version: ubuntu-latest
+          - python-version: 3.6
+            os-version: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
+
 
     steps:
     - name: Checkout branch with changes
