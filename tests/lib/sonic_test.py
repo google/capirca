@@ -37,7 +37,7 @@ class SonicTest(parameterized.TestCase):
     super().setUp()
     self.addCleanup(mock.patch.stopall)
 
-    self.naming = naming.Naming("third_party/py/capirca/def")
+    self.naming = naming.Naming("./def")
     self.mock_naming_get_net_addr = mock.patch.object(
         self.naming, "GetNetAddr", autospec=True).start()
     self.mock_naming_get_net_addr.return_value = [
