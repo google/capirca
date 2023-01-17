@@ -184,6 +184,15 @@ term good-icmpv6 {
 }
 """
 
+ICMPV6_MULTI_TERM = """
+term good-icmpv6-type {
+  comment:: "IPv6 ICMP accept many types"
+  icmp-type:: router-solicit router-advertisement neighbor-advertisement neighbor-solicit
+  protocol:: icmpv6
+  action:: accept
+}
+"""
+
 GOOD_TERM_1 = """
 term good-term-1 {
   action:: accept
@@ -375,6 +384,15 @@ class NftablesTest(parameterized.TestCase):
                 self.naming), EXP_INFO))
     self.assertIn('ct state established,related accept', nft)
 
+  def testICMPv6type(self):
+    nftables.Nftables(
+        policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1, self.naming), EXP_INFO)
+    nft = str(
+        nftables.Nftables(
+            policy.ParsePolicy(
+                GOOD_HEADER_1 + ICMPV6_MULTI_TERM, self.naming), EXP_INFO))
+    self.assertIn('icmpv6 type { nd-router-solicit, nd-router-advert, nd-neighbor-advert, nd-neighbor-solicit } accept', nft)
+
   def testOverridePolicyHeader(self):
     expected_output = 'accept'
 
@@ -412,14 +430,25 @@ class NftablesTest(parameterized.TestCase):
       ({
           'name': 'tcp_established',
           'option': ['tcp-established', 'established'],
+          'icmp_type': None,
           'counter': None,
           'logging': [],
           'protocol': ['tcp', 'icmp'],
           'action': ['deny'],
       }, ''),
       ({
+          'name': 'icmpv6_noconttrack',
+          'option': [],
+          'icmp_type': ['router-solicit'],
+          'counter': None,
+          'logging': [],
+          'protocol': ['icmpv6'],
+          'action': ['accept'],
+      }, ''),
+      ({
           'name': 'dont_render_tcp_established',
           'option': ['tcp-established', 'established'],
+          'icmp_type': None,
           'counter': None,
           'logging': [],
           'protocol': ['icmp'],
@@ -428,6 +457,7 @@ class NftablesTest(parameterized.TestCase):
       ({
           'name': 'blank_option_donothing',
           'option': [],
+          'icmp_type': None,
           'counter': None,
           'logging': [],
           'protocol': ['icmp'],
@@ -436,6 +466,7 @@ class NftablesTest(parameterized.TestCase):
       ({
           'name': 'syslog',
           'option': [],
+          'icmp_type': None,
           'counter': None,
           'logging': ['syslog'],
           'protocol': ['tcp'],
@@ -444,6 +475,7 @@ class NftablesTest(parameterized.TestCase):
       ({
           'name': 'logging_disabled',
           'option': [],
+          'icmp_type': None,
           'counter': None,
           'logging': ['disable'],
           'protocol': ['tcp'],
@@ -452,6 +484,7 @@ class NftablesTest(parameterized.TestCase):
       ({
           'name': 'combo_logging_tcp_established',
           'option': ['tcp-established'],
+          'icmp_type': None,
           'counter': None,
           'logging': ['true'],
           'protocol': ['tcp'],
@@ -460,6 +493,7 @@ class NftablesTest(parameterized.TestCase):
       ({
           'name': 'combo_cnt_log_established',
           'option': ['tcp-established'],
+          'icmp_type': None,
           'counter': 'whatever-name-you-want',
           'logging': ['true'],
           'protocol': ['tcp'],

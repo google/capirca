@@ -325,7 +325,7 @@ class Term(aclgenerator.Term):
     # Base chain already allows all return traffic of
     # state (ESTABLISHED, RELATED)
     # This should prevent invalid, untracked packets from being accepted.
-    if 'deny' not in term.action:
+    if 'deny' not in term.action and not term.icmp_type:
       options.append('ct state new')
 
     # 'logging' handling.
