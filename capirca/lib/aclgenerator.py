@@ -597,3 +597,27 @@ def WrapWords(textlist, size, joiner='\n'):
     # avoid empty comment lines
     rval.extend(x.strip() for x in textlist[index].strip().split(joiner) if x)
   return rval
+
+def TruncateWords(input_text, char_limit):
+  """Shorten text strings to not exceed a specified limit.
+
+  This function also removes any line breaks.
+
+  Args:
+    input_text: list or individual string values.
+    char_limit: size limit of resulting string element.
+
+  Returns:
+    truncated single string element within double quotes.
+  """
+  CHAR_LIMIT = 126
+
+  if isinstance(input_text, list):
+    # handle multiple comments. Remove newline.
+    sanitized_list = []
+    for i in input_text:
+      sanitized_list.append(i.replace('\n', ''))
+    comment = ' '.join(sanitized_list)
+  else:
+    comment = input_text
+  return '"' + comment[:char_limit] + '"'

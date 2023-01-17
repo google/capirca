@@ -15,6 +15,7 @@
 """Unittest for ACL rendering module."""
 
 from absl.testing import absltest
+from absl.testing import parameterized
 from unittest import mock
 
 from capirca.lib import aclgenerator
@@ -87,11 +88,23 @@ class ACLMock(aclgenerator.ACLGenerator):
     pass
 
 
-class ACLGeneratorTest(absltest.TestCase):
+class ACLGeneratorTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
+
+  # pylint: disable=line-too-long,g-inconsistent-quotes
+  @parameterized.parameters(([
+      'There is something very long about this comment that',
+      'will require it to be truncated in order for nftables',
+      'binary to be able to load the rulesets.'], '"There is something very long about this comment that will require it to be truncated in order for nftables binary to be able t"'),
+    (['some comment description', 'second comment item \nNewline'], '"some comment description second comment item Newline"'), ('a string comment', '"a string comment"'))
+  def testTruncateWords(self, input_data, expected_output):
+    result = aclgenerator.TruncateWords(
+        input_data, 126)
+    self.assertEqual(result, expected_output)
+    # pylint: disable=line-too-long
 
   def testEstablishedNostate(self):
     # When using "nostate" filter and a term with "option:: established"

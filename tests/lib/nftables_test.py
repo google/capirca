@@ -303,8 +303,7 @@ class NftablesTest(parameterized.TestCase):
                              self.naming)
     with self.assertRaises(nftables.TermError):
       nftables.Nftables.__init__(
-          nftables.Nftables.__new__(nftables.Nftables), pol,
-          EXP_INFO)
+          nftables.Nftables.__new__(nftables.Nftables), pol, EXP_INFO)
 
   @parameterized.parameters(([(80, 80)], '80'), ([(1024, 65535)], '1024-65535'),
                             ([], ''))
@@ -346,8 +345,7 @@ class NftablesTest(parameterized.TestCase):
     pol = policy.ParsePolicy(header + GOOD_TERM_1, self.naming)
     with self.assertRaises(nftables.HeaderError):
       nftables.Nftables.__init__(
-          nftables.Nftables.__new__(nftables.Nftables), pol,
-          EXP_INFO)
+          nftables.Nftables.__new__(nftables.Nftables), pol, EXP_INFO)
 
   @parameterized.parameters((HEADER_NOVERBOSE, False), (HEADER_COMMENT, True))
   def testVerboseHeader(self, header_to_use, expected_output):
@@ -490,8 +488,7 @@ class NftablesTest(parameterized.TestCase):
     with self.assertLogs() as ctx:
       # run a policy object expected to be skipped and logged.
       nft = nftables.Nftables(
-          policy.ParsePolicy(GOOD_HEADER_1 + termdata, self.naming),
-          EXP_INFO)
+          policy.ParsePolicy(GOOD_HEADER_1 + termdata, self.naming), EXP_INFO)
     # self.assertEqual(len(ctx.records), 2)
     record = ctx.records[1]
     self.assertEqual(record.message, messagetxt)
@@ -531,6 +528,7 @@ class NftablesTest(parameterized.TestCase):
             if rule.startswith('ip6 '):
               self.assertNotIn('ip protocol', rule)
               self.assertNotIn('icmp', rule)
+
 
 if __name__ == '__main__':
   absltest.main()

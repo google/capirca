@@ -214,7 +214,6 @@ class Term(aclgenerator.Term):
 
     Returns:
       list of statements related to ports and protocols.
-
     """
 
     def PortStatement(protocol, source, destination):
@@ -454,14 +453,14 @@ class Term(aclgenerator.Term):
 
     Returns:
       list of strings. Representing a ruleset for later formatting.
-
     """
     term_ruleset = []
 
     # COMMENT handling.
     if self.verbose:
-      for line in self.term.comment:
-        term_ruleset.append('comment "%s"' % line)
+      term_ruleset.append(
+          'comment ' + aclgenerator.TruncateWords(
+              self.term.comment, Nftables.COMMENT_CHAR_LIMIT))
     # OPTIONS / LOGGING / COUNTERS
     opt = self._OptionsHandler(term)
     # STATEMENT VERDICT / ACTION.
@@ -564,6 +563,8 @@ class Nftables(aclgenerator.ACLGenerator):
   _OPTIONAL_SUPPORTED_KEYWORDS = frozenset([
       'expiration',
   ])
+
+  COMMENT_CHAR_LIMIT = 126
 
   _AF_MAP = {'inet': (4,), 'inet6': (6,), 'mixed': (4, 6)}
   # Below mapping converts capirca HEADER native to nftables table.
@@ -790,9 +791,16 @@ class Nftables(aclgenerator.ACLGenerator):
         # base chain header and contents.
         nft_config.append(TabSpacer(4, 'chain %s {' % item))
         if base_chain_dict[item]['comment']:
-          # Handle multi-line comments
-          for comment in base_chain_dict[item]['comment']:
-            nft_config.append(TabSpacer(8, 'comment "%s"' % comment))
+          # Due to Nftables limits on comments, we handle this twice.
+          # First time we comment it out so .nft file is human-readable.
+          nft_config.append(
+              TabSpacer(8, '#' + ' '.join(base_chain_dict[item]['comment'])))
+          # Second time so 'nft list ruleset' keeps the comment in memory.
+          nft_config.append(
+              TabSpacer(
+                  8, 'comment ' +
+                  aclgenerator.TruncateWords(
+              base_chain_dict[item]['comment'], self.COMMENT_CHAR_LIMIT)))
         nft_config.append(
             TabSpacer(
                 8, 'type filter hook %s priority %s; policy %s;' %
