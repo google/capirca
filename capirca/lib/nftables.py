@@ -349,7 +349,7 @@ class Term(aclgenerator.Term):
     else:
       return ''
 
-  def GroupExpressions(self, address_expr, pp_expr, options, verdict):
+  def GroupExpressions(self, address_expr, pp_expr, options, verdict, comment):
     """Combines all expressions with a verdict (decision).
 
     The inputs are already pre-sanitized by RulesetGenerator. NFTables processes
@@ -362,11 +362,13 @@ class Term(aclgenerator.Term):
       pp_expr: pre-processed list of nftables protocols and ports.
       options: string value to append before verdict for NFT special options.
       verdict: action to take on resulting final statement (allow/deny).
+      comment: term.comment string adhering to NFT limits.
 
     Returns:
       list of strings representing valid nftables statements.
     """
     statement = []
+    statement_with_comment = []
     if address_expr:
       for addr in address_expr:
         if pp_expr:
@@ -388,8 +390,13 @@ class Term(aclgenerator.Term):
         statement.append(pstat + Add(options) + Add(verdict))
     else:
       # If no addresses or ports & protocol. Verdict only statement.
-      statement.append((Add(options) + verdict))
-    return statement
+      statement.append((Add(options) + Add(verdict)))
+    # Handling of comments should always be done after verdict statement.
+    if comment != 'comment ':
+      statement_with_comment.append(statement[0] + Add(comment))
+      return statement_with_comment
+    else:
+      return statement
 
   def _AddrStatement(self, address_family, src_addr, dst_addr):
     """Builds an NFTables address statement.
@@ -455,12 +462,12 @@ class Term(aclgenerator.Term):
       list of strings. Representing a ruleset for later formatting.
     """
     term_ruleset = []
+    comment = 'comment '
 
     # COMMENT handling.
     if self.verbose:
-      term_ruleset.append(
-          'comment ' + aclgenerator.TruncateWords(
-              self.term.comment, Nftables.COMMENT_CHAR_LIMIT))
+      comment += aclgenerator.TruncateWords(
+          self.term.comment, Nftables.COMMENT_CHAR_LIMIT)
     # OPTIONS / LOGGING / COUNTERS
     opt = self._OptionsHandler(term)
     # STATEMENT VERDICT / ACTION.
@@ -483,7 +490,7 @@ class Term(aclgenerator.Term):
 
       # TODO: If verdict is not supported, drop nftable_rule for it.
       nftable_rule = self.GroupExpressions(address_list, proto_and_ports, opt,
-                                           verdict)
+                                           verdict, comment)
       term_ruleset.extend(nftable_rule)
     return term_ruleset
 
@@ -795,20 +802,22 @@ class Nftables(aclgenerator.ACLGenerator):
           # First time we comment it out so .nft file is human-readable.
           nft_config.append(
               TabSpacer(8, '#' + ' '.join(base_chain_dict[item]['comment'])))
-          # Second time so 'nft list ruleset' keeps the comment in memory.
-          nft_config.append(
-              TabSpacer(
-                  8, 'comment ' +
-                  aclgenerator.TruncateWords(
-              base_chain_dict[item]['comment'], self.COMMENT_CHAR_LIMIT)))
         nft_config.append(
             TabSpacer(
                 8, 'type filter hook %s priority %s; policy %s;' %
                 (base_chain_dict[item]['hook'],
                  base_chain_dict[item]['priority'],
                  base_chain_dict[item]['policy'])))
-        # stateful firewall: allow reply traffic.
-        nft_config.append(TabSpacer(8, 'ct state established,related accept'))
+        # Add policy header comment after stateful firewall rule.
+        if base_chain_dict[item]['comment']:
+          nft_config.append(TabSpacer(8, 'ct state established,related accept'
+                                      + Add('comment') +
+                                      Add(aclgenerator.TruncateWords(
+                                          base_chain_dict[item]['comment'],
+                                          self.COMMENT_CHAR_LIMIT))))
+        else:
+          # stateful firewall: allows reply traffic.
+          nft_config.append(TabSpacer(8, 'ct state established,related accept'))
         # Reference the child chains with jump.
         for child_chain in base_chain_dict[item]['rules'][item].keys():
           nft_config.append(TabSpacer(8, 'jump %s' % child_chain))

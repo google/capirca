@@ -1,4 +1,4 @@
-# Copyright 2022 Google Inc. All Rights Reserved.
+# Copyright 2023 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -193,6 +193,21 @@ term good-icmpv6-type {
 }
 """
 
+COMMENT_TERM = """
+term good-icmpv6-type {
+  comment:: "This term has a comment"
+  protocol:: tcp
+  action:: accept
+}
+"""
+
+NOCOMMENT_TERM = """
+term good-icmpv6-type {
+  protocol:: tcp
+  action:: accept
+}
+"""
+
 GOOD_TERM_1 = """
 term good-term-1 {
   action:: accept
@@ -294,17 +309,16 @@ class NftablesTest(parameterized.TestCase):
     self.assertEqual(result, expected)
 
   @parameterized.parameters(
-      ([
-          'ip6 saddr 2606:4700:4700::1111/128 ip6 daddr { 2001:4860:4860::8844/128, 2001:4860:4860::8888/128'
-      ], ['tcp sport 80 tcp dport 80'],
-       'ct state { ESTABLISHED, RELATED } log prefix "combo_cnt_log_established" counter',
-       'accept', [
-           'ip6 saddr 2606:4700:4700::1111/128 ip6 daddr { 2001:4860:4860::8844/128, 2001:4860:4860::8888/128 tcp sport 80 tcp dport 80 ct state { ESTABLISHED, RELATED } log prefix "combo_cnt_log_established" counter accept'
-       ]),)
-  def testGroupExpressions(self, address_expr, porst_proto_expr, opt, verdict,
-                           expected_output):
+      (['ip6 saddr 2606:4700:4700::1111/128 ip6 daddr { 2001:4860:4860::8844/128, 2001:4860:4860::8888/128 }'], ['tcp sport 80 tcp dport 80'],'ct state { ESTABLISHED, RELATED } log prefix "combo_cnt_log_established" counter',
+       'accept', 'comment ', ['ip6 saddr 2606:4700:4700::1111/128 ip6 daddr { 2001:4860:4860::8844/128, 2001:4860:4860::8888/128 } tcp sport 80 tcp dport 80 ct state { ESTABLISHED, RELATED } log prefix "combo_cnt_log_established" counter accept'
+       ]),
+      (['ip daddr 8.8.8.8/32'], ['tcp sport 53 tcp dport 53'],'ct state new','accept', 'comment "this is a term with a comment"', ['ip daddr 8.8.8.8/32 tcp sport 53 tcp dport 53 ct state new accept comment "this is a term with a comment"'])
+      )
+  def testGroupExpressions(self, address_expr, porst_proto_expr, opt,
+                           verdict, comment, expected_output):
     result = self.dummyterm.GroupExpressions(address_expr, porst_proto_expr,
-                                             opt, verdict)
+                                             opt, verdict, comment)
+
     self.assertEqual(result, expected_output)
 
   def testDuplicateTerm(self):
@@ -530,11 +544,12 @@ class NftablesTest(parameterized.TestCase):
   @parameterized.parameters(
       (GOOD_HEADER_1 + GOOD_TERM_2, 'inet6'),
       (GOOD_HEADER_1 + ICMPV6_TERM, 'inet6'),
+      (GOOD_HEADER_1 + COMMENT_TERM, 'mixed'),
       (GOOD_HEADER_2 + GOOD_TERM_2, 'mixed'),
       (GOOD_HEADER_3 + GOOD_TERM_2, 'inet'),
       (GOOD_HEADER_3 + ICMP_TERM, 'inet'),
   )
-  def testRulesetGenerator(self, policy_data: str, expected_inet: str):
+  def testRulesetGeneratorAF(self, policy_data: str, expected_inet: str):
     self.naming.GetNetAddr.return_value = TEST_IPS
     self.naming.GetServiceByProto.return_value = ['22']
 
