@@ -14,6 +14,7 @@
 """Unittest for Nftables rendering module."""
 
 import datetime
+import re
 from unittest import mock
 from absl import logging
 from absl.testing import absltest
@@ -129,7 +130,24 @@ header {
 }
 """
 
-# TODO(gfm): Noverbose testing once Term handling is added.
+HEADER_MIXED_AF = """
+header {
+  target:: nftables mixed output
+}
+"""
+
+HEADER_IPV4_AF = """
+header {
+  target:: nftables inet output
+}
+"""
+
+HEADER_IPV6_AF = """
+header {
+  target:: nftables inet6 output
+}
+"""
+
 HEADER_NOVERBOSE = """
 header {
   target:: nftables mixed output noverbose
@@ -151,6 +169,13 @@ header {
 GOOD_HEADER_3 = """
 header {
   target:: nftables inet input
+}
+"""
+
+DENY_TERM = """
+term deny-term {
+  comment:: "Dual-stack IPv4/v6 deny all"
+  action:: deny
 }
 """
 
@@ -540,6 +565,36 @@ class NftablesTest(parameterized.TestCase):
     # self.assertEqual(len(ctx.records), 2)
     record = ctx.records[1]
     self.assertEqual(record.message, messagetxt)
+
+  @parameterized.parameters(
+      (HEADER_MIXED_AF + ICMPV6_TERM, 'ip protocol icmp'),
+      (HEADER_IPV4_AF + ICMPV6_TERM, 'meta l4proto icmpv6'),
+      (HEADER_IPV6_AF + ICMP_TERM, 'ip protocol icmp'),
+  )
+  def testRulesetGeneratorICMPmismatch(self, pol_data, doesnotcontain):
+    # This test ensures that ICMPv6 only term isn't rendered in a mixed header.
+    nftables.Nftables(
+        policy.ParsePolicy(pol_data, self.naming), EXP_INFO)
+    nft = str(
+        nftables.Nftables(
+            policy.ParsePolicy(pol_data, self.naming), EXP_INFO))
+    self.assertNotRegex(nft, doesnotcontain)
+
+  def testRulesetGeneratorUniqueChain(self):
+    # This test is intended to verify that on mixed address family rulesets
+    # no duplicate instance of a simple deny is rendered within a mixed chain.
+    expected_term_rule = 'drop comment "Dual-stack IPv4/v6 deny all"'
+    count = 0
+    nftables.Nftables(
+        policy.ParsePolicy(HEADER_MIXED_AF + DENY_TERM, self.naming), EXP_INFO)
+    nft = str(
+        nftables.Nftables(
+            policy.ParsePolicy(
+                HEADER_MIXED_AF + DENY_TERM, self.naming), EXP_INFO))
+    matching_lines = re.findall(expected_term_rule, nft)
+    for match in matching_lines:
+      count += 1
+    self.assertEqual(count, 1)
 
   @parameterized.parameters(
       (GOOD_HEADER_1 + GOOD_TERM_2, 'inet6'),

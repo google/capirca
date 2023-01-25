@@ -133,6 +133,7 @@ class Term(aclgenerator.Term):
     Function is used inside PortsAndProtocols.
 
     Args:
+      af: address family.
       term_icmp_types: ICMP types keywords.
 
     Returns:
@@ -462,6 +463,7 @@ class Term(aclgenerator.Term):
       list of strings. Representing a ruleset for later formatting.
     """
     term_ruleset = []
+    unique_term_ruleset = []
     comment = 'comment '
 
     # COMMENT handling.
@@ -488,11 +490,19 @@ class Term(aclgenerator.Term):
                                                self.term.destination_port,
                                                self.term.icmp_type)
 
+      # Do not render ICMP types if IP family mismatch.
+      if ((address_family == 'ip6' and 'icmp' in self.term.protocol) or
+          (address_family == 'ip' and ('icmpv6' in self.term.protocol)
+           or 'icmp6' in self.term.protocol)):
+        continue
       # TODO: If verdict is not supported, drop nftable_rule for it.
       nftable_rule = self.GroupExpressions(address_list, proto_and_ports, opt,
                                            verdict, comment)
       term_ruleset.extend(nftable_rule)
-    return term_ruleset
+    # Ensure that chain statements contain no duplicates rules.
+    unique_term_ruleset = [
+        i for n, i in enumerate(term_ruleset) if i not in term_ruleset[:n]]
+    return unique_term_ruleset
 
   def _AddressClassifier(self, address_to_classify):
     """Organizes network addresses according to IP family in a dict.
@@ -771,7 +781,7 @@ class Nftables(aclgenerator.ACLGenerator):
     for (header, base_chain_name, nf_af, nf_hook, nf_priority,
          filter_policy_default_action, verbose, child_chains) in nft_pol:
       base_chain_comment = ''
-      # Add max character checking on header.comment later if needed.
+      # TODO: If child_chain ruleset is empty don't store term.
       if verbose:
         base_chain_comment = header.comment
       nftables[nf_af][base_chain_name] = {
