@@ -37,11 +37,15 @@ When reporting bugs about this generator ensure to include:
 - _destination-port::_ One or more service definition tokens.
 - _expiration::_ stop rendering this term after specified date. [YYYY](YYYY.md)-[MM](MM.md)-[DD](DD.md)
 - _icmp-type::_ Specify icmp-type code to match.
+- _source-interface::_ input direction interface name (renders as: [iifname](https://wiki.nftables.org/wiki-nftables/index.php/Matching_packet_metainformation))
 - _source-address::_ One or more source address tokens.
 - _source-port::_ One or more service definition tokens.
+- _destination-interface::_ output direction interface name (renders as: [oifname](https://wiki.nftables.org/wiki-nftables/index.php/Matching_packet_metainformation))
 - _protocol::_ The network protocol(s) this term will match.
 - _logging::_ NFTables system logging (host-based).
 - _counter::_ NFTables counter for specific term.
+
+Note: combining source-interface and destination-interface tokens within a term is not supported.
 
 ## Sub-tokens
 

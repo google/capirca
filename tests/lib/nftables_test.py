@@ -55,9 +55,11 @@ SUPPORTED_TOKENS = frozenset({
     'protocol',
     'platform',
     'platform_exclude',
+    'source_interface', #input interface
     'source_address',
     'source_address_exclude',
     'source_port',
+    'destination_interface', #ouput interface
     'translated',  # obj attribute, not token
     'stateless_reply',
 })
@@ -110,6 +112,10 @@ SUPPORTED_SUB_TOKENS = {
         'version-2-multicast-listener-report',
     },
 }
+# IP address data, to be loaded onto policy and test rendering.
+TEST_IPV4_ONLY = [nacaddr.IP('10.2.3.4/32')]
+TEST_IPV6_ONLY = [nacaddr.IP('2001:4860:8000::5/128')]
+TEST_IPS = [nacaddr.IP('10.2.3.4/32'), nacaddr.IP('2001:4860:8000::5/128')]
 
 HEADER_TEMPLATE = """
 header {
@@ -179,6 +185,33 @@ term deny-term {
 }
 """
 
+# Input interface name test term.
+SOURCE_INTERFACE_TERM = """
+term src-interface-term {
+  source-interface:: eth123
+  protocol:: tcp
+  action:: accept
+}
+"""
+
+# Output interface name test term.
+DESTINATION_INTERFACE_TERM = """
+term dst-interface-term {
+  destination-interface:: eth123
+  protocol:: tcp
+  action:: accept
+}
+"""
+
+BAD_INTERFACE_TERM = """
+term dst-interface-term {
+  source-interface:: eth123
+  destination-interface:: eth123
+  protocol:: tcp
+  action:: accept
+}
+"""
+
 ESTABLISHED_OPTION_TERM = """
 term established-term {
   protocol:: udp
@@ -233,6 +266,28 @@ term good-icmpv6-type {
 }
 """
 
+LOGGING_TERM = """
+term log-packets {
+  logging:: true
+  action:: accept
+}
+"""
+
+COUNTER_TERM = """
+term count-packets {
+  counter:: thisnameisignored
+  action:: accept
+}
+"""
+
+COUNT_AND_LOG_TERM = """
+term count-and-log-packets {
+  logging:: true
+  counter:: thisnameisignored
+  action:: accept
+}
+"""
+
 GOOD_TERM_1 = """
 term good-term-1 {
   action:: accept
@@ -248,8 +303,31 @@ term good-term-2 {
 }
 """
 
-IPV6_TERM_2 = """
-term inet6-icmp {
+IPV6_ONLY_TERM = """
+term ip6-only {
+  destination-address:: TEST_IPV6_ONLY
+  action:: accept
+}
+"""
+
+IPV6_SRCIP = """
+term ip6-src-addr {
+  source-address:: TEST_IPV6_ONLY
+  action:: deny
+}
+"""
+
+IPV4_SRCIP = """
+term ip4-src-addr {
+  source-address:: TEST_IPV4_ONLY
+  action:: deny
+}
+"""
+
+ALL_SRCIP = """
+term all-src-addr {
+  comment:: "All IP address families. v4/v6"
+  source-address:: TEST_IPS
   action:: deny
 }
 """
@@ -259,10 +337,6 @@ EXCLUDE = {'ip6': [nacaddr.IP('::/3'), nacaddr.IP('::/0')]}
 # Print a info message when a term is set to expire in that many weeks.
 # This is normally passed from command line.
 EXP_INFO = 2
-
-TEST_IPV4 = nacaddr.IP('10.2.3.4/32')
-TEST_IPV6 = nacaddr.IP('2001:4860:8000::5/128')
-TEST_IPS = [TEST_IPV4, TEST_IPV6]
 
 def IPhelper(addresses):
   """Helper for string to nacaddr.IP conversion for parametized tests."""
@@ -334,17 +408,23 @@ class NftablesTest(parameterized.TestCase):
     self.assertEqual(result, expected)
 
   @parameterized.parameters(
-      (['ip6 saddr 2606:4700:4700::1111/128 ip6 daddr { 2001:4860:4860::8844/128, 2001:4860:4860::8888/128 }'], ['tcp sport 80 tcp dport 80'],'ct state { ESTABLISHED, RELATED } log prefix "combo_cnt_log_established" counter',
-       'accept', 'comment ', ['ip6 saddr 2606:4700:4700::1111/128 ip6 daddr { 2001:4860:4860::8844/128, 2001:4860:4860::8888/128 } tcp sport 80 tcp dport 80 ct state { ESTABLISHED, RELATED } log prefix "combo_cnt_log_established" counter accept'
+      ('',['ip6 saddr 2606:4700:4700::1111/128 ip6 daddr { 2001:4860:4860::8844/128, 2001:4860:4860::8888/128 }'], ['tcp sport 80 tcp dport 80'],'ct state { ESTABLISHED, RELATED } log prefix "combo_cnt_log_established" counter',
+       'accept', '', ['ip6 saddr 2606:4700:4700::1111/128 ip6 daddr { 2001:4860:4860::8844/128, 2001:4860:4860::8888/128 } tcp sport 80 tcp dport 80 ct state { ESTABLISHED, RELATED } log prefix "combo_cnt_log_established" counter accept'
        ]),
-      (['ip daddr 8.8.8.8/32'], ['tcp sport 53 tcp dport 53'],'ct state new','accept', 'comment "this is a term with a comment"', ['ip daddr 8.8.8.8/32 tcp sport 53 tcp dport 53 ct state new accept comment "this is a term with a comment"'])
+      ('',['ip daddr 8.8.8.8/32'], ['tcp sport 53 tcp dport 53'],'ct state new','accept', 'comment "this is a term with a comment"', ['ip daddr 8.8.8.8/32 tcp sport 53 tcp dport 53 ct state new accept comment "this is a term with a comment"'])
       )
-  def testGroupExpressions(self, address_expr, porst_proto_expr, opt,
+  def testGroupExpressions(self, int_str, address_expr, porst_proto_expr, opt,
                            verdict, comment, expected_output):
-    result = self.dummyterm.GroupExpressions(address_expr, porst_proto_expr,
+    result = self.dummyterm.GroupExpressions(int_str, address_expr, porst_proto_expr,
                                              opt, verdict, comment)
-
     self.assertEqual(result, expected_output)
+
+  def testBadInterfaceTerm(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1 + BAD_INTERFACE_TERM,
+                             self.naming)
+    with self.assertRaises(nftables.TermError):
+      nftables.Nftables.__init__(
+          nftables.Nftables.__new__(nftables.Nftables), pol, EXP_INFO)
 
   def testDuplicateTerm(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_1 + GOOD_TERM_1,
@@ -409,7 +489,7 @@ class NftablesTest(parameterized.TestCase):
     nft = str(
         nftables.Nftables(
             policy.ParsePolicy(
-                GOOD_HEADER_1 + GOOD_TERM_1 + GOOD_HEADER_2 + IPV6_TERM_2,
+                GOOD_HEADER_1 + GOOD_TERM_1 + GOOD_HEADER_2 + IPV6_SRCIP,
                 self.naming), EXP_INFO))
     self.assertIn('type filter hook input', nft)
 
@@ -419,7 +499,7 @@ class NftablesTest(parameterized.TestCase):
     nft = str(
         nftables.Nftables(
             policy.ParsePolicy(
-                GOOD_HEADER_1 + GOOD_TERM_1 + GOOD_HEADER_2 + IPV6_TERM_2,
+                GOOD_HEADER_1 + GOOD_TERM_1 + GOOD_HEADER_2 + IPV6_SRCIP,
                 self.naming), EXP_INFO))
     self.assertIn('ct state established,related accept', nft)
 
@@ -578,7 +658,7 @@ class NftablesTest(parameterized.TestCase):
     nft = str(
         nftables.Nftables(
             policy.ParsePolicy(pol_data, self.naming), EXP_INFO))
-    self.assertNotRegex(nft, doesnotcontain)
+    self.assertNotIn(doesnotcontain, nft)
 
   def testRulesetGeneratorUniqueChain(self):
     # This test is intended to verify that on mixed address family rulesets
@@ -621,9 +701,9 @@ class NftablesTest(parameterized.TestCase):
         self.assertNotEmpty(ruleset_list)
         for ruleset in ruleset_list:
           if expected_inet == 'inet':
-            self.assertNotIn(str(TEST_IPV6), ruleset)
+            self.assertNotIn(str(TEST_IPV6_ONLY), ruleset)
           elif expected_inet == 'inet6':
-            self.assertNotIn(str(TEST_IPV4), ruleset)
+            self.assertNotIn(str(TEST_IPV4_ONLY), ruleset)
 
           for rule in ruleset.split('\n'):
             if rule.startswith('ip '):
@@ -633,6 +713,21 @@ class NftablesTest(parameterized.TestCase):
               self.assertNotIn('ip protocol', rule)
               self.assertNotIn('icmp', rule)
 
+  @parameterized.parameters(
+      (GOOD_HEADER_1 + SOURCE_INTERFACE_TERM, TEST_IPS, '    iifname eth123 meta l4proto'),
+      (GOOD_HEADER_1 + DESTINATION_INTERFACE_TERM, TEST_IPS, '    oifname eth123 meta l4proto'),
+      (GOOD_HEADER_1 + LOGGING_TERM, TEST_IPS, 'log prefix "log-packets"'),
+      (GOOD_HEADER_1 + COUNTER_TERM, TEST_IPS, 'counter'),
+      (GOOD_HEADER_1 + COUNT_AND_LOG_TERM, TEST_IPS, 'log prefix "count-and-log-packets" counter'),
+      (HEADER_MIXED_AF + IPV6_ONLY_TERM, TEST_IPS, 'ip6 daddr 2001:4860:8000::5/128 ct state new accept'),
+      (HEADER_MIXED_AF + ALL_SRCIP, TEST_IPS, 'ip saddr 10.2.3.4/32 drop comment "All IP address families. v4/v6"'),
+  )
+  def testRulesetGenerator(self, policy_data: str, IPs, contains: str):
+    self.naming.GetNetAddr.return_value = IPs
+    nft = str(
+        nftables.Nftables(
+            policy.ParsePolicy(policy_data, self.naming), EXP_INFO))
+    self.assertIn(contains, nft)
 
 if __name__ == '__main__':
   absltest.main()

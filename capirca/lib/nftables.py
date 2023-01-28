@@ -1,4 +1,4 @@
-# Copyright 2022 Google Inc. All Rights Reserved.
+# Copyright 2023 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -350,7 +350,9 @@ class Term(aclgenerator.Term):
     else:
       return ''
 
-  def GroupExpressions(self, address_expr, pp_expr, options, verdict, comment):
+  def GroupExpressions(
+      self, int_expr, address_expr, pp_expr, options, verdict, comment
+  ):
     """Combines all expressions with a verdict (decision).
 
     The inputs are already pre-sanitized by RulesetGenerator. NFTables processes
@@ -358,6 +360,7 @@ class Term(aclgenerator.Term):
     towards the end append any term.options from _OptionsHandler.
 
     Args:
+      int_expr: RulesetGenerator source or destination interface str.
       address_expr: pre-processed list of nftable statements of network
         addresses.
       pp_expr: pre-processed list of nftables protocols and ports.
@@ -369,7 +372,6 @@ class Term(aclgenerator.Term):
       list of strings representing valid nftables statements.
     """
     statement = []
-    statement_with_comment = []
     if address_expr:
       for addr in address_expr:
         if pp_expr:
@@ -392,12 +394,14 @@ class Term(aclgenerator.Term):
     else:
       # If no addresses or ports & protocol. Verdict only statement.
       statement.append((Add(options) + Add(verdict)))
+    # source/destination interface handling always to be done at the end.
+    if int_expr:
+      # 'statement' is a list because join to another list in RulesetGenerator.
+      statement[0] = int_expr + Add(statement[0])
     # Handling of comments should always be done after verdict statement.
-    if comment != 'comment ':
-      statement_with_comment.append(statement[0] + Add(comment))
-      return statement_with_comment
-    else:
-      return statement
+    if comment:
+      statement[0] = statement[0] + Add(comment)
+    return statement
 
   def _AddrStatement(self, address_family, src_addr, dst_addr):
     """Builds an NFTables address statement.
@@ -464,12 +468,20 @@ class Term(aclgenerator.Term):
     """
     term_ruleset = []
     unique_term_ruleset = []
-    comment = 'comment '
+    comment = ''
 
     # COMMENT handling.
     if self.verbose:
-      comment += aclgenerator.TruncateWords(
+      comment = 'comment ' + aclgenerator.TruncateWords(
           self.term.comment, Nftables.COMMENT_CHAR_LIMIT)
+
+    # INTERFACE (source/destination) handling.
+    if term.source_interface:
+      interface = 'iifname' + Add(term.source_interface)
+    elif term.destination_interface:
+      interface = 'oifname' + Add(term.destination_interface)
+    else:
+      interface = ''
     # OPTIONS / LOGGING / COUNTERS
     opt = self._OptionsHandler(term)
     # STATEMENT VERDICT / ACTION.
@@ -482,6 +494,11 @@ class Term(aclgenerator.Term):
       address_list = self._AddrStatement(address_family,
                                          self.term.source_address,
                                          self.term.destination_address)
+      # Check if we're dealing with a term of a different IP family that needs
+      # to be skipped.
+      if not address_list and (
+          self.term.source_address or self.term.destination_address):
+        continue
 
       # PORTS and PROTOCOLS handling.
       proto_and_ports = self.PortsAndProtocols(address_family,
@@ -489,15 +506,16 @@ class Term(aclgenerator.Term):
                                                self.term.source_port,
                                                self.term.destination_port,
                                                self.term.icmp_type)
-
       # Do not render ICMP types if IP family mismatch.
       if ((address_family == 'ip6' and 'icmp' in self.term.protocol) or
           (address_family == 'ip' and ('icmpv6' in self.term.protocol)
            or 'icmp6' in self.term.protocol)):
         continue
+
       # TODO: If verdict is not supported, drop nftable_rule for it.
-      nftable_rule = self.GroupExpressions(address_list, proto_and_ports, opt,
-                                           verdict, comment)
+      nftable_rule = self.GroupExpressions(
+          interface, address_list, proto_and_ports, opt, verdict, comment
+      )
       term_ruleset.extend(nftable_rule)
     # Ensure that chain statements contain no duplicates rules.
     unique_term_ruleset = [
@@ -610,9 +628,11 @@ class Nftables(aclgenerator.ACLGenerator):
         'protocol',
         'platform',
         'platform_exclude',
+        'source_interface', # NFT iifname
         'source_address',
         'source_address_exclude',
         'source_port',
+        'destination_interface', # NFT oifname
         'translated',  # obj attribute, not token
         'stateless_reply',
     }
@@ -666,11 +686,16 @@ class Nftables(aclgenerator.ACLGenerator):
       child_chains = collections.defaultdict(dict)
       term_names = set()
       new_terms = []
-      # TODO: Add checks for ICMP and address families.
       for term in terms:
         if term.name in term_names:
           raise TermError('Duplicate term name')
         term_names.add(term.name)
+        if term.source_interface and term.destination_interface:
+          raise TermError(
+              'Incorrect interface on term. Must be either be a source or'
+              ' destination, not both.'
+          )
+          continue
         if term.stateless_reply:
           logging.warning(
               'WARNING: Term %s is a stateless reply '
