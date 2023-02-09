@@ -33,15 +33,15 @@ high-level policy files to facilitate the development and manipulation of
 network access control lists (ACLs) for various platforms. It was developed by
 Google for internal use, and is now open source.
 
-Capirca consist of `capirca` Python package and the `capirca` tool.
+Capirca consists of the `capirca` Python package and the `capirca` tool.
 
 The typical usage workflow consists of the following steps:
 
 1.  Create **object definitions** containing "network" and "service" definitions
-1.  Create a **access control policy** defining the desired state of access
+1.  Create an **access control policy** defining the desired state of access
     control and referencing the **object definitions** together with desired
     firewall platforms
-1.  Generate ACL configurations by running `capirca` command referencing the
+1.  Generate ACL configurations by running the `capirca` command, referencing the
     access control policy and the object definitions. The command triggers a
     **generator** for each of the firewall platforms.
 
@@ -54,8 +54,8 @@ must exist, the below table summarizes where objects are stored:
 
 path              | description
 ----------------- | -----------------------------------------
-/def/NETWORK.net  | a list of **network objects** definitions
-/def/SERVICES.svc | a list of **service objects** definitions
+`/def/NETWORK.net`  | a list of **network objects** definitions
+`/def/SERVICES.svc` | a list of **service objects** definitions
 
 Each network or service definition file has a very simple structure. A token is
 defined, e.g. `GUEST_NET`, followed by an equal sign, then followed by a
@@ -77,9 +77,9 @@ located outside of the directory by using `include` directive. Please see
 
 ### Network Objects
 
-The files with `.net` extension contain the definitions of network objects, e.g.
+Files with a `.net` extension contain the definitions of network objects, e.g.
 IP networks and hosts. The following definition creates `INTERNAL` and `RFC1918`
-network objects in the object definitions, whether `INTERNAL` references the IP
+network objects in the object definitions, where `INTERNAL` references the IP
 ranges of RFC 1918 defined in the `RFC1918`.
 
 ```
@@ -107,7 +107,7 @@ DNS = 53/tcp  # transfers
 ### Object Nesting
 
 The nesting of tokens is permitted only when both tokens are of the same type.
-The referencing of a "network" object by "service" object is not allowed, and
+The referencing of a "network" object by a "service" object is not allowed, and
 vice versa.
 
 The examples of nesting of the network and service object follow.
@@ -141,8 +141,8 @@ NYC_NETWORK = 172.16.1.0/24      # NYC IPv4
 
 ### Anatomy of a policy file
 
-A policy file (/policies/pol/something.pol) has the security policy written
-using capirca specific meta-language and format. There are specific sections
+A policy file (`/policies/pol/something.pol`) has the security policy written
+using a capirca specific meta-language and format. There are specific sections
 (e.g: header) that tell capirca how to generate the output configuration of the
 security policy.
 
@@ -212,54 +212,54 @@ token_name    | definition
 *   **icmp-type**
     *   specific icmp-type code to match (IPv4/IPv6 types vary).
         *   IPv4:
-        *   echo-reply
-        *   unreachable
-        *   source-quench
-        *   redirect
-        *   alternate-address
-        *   echo-request
-        *   router-advertisement
-        *   router-solicitation
-        *   time-exceeded
-        *   parameter-problem
-        *   timestamp-request
-        *   timestamp-reply
-        *   information-request
-        *   information-reply
-        *   mask-request
-        *   mask-reply
-        *   conversion-error
-        *   mobile-redirect
+            *   `echo-reply`
+            *   `unreachable`
+            *   `source-quench`
+            *   `redirect`
+            *   `alternate-address`
+            *   `echo-request`
+            *   `router-advertisement`
+            *   `router-solicitation`
+            *   `time-exceeded`
+            *   `parameter-problem`
+            *   `timestamp-request`
+            *   `timestamp-reply`
+            *   `information-request`
+            *   `information-reply`
+            *   `mask-request`
+            *   `mask-reply`
+            *   `conversion-error`
+            *   `mobile-redirect`
         *   IPv6:
-        *   destination-unreachable
-        *   packet-too-big
-        *   time-exceeded
-        *   parameter-problem
-        *   echo-request
-        *   echo-reply
-        *   multicast-listener-query
-        *   multicast-listener-report
-        *   multicast-listener-done
-        *   router-solicit
-        *   router-advertisement
-        *   neighbor-solicit
-        *   neighbor-advertisement
-        *   redirect-message
-        *   router-renumbering
-        *   icmp-node-information-query
-        *   icmp-node-information-response
-        *   inverse-neighbor-discovery-solicitation
-        *   inverse-neighbor-discovery-advertisement
-        *   version-2-multicast-listener-report
-        *   home-agent-address-discovery-request
-        *   home-agent-address-discovery-reply
-        *   mobile-prefix-solicitation
-        *   mobile-prefix-advertisement
-        *   certification-path-solicitation
-        *   certification-path-advertisement
-        *   multicast-router-advertisement
-        *   multicast-router-solicitation
-        *   multicast-router-termination
+            *   `destination-unreachable`
+            *   `packet-too-big`
+            *   `time-exceeded`
+            *   `parameter-problem`
+            *   `echo-request`
+            *   `echo-reply`
+            *   `multicast-listener-query`
+            *   `multicast-listener-report`
+            *   `multicast-listener-done`
+            *   `router-solicit`
+            *   `router-advertisement`
+            *   `neighbor-solicit`
+            *   `neighbor-advertisement`
+            *   `redirect-message`
+            *   `router-renumbering`
+            *   `icmp-node-information-query`
+            *   `icmp-node-information-response`
+            *   `inverse-neighbor-discovery-solicitation`
+            *   `inverse-neighbor-discovery-advertisement`
+            *   `version-2-multicast-listener-report`
+            *   `home-agent-address-discovery-request`
+            *   `home-agent-address-discovery-reply`
+            *   `mobile-prefix-solicitation`
+            *   `mobile-prefix-advertisement`
+            *   `certification-path-solicitation`
+            *   `certification-path-advertisement`
+            *   `multicast-router-advertisement`
+            *   `multicast-router-solicitation`
+            *   `multicast-router-termination`
 *   **option**
     *   connection options.
         *   **established**
@@ -277,12 +277,12 @@ token_name    | definition
                 tcp-initial to the term.
         *   **rst**
             *   currently only supported by juniper generator. Appends
-                "tcp-flags rst" to the term.
+                `tcp-flags rst` to the term.
         *   **first-fragment**
             *   currently only supported by juniper generator. Appends
-                'first-fragment' to the term.
+                `first-fragment` to the term.
 *   **protocol**
-    *   network protocols this term will match, such as tcp, udp, icmp, or a
+    *   network protocols this term will match, such as `tcp`, `udp`, `icmp`, or a
         numeric value.
 *   **protocol-except**
     *   network protocols that should be excluded from the protocol
@@ -310,10 +310,10 @@ refer to the generator specific documentation and code base.
     *   (Juniper only) enable filter-based generic routing encapsulation (GRE)
         tunneling using the specified tunnel template.
 *   **destination-prefix**
-    *   (Juniper only) specify destination-prefix matching (e.g. source-prefix`
+    *   (Juniper only) specify destination-prefix matching (e.g. `source-prefix`
         configured-neighbors-only).
 *   **ether-type**
-    *   (Juniper only) specify matching ether-type(e.g. ether-type` arp).
+    *   (Juniper only) specify matching ether-type (e.g. `ether-type` arp).
 *   **fragement-offset**
     *   (Juniper only) specify a fragment offset of a fragmented packet.
 *   **logging**
@@ -329,12 +329,12 @@ refer to the generator specific documentation and code base.
     *   (Juniper only) specify precendence.
 *   **qos**
     *   (Juniper only) apply quality of service classification to matching
-        packets (e.g. qos` af4).
+        packets (e.g. `qos` af4).
 *   **routing-instance**
     *   (iptables, speedway only) specify specific interface a term should apply
-        to (e.g. source-interface` eth3).
+        to (e.g. `source-interface` eth3).
 *   **source-prefix**
-    *   (Juniper only) specify source-prefix matching (e.g. source-prefix,
+    *   (Juniper only) specify source-prefix matching (e.g. `source-prefix`,
         configured-neighbors-only).
 *   **traffic-type**
     *   (Juniper only) specify traffic-type.
@@ -354,7 +354,7 @@ directive. An example include:
 ```
 
 The `.inc` file extension and the `includes` folder is not required but it is
-recommended to be used as a best practice and for easier readability.
+recommended as a best practice and for easier readability.
 
 ### Example
 
@@ -365,7 +365,7 @@ header {
   target:: paloalto from-zone internal to-zone external
 }
 
-term ping-gdns{
+term ping-gdns {
   source-address:: INTERNAL
   destination-address:: GOOGLE_DNS
   protocol:: icmp
@@ -373,17 +373,17 @@ term ping-gdns{
 }
 ```
 
-The above example tells capirca to use paloalto.py to generate a platform
+The above example tells capirca to use `paloalto.py` to generate a platform
 specific configuration for Palo Alto.
 
 The security policy is written within the term section using the meta-language:
 
-*   name/description: ping-gdns
-*   source: any INTERNAL network (check /def/NETWORK.net definition of
+*   name/description: `ping-gdns`
+*   source: any `INTERNAL` network (check `/def/NETWORK.net` definition of
     'INTERNAL')
-*   destination: service object named GOOGLE_DNS
-*   protocol: icmp
-*   action: accept
+*   destination: service object named `GOOGLE_DNS`
+*   protocol: `icmp`
+*   action: `accept`
 
 The above ACL controls traffic in one direction only (outbound towards the
 service) and there should be another header and term to control the traffic in
@@ -472,7 +472,7 @@ term permit-dns-tcp-replies {
 
 This will "subtract" the `CORP_NYC_NETBLOCK` from the `CORP_NETBLOCKS` token.
 For example, assume `CORP_NETBLOCKS` includes `200.0.0.0/20`, and
-`CORP_NYC_NETBLOCK` is defined as `200.2.0.0/24`. The `source-exclude` will
+`CORP_NYC_NETBLOCK` is defined as `200.0.2.0/24`. The `source-exclude` will
 remove the NYC netblock from the permitted source addresses. If the excluded
 address is not contained with the source address, nothing is changed.
 
@@ -556,7 +556,7 @@ term default-accept {
 
 #### From Source
 
-If `setuptools` Python package is not installed on your system, install it: For
+If the `setuptools` Python package is not installed on your system, install it: For
 example, the following commands installs the package with `apt` package manager.
 
 ```bash
@@ -754,7 +754,7 @@ exp_info: 2
 
 ### Python Package
 
-The `capirca` tool uses `capirca` Python package.
+The `capirca` tool uses the `capirca` Python package.
 
 Therefore, there is a way to access `capirca` programmatically.
 
@@ -778,7 +778,7 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>>
 ```
 
-Next, import `naming` library and create `naming` object from definitions files
+Next, import the `naming` library and create `naming` object from definitions files
 in `./def` directory.
 
 ```py
@@ -813,7 +813,7 @@ the service name tokens.
 >>>
 ```
 
-Then, import `policy` library, read in the policy configuration data from
+Then, import the `policy` library, read in the policy configuration data from
 `./policies/sample_paloalto.pol`, and create a policy object.
 
 ```py
