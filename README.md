@@ -350,10 +350,12 @@ injected into the current policy file in the exact location of the `#include`
 directive. An example include:
 
 ```
-#include 'policies/includes/untrusted-networks-blocking.inc'
+#include 'includes/untrusted-networks-blocking.inc'
 ```
+NOTE: Includes are only read from the subdirectories of your base_directory,
+all other directories will error out.
 
-The `.inc` file extension and the `includes` folder is not required but it is
+The `.inc` file extension and the `includes/` folder is not required but it is
 recommended to be used as a best practice and for easier readability.
 
 ### Example

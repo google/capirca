@@ -91,15 +91,40 @@ header {
 """
 
 INCLUDE_STATEMENT = """
-#include "/tmp/y.inc"
+#include "includes/y.inc"
 """
 INCLUDED_Y_FILE = """
 term included-term-1 {
   protocol:: tcp
   action:: accept
 }
+#include "includes/z.inc"
+"""
+
+BAD_INCLUDED_FILE = """
+term included-term-1 {
+  protocol:: tcp
+  action:: accept
+}
 #include "/tmp/z.inc"
 """
+
+BAD_INCLUDED_FILE_1 = """
+term included-term-1 {
+  protocol:: tcp
+  action:: accept
+}
+#include "includes/../../etc/passwd.inc"
+"""
+
+GOOD_INCLUDED_FILE_1 = """
+term good-included-term-1 {
+  protocol:: tcp
+  action:: accept
+}
+#include "includes/../pol/z.inc"
+"""
+
 GOOD_TERM_0 = """
 term good-term-0 {
   protocol:: icmp
@@ -625,9 +650,46 @@ class PolicyTest(absltest.TestCase):
     # ensure good-term-1 shows up as the second term
     self.assertEqual(terms[2].name, 'good-term-1')
 
-    mock_file.assert_has_calls([
-        mock.call('/tmp/y.inc'),
-        mock.call('/tmp/z.inc')])
+    mock_file.assert_has_calls(
+        [mock.call('includes/y.inc'), mock.call('includes/z.inc')]
+    )
+
+  @mock.patch.object(policy, '_ReadFile')
+  def testBadIncludes(self, mock_file):
+    """Ensure nested includes error handling works."""
+    mock_file.side_effect = [BAD_INCLUDED_FILE, GOOD_TERM_5]
+
+    # contents of our base policy (which has a bad included file)
+    pol = HEADER + INCLUDE_STATEMENT + GOOD_TERM_1
+    self.assertRaises(
+        policy.InvalidIncludeDirectoryError,
+        policy.ParsePolicy,
+        pol,
+        self.naming,
+    )
+    # Ensuring relative paths don't bypass invalid directory checks
+    mock_file.side_effect = [BAD_INCLUDED_FILE_1, GOOD_TERM_5]
+    pol = HEADER + BAD_INCLUDED_FILE_1 + GOOD_TERM_1
+    self.assertRaises(
+        policy.InvalidIncludeDirectoryError,
+        policy.ParsePolicy,
+        pol,
+        self.naming,
+    )
+
+  @mock.patch.object(policy, '_ReadFile')
+  def testGoodIncludesWithRelativePaths(self, mock_file):
+    """Ensure nested includes error handling works for valid files."""
+    mock_file.side_effect = [GOOD_TERM_5]
+    # base policy has a good included file, with relative paths
+    pol = HEADER + GOOD_INCLUDED_FILE_1 + GOOD_TERM_1
+    p = policy.ParsePolicy(pol, self.naming)
+    _, terms = p.filters[0]
+    # ensure include worked and we now have 3 terms in this policy
+    self.assertEqual(len(terms), 3)
+    self.assertEqual(terms[0].name, 'good-included-term-1')
+    self.assertEqual(terms[1].name, 'good-term-5')
+    self.assertEqual(terms[2].name, 'good-term-1')
 
   def testGoodPol(self):
     pol = HEADER + GOOD_TERM_1 + GOOD_TERM_2
@@ -1211,7 +1273,7 @@ class PolicyTest(absltest.TestCase):
     self.assertEqual(8, term.AddressesByteLength([6]))
     self.assertEqual(10, term.AddressesByteLength())
 
-# pylint: enable=maybe-no-member
+  # pylint: enable=maybe-no-member
 
   def testICMPCodes(self):
     pol = HEADER + GOOD_TERM_42

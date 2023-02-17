@@ -62,6 +62,8 @@ class FileReadError(Error):
 class RecursionTooDeepError(Error):
   """Included files exceed maximum recursion depth."""
 
+class InvalidIncludeDirectoryError(Error):
+  """Included files are from invalid directories."""
 
 class ParseError(Error):
   """ParseError in the input."""
@@ -2632,6 +2634,23 @@ def _ReadFile(filename):
     raise FileNotFoundError('Unable to open policy file %s' % filename)
 
 
+def _SubDirectory(child, parent):
+  """Returns if the child is a subdirectory of the parent.
+
+  Resolves relative paths, but does not resolve symbolic links.
+
+  Args:
+    child: A presumed child file path string.
+    parent: Base parent path string.
+
+  Returns:
+    A boolean, true if the child is a subdirectory of the parent.
+  """
+  child_path = os.path.abspath(child)
+  parent_path = os.path.abspath(parent)
+  return os.path.commonpath([parent_path, child_path]) == os.path.commonpath([
+      parent_path])
+
 def _Preprocess(data, max_depth=5, base_dir=''):
   """Search input for include statements and import specified include file.
 
@@ -2648,6 +2667,7 @@ def _Preprocess(data, max_depth=5, base_dir=''):
 
   Raises:
     RecursionTooDeepError: nested include files exceed maximum
+    InvalidIncludeDirectoryError: nested include files from invalid directories
   """
   if not max_depth:
     raise RecursionTooDeepError('%s' % (
@@ -2658,7 +2678,13 @@ def _Preprocess(data, max_depth=5, base_dir=''):
     if len(words) > 1 and words[0] == '#include':
       # remove any quotes around included filename
       include_file = words[1].strip('\'"')
-      data = _ReadFile(os.path.join(base_dir, include_file))
+      include_file_path = os.path.join(base_dir, include_file)
+      if not _SubDirectory(include_file_path, base_dir):
+        raise InvalidIncludeDirectoryError(
+            '%s'
+            % ('Included file is from invalid directory: %s.' % include_file)
+        )
+      data = _ReadFile(include_file_path)
       # recursively handle includes in included data
       inc_data = _Preprocess(data, max_depth - 1, base_dir=base_dir)
       rval.extend(inc_data)
