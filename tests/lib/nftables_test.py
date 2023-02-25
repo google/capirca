@@ -235,8 +235,26 @@ term good-icmp {
 }
 """
 
+ICMP_SINGLE_TYPE = """
+term good-icmp-single-type {
+  comment:: "IPv4 ICMP accept single type"
+  icmp-type:: router-solicit
+  protocol:: icmp
+  action:: accept
+}
+"""
+
 ICMPV6_TERM = """
 term good-icmpv6 {
+  protocol:: icmpv6
+  action:: accept
+}
+"""
+
+ICMPV6_SINGLE_TYPE = """
+term good-icmpv6-single-type {
+  comment:: "IPv6 ICMP accept single type"
+  icmp-type:: router-solicit
   protocol:: icmpv6
   action:: accept
 }
@@ -721,6 +739,8 @@ class NftablesTest(parameterized.TestCase):
       (GOOD_HEADER_1 + COUNT_AND_LOG_TERM, TEST_IPS, 'log prefix "count-and-log-packets" counter'),
       (HEADER_MIXED_AF + IPV6_ONLY_TERM, TEST_IPS, 'ip6 daddr 2001:4860:8000::5/128 ct state new accept'),
       (HEADER_MIXED_AF + ALL_SRCIP, TEST_IPS, 'ip saddr 10.2.3.4/32 drop comment "All IP address families. v4/v6"'),
+      (GOOD_HEADER_3 + ICMP_SINGLE_TYPE, TEST_IPS, 'icmp type router-solicit'),
+      (GOOD_HEADER_1 + ICMPV6_SINGLE_TYPE, TEST_IPS, 'icmpv6 type nd-router-solicit')
   )
   def testRulesetGenerator(self, policy_data: str, IPs, contains: str):
     self.naming.GetNetAddr.return_value = IPs
