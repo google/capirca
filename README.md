@@ -420,6 +420,7 @@ generators:
 *   [`k8s`](./doc/generators/k8s.md): Kubernetes NetworkPolicy
 *   [`nftables`](./doc/generators/nftables.md): nftables
 *   [`nsxv`](./doc/generators/nsxv.md): NSX
+*   [`nsxt`](./doc/generators/nsxt.md): NSX-T
 *   [`packetfilter`](./doc/generators/packetfilter.md): PacketFilter
 *   [`paloaltofw`](./doc/generators/paloaltofw.md): Palo Alto PANOS
 *   [`pcap`](./doc/generators/pcap.md): PcapFilter
