@@ -14,8 +14,6 @@
 #
 """Nsxt Mock Test terms for nsxt module."""
 
-
-
 INET_TERM = """\
   term permit-mail-services {
     destination-address:: MAIL_SERVERS

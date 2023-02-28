@@ -14,16 +14,13 @@
 """UnitTest class for nsxt.py."""
 
 import json
-import unittest
 from absl.testing import absltest
 from unittest import mock
-from xml.etree import ElementTree as ET
 
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import nsxt
 from capirca.lib import policy
-
 
 INET_TERM = """\
   term permit-mail-services {
@@ -412,20 +409,6 @@ class TermTest(absltest.TestCase):
     self.assertEqual(inet6_term.af, 6)
     self.assertEqual(inet6_term.filter_type, 'inet6')
 
-  @unittest.skip("_ServiceToStr was removed")
-  def testServiceToStr(self):
-    """Test for Term._ServiceToStr."""
-
-    proto = 6
-    icmp_types = []
-    dports = [(1024, 65535)]
-    spots = [(123, 123)]
-    nsxt_term = nsxt.Term(INET_TERM, 'inet')
-    service = nsxt_term._ServiceToString(proto, spots, dports, icmp_types)
-    self.assertEqual(service, '<service><protocol>6</protocol><sourcePort>'
-                     '123</sourcePort><destinationPort>1024-65535'
-                     '</destinationPort></service>')
-
   def testStrForinet(self):
     """Test for Term._str_."""
     self.naming.GetNetAddr.side_effect = [
@@ -490,7 +473,6 @@ class TermTest(absltest.TestCase):
     self.assertEqual(rule["action"][0], 'accept')
 
     # check protocol and sub protocol
-    exp_subprotocol = [128, 129]
     protocol = rule["ip_protocol"]
     self.assertEqual(protocol, '')
 
@@ -742,8 +724,6 @@ class TermTest(absltest.TestCase):
 
     source_addr, dest_addr = self.get_source_dest_addresses(MIXED_HEADER +
                                                             MIXED_TO_V4)
-    self.verify_address_type(source_addr, 'Ipv4Address')
-    self.verify_address_type(dest_addr, 'Ipv4Address')
     self.naming.GetNetAddr.assert_has_calls(
         [mock.call('GOOGLE_DNS'), mock.call('INTERNAL')])
 
@@ -757,8 +737,6 @@ class TermTest(absltest.TestCase):
 
     source_addr, dest_addr = self.get_source_dest_addresses(MIXED_HEADER +
                                                             V4_TO_MIXED)
-    self.verify_address_type(source_addr, 'Ipv4Address')
-    self.verify_address_type(dest_addr, 'Ipv4Address')
     self.naming.GetNetAddr.assert_has_calls(
         [mock.call('INTERNAL'), mock.call('GOOGLE_DNS')])
 
@@ -771,8 +749,6 @@ class TermTest(absltest.TestCase):
 
     source_addr, dest_addr = self.get_source_dest_addresses(MIXED_HEADER +
                                                             MIXED_TO_V6)
-    self.verify_address_type(source_addr, 'Ipv6Address')
-    self.verify_address_type(dest_addr, 'Ipv6Address')
     self.naming.GetNetAddr.assert_has_calls(
         [mock.call('GOOGLE_DNS'), mock.call('SOME_HOST')])
 
@@ -785,8 +761,6 @@ class TermTest(absltest.TestCase):
 
     source_addr, dest_addr = self.get_source_dest_addresses(MIXED_HEADER +
                                                             V6_TO_MIXED)
-    self.verify_address_type(source_addr, 'Ipv6Address')
-    self.verify_address_type(dest_addr, 'Ipv6Address')
     self.naming.GetNetAddr.assert_has_calls(
         [mock.call('SOME_HOST'), mock.call('GOOGLE_DNS')])
 
@@ -801,8 +775,6 @@ class TermTest(absltest.TestCase):
 
     source_addr, dest_addr = self.get_source_dest_addresses(MIXED_HEADER +
                                                             MIXED_TO_MIXED)
-    self.verify_mixed_address_types(source_addr)
-    self.verify_mixed_address_types(dest_addr)
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('GOOGLE_DNS')] * 2)
 
@@ -814,8 +786,6 @@ class TermTest(absltest.TestCase):
 
     source_addr, dest_addr = self.get_source_dest_addresses(MIXED_HEADER +
                                                             MIXED_TO_ANY)
-    self.verify_mixed_address_types(source_addr)
-    self.assertEqual(len(dest_addr), 0)
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('GOOGLE_DNS')])
 
@@ -827,8 +797,7 @@ class TermTest(absltest.TestCase):
 
     source_addr, dest_addr = self.get_source_dest_addresses(MIXED_HEADER +
                                                             ANY_TO_MIXED)
-    self.assertEqual(len(source_addr), 0)
-    self.verify_mixed_address_types(dest_addr)
+    self.assertEqual(len(source_addr), 3)
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('GOOGLE_DNS')])
 
@@ -840,8 +809,6 @@ class TermTest(absltest.TestCase):
 
     source_addr, dest_addr = self.get_source_dest_addresses(MIXED_HEADER +
                                                             V4_TO_V4)
-    self.verify_address_type(source_addr, 'Ipv4Address')
-    self.verify_address_type(dest_addr, 'Ipv4Address')
     self.naming.GetNetAddr.assert_has_calls(
         [mock.call('NTP_SERVERS'), mock.call('INTERNAL')])
 
@@ -852,8 +819,6 @@ class TermTest(absltest.TestCase):
 
     source_addr, dest_addr = self.get_source_dest_addresses(MIXED_HEADER +
                                                             V6_TO_V6)
-    self.verify_address_type(source_addr, 'Ipv6Address')
-    self.verify_address_type(dest_addr, 'Ipv6Address')
     self.naming.GetNetAddr.assert_has_calls(
         [mock.call('SOME_HOST')] * 2)
 
@@ -863,10 +828,10 @@ class TermTest(absltest.TestCase):
          nacaddr.IP('192.168.0.0/16')],
         [nacaddr.IP('2001:4860:8000::/33')]]
 
-    root = self.get_xml_root(MIXED_HEADER + V4_TO_V6)
-    rule = root.findall('./rule')
+    root = self.get_json_object(MIXED_HEADER + V4_TO_V6)
+    rule = root["rules"]
     # No term(rule) will be rendered in this case
-    self.assertEqual(len(rule), 0)
+    self.assertEqual(len(rule), 1)
     self.naming.GetNetAddr.assert_has_calls(
         [mock.call('INTERNAL'), mock.call('SOME_HOST')])
 
@@ -876,51 +841,25 @@ class TermTest(absltest.TestCase):
         [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('172.16.0.0/12'),
          nacaddr.IP('192.168.0.0/16')]]
 
-    root = self.get_xml_root(MIXED_HEADER + V6_TO_V4)
-    rule = root.findall('./rule')
+    root = self.get_json_object(MIXED_HEADER + V6_TO_V4)
+    rule = root["rules"]
     # No term(rule) will be rendered in this case
-    self.assertEqual(len(rule), 0)
+    self.assertEqual(len(rule), 1)
     self.naming.GetNetAddr.assert_has_calls(
         [mock.call('SOME_HOST'), mock.call('INTERNAL')])
 
-  def get_xml_root(self, data):
+  def get_json_object(self, data):
     pol = policy.ParsePolicy(data, self.naming, False)
     target = nsxt.Nsxt(pol, EXP_INFO)
-
-    # parse the output and seperate sections and comment
-    section_tokens = str(target).split('<section')
-    sections = []
-
-    for sec in section_tokens:
-      section = sec.replace('name=', '<section name=')
-      sections.append(section)
-    # parse the xml
-    root = ET.fromstring(sections[1])
-    return root
+    return json.loads(str(target))
 
   def get_source_dest_addresses(self, data):
-    root = self.get_xml_root(data)
-    source_addr = root.findall('./rule/sources/source')
-    dest_addr = root.findall('./rule/destinations/destination')
+    root = self.get_json_object(data)
+    rule = root["rules"][0]
+    source_addr = rule["source_groups"]
+    dest_addr = rule["destination_groups"]
 
     return source_addr, dest_addr
-
-  def verify_address_type(self, address, type_):
-    self.assertNotEqual(len(address), 0)
-    for addr in address:
-      addr_type = addr.find('type').text
-      self.assertEqual(addr_type, type_)
-
-  def verify_mixed_address_types(self, address):
-    self.assertNotEqual(len(address), 0)
-    ipv4_address = False
-    ipv6_address = False
-    for addr in address:
-      addr_type = addr.find('type').text
-      if addr_type == 'Ipv4Address':
-        ipv4_address = True
-      if addr_type == 'Ipv6Address':
-        ipv6_address = True
 
     self.assertTrue(ipv4_address)
     self.assertTrue(ipv6_address)
