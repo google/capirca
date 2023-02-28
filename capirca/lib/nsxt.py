@@ -15,14 +15,10 @@
 
 """nsxt generator."""
 
-import datetime
-import re
 import json
-import uuid
 
 from absl import logging
 from capirca.lib import aclgenerator
-from capirca.lib import nacaddr
 import six
 
 _RULE_JSON = '''{
@@ -65,22 +61,27 @@ _NSXT_SUPPORTED_KEYWORDS = [
   'source_port'
 ]
 
+
 # generic error class
 class Error(Exception):
   """Generic error class."""
   pass
 
+
 class UnsupportednsxtAccessListError(Error):
   """Raised when we're give a non named access list."""
   pass
+
 
 class NsxtAclTermError(Error):
   """Raised when there is a problem in a nsxt access list."""
   pass
 
+
 class NsxtDuplicateTermError(Error):
   """Raised when there is a duplicate."""
   pass
+
 
 class NsxtUnsupportedCriteriaOperator(Error):
   """Raised when an unsupported criteria comparison operator is encountered."""
@@ -119,7 +120,7 @@ class Term(aclgenerator.Term):
     for key in term_keywords:
       if term_keywords[key]:
         if ('translated' not in key) and (key not in _NSXT_SUPPORTED_KEYWORDS):
-              unsupported_keywords.append(key)
+            unsupported_keywords.append(key)
     if unsupported_keywords:
       logging.warning('WARNING: The keywords %s in Term %s are not supported '
                       'in Nsxt ', unsupported_keywords, self.term.name)
@@ -167,10 +168,10 @@ class Term(aclgenerator.Term):
     #   tag = self.term.tag
 
     ip_protocol = ''
-    # if self.term.ip_protocol:
-    #   ip_protocol = self.term.ip_protocol
+    if self.term.protocol:
+      ip_protocol = self.term.protocol
 
-    rule =  {
+    rule = {
       "action": action,
       "resource_type": "Rule",
       "display_name": name,
@@ -191,18 +192,8 @@ class Term(aclgenerator.Term):
       "ip_protocol": ip_protocol
     }
 
-    # ret_str = []
-
-    # ret_lines = []
-    # ret_lines.append('%s' % (rule))
-
-    # remove any trailing spaces and replace multiple spaces with singles
-    # stripped_ret_lines = [re.sub(r'\s+', ' ', x).rstrip() for x in ret_lines]
-    # ret_str.extend(stripped_ret_lines)
-
-    print(rule)
-
     return ''.join(json.dumps(rule))
+
 
 class Nsxt(aclgenerator.ACLGenerator):
   """nsxt rendering class.
@@ -225,7 +216,7 @@ class Nsxt(aclgenerator.ACLGenerator):
 
   _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',
                                       'logging',
-                                     ])
+                                      ])
   _FILTER_OPTIONS_DICT = {}
 
   def _TranslatePolicy(self, pol, exp_info):
@@ -239,7 +230,6 @@ class Nsxt(aclgenerator.ACLGenerator):
       if len(filter_options) >= 2:
         filter_name = filter_options[1]
 
-      #parse filtering options
       self._ParseFilterOptions(filter_options)
 
       filter_type = ''
@@ -331,9 +321,8 @@ class Nsxt(aclgenerator.ACLGenerator):
           target.append(json.loads(term_str))
 
     section_name = six.ensure_str(self._FILTER_OPTIONS_DICT['section_name'])
-    print(section_name)
     target_json = json.loads(target_header)
     target_json['display_name'] = section_name
     target_json['rules'] = target
 
-    return json.dumps(target_json,indent=2)
+    return json.dumps(target_json, indent=2)
