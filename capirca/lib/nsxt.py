@@ -69,7 +69,7 @@ class Error(Exception):
   pass
 
 
-class UnsupportednsxtAccessListError(Error):
+class UnsupportedNsxtAccessListError(Error):
   """Raised when we're give a non named access list."""
   pass
 

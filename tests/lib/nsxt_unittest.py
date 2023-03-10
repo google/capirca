@@ -36,7 +36,7 @@ class TermTest(absltest.TestCase):
         '--def',
         dest='definitions',
         help='definitions directory',
-        default='../def')
+        default='def')
     (FLAGS, args) = parser.parse_args([])
     self.defs = naming.Naming(FLAGS.definitions)
 
@@ -86,7 +86,7 @@ class TermTest(absltest.TestCase):
 
     # check protocol
     protocol = rule_json["ip_protocol"]
-    self.assertEqual(protocol, "")
+    self.assertEqual(protocol, ['udp'])
 
     # check notes
     notes = rule_json["notes"]
@@ -127,7 +127,7 @@ class TermTest(absltest.TestCase):
 
     # check protocol
     protocol = rule["ip_protocol"]
-    self.assertEqual(protocol, "")
+    self.assertEqual(protocol, ['udp'])
 
     # check notes
     notes = rule["notes"]

@@ -447,7 +447,7 @@ class TermTest(absltest.TestCase):
 
     # check protocol
     protocol = rule["ip_protocol"]
-    self.assertEqual(protocol, '')
+    self.assertEqual(protocol, ['udp'])
 
     # check notes
     notes = rule["notes"]
@@ -475,7 +475,7 @@ class TermTest(absltest.TestCase):
 
     # check protocol and sub protocol
     protocol = rule["ip_protocol"]
-    self.assertEqual(protocol, '')
+    self.assertEqual(protocol, ['icmpv6'])
 
   def testTranslatePolicy(self):
     """Test for Nsxt.test_TranslatePolicy."""
@@ -615,7 +615,7 @@ class TermTest(absltest.TestCase):
 
     # check protocol
     protocol = rule["ip_protocol"]
-    self.assertEqual(protocol, '')
+    self.assertEqual(protocol, ['udp'])
 
     # check notes
     notes = rule["notes"]
@@ -639,7 +639,7 @@ class TermTest(absltest.TestCase):
 
     # check protocol
     protocol = rule["ip_protocol"]
-    self.assertEqual(protocol, '')
+    self.assertEqual(protocol, ['icmp'])
 
   def testBuildTokens(self):
     self.naming.GetNetAddr.side_effect = [

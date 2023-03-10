@@ -38,7 +38,7 @@ class NsxtFunctionalTest(absltest.TestCase):
         '--def',
         dest='definitions',
         help='definitions directory',
-        default='../def')
+        default='def')
     (FLAGS, args) = parser.parse_args([])
     self.defs = naming.Naming(FLAGS.definitions)
 
@@ -69,7 +69,7 @@ class NsxtFunctionalTest(absltest.TestCase):
 
     # check protocol
     protocol = rule["ip_protocol"]
-    self.assertEqual(protocol, '')
+    self.assertEqual(protocol, ['tcp'])
 
   def test_nsxt_nosectiondid(self):
     pol = policy.ParsePolicy(nsxt_mocktest.POLICY_NO_SECTION_ID, self.defs)
@@ -84,7 +84,7 @@ class NsxtFunctionalTest(absltest.TestCase):
 
     # check protocol
     protocol = rule["ip_protocol"]
-    self.assertEqual(protocol, '')
+    self.assertEqual(protocol, ['icmp'])
 
   def test_nsxt_nofiltertype(self):
     pol = policy.ParsePolicy(nsxt_mocktest.POLICY_NO_FILTERTYPE, self.defs)
