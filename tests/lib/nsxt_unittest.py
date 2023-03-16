@@ -44,9 +44,6 @@ class TermTest(absltest.TestCase):
     super().setUp()
     pass
 
-  def runTest(self):
-    pass
-
   def test_init_forinet(self):
     """Test for Term._init_."""
     inet_term = nsxt.Term(nsxt_mocktest.INET_TERM, 'inet')
@@ -66,7 +63,7 @@ class TermTest(absltest.TestCase):
     for _, terms in pol.filters:
       nsxt_term = nsxt.Term(terms[0], af)
       rule_str = nsxt.Term.__str__(nsxt_term)
-    # parse xml rule and check if the values are correct
+    # parse json rule and check if the values are correct
     rule_json = json.loads(rule_str)
     # check name and action
     self.assertEqual(rule_json["display_name"], 'allow-ntp-request')
@@ -111,7 +108,7 @@ class TermTest(absltest.TestCase):
     pol = policy.ParsePolicy(nsxt_mocktest.MIXED_FILTER, self.defs, False)
     target = nsxt.Nsxt(pol, exp_info)
 
-    # parse the xml and check the values
+    # parse the json and check the values
     nsxt_json = json.loads(str(target))
     rule = nsxt_json["rules"][0]
     # check name and action

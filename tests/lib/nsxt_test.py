@@ -423,7 +423,7 @@ class TermTest(absltest.TestCase):
     for _, terms in pol.filters:
       nsxt_term = nsxt.Term(terms[0], af)
       rule_str = nsxt.Term.__str__(nsxt_term)
-    # parse xml rule and check if the values are correct
+    # parse json rule and check if the values are correct
     rule = json.loads(rule_str)
     # check name and action
     self.assertEqual(rule["display_name"], 'allow-ntp-request')
@@ -467,7 +467,7 @@ class TermTest(absltest.TestCase):
       nsxt_term = nsxt.Term(terms[0], filter_type, None, af)
       rule_str = nsxt.Term.__str__(nsxt_term)
 
-    # parse xml rule and check if the values are correct
+    # parse json rule and check if the values are correct
     rule = json.loads(rule_str)
     # check name and action
     self.assertEqual(rule["display_name"], 'test-icmpv6')

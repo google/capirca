@@ -1,4 +1,4 @@
-# Copyright 2015 The Capirca Project Authors All Rights Reserved.
+# Copyright 2023 The Capirca Project Authors All Rights Reserved.
 # Copyright 2023 VMware, Inc. SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -148,7 +148,10 @@ class Term(aclgenerator.Term):
       for i in self.term.destination_address:
         destination_address.append(str(i))
 
-# Intentionally left with defaul values as these fields are mandatory in the API. If they need to be configured these should be extended to br read from the policy files.
+    # Intentionally left with default values as these fields are mandatory in
+    # the API. If they need to be configured these should be extended to be
+    # read from the policy files.
+
     services = 'ANY'
 
     profiles = 'ANY'
