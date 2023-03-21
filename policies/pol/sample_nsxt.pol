@@ -1,0 +1,163 @@
+header {
+  comment:: "Sample NSXT filter"
+  target:: nsxt sample_nsxt_filter mixed 1234 securitygroup securitygroupId
+}
+
+term accept-icmp {
+  protocol:: icmp
+  action:: accept
+}
+
+term accept-traceroute {
+  comment:: "Allow inbound traceroute from any source."
+  destination-port:: TRACEROUTE
+  protocol:: udp
+  action:: accept
+  expiration:: 2001-12-31
+  owner:: jeff
+}
+
+term accept-bgp-requests {
+  comment:: "Allow BGP requests from peers."
+  destination-port:: BGP
+  protocol:: tcp
+  action:: accept
+}
+
+term accept-bgp-replies {
+  comment:: "Allow inbound replies to BGP requests."
+  source-port:: BGP
+  protocol:: tcp
+  action:: accept
+}
+
+term accept-ospf {
+  comment:: "Allow outbound OSPF traffic from other RFC1918 routers."
+  source-address:: INTERNAL
+  protocol:: ospf
+  action:: accept
+}
+
+term allow-vrrp {
+  protocol:: vrrp
+  action:: accept
+}
+
+term accept-ike {
+  source-port:: IKE
+  destination-port:: IKE
+  protocol:: udp
+  action:: accept
+}
+
+term accept-ipsec {
+  protocol:: esp
+  action:: accept
+}
+term accept-pim {
+  source-address:: INTERNAL
+  protocol:: pim
+  action:: accept
+}
+
+term accept-igmp {
+  source-address:: INTERNAL
+  protocol:: igmp
+  action:: accept
+}
+
+term accept-ssh-requests {
+  source-address:: INTERNAL
+  destination-port:: SSH
+  protocol:: tcp
+  action:: accept
+}
+
+term accept-ssh-replies {
+  source-port:: SSH
+  protocol:: tcp
+  action:: accept
+}
+
+term accept-snmp-requests {
+  source-address:: INTERNAL
+  destination-address:: INTERNAL
+  destination-port:: SNMP
+  protocol:: udp
+  action:: accept
+}
+
+term accept-dns-replies {
+  source-address:: INTERNAL
+  destination-address:: INTERNAL
+  source-port:: DNS
+  protocol:: udp
+  action:: accept
+}
+
+term allow-ntp-request {
+  source-address:: NTP_SERVERS
+  destination-address:: INTERNAL
+  destination-port:: NTP
+  protocol:: udp
+  action:: accept
+}
+
+term allow-ntp-replies {
+  source-address:: INTERNAL
+  destination-address:: NTP_SERVERS
+  source-port:: NTP
+  protocol:: udp
+  action:: accept
+}
+
+term allow-radius-replies {
+  source-address:: INTERNAL
+  destination-address:: INTERNAL
+  source-port:: RADIUS
+  protocol:: udp
+  action:: accept
+}
+
+term allow-tacacs-requests {
+  source-address:: INTERNAL
+  destination-address:: TACACS_SERVERS
+  destination-port:: TACACS
+  protocol:: tcp
+  action:: accept
+}
+
+term allow-tacacs-replies {
+  source-address:: TACACS_SERVERS
+  destination-address:: INTERNAL
+  source-port:: TACACS
+  protocol:: tcp
+  action:: accept
+}
+
+term allow-dns-fragments {
+  source-address:: ANY
+  source-exclude:: PUBLIC_NAT
+  destination-address:: GOOGLE_DNS
+  destination-port:: DNS
+  protocol:: tcp udp
+  action:: accept
+}
+
+term reject-large-dns {
+  destination-address:: GOOGLE_DNS
+  destination-port:: DNS
+  protocol:: udp
+  action:: reject
+}
+
+term reject-imap-requests {
+  destination-address:: MAIL_SERVERS
+  destination-port:: IMAP
+  protocol:: tcp
+  action:: reject-with-tcp-rst
+}
+
+term discard-default {
+  action:: deny
+}
