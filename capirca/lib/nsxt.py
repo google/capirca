@@ -90,7 +90,7 @@ class NsxtUnsupportedCriteriaOperator(Error):
 
 
 class Term(aclgenerator.Term):
-  """Creates a  single ACL Term for NSX-T."""
+  """Creates a single ACL Term for NSX-T."""
 
   def __init__(self, term, filter_type, applied_to=None, af=4):
     self.term = term
@@ -158,7 +158,12 @@ class Term(aclgenerator.Term):
 
     scope = 'ANY'
 
-    direction = 'IN_OUT'
+    if not self.term.destination_address:
+      direction = "IN"
+    elif not self.term.source_address:
+      direction = 'OUT'
+    else:
+      direction = 'IN_OUT'
 
     tag = ''
 
@@ -181,6 +186,7 @@ class Term(aclgenerator.Term):
       "scope": [
           scope
       ],
+      "logged": self.term.logging,
       "notes": notes,
       "direction": direction,
       "tag": tag,
