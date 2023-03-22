@@ -22,6 +22,13 @@ from absl import logging
 from capirca.lib import aclgenerator
 import six
 
+_ACTION_TABLE = {
+    'accept': 'ALLOW',
+    'deny': 'DROP',
+    'reject': 'REJECT',
+    'reject-with-tcp-rst': 'REJECT',  # tcp rst not supported
+}
+
 _RULE_JSON = '''{
     "rules": [],
     "logging_enabled": "false",
@@ -134,7 +141,7 @@ class Term(aclgenerator.Term):
 
     action = 'ALLOW'
     if self.term.action:
-      action = self.term.action
+      action = _ACTION_TABLE.get(self.term.action)
 
     source_address = 'ANY'
     if self.term.source_address:
@@ -186,14 +193,14 @@ class Term(aclgenerator.Term):
       "scope": [
           scope
       ],
-      "logged": self.term.logging,
+      "logged": bool(self.term.logging),
       "notes": notes,
       "direction": direction,
       "tag": tag,
       "ip_protocol": ip_protocol
     }
 
-    return ''.join(json.dumps(rule))
+    return json.dumps(rule)
 
 
 class Nsxt(aclgenerator.ACLGenerator):
