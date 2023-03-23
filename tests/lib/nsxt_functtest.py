@@ -42,13 +42,6 @@ class NsxtFunctionalTest(absltest.TestCase):
     (FLAGS, args) = parser.parse_args([])
     self.defs = naming.Naming(FLAGS.definitions)
 
-  def tearDown(self):
-    super().tearDown()
-    pass
-
-  def runTest(self):
-    pass
-
   def test_nsxt_policy(self):
     pol = policy.ParsePolicy(nsxt_mocktest.POLICY, self.defs)
     exp_info = 2
