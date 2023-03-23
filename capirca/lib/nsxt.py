@@ -141,7 +141,7 @@ class Term(aclgenerator.Term):
 
     action = 'ALLOW'
     if self.term.action:
-      action = _ACTION_TABLE.get(self.term.action)
+      action = _ACTION_TABLE.get(self.term.action[0])
 
     source_address = 'ANY'
     if self.term.source_address:
