@@ -268,7 +268,7 @@ class Term(aclgenerator.Term):
                                  Add(self.CreateAnonymousSet(ip_protocol)))
         else:
           for proto in ip_protocol:
-            if (src_ports and dst_ports):
+            if (src_ports or dst_ports):
               statement_lines.append(PortStatement(proto, src_p, dst_p))
             else:
               statement_lines.append('ip protocol' + Add(proto))
