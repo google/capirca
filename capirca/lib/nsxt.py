@@ -20,7 +20,6 @@ import json
 
 from absl import logging
 from capirca.lib import aclgenerator
-import six
 
 _ACTION_TABLE = {
     'accept': 'ALLOW',
@@ -28,16 +27,6 @@ _ACTION_TABLE = {
     'reject': 'REJECT',
     'reject-with-tcp-rst': 'REJECT',  # tcp rst not supported
 }
-
-_RULE_JSON = '''{
-    "rules": [],
-    "logging_enabled": "false",
-    "target_type": "DFW",
-    "resource_type": "SecurityPolicy",
-    "display_name": "",
-    "category": "Application",
-    "is_default": "false"
-}'''
 
 _NSXT_SUPPORTED_KEYWORDS = [
   'name',
@@ -222,9 +211,7 @@ class Nsxt(aclgenerator.ACLGenerator):
   _DEFAULT_PROTOCOL = 'ip'
   SUFFIX = '.nsxt'
 
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration',
-                                      'logging',
-                                      ])
+  _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration', 'logging'])
   _FILTER_OPTIONS_DICT = {}
 
   def _TranslatePolicy(self, pol, exp_info):
@@ -317,7 +304,6 @@ class Nsxt(aclgenerator.ACLGenerator):
 
   def __str__(self):
     """Render the output of the nsxt policy."""
-    target_header = _RULE_JSON
     target = []
 
     for (_, _, _, terms) in self.nsxt_policies:
@@ -328,9 +314,16 @@ class Nsxt(aclgenerator.ACLGenerator):
         if term_str:
           target.append(json.loads(term_str))
 
-    section_name = six.ensure_str(self._FILTER_OPTIONS_DICT['section_name'])
-    target_json = json.loads(target_header)
-    target_json['display_name'] = section_name
-    target_json['rules'] = target
+    section_name = self._FILTER_OPTIONS_DICT['section_name']
+    applied_to = self._FILTER_OPTIONS_DICT['applied_to']
 
-    return json.dumps(target_json, indent=2)
+    policy = {
+      "rules": terms,
+      "resource_type": "SecurityPolicy",
+      "display_name": section_name,
+      "category": "Application",
+      "is_default": "false",
+      "scope": [applied_to]
+    }
+
+    return json.dumps(policy, indent=2)
