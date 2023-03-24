@@ -91,6 +91,7 @@ class NsxtUnsupportedCriteriaOperator(Error):
   """Raised when an unsupported criteria comparison operator is encountered."""
   pass
 
+
 class ServiceEntries:
   """Represents service entries for a rule"""
   def __init__(self, protocol, source_ports, destination_ports, icmp_types):
@@ -106,7 +107,10 @@ class ServiceEntries:
     self.destination_ports = destination_ports
     self.icmp_types = icmp_types
 
-  def __str__(self):
+  def get(self):
+    """
+    Returns list of services
+    """
     # Handle ICMP and ICMPv6
     if self.protocol == 1 or self.protocol == 58:
       service = {
@@ -114,16 +118,16 @@ class ServiceEntries:
         "resource_type": "ICMPTypeServiceEntry",
       }
       if not self.icmp_types:
-        return json.dumps([service])
-      
+        return [service]
+
       # Handle ICMP types
       services = []
       for icmp_type in self.icmp_types:
         new_service = service.copy()
         new_service["icmp_type"] = icmp_type
         services.append(new_service)
-        return json.dumps(services)
-      
+        return services
+
     # Handle TCP and UDP
     elif self.protocol == 6 or self.protocol == 17:
       service = {
@@ -133,13 +137,16 @@ class ServiceEntries:
 
       # Handle Layer 4 Ports
       if self.source_ports:
-        service["source_ports"] = self.source_ports
-        
+        source_ports = [f"{p[0]}-{p[1]}" for p in self.source_ports]
+        service["source_ports"] = source_ports
+
       if self.destination_ports:
-        service["destination_ports"] = self.destination_ports
-      return json.dumps([service])
+        destination_ports = [f"{p[0]}-{p[1]}" for p in self.destination_ports]
+        service["destination_ports"] = destination_ports
+      return [service]
     else:
-      return json.dumps([])
+      return []
+
 
 class Term(aclgenerator.Term):
   """Creates a single ACL Term for NSX-T."""
@@ -200,15 +207,6 @@ class Term(aclgenerator.Term):
       for i in self.term.destination_address:
         destination_address.append(str(i))
 
-    if self.term.protocol:
-      protocol = list(map(self.PROTO_MAP.get, self.term.protocol,
-                          self.term.protocol))
-      icmp_types = ['']
-      if self.term.icmp_type:
-        icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type,
-                                              self.term.protocol,
-                                              self.af)
-
     rule = {
       "action": action,
       "resource_type": "Rule",
@@ -223,6 +221,22 @@ class Term(aclgenerator.Term):
       "direction": 'IN_OUT',
       "ip_protocol": "IPV4_IPV6"
     }
+
+    if self.term.protocol:
+      icmp_types = []
+      services = []
+      if self.term.icmp_type:
+        icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type,
+                                             self.term.protocol,
+                                             self.af)
+
+      protocol = [self.PROTO_MAP.get(p) for p in self.term.protocol]
+      for proto in protocol:
+        if proto != 'any':
+          service = ServiceEntries(proto, self.term.source_port,
+                                   self.term.destination_port, icmp_types)
+          services.extend(service.get())
+      rule["service_entries"] = services
 
     return json.dumps(rule)
 
@@ -316,7 +330,7 @@ class Nsxt(aclgenerator.ACLGenerator):
               filter_type, self._PLATFORM, str(good_filters)))
 
     section_id = 0
-    applied_to = None
+    applied_to = "ANY"
     filter_opt_len = len(filter_options)
 
     if filter_opt_len > 2:
@@ -339,21 +353,15 @@ class Nsxt(aclgenerator.ACLGenerator):
 
   def __str__(self):
     """Render the output of the nsxt policy."""
-    target = []
-
+    # TODO: Handle when there are many policies
     for (_, _, _, terms) in self.nsxt_policies:
-
-      for term in terms:
-        term_str = str(term)
-
-        if term_str:
-          target.append(json.loads(term_str))
+      rules = [json.loads(str(term)) for term in terms]
 
     section_name = self._FILTER_OPTIONS_DICT['section_name']
     applied_to = self._FILTER_OPTIONS_DICT['applied_to']
 
     policy = {
-      "rules": terms,
+      "rules": rules,
       "resource_type": "SecurityPolicy",
       "display_name": section_name,
       "category": "Application",
