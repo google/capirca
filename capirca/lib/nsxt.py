@@ -58,6 +58,13 @@ _NSXT_SUPPORTED_KEYWORDS = [
   'source_port'
 ]
 
+_PROTOCOLS = {
+  1: "ICMPv4",
+  6: "TCP",
+  17: "UDP",
+  58: "ICMPv6"
+}
+
 
 # generic error class
 class Error(Exception):
@@ -84,6 +91,55 @@ class NsxtUnsupportedCriteriaOperator(Error):
   """Raised when an unsupported criteria comparison operator is encountered."""
   pass
 
+class ServiceEntries:
+  """Represents service entries for a rule"""
+  def __init__(self, protocol, source_ports, destination_ports, icmp_types):
+    """
+    Args:
+      protocol: str, protocol
+      source_ports: str list or none, the source port
+      destination_ports: str list or none, the destination port
+      icmp_types: icmp-type numeric specification (if any)
+    """
+    self.protocol = protocol
+    self.source_ports = source_ports
+    self.destination_ports = destination_ports
+    self.icmp_types = icmp_types
+
+  def __str__(self):
+    # Handle ICMP and ICMPv6
+    if self.protocol == 1 or self.protocol == 58:
+      service = {
+        "protocol": _PROTOCOLS[self.protocol],
+        "resource_type": "ICMPTypeServiceEntry",
+      }
+      if not self.icmp_types:
+        return json.dumps([service])
+      
+      # Handle ICMP types
+      services = []
+      for icmp_type in self.icmp_types:
+        new_service = service.copy()
+        new_service["icmp_type"] = icmp_type
+        services.append(new_service)
+        return json.dumps(services)
+      
+    # Handle TCP and UDP
+    elif self.protocol == 6 or self.protocol == 17:
+      service = {
+        "l4_protocol": _PROTOCOLS[self.protocol],
+        "resource_type": "L4PortSetServiceEntry",
+      }
+
+      # Handle Layer 4 Ports
+      if self.source_ports:
+        service["source_ports"] = self.source_ports
+        
+      if self.destination_ports:
+        service["destination_ports"] = self.destination_ports
+      return json.dumps([service])
+    else:
+      return json.dumps([])
 
 class Term(aclgenerator.Term):
   """Creates a single ACL Term for NSX-T."""
@@ -144,28 +200,14 @@ class Term(aclgenerator.Term):
       for i in self.term.destination_address:
         destination_address.append(str(i))
 
-    # Intentionally left with default values as these fields are mandatory in
-    # the API. If they need to be configured these should be extended to be
-    # read from the policy files.
-
-    services = 'ANY'
-
-    profiles = 'ANY'
-
-    scope = 'ANY'
-
-    if not self.term.destination_address:
-      direction = "IN"
-    elif not self.term.source_address:
-      direction = 'OUT'
-    else:
-      direction = 'IN_OUT'
-
-    tag = ''
-
-    ip_protocol = ''
     if self.term.protocol:
-      ip_protocol = self.term.protocol
+      protocol = list(map(self.PROTO_MAP.get, self.term.protocol,
+                          self.term.protocol))
+      icmp_types = ['']
+      if self.term.icmp_type:
+        icmp_types = self.NormalizeIcmpTypes(self.term.icmp_type,
+                                              self.term.protocol,
+                                              self.af)
 
     rule = {
       "action": action,
@@ -173,20 +215,13 @@ class Term(aclgenerator.Term):
       "display_name": name,
       "source_groups": source_address,
       "destination_groups": destination_address,
-      "services": [
-          services
-      ],
-      "profiles": [
-          profiles
-      ],
-      "scope": [
-          scope
-      ],
+      "services": ["ANY"],
+      "profiles": ["ANY"],
+      "scope": ["ANY"],
       "logged": bool(self.term.logging),
       "notes": notes,
-      "direction": direction,
-      "tag": tag,
-      "ip_protocol": ip_protocol
+      "direction": 'IN_OUT',
+      "ip_protocol": "IPV4_IPV6"
     }
 
     return json.dumps(rule)
