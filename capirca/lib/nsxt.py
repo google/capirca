@@ -189,19 +189,19 @@ class Term(aclgenerator.Term):
 
     notes = ''
     if self.term.comment:
-      notes = self.term.comment
+      notes = '\n'.join(self.term.comment)
 
     action = 'ALLOW'
     if self.term.action:
       action = _ACTION_TABLE.get(self.term.action[0])
 
-    source_address = 'ANY'
+    source_address = ['ANY']
     if self.term.source_address:
       source_address = []
       for i in self.term.source_address:
         source_address.append(str(i))
 
-    destination_address = 'ANY'
+    destination_address = ['ANY']
     if self.term.destination_address:
       destination_address = []
       for i in self.term.destination_address:
