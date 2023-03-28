@@ -56,6 +56,26 @@ INET_FILTER = """\
     action:: accept
   }
   """
+INET_RESPONSE = {
+  "action": "ALLOW",
+  "resource_type": "Rule",
+  "display_name": "allow-ntp-request",
+  "source_groups": ["10.0.0.1/32", "10.0.0.2/32"],
+  "destination_groups": ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
+  "services": ["ANY"],
+  "profiles": ["ANY"],
+  "scope": ["ANY"],
+  "logged": False,
+  "notes": "Allow ntp request",
+  "direction": "IN_OUT",
+  "ip_protocol": "IPV4_IPV6",
+  "service_entries": [{
+    "l4_protocol": "UDP",
+    "resource_type": "L4PortSetServiceEntry",
+    "source_ports": ["123-123"],
+    "destination_ports": ["123-123"]
+  }]
+}
 
 INET_FILTER_2 = """\
   header {
@@ -126,6 +146,25 @@ INET6_FILTER = """\
     action:: accept
   }
   """
+INET6_RESPONSE = {
+  'action': 'ALLOW',
+  'resource_type': 'Rule',
+  'display_name': 'test-icmpv6',
+  'source_groups': ['ANY'],
+  'destination_groups': ['ANY'],
+  'services': ['ANY'],
+  'profiles': ['ANY'],
+  'scope': ['ANY'],
+  'logged': False,
+  'notes': '',
+  'direction': 'IN_OUT',
+  'ip_protocol': 'IPV4_IPV6',
+  'service_entries': [{
+    'protocol': 'ICMPv6',
+    'resource_type': 'ICMPTypeServiceEntry',
+    'icmp_type': 128
+  }]
+}
 
 MIXED_FILTER = """\
   header {
@@ -398,84 +437,46 @@ class TermTest(absltest.TestCase):
     super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
-  def testInitForinet(self):
-    """Test for Term._init_."""
-    inet_term = nsxt.Term(INET_TERM, 'inet')
-    self.assertEqual(inet_term.af, 4)
-    self.assertEqual(inet_term.filter_type, 'inet')
-
-  def testInitForinet6(self):
-    """Test for Term._init_."""
-    inet6_term = nsxt.Term(INET6_TERM, 'inet6', None, 6)
-    self.assertEqual(inet6_term.af, 6)
-    self.assertEqual(inet6_term.filter_type, 'inet6')
-
-  def testStrForinet(self):
-    """Test for Term._str_."""
+  def test_inet_term(self):
+    """Test __init__ and __str__ for term inet"""
     self.naming.GetNetAddr.side_effect = [
         [nacaddr.IP('10.0.0.1'), nacaddr.IP('10.0.0.2')],
         [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('172.16.0.0/12'),
          nacaddr.IP('192.168.0.0/16')]]
     self.naming.GetServiceByProto.return_value = ['123']
 
-    pol = policy.ParsePolicy(INET_FILTER, self.naming, False)
+    policies = policy.ParsePolicy(INET_FILTER, self.naming, False)
     af = 4
-    for _, terms in pol.filters:
-      nsxt_term = nsxt.Term(terms[0], af)
-      rule_str = nsxt.Term.__str__(nsxt_term)
-    # parse json rule and check if the values are correct
+    pol = policies.filters[0]
+    terms = pol[1]
+    term = terms[0]
+
+    nsxt_term = nsxt.Term(term, af)
+    rule_str = str(nsxt_term)
     rule = json.loads(rule_str)
-    # check name and action
-    self.assertEqual(rule["display_name"], 'allow-ntp-request')
-    self.assertEqual(rule["action"][0], 'accept')
 
-    # check source address
-    exp_sourceaddr = ['10.0.0.1/32', '10.0.0.2/32']
-    source_address = rule["source_groups"]
-    self.assertNotEqual(len(source_address), 0)
-    for source in source_address:
-      if source not in exp_sourceaddr:
-        self.fail('IPv4Address source address not found in test_str_forinet()')
-
-    # check destination address
-    exp_destaddr = ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']
-    destination_address = rule["destination_groups"]
-    self.assertNotEqual(len(destination_address), 0)
-    for destination in destination_address:
-      if destination not in exp_destaddr:
-        self.fail('IPv4Address destination not found in test_str_forinet()')
-
-    # check protocol
-    protocol = rule["ip_protocol"]
-    self.assertEqual(protocol, ['udp'])
-
-    # check notes
-    notes = rule["notes"]
-    self.assertEqual(notes[0], 'Allow ntp request')
+    self.assertEqual(nsxt_term.af, af)
+    self.assertEqual(rule, INET_RESPONSE)
 
     self.naming.GetNetAddr.assert_has_calls(
         [mock.call('NTP_SERVERS'), mock.call('INTERNAL')])
     self.naming.GetServiceByProto.assert_has_calls(
         [mock.call('NTP', 'udp')] * 2)
 
-  def testStrForinet6(self):
-    """Test for Term._str_."""
-    pol = policy.ParsePolicy(INET6_FILTER, self.naming, False)
+  def test_inet6_term(self):
+    """Test __init__ and __str__ for term inet6"""
+    policies = policy.ParsePolicy(INET6_FILTER, self.naming, False)
     af = 6
     filter_type = 'inet6'
-    for _, terms in pol.filters:
-      nsxt_term = nsxt.Term(terms[0], filter_type, None, af)
-      rule_str = nsxt.Term.__str__(nsxt_term)
+    pol = policies.filters[0]
+    terms = pol[1]
+    term = terms[0]
 
-    # parse json rule and check if the values are correct
+    nsxt_term = nsxt.Term(term, filter_type, None, af)
+    rule_str = str(nsxt_term)
     rule = json.loads(rule_str)
-    # check name and action
-    self.assertEqual(rule["display_name"], 'test-icmpv6')
-    self.assertEqual(rule["action"][0], 'accept')
 
-    # check protocol and sub protocol
-    protocol = rule["ip_protocol"]
-    self.assertEqual(protocol, ['icmpv6'])
+    self.assertEqual(rule, INET6_RESPONSE)
 
   def testTranslatePolicy(self):
     """Test for Nsxt.test_TranslatePolicy."""
@@ -602,7 +603,7 @@ class TermTest(absltest.TestCase):
     rule = target_json["rules"][0]
     # check name and action
     self.assertEqual(rule["display_name"], 'accept-to-honestdns')
-    self.assertEqual(rule["action"][0], 'accept')
+    self.assertEqual(rule["action"], 'ALLOW')
 
     # check IPV4 and IPV6 destinations
     exp_dest = ['8.8.4.4/32', '8.8.8.8/32', '2001:4860:4860::8844/128', '2001:4860:4860::8888/128']
@@ -613,13 +614,9 @@ class TermTest(absltest.TestCase):
         if destination not in exp_dest:
           self.fail('Group not found in test_nsxt_str()')
 
-    # check protocol
-    protocol = rule["ip_protocol"]
-    self.assertEqual(protocol, ['udp'])
-
     # check notes
     notes = rule["notes"]
-    self.assertEqual(notes[0], 'Allow name resolution using honestdns.')
+    self.assertEqual(notes, 'Allow name resolution using honestdns.')
 
     self.naming.GetNetAddr.assert_called_once_with('GOOGLE_DNS')
     self.naming.GetServiceByProto.assert_called_once_with('DNS', 'udp')
@@ -635,11 +632,7 @@ class TermTest(absltest.TestCase):
     rule = target_json["rules"][0]
     # check name and action
     self.assertEqual(rule["display_name"], 'accept-icmp')
-    self.assertEqual(rule["action"][0], 'accept')
-
-    # check protocol
-    protocol = rule["ip_protocol"]
-    self.assertEqual(protocol, ['icmp'])
+    self.assertEqual(rule["action"], 'ALLOW')
 
   def testBuildTokens(self):
     self.naming.GetNetAddr.side_effect = [
@@ -677,7 +670,7 @@ class TermTest(absltest.TestCase):
       pol._ParseFilterOptions(filter_options)
       self.assertEqual(nsxt.Nsxt._FILTER_OPTIONS_DICT['filter_type'], 'inet')
       self.assertEqual(nsxt.Nsxt._FILTER_OPTIONS_DICT['section_id'], '1009')
-      self.assertIsNone(nsxt.Nsxt._FILTER_OPTIONS_DICT['applied_to'])
+      self.assertEqual(nsxt.Nsxt._FILTER_OPTIONS_DICT['applied_to'], 'ANY')
 
   def testParseFilterOptionsCase2(self):
     pol = nsxt.Nsxt(policy.ParsePolicy(HEADER_WITH_SECURITYGROUP + INET6_TERM,
