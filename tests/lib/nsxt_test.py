@@ -23,16 +23,7 @@ from capirca.lib import naming
 from capirca.lib import nsxt
 from capirca.lib import policy
 
-INET_TERM = """\
-  term permit-mail-services {
-    destination-address:: MAIL_SERVERS
-    protocol:: tcp
-    destination-port:: MAIL_SERVICES
-    action:: accept
-  }
-  """
-
-INET6_TERM = """\
+ICMPV6_TERM = """\
   term test-icmpv6 {
     protocol:: icmpv6
     icmp-type:: echo-request echo-reply
@@ -40,7 +31,7 @@ INET6_TERM = """\
   }
   """
 
-INET_FILTER = """\
+UDP_POLICY = """\
   header {
     comment:: "Sample inet NSXT filter"
     target:: nsxt INET_FILTER_NAME inet
@@ -56,7 +47,36 @@ INET_FILTER = """\
     action:: accept
   }
   """
-INET_RESPONSE = {
+
+UDP_NSXT_POLICY = {
+  'rules': [{
+    'action': 'ALLOW',
+    'resource_type': 'Rule',
+    'display_name': 'allow-ntp-request',
+    'source_groups': ['10.0.0.1/32', '10.0.0.2/32'],
+    'destination_groups': ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'],
+    'services': ['ANY'],
+    'profiles': ['ANY'],
+    'scope': ['ANY'],
+    'logged': False,
+    'notes': 'Allow ntp request',
+    'direction': 'IN_OUT',
+    'ip_protocol': 'IPV4_IPV6',
+    'service_entries': [{
+      'l4_protocol': 'UDP',
+      'resource_type': 'L4PortSetServiceEntry',
+      'source_ports': ['123-123'],
+      'destination_ports': ['123-123']
+    }]
+  }],
+  'resource_type': 'SecurityPolicy',
+  'display_name': 'INET_FILTER_NAME',
+  'category': 'Application',
+  'is_default': 'false',
+  'scope': ['ANY']
+}
+
+UDP_RULE = {
   "action": "ALLOW",
   "resource_type": "Rule",
   "display_name": "allow-ntp-request",
@@ -77,65 +97,9 @@ INET_RESPONSE = {
   }]
 }
 
-INET_FILTER_2 = """\
+ICMPV6_POLICY = """\
   header {
-    comment:: "Sample inet NSXT filter"
-    target:: nsxt INET_FILTER2_NAME inet
-  }
-
-  term allow-ntp-request {
-    comment::"Allow ntp request"
-    source-address:: NTP_SERVERS
-    source-port:: NTP
-    destination-address:: INTERNAL
-    destination-port:: NTP
-    protocol:: udp
-    policer:: batman
-    action:: accept
-  }
-  """
-
-INET_FILTER_WITH_ESTABLISHED = """\
-  header {
-    comment:: "Sample inet NSXT filter"
-    target:: nsxt INET_FILTER_WITH_ESTABLISHED_NAME inet
-  }
-
-  term allow-ntp-request {
-    comment::"Allow ntp request"
-    source-address:: NTP_SERVERS
-    source-port:: NTP
-    destination-address:: INTERNAL
-    destination-port:: NTP
-    protocol:: udp
-    option:: tcp-established
-    policer:: batman
-    action:: accept
-  }
-  """
-MIXED_HEADER = """\
-  header {
-    comment:: "Sample mixed NSXT filter"
-    target:: nsxt MIXED_HEADER_NAME mixed
-  }
-
-"""
-
-INET_HEADER = """\
-  header {
-    comment:: "Sample mixed NSXT filter"
-    target:: nsxt INET_HEADER_NAME inet
-  }
-
-"""
-
-MIXED_FILTER_INET_ONLY = MIXED_HEADER + INET_TERM
-
-INET_FILTER_NO_SOURCE = INET_HEADER + INET_TERM
-
-INET6_FILTER = """\
-  header {
-    comment:: "Sample inet6 NSXT filter"
+    comment:: "Sample ICMPv6 NSXT filter"
     target:: nsxt INET6_FILTER_NAME inet6
   }
 
@@ -146,7 +110,8 @@ INET6_FILTER = """\
     action:: accept
   }
   """
-INET6_RESPONSE = {
+
+ICMPV6_RULE = {
   'action': 'ALLOW',
   'resource_type': 'Rule',
   'display_name': 'test-icmpv6',
@@ -166,7 +131,7 @@ INET6_RESPONSE = {
   }]
 }
 
-MIXED_FILTER = """\
+UDP_AND_TCP_POLICY = """\
   header {
     comment:: "Sample mixed NSXT filter"
     target:: nsxt MIXED_FILTER_NAME mixed
@@ -179,23 +144,67 @@ MIXED_FILTER = """\
     protocol:: udp
     action:: accept
   }
-  """
 
-POLICY = """\
-  header {
-    comment:: "Sample NSXT filter"
-    target:: nsxt POLICY_NAME inet
-  }
-
-  term reject-imap-requests {
+  term permit-mail-services {
     destination-address:: MAIL_SERVERS
-    destination-port:: IMAP
     protocol:: tcp
-    action:: reject-with-tcp-rst
+    destination-port:: MAIL_SERVICES
+    action:: accept
   }
   """
 
-POLICY_WITH_SECURITY_GROUP = """\
+UDP_AND_TCP_NSXT_POLICY = {
+  'rules': [{
+    'action': 'ALLOW',
+    'resource_type': 'Rule',
+    'display_name': 'accept-to-honestdns',
+    'source_groups': ['ANY'],
+    'destination_groups': [
+      '8.8.4.4/32',
+      '8.8.8.8/32',
+      '2001:4860:4860::8844/128',
+      '2001:4860:4860::8888/128'
+    ],
+    'services': ['ANY'],
+    'profiles': ['ANY'],
+    'scope': ['ANY'],
+    'logged': False,
+    'notes': 'Allow name resolution using honestdns.',
+    'direction': 'IN_OUT',
+    'ip_protocol': 'IPV4_IPV6',
+    'service_entries': [{
+      'l4_protocol': 'UDP',
+      'resource_type': 'L4PortSetServiceEntry',
+      'destination_ports': ['53-53']
+    }]
+  },
+    {
+      'action': 'ALLOW',
+      'resource_type': 'Rule',
+      'display_name': 'permit-mail-services',
+      'source_groups': ['ANY'],
+      'destination_groups': ['2001:4860:4860::8845'],
+      'services': ['ANY'],
+      'profiles': ['ANY'],
+      'scope': ['ANY'],
+      'logged': False,
+      'notes': '',
+      'direction': 'IN_OUT',
+      'ip_protocol': 'IPV4_IPV6',
+      'service_entries': [{
+        'l4_protocol': 'TCP',
+        'resource_type': 'L4PortSetServiceEntry',
+        'destination_ports': ['53-53']
+      }]
+    }],
+  'resource_type': 'SecurityPolicy',
+  'display_name': 'MIXED_FILTER_NAME',
+  'category': 'Application',
+  'is_default': 'false',
+  'scope': ['ANY']
+}
+
+ICMP_POLICY_WITH_SECURITY_GROUP = """\
   header {
     comment:: "Sample filter with Security Group"
     target:: nsxt POLICY_WITH_SECURITY_GROUP_NAME inet 1010 securitygroup \
@@ -208,20 +217,31 @@ POLICY_WITH_SECURITY_GROUP = """\
   }
   """
 
-HEADER_WITH_SECTIONID = """\
-  header {
-    comment:: "Sample NSXT filter1"
-    target:: nsxt HEADER_WITH_SECTIONID_NAME inet 1009
-  }
-  """
-
-HEADER_WITH_SECURITYGROUP = """\
-  header {
-    comment:: "Sample NSXT filter2"
-    target:: nsxt HEADER_WITH_SECURITYGROUP_NAME inet6 securitygroup \
-    securitygroup-Id1
-  }
-  """
+ICMP_NSXT_POLICY_WITH_SECURITY_GROUP = {
+  'rules': [{
+    'action': 'ALLOW',
+    'resource_type': 'Rule',
+    'display_name': 'accept-icmp',
+    'source_groups': ['ANY'],
+    'destination_groups': ['ANY'],
+    'services': ['ANY'],
+    'profiles': ['ANY'],
+    'scope': ['ANY'],
+    'logged': False,
+    'notes': '',
+    'direction': 'IN_OUT',
+    'ip_protocol': 'IPV4_IPV6',
+    'service_entries': [{
+      'protocol': 'ICMPv4',
+      'resource_type': 'ICMPTypeServiceEntry'
+    }]
+  }],
+  'resource_type': 'SecurityPolicy',
+  'display_name': 'POLICY_WITH_SECURITY_GROUP_NAME',
+  'category': 'Application',
+  'is_default': 'false',
+  'scope': ['securitygroup-Id']
+}
 
 BAD_HEADER = """\
   header {
@@ -259,176 +279,9 @@ BAD_HEADER_4 = """\
   }
   """
 
-TERM = """\
-  term accept-icmp {
-    protocol:: icmp
-    action:: accept
-  }
-  """
-
-MIXED_TO_V4 = """\
-  term mixed_to_v4 {
-    source-address:: GOOGLE_DNS
-    destination-address:: INTERNAL
-    protocol:: tcp udp
-    action:: accept
-  }
-  """
-
-V4_TO_MIXED = """\
-  term v4_to_mixed {
-    source-address:: INTERNAL
-    destination-address:: GOOGLE_DNS
-    protocol:: tcp udp
-    action:: accept
-  }
-  """
-
-MIXED_TO_V6 = """\
-  term mixed_to_v6 {
-    source-address:: GOOGLE_DNS
-    destination-address:: SOME_HOST
-    action:: accept
-  }
-  """
-
-V6_TO_MIXED = """\
-  term v6_to_mixed {
-    source-address:: SOME_HOST
-    destination-address:: GOOGLE_DNS
-    action:: accept
-  }
-  """
-
-MIXED_TO_MIXED = """\
-  term mixed_to_mixed {
-    source-address:: GOOGLE_DNS
-    destination-address:: GOOGLE_DNS
-    action:: accept
-  }
-  """
-
-MIXED_TO_ANY = """\
-  term mixed_to_any {
-    source-address:: GOOGLE_DNS
-    action:: accept
-  }
-  """
-
-ANY_TO_MIXED = """\
-  term any_to_mixed {
-    destination-address:: GOOGLE_DNS
-    action:: accept
-  }
-  """
-
-V4_TO_V4 = """\
-  term v4_to_v4 {
-    source-address:: NTP_SERVERS
-    destination-address:: INTERNAL
-    action:: accept
-  }
-  """
-
-V6_TO_V6 = """\
-  term v6_to_v6 {
-    source-address:: SOME_HOST
-    destination-address:: SOME_HOST
-    action:: accept
-  }
-  """
-
-V4_TO_V6 = """\
-  term v4_to_v6 {
-    source-address:: INTERNAL
-    destination-address:: SOME_HOST
-    action:: accept
-  }
-  """
-
-V6_TO_V4 = """\
-  term v6_to_v4 {
-    source-address:: SOME_HOST
-    destination-address:: INTERNAL
-    action:: accept
-  }
-  """
-
-SUPPORTED_TOKENS = {
-    'action',
-    'comment',
-    'destination_address',
-    'destination_address_exclude',
-    'destination_port',
-    'expiration',
-    'expiration',
-    'icmp_type',
-    'stateless_reply',
-    'name',
-    'protocol',
-    'source_address',
-    'source_address_exclude',
-    'source_port',
-    'option',
-    'platform',
-    'platform_exclude',
-    'translated',
-    'verbatim',
-}
-
-SUPPORTED_SUB_TOKENS = {
-    'action': {'next', 'accept', 'deny', 'reject', 'reject-with-tcp-rst'},
-    'icmp_type': {
-        'alternate-address',
-        'certification-path-advertisement',
-        'certification-path-solicitation',
-        'conversion-error',
-        'destination-unreachable',
-        'echo-reply',
-        'echo-request',
-        'mobile-redirect',
-        'home-agent-address-discovery-reply',
-        'home-agent-address-discovery-request',
-        'icmp-node-information-query',
-        'icmp-node-information-response',
-        'information-request',
-        'inverse-neighbor-discovery-advertisement',
-        'inverse-neighbor-discovery-solicitation',
-        'mask-reply',
-        'mask-request',
-        'information-reply',
-        'mobile-prefix-advertisement',
-        'mobile-prefix-solicitation',
-        'multicast-listener-done',
-        'multicast-listener-query',
-        'multicast-listener-report',
-        'multicast-router-advertisement',
-        'multicast-router-solicitation',
-        'multicast-router-termination',
-        'neighbor-advertisement',
-        'neighbor-solicit',
-        'packet-too-big',
-        'parameter-problem',
-        'redirect',
-        'redirect-message',
-        'router-advertisement',
-        'router-renumbering',
-        'router-solicit',
-        'router-solicitation',
-        'source-quench',
-        'time-exceeded',
-        'timestamp-reply',
-        'timestamp-request',
-        'unreachable',
-        'version-2-multicast-listener-report',
-    },
-    'option': {'first-fragment', 'established', 'tcp-established', 'initial', 'sample', 'rst', 'is-fragment'}
-}
-
 # Print a info message when a term is set to expire in that many weeks.
 # This is normally passed from command line.
 EXP_INFO = 2
-_PLATFORM = 'nsxt'
 
 
 class TermTest(absltest.TestCase):
@@ -437,15 +290,15 @@ class TermTest(absltest.TestCase):
     super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
-  def test_inet_term(self):
-    """Test __init__ and __str__ for term inet"""
+  def test_udp_term(self):
+    """Test __init__ and __str__ for udp term defining destination and source addresses and ports"""
     self.naming.GetNetAddr.side_effect = [
         [nacaddr.IP('10.0.0.1'), nacaddr.IP('10.0.0.2')],
         [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('172.16.0.0/12'),
          nacaddr.IP('192.168.0.0/16')]]
     self.naming.GetServiceByProto.return_value = ['123']
 
-    policies = policy.ParsePolicy(INET_FILTER, self.naming, False)
+    policies = policy.ParsePolicy(UDP_POLICY, self.naming, False)
     af = 4
     pol = policies.filters[0]
     terms = pol[1]
@@ -456,16 +309,16 @@ class TermTest(absltest.TestCase):
     rule = json.loads(rule_str)
 
     self.assertEqual(nsxt_term.af, af)
-    self.assertEqual(rule, INET_RESPONSE)
+    self.assertEqual(rule, UDP_RULE)
 
     self.naming.GetNetAddr.assert_has_calls(
         [mock.call('NTP_SERVERS'), mock.call('INTERNAL')])
     self.naming.GetServiceByProto.assert_has_calls(
         [mock.call('NTP', 'udp')] * 2)
 
-  def test_inet6_term(self):
+  def test_icmpv6_term(self):
     """Test __init__ and __str__ for term inet6"""
-    policies = policy.ParsePolicy(INET6_FILTER, self.naming, False)
+    policies = policy.ParsePolicy(ICMPV6_POLICY, self.naming, False)
     af = 6
     filter_type = 'inet6'
     pol = policies.filters[0]
@@ -476,9 +329,9 @@ class TermTest(absltest.TestCase):
     rule_str = str(nsxt_term)
     rule = json.loads(rule_str)
 
-    self.assertEqual(rule, INET6_RESPONSE)
+    self.assertEqual(rule, ICMPV6_RULE)
 
-  def testTranslatePolicy(self):
+  def test_udp_policy(self):
     """Test for Nsxt.test_TranslatePolicy."""
     self.naming.GetNetAddr.side_effect = [
         [nacaddr.IP('10.0.0.1'), nacaddr.IP('10.0.0.2')],
@@ -486,377 +339,71 @@ class TermTest(absltest.TestCase):
          nacaddr.IP('192.168.0.0/16')]]
     self.naming.GetServiceByProto.return_value = ['123']
 
-    pol = policy.ParsePolicy(INET_FILTER, self.naming, False)
-    translate_pol = nsxt.Nsxt(pol, EXP_INFO)
-    nsxt_policies = translate_pol.nsxt_policies
-    for (_, filter_name, filter_list, terms) in nsxt_policies:
-      self.assertEqual(filter_name, 'inet')
-      self.assertEqual(filter_list, [''])
-      self.assertEqual(len(terms), 1)
+    pol = policy.ParsePolicy(UDP_POLICY, self.naming, False)
+    nsxt_policy = nsxt.Nsxt(pol, EXP_INFO)
+    api_policy = json.loads(str(nsxt_policy))
 
+    self.assertEqual(api_policy, UDP_NSXT_POLICY)
     self.naming.GetNetAddr.assert_has_calls(
         [mock.call('NTP_SERVERS'), mock.call('INTERNAL')])
     self.naming.GetServiceByProto.assert_has_calls(
         [mock.call('NTP', 'udp')] * 2)
 
-  def testTranslatePolicyMixedFilterInetOnly(self):
-    """Test for Nsxt.test_TranslatePolicy. Testing Mixed filter with inet."""
-    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8')]
-    self.naming.GetServiceByProto.return_value = ['25']
-
-    pol = policy.ParsePolicy(MIXED_FILTER_INET_ONLY, self.naming, False)
-    translate_pol = nsxt.Nsxt(pol, EXP_INFO)
-    nsxt_policies = translate_pol.nsxt_policies
-    for (_, filter_name, filter_list, terms) in nsxt_policies:
-      self.assertEqual(filter_name, 'mixed')
-      self.assertEqual(filter_list, [''])
-      self.assertEqual(len(terms), 1)
-      self.assertIn('10.0.0.0/8', str(terms[0]))
-
-    self.naming.GetNetAddr.assert_has_calls(
-        [mock.call('MAIL_SERVERS')])
-    self.naming.GetServiceByProto.assert_has_calls(
-        [mock.call('MAIL_SERVICES', 'tcp')] * 1)
-
-  def testTranslatePolicyMixedFilterInet6Only(self):
-    """Test for Nsxt.test_TranslatePolicy. Testing Mixed filter with inet6."""
-    self.naming.GetNetAddr.return_value = [nacaddr.IP('2001:4860:4860::8844')]
-
-    self.naming.GetServiceByProto.return_value = ['25']
-
-    pol = policy.ParsePolicy(MIXED_FILTER_INET_ONLY, self.naming, False)
-    translate_pol = nsxt.Nsxt(pol, EXP_INFO)
-    nsxt_policies = translate_pol.nsxt_policies
-    for (_, filter_name, filter_list, terms) in nsxt_policies:
-      self.assertEqual(filter_name, 'mixed')
-      self.assertEqual(filter_list, [''])
-      self.assertEqual(len(terms), 1)
-      self.assertIn('2001:4860:4860::8844', str(terms[0]))
-
-    self.naming.GetNetAddr.assert_has_calls(
-        [mock.call('MAIL_SERVERS')])
-    self.naming.GetServiceByProto.assert_has_calls(
-        [mock.call('MAIL_SERVICES', 'tcp')] * 1)
-
-  def testTranslatePolicyMixedFilterInetMixed(self):
-    """Test for Nsxt.test_TranslatePolicy. Testing Mixed filter with mixed."""
-    self.naming.GetNetAddr.return_value = [
-        nacaddr.IP('2001:4860:4860::8844'),
-        nacaddr.IP('10.0.0.0/8')
-    ]
-    self.naming.GetServiceByProto.return_value = ['25']
-
-    pol = policy.ParsePolicy(MIXED_FILTER_INET_ONLY, self.naming, False)
-    translate_pol = nsxt.Nsxt(pol, EXP_INFO)
-    nsxt_policies = translate_pol.nsxt_policies
-    for (_, filter_name, filter_list, terms) in nsxt_policies:
-      self.assertEqual(filter_name, 'mixed')
-      self.assertEqual(filter_list, [''])
-      self.assertEqual(len(terms), 1)
-      self.assertIn('2001:4860:4860::8844', str(terms[0]))
-      self.assertIn('10.0.0.0/8', str(terms[0]))
-
-    self.naming.GetNetAddr.assert_has_calls(
-        [mock.call('MAIL_SERVERS')])
-    self.naming.GetServiceByProto.assert_has_calls(
-        [mock.call('MAIL_SERVICES', 'tcp')] * 1)
-
-  def testTranslatePolicyWithEstablished(self):
-    """Test for Nsxt.test_TranslatePolicy."""
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IP('10.0.0.1'), nacaddr.IP('10.0.0.2')],
-        [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('172.16.0.0/12'),
-         nacaddr.IP('192.168.0.0/16')]]
-    self.naming.GetServiceByProto.return_value = ['123']
-
-    pol = policy.ParsePolicy(INET_FILTER_WITH_ESTABLISHED, self.naming, False)
-    translate_pol = nsxt.Nsxt(pol, EXP_INFO)
-    nsxt_policies = translate_pol.nsxt_policies
-    for (_, filter_name, filter_list, terms) in nsxt_policies:
-      self.assertEqual(filter_name, 'inet')
-      self.assertEqual(filter_list, [''])
-      self.assertEqual(len(terms), 1)
-
-      self.assertNotIn('<sourcePort>123</sourcePort><destinationPort>123',
-                       str(terms[0]))
-
-    self.naming.GetNetAddr.assert_has_calls(
-        [mock.call('NTP_SERVERS'), mock.call('INTERNAL')])
-    self.naming.GetServiceByProto.assert_has_calls(
-        [mock.call('NTP', 'udp')] * 2)
-
-  def testNsxtStr(self):
+  def test_udp_and_tcp_policy(self):
     """Test for Nsxt._str_."""
     self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IP('8.8.4.4'),
-         nacaddr.IP('8.8.8.8'),
-         nacaddr.IP('2001:4860:4860::8844'),
-         nacaddr.IP('2001:4860:4860::8888')]]
+      [
+        nacaddr.IP('8.8.4.4'),
+        nacaddr.IP('8.8.8.8'),
+        nacaddr.IP('2001:4860:4860::8844'),
+        nacaddr.IP('2001:4860:4860::8888')
+      ],
+      nacaddr.IP('2001:4860:4860::8845')]
     self.naming.GetServiceByProto.return_value = ['53']
 
-    pol = policy.ParsePolicy(MIXED_FILTER, self.naming, False)
-    target = nsxt.Nsxt(pol, EXP_INFO)
+    pol = policy.ParsePolicy(UDP_AND_TCP_POLICY, self.naming, False)
+    nsxt_policy = nsxt.Nsxt(pol, EXP_INFO)
+    api_policy = json.loads(str(nsxt_policy))
 
-    # parse the output and seperate sections and comment
-    target_json = json.loads(str(target))
-
-    rule = target_json["rules"][0]
-    # check name and action
-    self.assertEqual(rule["display_name"], 'accept-to-honestdns')
-    self.assertEqual(rule["action"], 'ALLOW')
-
-    # check IPV4 and IPV6 destinations
-    exp_dest = ['8.8.4.4/32', '8.8.8.8/32', '2001:4860:4860::8844/128', '2001:4860:4860::8888/128']
-
-    destination_groups = rule["destination_groups"]
-    self.assertNotEqual(len(destination_groups), 0)
-    for destination in destination_groups:
-        if destination not in exp_dest:
-          self.fail('Group not found in test_nsxt_str()')
-
-    # check notes
-    notes = rule["notes"]
-    self.assertEqual(notes, 'Allow name resolution using honestdns.')
-
-    self.naming.GetNetAddr.assert_called_once_with('GOOGLE_DNS')
-    self.naming.GetServiceByProto.assert_called_once_with('DNS', 'udp')
-
-  def testNsxtStrWithSecurityGroup(self):
-    """Test for Nsxt._str_."""
-    pol = policy.ParsePolicy(POLICY_WITH_SECURITY_GROUP, self.naming, False)
-    target = nsxt.Nsxt(pol, EXP_INFO)
-
-    # parse the output and seperate sections and comment
-    target_json = json.loads(str(target))
-
-    rule = target_json["rules"][0]
-    # check name and action
-    self.assertEqual(rule["display_name"], 'accept-icmp')
-    self.assertEqual(rule["action"], 'ALLOW')
-
-  def testBuildTokens(self):
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IP('10.0.0.1'), nacaddr.IP('10.0.0.2')],
-        [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('172.16.0.0/12'),
-         nacaddr.IP('192.168.0.0/16')]]
-    self.naming.GetServiceByProto.return_value = ['123']
-    pol1 = nsxt.Nsxt(policy.ParsePolicy(INET_FILTER, self.naming), 2)
-    st, sst = pol1._BuildTokens()
-    self.assertEqual(st, SUPPORTED_TOKENS)
-    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
+    self.assertEqual(api_policy, UDP_AND_TCP_NSXT_POLICY)
 
     self.naming.GetNetAddr.assert_has_calls(
-        [mock.call('NTP_SERVERS'), mock.call('INTERNAL')])
+        [mock.call('GOOGLE_DNS'), mock.call('MAIL_SERVERS')])
+    self.naming.GetServiceByProto.assert_has_calls(
+        [mock.call('DNS', 'udp'), mock.call('MAIL_SERVICES', 'tcp')])
 
-  def testBuildWarningTokens(self):
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IP('10.0.0.1'), nacaddr.IP('10.0.0.2')],
-        [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('172.16.0.0/12'),
-         nacaddr.IP('192.168.0.0/16')]]
-    self.naming.GetServiceByProto.return_value = ['123']
+  def test_icmp_policy_with_security_group(self):
+    """Test for Nsxt._str_ with security group in scope"""
+    pol = policy.ParsePolicy(ICMP_POLICY_WITH_SECURITY_GROUP, self.naming, False)
+    nsxt_policy = nsxt.Nsxt(pol, EXP_INFO)
+    api_policy = json.loads(str(nsxt_policy))
 
-    pol1 = nsxt.Nsxt(policy.ParsePolicy(INET_FILTER_2, self.naming), 2)
-    st, sst = pol1._BuildTokens()
-    self.assertEqual(st, SUPPORTED_TOKENS)
-    self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
-    self.naming.GetNetAddr.assert_has_calls(
-        [mock.call('NTP_SERVERS'), mock.call('INTERNAL')])
+    self.assertEqual(api_policy, ICMP_NSXT_POLICY_WITH_SECURITY_GROUP)
 
-  def testParseFilterOptionsCase1(self):
-    pol = nsxt.Nsxt(policy.ParsePolicy(HEADER_WITH_SECTIONID + TERM,
-                                       self.naming, False), EXP_INFO)
-    for (header, _, _, _) in pol.nsxt_policies:
-      filter_options = header.FilterOptions(_PLATFORM)
-      pol._ParseFilterOptions(filter_options)
-      self.assertEqual(nsxt.Nsxt._FILTER_OPTIONS_DICT['filter_type'], 'inet')
-      self.assertEqual(nsxt.Nsxt._FILTER_OPTIONS_DICT['section_id'], '1009')
-      self.assertEqual(nsxt.Nsxt._FILTER_OPTIONS_DICT['applied_to'], 'ANY')
-
-  def testParseFilterOptionsCase2(self):
-    pol = nsxt.Nsxt(policy.ParsePolicy(HEADER_WITH_SECURITYGROUP + INET6_TERM,
-                                       self.naming, False), EXP_INFO)
-    for (header, _, _, _) in pol.nsxt_policies:
-      filter_options = header.FilterOptions(_PLATFORM)
-      pol._ParseFilterOptions(filter_options)
-      self.assertEqual(nsxt.Nsxt._FILTER_OPTIONS_DICT['filter_type'], 'inet6')
-      self.assertEqual(nsxt.Nsxt._FILTER_OPTIONS_DICT['section_id'], 0)
-      self.assertEqual(nsxt.Nsxt._FILTER_OPTIONS_DICT['applied_to'],
-                       'securitygroup-Id1')
-
-  def testBadHeaderCase(self):
-    pol = policy.ParsePolicy(BAD_HEADER + INET6_TERM, self.naming, False)
+  def test_bad_header_case_0(self):
+    pol = policy.ParsePolicy(BAD_HEADER + ICMPV6_TERM, self.naming, False)
     self.assertRaises(nsxt.UnsupportedNsxtAccessListError,
                       nsxt.Nsxt, pol, EXP_INFO)
 
-  def testBadHeaderCase1(self):
-    pol = policy.ParsePolicy(BAD_HEADER_1 + TERM, self.naming, False)
+  def test_bad_header_case_1(self):
+    pol = policy.ParsePolicy(BAD_HEADER_1 + ICMPV6_TERM, self.naming, False)
     self.assertRaises(nsxt.UnsupportedNsxtAccessListError,
                       nsxt.Nsxt, pol, EXP_INFO)
 
-  def testBadHeaderCase2(self):
-    pol = policy.ParsePolicy(BAD_HEADER_2 + INET6_TERM, self.naming, False)
+  def test_bad_header_case_2(self):
+    pol = policy.ParsePolicy(BAD_HEADER_2 + ICMPV6_TERM, self.naming, False)
     self.assertRaises(nsxt.UnsupportedNsxtAccessListError,
                       nsxt.Nsxt, pol, EXP_INFO)
 
-  def testBadHeaderCase3(self):
-    pol = policy.ParsePolicy(BAD_HEADER_3 + INET6_TERM, self.naming, False)
+  def test_bad_header_case_3(self):
+    pol = policy.ParsePolicy(BAD_HEADER_3 + ICMPV6_TERM, self.naming, False)
     self.assertRaises(nsxt.UnsupportedNsxtAccessListError,
                       nsxt.Nsxt, pol, EXP_INFO)
 
-  def testBadHeaderCase4(self):
-    pol = policy.ParsePolicy(BAD_HEADER_4 + INET6_TERM, self.naming, False)
+  def test_bad_header_case_4(self):
+    pol = policy.ParsePolicy(BAD_HEADER_4 + ICMPV6_TERM, self.naming, False)
     self.assertRaises(nsxt.UnsupportedNsxtAccessListError,
                       nsxt.Nsxt, pol, EXP_INFO)
-
-  def testMixedToV4(self):
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IP('8.8.4.4'), nacaddr.IP('8.8.8.8'),
-         nacaddr.IP('2001:4860:4860::8844'),
-         nacaddr.IP('2001:4860:4860::8888')],
-        [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('172.16.0.0/12'),
-         nacaddr.IP('192.168.0.0/16')]]
-
-    source_addr, dest_addr = self.get_source_dest_addresses(MIXED_HEADER +
-                                                            MIXED_TO_V4)
-    self.naming.GetNetAddr.assert_has_calls(
-        [mock.call('GOOGLE_DNS'), mock.call('INTERNAL')])
-
-  def testV4ToMixed(self):
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('172.16.0.0/12'),
-         nacaddr.IP('192.168.0.0/16')],
-        [nacaddr.IP('8.8.4.4'), nacaddr.IP('8.8.8.8'),
-         nacaddr.IP('2001:4860:4860::8844'),
-         nacaddr.IP('2001:4860:4860::8888')]]
-
-    source_addr, dest_addr = self.get_source_dest_addresses(MIXED_HEADER +
-                                                            V4_TO_MIXED)
-    self.naming.GetNetAddr.assert_has_calls(
-        [mock.call('INTERNAL'), mock.call('GOOGLE_DNS')])
-
-  def testMixedToV6(self):
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IP('8.8.4.4'), nacaddr.IP('8.8.8.8'),
-         nacaddr.IP('2001:4860:4860::8844'),
-         nacaddr.IP('2001:4860:4860::8888')],
-        [nacaddr.IP('2001:4860:8000::/33')]]
-
-    source_addr, dest_addr = self.get_source_dest_addresses(MIXED_HEADER +
-                                                            MIXED_TO_V6)
-    self.naming.GetNetAddr.assert_has_calls(
-        [mock.call('GOOGLE_DNS'), mock.call('SOME_HOST')])
-
-  def testV6ToMixed(self):
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IP('2001:4860:8000::/33')],
-        [nacaddr.IP('8.8.4.4'), nacaddr.IP('8.8.8.8'),
-         nacaddr.IP('2001:4860:4860::8844'),
-         nacaddr.IP('2001:4860:4860::8888')]]
-
-    source_addr, dest_addr = self.get_source_dest_addresses(MIXED_HEADER +
-                                                            V6_TO_MIXED)
-    self.naming.GetNetAddr.assert_has_calls(
-        [mock.call('SOME_HOST'), mock.call('GOOGLE_DNS')])
-
-  def testMixedToMixed(self):
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IP('8.8.4.4'), nacaddr.IP('8.8.8.8'),
-         nacaddr.IP('2001:4860:4860::8844'),
-         nacaddr.IP('2001:4860:4860::8888')],
-        [nacaddr.IP('8.8.4.4'), nacaddr.IP('8.8.8.8'),
-         nacaddr.IP('2001:4860:4860::8844'),
-         nacaddr.IP('2001:4860:4860::8888')]]
-
-    source_addr, dest_addr = self.get_source_dest_addresses(MIXED_HEADER +
-                                                            MIXED_TO_MIXED)
-
-    self.naming.GetNetAddr.assert_has_calls([mock.call('GOOGLE_DNS')] * 2)
-
-  def testMixedToAny(self):
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IP('8.8.4.4'), nacaddr.IP('8.8.8.8'),
-         nacaddr.IP('2001:4860:4860::8844'),
-         nacaddr.IP('2001:4860:4860::8888')]]
-
-    source_addr, dest_addr = self.get_source_dest_addresses(MIXED_HEADER +
-                                                            MIXED_TO_ANY)
-
-    self.naming.GetNetAddr.assert_has_calls([mock.call('GOOGLE_DNS')])
-
-  def testAnyToMixed(self):
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IP('8.8.4.4'), nacaddr.IP('8.8.8.8'),
-         nacaddr.IP('2001:4860:4860::8844'),
-         nacaddr.IP('2001:4860:4860::8888')]]
-
-    source_addr, dest_addr = self.get_source_dest_addresses(MIXED_HEADER +
-                                                            ANY_TO_MIXED)
-    self.assertEqual(len(source_addr), 3)
-
-    self.naming.GetNetAddr.assert_has_calls([mock.call('GOOGLE_DNS')])
-
-  def testV4ToV4(self):
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IP('10.0.0.1'), nacaddr.IP('10.0.0.2')],
-        [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('172.16.0.0/12'),
-         nacaddr.IP('192.168.0.0/16')]]
-
-    source_addr, dest_addr = self.get_source_dest_addresses(MIXED_HEADER +
-                                                            V4_TO_V4)
-    self.naming.GetNetAddr.assert_has_calls(
-        [mock.call('NTP_SERVERS'), mock.call('INTERNAL')])
-
-  def testV6ToV6(self):
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IP('2001:4860:8000::/33')],
-        [nacaddr.IP('2001:4860:8000::/33')]]
-
-    source_addr, dest_addr = self.get_source_dest_addresses(MIXED_HEADER +
-                                                            V6_TO_V6)
-    self.naming.GetNetAddr.assert_has_calls(
-        [mock.call('SOME_HOST')] * 2)
-
-  def testV4ToV6(self):
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('172.16.0.0/12'),
-         nacaddr.IP('192.168.0.0/16')],
-        [nacaddr.IP('2001:4860:8000::/33')]]
-
-    root = self.get_json_object(MIXED_HEADER + V4_TO_V6)
-    rule = root["rules"]
-    # No term(rule) will be rendered in this case
-    self.assertEqual(len(rule), 1)
-    self.naming.GetNetAddr.assert_has_calls(
-        [mock.call('INTERNAL'), mock.call('SOME_HOST')])
-
-  def testV6ToV4(self):
-    self.naming.GetNetAddr.side_effect = [
-        [nacaddr.IP('2001:4860:8000::/33')],
-        [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('172.16.0.0/12'),
-         nacaddr.IP('192.168.0.0/16')]]
-
-    root = self.get_json_object(MIXED_HEADER + V6_TO_V4)
-    rule = root["rules"]
-    # No term(rule) will be rendered in this case
-    self.assertEqual(len(rule), 1)
-    self.naming.GetNetAddr.assert_has_calls(
-        [mock.call('SOME_HOST'), mock.call('INTERNAL')])
-
-  def get_json_object(self, data):
-    pol = policy.ParsePolicy(data, self.naming, False)
-    target = nsxt.Nsxt(pol, EXP_INFO)
-    return json.loads(str(target))
-
-  def get_source_dest_addresses(self, data):
-    root = self.get_json_object(data)
-    rule = root["rules"][0]
-    source_addr = rule["source_groups"]
-    dest_addr = rule["destination_groups"]
-
-    return source_addr, dest_addr
-
-    self.assertTrue(ipv4_address)
-    self.assertTrue(ipv6_address)
 
 
 if __name__ == '__main__':
