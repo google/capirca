@@ -268,7 +268,9 @@ the ACE order in the .pol file.
 
 Make explicit which protocols the platform supports, and support them in the
 generator. If protocols are not supported by the platform, ensure that the
-generator explicitly does not support them, and gracefully handles these errors.
+generator explicitly does not support them. This must result in errors when
+generating terms with unsupported protocols, in turn preventing the generation
+of policies that have terms utilizing unsupported protocols.
 
 #### Names vs numbers
 
