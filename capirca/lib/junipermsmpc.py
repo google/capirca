@@ -68,7 +68,7 @@ class Term(juniper.Term):
         loc = self.term.protocol.index(prot)
         self.term.protocol[loc] = str(self.PROTO_MAP.get(prot, prot))
 
-  def __str__(self):
+  def __str__(self, term_type_table=None):
     # Verify platform specific terms. Skip whole term if platform does not
     # match.
     if self.term.platform:

@@ -198,7 +198,7 @@ class Term(aclgenerator.Term):
   # TODO(pmoody): get rid of all of the default string concatenation here.
   #  eg, indent(8) + 'foo;' -> '%s%s;' % (indent(8), 'foo'). pyglint likes this
   #  more.
-  def __str__(self):
+  def __str__(self, term_type_table=None):
     # Verify platform specific terms. Skip whole term if platform does not
     # match.
     if self.term.platform:
@@ -243,7 +243,9 @@ class Term(aclgenerator.Term):
       return str(config)
 
     # Helper for per-address-family keywords.
-    family_keywords = self._TERM_TYPE.get(self.term_type)
+    if term_type_table is None:
+      term_type_table = self._TERM_TYPE
+    family_keywords = term_type_table.get(self.term_type)
 
     # option
     # this is going to be a little ugly b/c there are a few little messed

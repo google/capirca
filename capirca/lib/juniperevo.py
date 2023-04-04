@@ -19,6 +19,8 @@ uses the same syntax as regular Juniper (Junos) ACLs, with minor differences.
 This subclass effects those differences.
 """
 
+import copy
+
 from capirca.lib import aclgenerator
 from capirca.lib import juniper
 
@@ -37,22 +39,20 @@ class Term(juniper.Term):
   _PAYLOAD_PROTOCOL = 'payload-protocol'
   _PAYLOAD_PROTOCOL_EXCEPT = 'payload-protocol-except'
 
-  def __str__(self):
-    self._Ipv6ProtocolMatch()
-    term_config = super().__str__()
-    # Reset to original syntax.
-    self._TERM_TYPE[self._INET6][self._PROTOCOL] = self._NEXT_HEADER
-    self._TERM_TYPE[self._INET6][
-        self._PROTOCOL_EXCEPT] = self._NEXT_HEADER_EXCEPT
+  def __str__(self, term_type_table=None):
+    if not term_type_table:
+      term_type_table = copy.deepcopy(self._TERM_TYPE)
+    term_type_table = self._Ipv6ProtocolMatch(term_type_table)
+    term_config = super().__str__(term_type_table)
     return term_config
 
-  def _Ipv6ProtocolMatch(self):
+  def _Ipv6ProtocolMatch(self, term_type_table):
     """Use the correct syntax to match protocols after the IPv6 header.
 
     Refer to juniperevo.md in documentation for matching syntax.
 
     Returns:
-      None
+      term_type_table: An updated version of _TERM_TYPE lookup table.
 
     Raises:
       FilterDirectionError: If a direction is not provided for the filter
@@ -80,17 +80,17 @@ class Term(juniper.Term):
         if self.interface_type == 'physical':
           if not any(header in self.term.protocol
                      for header in self.extension_headers):
-            self._TERM_TYPE[self._INET6][
+            term_type_table[self._INET6][
                 self._PROTOCOL] = self._PAYLOAD_PROTOCOL
 
           if not any(header in self.term.protocol_except
                      for header in self.extension_headers):
-            self._TERM_TYPE[self._INET6][
+            term_type_table[self._INET6][
                 self._PROTOCOL_EXCEPT] = self._PAYLOAD_PROTOCOL_EXCEPT
 
         if self.interface_type == 'loopback':
-          self._TERM_TYPE[self._INET6][self._PROTOCOL] = self._PAYLOAD_PROTOCOL
-          self._TERM_TYPE[self._INET6][
+          term_type_table[self._INET6][self._PROTOCOL] = self._PAYLOAD_PROTOCOL
+          term_type_table[self._INET6][
               self._PROTOCOL_EXCEPT] = self._PAYLOAD_PROTOCOL_EXCEPT
 
           self.term.protocol = aclgenerator.ProtocolNameToNumber(
@@ -101,8 +101,8 @@ class Term(juniper.Term):
 
       # Egress filter.
       if self.filter_direction == self._EGRESS:
-        self._TERM_TYPE[self._INET6][self._PROTOCOL] = self._PAYLOAD_PROTOCOL
-        self._TERM_TYPE[self._INET6][
+        term_type_table[self._INET6][self._PROTOCOL] = self._PAYLOAD_PROTOCOL
+        term_type_table[self._INET6][
             self._PROTOCOL_EXCEPT] = self._PAYLOAD_PROTOCOL_EXCEPT
 
         self.term.protocol = aclgenerator.ProtocolNameToNumber(
@@ -110,6 +110,8 @@ class Term(juniper.Term):
 
         self.term.protocol_except = aclgenerator.ProtocolNameToNumber(
             self.term.protocol_except, self.extension_headers, self.PROTO_MAP)
+
+      return term_type_table
 
 
 class JuniperEvo(juniper.Juniper):
