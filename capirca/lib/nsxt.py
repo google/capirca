@@ -340,7 +340,10 @@ class Nsxt(aclgenerator.ACLGenerator):
           continue
         if filter_options[index] == 'securitygroup':
           if index + 1 <= filter_opt_len - 1:
-            applied_to = filter_options[index + 1]
+            securitygroup = filter_options[index + 1]
+            if securitygroup[0] != "/":
+              securitygroup = f"/infra/domains/default/groups/{securitygroup}"
+            applied_to = securitygroup
             break
           else:
             raise UnsupportedNsxtAccessListError(

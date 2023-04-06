@@ -240,7 +240,7 @@ ICMP_NSXT_POLICY_WITH_SECURITY_GROUP = {
   'display_name': 'POLICY_WITH_SECURITY_GROUP_NAME',
   'category': 'Application',
   'is_default': 'false',
-  'scope': ['securitygroup-Id']
+  'scope': ['/infra/domains/default/groups/securitygroup-Id']
 }
 
 BAD_HEADER = """\
