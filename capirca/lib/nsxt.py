@@ -329,7 +329,7 @@ class Nsxt(aclgenerator.ACLGenerator):
           'Access list type %s not supported by %s (good types: %s)' % (
               filter_type, self._PLATFORM, str(good_filters)))
 
-    section_id = 0
+    section_id = None
     applied_to = "ANY"
     filter_opt_len = len(filter_options)
 
@@ -361,12 +361,14 @@ class Nsxt(aclgenerator.ACLGenerator):
       rules = [json.loads(str(term)) for term in terms]
 
     section_name = self._FILTER_OPTIONS_DICT['section_name']
+    section_id = self._FILTER_OPTIONS_DICT['section_id']
     applied_to = self._FILTER_OPTIONS_DICT['applied_to']
 
     policy = {
       "rules": rules,
       "resource_type": "SecurityPolicy",
       "display_name": section_name,
+      "id": section_id if section_id is not None else section_name,
       "category": "Application",
       "is_default": "false",
       "scope": [applied_to]

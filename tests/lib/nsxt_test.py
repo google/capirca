@@ -73,6 +73,7 @@ UDP_NSXT_POLICY = {
   'display_name': 'INET_FILTER_NAME',
   'category': 'Application',
   'is_default': 'false',
+  'id': 'INET_FILTER_NAME',
   'scope': ['ANY']
 }
 
@@ -201,6 +202,7 @@ UDP_AND_TCP_NSXT_POLICY = {
   'display_name': 'MIXED_FILTER_NAME',
   'category': 'Application',
   'is_default': 'false',
+  'id': 'MIXED_FILTER_NAME',
   'scope': ['ANY']
 }
 
@@ -240,6 +242,7 @@ ICMP_NSXT_POLICY_WITH_SECURITY_GROUP = {
   'display_name': 'POLICY_WITH_SECURITY_GROUP_NAME',
   'category': 'Application',
   'is_default': 'false',
+  'id': '1010',
   'scope': ['/infra/domains/default/groups/securitygroup-Id']
 }
 
