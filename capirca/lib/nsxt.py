@@ -59,10 +59,10 @@ _NSXT_SUPPORTED_KEYWORDS = [
 ]
 
 _PROTOCOLS = {
-  1: "ICMPv4",
-  6: "TCP",
-  17: "UDP",
-  58: "ICMPv6"
+  1: 'ICMPv4',
+  6: 'TCP',
+  17: 'UDP',
+  58: 'ICMPv6'
 }
 
 
@@ -92,6 +92,11 @@ class NsxtUnsupportedCriteriaOperator(Error):
   pass
 
 
+class NsxtUnsupportedManyPolicies(Error):
+  """Raised when there are many policies/headers specified."""
+  pass
+
+
 class ServiceEntries:
   """Represents service entries for a rule"""
   def __init__(self, protocol, source_ports, destination_ports, icmp_types):
@@ -114,8 +119,8 @@ class ServiceEntries:
     # Handle ICMP and ICMPv6
     if self.protocol == 1 or self.protocol == 58:
       service = {
-        "protocol": _PROTOCOLS[self.protocol],
-        "resource_type": "ICMPTypeServiceEntry",
+        'protocol': _PROTOCOLS[self.protocol],
+        'resource_type': 'ICMPTypeServiceEntry',
       }
       if not self.icmp_types:
         return [service]
@@ -124,25 +129,25 @@ class ServiceEntries:
       services = []
       for icmp_type in self.icmp_types:
         new_service = service.copy()
-        new_service["icmp_type"] = icmp_type
+        new_service['icmp_type'] = icmp_type
         services.append(new_service)
         return services
 
     # Handle TCP and UDP
     elif self.protocol == 6 or self.protocol == 17:
       service = {
-        "l4_protocol": _PROTOCOLS[self.protocol],
-        "resource_type": "L4PortSetServiceEntry",
+        'l4_protocol': _PROTOCOLS[self.protocol],
+        'resource_type': 'L4PortSetServiceEntry',
       }
 
       # Handle Layer 4 Ports
       if self.source_ports:
-        source_ports = [f"{p[0]}-{p[1]}" for p in self.source_ports]
-        service["source_ports"] = source_ports
+        source_ports = [f'{p[0]}-{p[1]}' for p in self.source_ports]
+        service['source_ports'] = source_ports
 
       if self.destination_ports:
-        destination_ports = [f"{p[0]}-{p[1]}" for p in self.destination_ports]
-        service["destination_ports"] = destination_ports
+        destination_ports = [f'{p[0]}-{p[1]}' for p in self.destination_ports]
+        service['destination_ports'] = destination_ports
       return [service]
     else:
       return []
@@ -208,18 +213,19 @@ class Term(aclgenerator.Term):
         destination_address.append(str(i))
 
     rule = {
-      "action": action,
-      "resource_type": "Rule",
-      "display_name": name,
-      "source_groups": source_address,
-      "destination_groups": destination_address,
-      "services": ["ANY"],
-      "profiles": ["ANY"],
-      "scope": ["ANY"],
-      "logged": bool(self.term.logging),
-      "notes": notes,
-      "direction": 'IN_OUT',
-      "ip_protocol": "IPV4_IPV6"
+      'action': action,
+      'resource_type': 'Rule',
+      'display_name': name,
+      'source_groups': source_address,
+      'destination_groups': destination_address,
+      # Set mandatory services to ANY, as service_entries will be used
+      'services': ['ANY'],
+      'profiles': ['ANY'],
+      'scope': ['ANY'],
+      'logged': bool(self.term.logging),
+      'notes': notes,
+      'direction': 'IN_OUT',
+      'ip_protocol': 'IPV4_IPV6'
     }
 
     if self.term.protocol:
@@ -236,7 +242,7 @@ class Term(aclgenerator.Term):
           service = ServiceEntries(proto, self.term.source_port,
                                    self.term.destination_port, icmp_types)
           services.extend(service.get())
-      rule["service_entries"] = services
+      rule['service_entries'] = services
 
     return json.dumps(rule)
 
@@ -330,7 +336,7 @@ class Nsxt(aclgenerator.ACLGenerator):
               filter_type, self._PLATFORM, str(good_filters)))
 
     section_id = None
-    applied_to = "ANY"
+    applied_to = 'ANY'
     filter_opt_len = len(filter_options)
 
     if filter_opt_len > 2:
@@ -341,8 +347,8 @@ class Nsxt(aclgenerator.ACLGenerator):
         if filter_options[index] == 'securitygroup':
           if index + 1 <= filter_opt_len - 1:
             securitygroup = filter_options[index + 1]
-            if securitygroup[0] != "/":
-              securitygroup = f"/infra/domains/default/groups/{securitygroup}"
+            if securitygroup[0] != '/':
+              securitygroup = f'/infra/domains/default/groups/{securitygroup}'
             applied_to = securitygroup
             break
           else:
@@ -356,7 +362,8 @@ class Nsxt(aclgenerator.ACLGenerator):
 
   def __str__(self):
     """Render the output of the nsxt policy."""
-    # TODO: Handle when there are many policies
+    if (len(self.nsxt_policies) > 1):
+      raise NsxtUnsupportedManyPolicies('Only one policy can be rendered')
     for (_, _, _, terms) in self.nsxt_policies:
       rules = [json.loads(str(term)) for term in terms]
 
@@ -365,13 +372,13 @@ class Nsxt(aclgenerator.ACLGenerator):
     applied_to = self._FILTER_OPTIONS_DICT['applied_to']
 
     policy = {
-      "rules": rules,
-      "resource_type": "SecurityPolicy",
-      "display_name": section_name,
-      "id": section_id if section_id is not None else section_name,
-      "category": "Application",
-      "is_default": "false",
-      "scope": [applied_to]
+      'rules': rules,
+      'resource_type': 'SecurityPolicy',
+      'display_name': section_name,
+      'id': section_id if section_id is not None else section_name,
+      'category': 'Application',
+      'is_default': 'false',
+      'scope': [applied_to]
     }
 
     return json.dumps(policy, indent=2)
