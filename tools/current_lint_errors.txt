@@ -132,6 +132,13 @@ C0123: 269 Term.__str__: Using type() instead of isinstance() for a typecheck.[u
 C0123: 285 Term.__str__: Using type() instead of isinstance() for a typecheck.[unidiomatic-typecheck]
 C0123: 296 Term.__str__: Using type() instead of isinstance() for a typecheck.[unidiomatic-typecheck]
 C0411:  23 : standard import "import logging" comes before "from lib import aclgenerator"[wrong-import-order]
+************* Module lib.nsxt
+W0231: 105 Term.__init__: __init__ method from base class 'Term' is not called[super-init-not-called]
+C0123: 258 Term.__str__: Using type() instead of isinstance() for a typecheck.[unidiomatic-typecheck]
+C0123: 269 Term.__str__: Using type() instead of isinstance() for a typecheck.[unidiomatic-typecheck]
+C0123: 285 Term.__str__: Using type() instead of isinstance() for a typecheck.[unidiomatic-typecheck]
+C0123: 296 Term.__str__: Using type() instead of isinstance() for a typecheck.[unidiomatic-typecheck]
+C0411:  23 : standard import "import logging" comes before "from lib import aclgenerator"[wrong-import-order]
 ************* Module lib.packetfilter
 R0204: 177 Term.__str__: Redefinition of source_port type from list to str[redefined-variable-type]
 R0204: 179 Term.__str__: Redefinition of destination_port type from list to str[redefined-variable-type]

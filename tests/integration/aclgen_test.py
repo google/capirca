@@ -80,6 +80,7 @@ class TestAclGenDemo(absltest.TestCase):
         'sample_multitarget.xacl',
         'sample_multitarget.nxacl',
         'sample_nsxv.nsx',
+        'sample_nsxt.nsxt',
         'sample_packetfilter.pf',
         'sample_speedway.ipt',
         'sample_srx.srx',
