@@ -29,40 +29,40 @@ _ACTION_TABLE = {
 }
 
 _NSXT_SUPPORTED_KEYWORDS = [
-  'name',
-  'action',
-  'resource_type',
-  'display_name',
-  'marked_for_delete',
-  'overridden',
-  'rule_id',
-  'sequence_number',
-  'sources_excluded',
-  'destinations_excluded',
-  'source_groups',
-  'destination_groups',
-  'services',
-  'profiles',
-  'logged',
-  'scope',
-  'disabled',
-  'notes',
-  'direction',
-  'tag',
-  'ip_protocol',
-  'is_default',
-  'protocol',
-  'destination_port',
-  'source_address',
-  'destination_address',
-  'source_port'
+    'name',
+    'action',
+    'resource_type',
+    'display_name',
+    'marked_for_delete',
+    'overridden',
+    'rule_id',
+    'sequence_number',
+    'sources_excluded',
+    'destinations_excluded',
+    'source_groups',
+    'destination_groups',
+    'services',
+    'profiles',
+    'logged',
+    'scope',
+    'disabled',
+    'notes',
+    'direction',
+    'tag',
+    'ip_protocol',
+    'is_default',
+    'protocol',
+    'destination_port',
+    'source_address',
+    'destination_address',
+    'source_port'
 ]
 
 _PROTOCOLS = {
-  1: 'ICMPv4',
-  6: 'TCP',
-  17: 'UDP',
-  58: 'ICMPv6'
+    1: 'ICMPv4',
+    6: 'TCP',
+    17: 'UDP',
+    58: 'ICMPv6'
 }
 
 
@@ -87,25 +87,27 @@ class NsxtDuplicateTermError(Error):
   pass
 
 
-class NsxtUnsupportedCriteriaOperator(Error):
+class NsxtUnsupportedCriteriaOperatorError(Error):
   """Raised when an unsupported criteria comparison operator is encountered."""
   pass
 
 
-class NsxtUnsupportedManyPolicies(Error):
+class NsxtUnsupportedManyPoliciesError(Error):
   """Raised when there are many policies/headers specified."""
   pass
 
 
 class ServiceEntries:
-  """Represents service entries for a rule"""
+  """Represents service entries for a rule."""
+
   def __init__(self, protocol, source_ports, destination_ports, icmp_types):
-    """
+    """Setting things up.
+
     Args:
-      protocol: str, protocol
-      source_ports: str list or none, the source port
-      destination_ports: str list or none, the destination port
-      icmp_types: icmp-type numeric specification (if any)
+      protocol: str, protocol.
+      source_ports: str list or none, the source port.
+      destination_ports: str list or none, the destination port.
+      icmp_types: icmp-type numeric specification (if any).
     """
     self.protocol = protocol
     self.source_ports = source_ports
@@ -113,14 +115,12 @@ class ServiceEntries:
     self.icmp_types = icmp_types
 
   def get(self):
-    """
-    Returns list of services
-    """
+    """Returns list of services."""
     # Handle ICMP and ICMPv6
     if self.protocol == 1 or self.protocol == 58:
       service = {
-        'protocol': _PROTOCOLS[self.protocol],
-        'resource_type': 'ICMPTypeServiceEntry',
+          'protocol': _PROTOCOLS[self.protocol],
+          'resource_type': 'ICMPTypeServiceEntry',
       }
       if not self.icmp_types:
         return [service]
@@ -136,8 +136,8 @@ class ServiceEntries:
     # Handle TCP and UDP
     elif self.protocol == 6 or self.protocol == 17:
       service = {
-        'l4_protocol': _PROTOCOLS[self.protocol],
-        'resource_type': 'L4PortSetServiceEntry',
+          'l4_protocol': _PROTOCOLS[self.protocol],
+          'resource_type': 'L4PortSetServiceEntry',
       }
 
       # Handle Layer 4 Ports
@@ -185,7 +185,7 @@ class Term(aclgenerator.Term):
     for key in term_keywords:
       if term_keywords[key]:
         if ('translated' not in key) and (key not in _NSXT_SUPPORTED_KEYWORDS):
-            unsupported_keywords.append(key)
+          unsupported_keywords.append(key)
     if unsupported_keywords:
       logging.warning('WARNING: The keywords %s in Term %s are not supported '
                       'in Nsxt ', unsupported_keywords, self.term.name)
@@ -213,19 +213,19 @@ class Term(aclgenerator.Term):
         destination_address.append(str(i))
 
     rule = {
-      'action': action,
-      'resource_type': 'Rule',
-      'display_name': name,
-      'source_groups': source_address,
-      'destination_groups': destination_address,
-      # Set mandatory services to ANY, as service_entries will be used
-      'services': ['ANY'],
-      'profiles': ['ANY'],
-      'scope': ['ANY'],
-      'logged': bool(self.term.logging),
-      'notes': notes,
-      'direction': 'IN_OUT',
-      'ip_protocol': 'IPV4_IPV6'
+        'action': action,
+        'resource_type': 'Rule',
+        'display_name': name,
+        'source_groups': source_address,
+        'destination_groups': destination_address,
+        # Set mandatory services to ANY, as service_entries will be used
+        'services': ['ANY'],
+        'profiles': ['ANY'],
+        'scope': ['ANY'],
+        'logged': bool(self.term.logging),
+        'notes': notes,
+        'direction': 'IN_OUT',
+        'ip_protocol': 'IPV4_IPV6'
     }
 
     if self.term.protocol:
@@ -363,7 +363,7 @@ class Nsxt(aclgenerator.ACLGenerator):
   def __str__(self):
     """Render the output of the nsxt policy."""
     if (len(self.nsxt_policies) > 1):
-      raise NsxtUnsupportedManyPolicies('Only one policy can be rendered')
+      raise NsxtUnsupportedManyPoliciesError('Only one policy can be rendered')
     for (_, _, _, terms) in self.nsxt_policies:
       rules = [json.loads(str(term)) for term in terms]
 
@@ -372,13 +372,13 @@ class Nsxt(aclgenerator.ACLGenerator):
     applied_to = self._FILTER_OPTIONS_DICT['applied_to']
 
     policy = {
-      'rules': rules,
-      'resource_type': 'SecurityPolicy',
-      'display_name': section_name,
-      'id': section_id if section_id is not None else section_name,
-      'category': 'Application',
-      'is_default': 'false',
-      'scope': [applied_to]
+        'rules': rules,
+        'resource_type': 'SecurityPolicy',
+        'display_name': section_name,
+        'id': section_id if section_id is not None else section_name,
+        'category': 'Application',
+        'is_default': 'false',
+        'scope': [applied_to]
     }
 
     return json.dumps(policy, indent=2)

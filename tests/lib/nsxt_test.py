@@ -15,8 +15,8 @@
 """UnitTest class for nsxt.py."""
 
 import json
-from absl.testing import absltest
 from unittest import mock
+from absl.testing import absltest
 
 from capirca.lib import nacaddr
 from capirca.lib import naming
@@ -49,7 +49,35 @@ UDP_POLICY = """\
   """
 
 UDP_NSXT_POLICY = {
-  'rules': [{
+    'rules': [{
+        'action': 'ALLOW',
+        'resource_type': 'Rule',
+        'display_name': 'allow-ntp-request',
+        'source_groups': ['10.0.0.1/32', '10.0.0.2/32'],
+        'destination_groups': ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'],
+        'services': ['ANY'],
+        'profiles': ['ANY'],
+        'scope': ['ANY'],
+        'logged': False,
+        'notes': 'Allow ntp request',
+        'direction': 'IN_OUT',
+        'ip_protocol': 'IPV4_IPV6',
+        'service_entries': [{
+            'l4_protocol': 'UDP',
+            'resource_type': 'L4PortSetServiceEntry',
+            'source_ports': ['123-123'],
+            'destination_ports': ['123-123']
+        }]
+    }],
+    'resource_type': 'SecurityPolicy',
+    'display_name': 'INET_FILTER_NAME',
+    'category': 'Application',
+    'is_default': 'false',
+    'id': 'INET_FILTER_NAME',
+    'scope': ['ANY']
+}
+
+UDP_RULE = {
     'action': 'ALLOW',
     'resource_type': 'Rule',
     'display_name': 'allow-ntp-request',
@@ -63,39 +91,11 @@ UDP_NSXT_POLICY = {
     'direction': 'IN_OUT',
     'ip_protocol': 'IPV4_IPV6',
     'service_entries': [{
-      'l4_protocol': 'UDP',
-      'resource_type': 'L4PortSetServiceEntry',
-      'source_ports': ['123-123'],
-      'destination_ports': ['123-123']
+        'l4_protocol': 'UDP',
+        'resource_type': 'L4PortSetServiceEntry',
+        'source_ports': ['123-123'],
+        'destination_ports': ['123-123']
     }]
-  }],
-  'resource_type': 'SecurityPolicy',
-  'display_name': 'INET_FILTER_NAME',
-  'category': 'Application',
-  'is_default': 'false',
-  'id': 'INET_FILTER_NAME',
-  'scope': ['ANY']
-}
-
-UDP_RULE = {
-  "action": "ALLOW",
-  "resource_type": "Rule",
-  "display_name": "allow-ntp-request",
-  "source_groups": ["10.0.0.1/32", "10.0.0.2/32"],
-  "destination_groups": ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
-  "services": ["ANY"],
-  "profiles": ["ANY"],
-  "scope": ["ANY"],
-  "logged": False,
-  "notes": "Allow ntp request",
-  "direction": "IN_OUT",
-  "ip_protocol": "IPV4_IPV6",
-  "service_entries": [{
-    "l4_protocol": "UDP",
-    "resource_type": "L4PortSetServiceEntry",
-    "source_ports": ["123-123"],
-    "destination_ports": ["123-123"]
-  }]
 }
 
 ICMPV6_POLICY = """\
@@ -113,23 +113,23 @@ ICMPV6_POLICY = """\
   """
 
 ICMPV6_RULE = {
-  'action': 'ALLOW',
-  'resource_type': 'Rule',
-  'display_name': 'test-icmpv6',
-  'source_groups': ['ANY'],
-  'destination_groups': ['ANY'],
-  'services': ['ANY'],
-  'profiles': ['ANY'],
-  'scope': ['ANY'],
-  'logged': False,
-  'notes': '',
-  'direction': 'IN_OUT',
-  'ip_protocol': 'IPV4_IPV6',
-  'service_entries': [{
-    'protocol': 'ICMPv6',
-    'resource_type': 'ICMPTypeServiceEntry',
-    'icmp_type': 128
-  }]
+    'action': 'ALLOW',
+    'resource_type': 'Rule',
+    'display_name': 'test-icmpv6',
+    'source_groups': ['ANY'],
+    'destination_groups': ['ANY'],
+    'services': ['ANY'],
+    'profiles': ['ANY'],
+    'scope': ['ANY'],
+    'logged': False,
+    'notes': '',
+    'direction': 'IN_OUT',
+    'ip_protocol': 'IPV4_IPV6',
+    'service_entries': [{
+        'protocol': 'ICMPv6',
+        'resource_type': 'ICMPTypeServiceEntry',
+        'icmp_type': 128
+    }]
 }
 
 UDP_AND_TCP_POLICY = """\
@@ -155,55 +155,57 @@ UDP_AND_TCP_POLICY = """\
   """
 
 UDP_AND_TCP_NSXT_POLICY = {
-  'rules': [{
-    'action': 'ALLOW',
-    'resource_type': 'Rule',
-    'display_name': 'accept-to-honestdns',
-    'source_groups': ['ANY'],
-    'destination_groups': [
-      '8.8.4.4/32',
-      '8.8.8.8/32',
-      '2001:4860:4860::8844/128',
-      '2001:4860:4860::8888/128'
+    'rules': [
+        {
+            'action': 'ALLOW',
+            'resource_type': 'Rule',
+            'display_name': 'accept-to-honestdns',
+            'source_groups': ['ANY'],
+            'destination_groups': [
+                '8.8.4.4/32',
+                '8.8.8.8/32',
+                '2001:4860:4860::8844/128',
+                '2001:4860:4860::8888/128',
+            ],
+            'services': ['ANY'],
+            'profiles': ['ANY'],
+            'scope': ['ANY'],
+            'logged': False,
+            'notes': 'Allow name resolution using honestdns.',
+            'direction': 'IN_OUT',
+            'ip_protocol': 'IPV4_IPV6',
+            'service_entries': [{
+                'l4_protocol': 'UDP',
+                'resource_type': 'L4PortSetServiceEntry',
+                'destination_ports': ['53-53'],
+            }],
+        },
+        {
+            'action': 'ALLOW',
+            'resource_type': 'Rule',
+            'display_name': 'permit-mail-services',
+            'source_groups': ['ANY'],
+            'destination_groups': ['2001:4860:4860::8845'],
+            'services': ['ANY'],
+            'profiles': ['ANY'],
+            'scope': ['ANY'],
+            'logged': False,
+            'notes': '',
+            'direction': 'IN_OUT',
+            'ip_protocol': 'IPV4_IPV6',
+            'service_entries': [{
+                'l4_protocol': 'TCP',
+                'resource_type': 'L4PortSetServiceEntry',
+                'destination_ports': ['53-53'],
+            }],
+        },
     ],
-    'services': ['ANY'],
-    'profiles': ['ANY'],
+    'resource_type': 'SecurityPolicy',
+    'display_name': 'MIXED_FILTER_NAME',
+    'category': 'Application',
+    'is_default': 'false',
+    'id': 'MIXED_FILTER_NAME',
     'scope': ['ANY'],
-    'logged': False,
-    'notes': 'Allow name resolution using honestdns.',
-    'direction': 'IN_OUT',
-    'ip_protocol': 'IPV4_IPV6',
-    'service_entries': [{
-      'l4_protocol': 'UDP',
-      'resource_type': 'L4PortSetServiceEntry',
-      'destination_ports': ['53-53']
-    }]
-  },
-    {
-      'action': 'ALLOW',
-      'resource_type': 'Rule',
-      'display_name': 'permit-mail-services',
-      'source_groups': ['ANY'],
-      'destination_groups': ['2001:4860:4860::8845'],
-      'services': ['ANY'],
-      'profiles': ['ANY'],
-      'scope': ['ANY'],
-      'logged': False,
-      'notes': '',
-      'direction': 'IN_OUT',
-      'ip_protocol': 'IPV4_IPV6',
-      'service_entries': [{
-        'l4_protocol': 'TCP',
-        'resource_type': 'L4PortSetServiceEntry',
-        'destination_ports': ['53-53']
-      }]
-    }],
-  'resource_type': 'SecurityPolicy',
-  'display_name': 'MIXED_FILTER_NAME',
-  'category': 'Application',
-  'is_default': 'false',
-  'id': 'MIXED_FILTER_NAME',
-  'scope': ['ANY']
 }
 
 ICMP_POLICY_WITH_SECURITY_GROUP = """\
@@ -220,30 +222,30 @@ ICMP_POLICY_WITH_SECURITY_GROUP = """\
   """
 
 ICMP_NSXT_POLICY_WITH_SECURITY_GROUP = {
-  'rules': [{
-    'action': 'ALLOW',
-    'resource_type': 'Rule',
-    'display_name': 'accept-icmp',
-    'source_groups': ['ANY'],
-    'destination_groups': ['ANY'],
-    'services': ['ANY'],
-    'profiles': ['ANY'],
-    'scope': ['ANY'],
-    'logged': False,
-    'notes': '',
-    'direction': 'IN_OUT',
-    'ip_protocol': 'IPV4_IPV6',
-    'service_entries': [{
-      'protocol': 'ICMPv4',
-      'resource_type': 'ICMPTypeServiceEntry'
-    }]
-  }],
-  'resource_type': 'SecurityPolicy',
-  'display_name': 'POLICY_WITH_SECURITY_GROUP_NAME',
-  'category': 'Application',
-  'is_default': 'false',
-  'id': '1010',
-  'scope': ['/infra/domains/default/groups/securitygroup-Id']
+    'rules': [{
+        'action': 'ALLOW',
+        'resource_type': 'Rule',
+        'display_name': 'accept-icmp',
+        'source_groups': ['ANY'],
+        'destination_groups': ['ANY'],
+        'services': ['ANY'],
+        'profiles': ['ANY'],
+        'scope': ['ANY'],
+        'logged': False,
+        'notes': '',
+        'direction': 'IN_OUT',
+        'ip_protocol': 'IPV4_IPV6',
+        'service_entries': [{
+            'protocol': 'ICMPv4',
+            'resource_type': 'ICMPTypeServiceEntry',
+        }],
+    }],
+    'resource_type': 'SecurityPolicy',
+    'display_name': 'POLICY_WITH_SECURITY_GROUP_NAME',
+    'category': 'Application',
+    'is_default': 'false',
+    'id': '1010',
+    'scope': ['/infra/domains/default/groups/securitygroup-Id'],
 }
 
 BAD_HEADER = """\
@@ -294,7 +296,11 @@ class TermTest(absltest.TestCase):
     self.naming = mock.create_autospec(naming.Naming)
 
   def test_udp_term(self):
-    """Test __init__ and __str__ for udp term defining destination and source addresses and ports"""
+    """Test __init__ and __str__.
+
+    test for udp term defining dst and src addrs and ports.
+    """
+
     self.naming.GetNetAddr.side_effect = [
         [nacaddr.IP('10.0.0.1'), nacaddr.IP('10.0.0.2')],
         [nacaddr.IP('10.0.0.0/8'), nacaddr.IP('172.16.0.0/12'),
@@ -320,7 +326,7 @@ class TermTest(absltest.TestCase):
         [mock.call('NTP', 'udp')] * 2)
 
   def test_icmpv6_term(self):
-    """Test __init__ and __str__ for term inet6"""
+    """Test __init__ and __str__ for term inet6."""
     policies = policy.ParsePolicy(ICMPV6_POLICY, self.naming, False)
     af = 6
     filter_type = 'inet6'
@@ -348,20 +354,23 @@ class TermTest(absltest.TestCase):
 
     self.assertEqual(api_policy, UDP_NSXT_POLICY)
     self.naming.GetNetAddr.assert_has_calls(
-        [mock.call('NTP_SERVERS'), mock.call('INTERNAL')])
+        [mock.call('NTP_SERVERS'), mock.call('INTERNAL')]
+    )
     self.naming.GetServiceByProto.assert_has_calls(
-        [mock.call('NTP', 'udp')] * 2)
+        [mock.call('NTP', 'udp')] * 2
+    )
 
   def test_udp_and_tcp_policy(self):
     """Test for Nsxt._str_."""
     self.naming.GetNetAddr.side_effect = [
-      [
-        nacaddr.IP('8.8.4.4'),
-        nacaddr.IP('8.8.8.8'),
-        nacaddr.IP('2001:4860:4860::8844'),
-        nacaddr.IP('2001:4860:4860::8888')
-      ],
-      nacaddr.IP('2001:4860:4860::8845')]
+        [
+            nacaddr.IP('8.8.4.4'),
+            nacaddr.IP('8.8.8.8'),
+            nacaddr.IP('2001:4860:4860::8844'),
+            nacaddr.IP('2001:4860:4860::8888'),
+        ],
+        nacaddr.IP('2001:4860:4860::8845'),
+    ]
     self.naming.GetServiceByProto.return_value = ['53']
 
     pol = policy.ParsePolicy(UDP_AND_TCP_POLICY, self.naming, False)
@@ -376,8 +385,9 @@ class TermTest(absltest.TestCase):
         [mock.call('DNS', 'udp'), mock.call('MAIL_SERVICES', 'tcp')])
 
   def test_icmp_policy_with_security_group(self):
-    """Test for Nsxt._str_ with security group in scope"""
-    pol = policy.ParsePolicy(ICMP_POLICY_WITH_SECURITY_GROUP, self.naming, False)
+    """Test for Nsxt._str_ with security group in scope."""
+    pol = (
+        policy.ParsePolicy(ICMP_POLICY_WITH_SECURITY_GROUP, self.naming, False))
     nsxt_policy = nsxt.Nsxt(pol, EXP_INFO)
     api_policy = json.loads(str(nsxt_policy))
 
