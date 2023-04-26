@@ -867,7 +867,7 @@ class ObjectGroupTerm(Term):
 
     return '\n'.join(ret_str)
 
-  def _TermletToStr(self, action, proto, saddr, sport, daddr, dport):
+  def _TermletToStr(self, action, proto, saddr, sport, daddr, dport):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
     """Output a portion of a cisco term/filter only, based on the 5-tuple."""
     # Empty addr/port destinations should emit 'any'
     if saddr and saddr != 'any':
