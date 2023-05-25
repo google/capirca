@@ -1,6 +1,6 @@
 """Google Cloud Hierarchical Firewall Generator.
 
-Hierarchical Firewalls (HF) are represented in a SecurityPolicy GCP resouce.
+Hierarchical Firewalls (HF) are represented in a FirewallPolicy GCP resouce.
 """
 
 import copy
@@ -221,10 +221,11 @@ class Term(gcp.Term):
     else:
       term_dict['match'] = {'config': {layer_4_config: protocols_and_ports}}
 
-    # match needs a field called versionedExpr with value FIREWALL
-    # See documentation:
+    # match needs a field called versionedExpr with value FIREWALL for the beta
+    # vesion. See documentation:
     # https://cloud.google.com/compute/docs/reference/rest/beta/organizationSecurityPolicies/addRule
-    term_dict['match']['versionedExpr'] = 'FIREWALL'
+    if self.api_version == 'beta':
+      term_dict['match']['versionedExpr'] = 'FIREWALL'
 
     ip_version = self.AF_MAP[self.address_family]
     if ip_version == 4:
@@ -364,8 +365,7 @@ class HierarchicalFirewall(gcp.GCP):
     """
     self.policies = []
     policy = {
-        'rules': [],
-        'type': 'FIREWALL'
+        'rules': []
     }
     is_policy_modified = False
     counter = 1
@@ -455,6 +455,10 @@ class HierarchicalFirewall(gcp.GCP):
         raise gcp.HeaderError(
             'Unsupported or unknown filter options %s in policy %s ' %
             (str(filter_options), policy_name))
+
+      # If compute api_version is beta, set type to FIREWALL
+      if api_version == 'beta':
+        policy['type'] = 'FIREWALL'
 
       # Handle mixed for each indvidual term as inet and inet6.
       # inet/inet6 are treated the same.

@@ -1251,7 +1251,6 @@ EXPECTED_IPV6_DENY_INGRESS_GA = """
 [
   {
     "shortName": "displayname",
-    "type": "FIREWALL",
     "rules": [
       {
         "action": "deny",
@@ -1263,8 +1262,7 @@ EXPECTED_IPV6_DENY_INGRESS_GA = """
               "ipProtocol": "all"
             }
           ],
-          "srcIpRanges": ["::/0"],
-          "versionedExpr": "FIREWALL"
+          "srcIpRanges": ["::/0"]
         },
         "priority": 1,
         "enableLogging": false
@@ -1278,7 +1276,6 @@ EXPECTED_MIXED_DENY_INGRESS_GA = """
 [
   {
     "shortName": "displayname",
-    "type": "FIREWALL",
     "rules": [
       {
         "action": "deny",
@@ -1290,8 +1287,7 @@ EXPECTED_MIXED_DENY_INGRESS_GA = """
               "ipProtocol": "all"
             }
           ],
-          "srcIpRanges": ["0.0.0.0/0"],
-          "versionedExpr": "FIREWALL"
+          "srcIpRanges": ["0.0.0.0/0"]
         },
         "priority": 1,
         "enableLogging": false
@@ -1306,8 +1302,7 @@ EXPECTED_MIXED_DENY_INGRESS_GA = """
               "ipProtocol": "all"
             }
           ],
-          "srcIpRanges": ["::/0"],
-          "versionedExpr": "FIREWALL"
+          "srcIpRanges": ["::/0"]
         },
         "priority": 2,
         "enableLogging": false
@@ -1476,7 +1471,6 @@ EXPECTED_IPV6_DENY_EGRESS_GA = """
 [
   {
     "shortName": "displayname",
-    "type": "FIREWALL",
     "rules": [
       {
         "action": "deny",
@@ -1488,8 +1482,7 @@ EXPECTED_IPV6_DENY_EGRESS_GA = """
             {
               "ipProtocol": "all"
             }
-          ],
-          "versionedExpr": "FIREWALL"
+          ]
         },
         "priority": 1,
         "enableLogging": false
@@ -1503,7 +1496,6 @@ EXPECTED_MIXED_DENY_EGRESS_GA = """
 [
   {
     "shortName": "displayname",
-    "type": "FIREWALL",
     "rules": [
       {
         "action": "deny",
@@ -1515,8 +1507,7 @@ EXPECTED_MIXED_DENY_EGRESS_GA = """
             {
               "ipProtocol": "all"
             }
-          ],
-          "versionedExpr": "FIREWALL"
+          ]
         },
         "priority": 1,
         "enableLogging": false
@@ -1531,8 +1522,7 @@ EXPECTED_MIXED_DENY_EGRESS_GA = """
             {
               "ipProtocol": "all"
             }
-          ],
-          "versionedExpr": "FIREWALL"
+          ]
         },
         "priority": 2,
         "enableLogging": false
@@ -2223,7 +2213,6 @@ EXPECTED_ONE_RULE_IPV6_PROTOCOL_GA = """
 [
   {
     "shortName": "displayname",
-    "type": "FIREWALL",
     "rules": [
       {
         "action": "goto_next",
@@ -2236,8 +2225,7 @@ EXPECTED_ONE_RULE_IPV6_PROTOCOL_GA = """
               "ports": ["80"]
             }
           ],
-          "srcIpRanges": ["2001:4860:8000::5/128"],
-          "versionedExpr": "FIREWALL"
+          "srcIpRanges": ["2001:4860:8000::5/128"]
         },
         "priority": 1,
         "enableLogging": false
@@ -2251,7 +2239,6 @@ EXPECTED_ONE_RULE_MIXED_IPV6_PROTOCOL_GA = """
 [
   {
     "shortName": "displayname",
-    "type": "FIREWALL",
     "rules": [
       {
         "action": "goto_next",
@@ -2264,8 +2251,7 @@ EXPECTED_ONE_RULE_MIXED_IPV6_PROTOCOL_GA = """
               "ports": ["80"]
             }
           ],
-          "srcIpRanges": ["2001:4860:8000::5/128"],
-          "versionedExpr": "FIREWALL"
+          "srcIpRanges": ["2001:4860:8000::5/128"]
         },
         "priority": 1,
         "enableLogging": false
@@ -2279,7 +2265,6 @@ EXPECTED_ONE_RULE_MIXED_IPV4_PROTOCOL_GA = """
 [
   {
     "shortName": "displayname",
-    "type": "FIREWALL",
     "rules": [
       {
         "action": "goto_next",
@@ -2292,8 +2277,7 @@ EXPECTED_ONE_RULE_MIXED_IPV4_PROTOCOL_GA = """
               "ports": ["80"]
             }
           ],
-          "srcIpRanges": ["10.0.0.0/8"],
-          "versionedExpr": "FIREWALL"
+          "srcIpRanges": ["10.0.0.0/8"]
         },
         "priority": 1,
         "enableLogging": false
@@ -2307,7 +2291,6 @@ EXPECTED_MULTIPLE_MIXED_RULE_INGRESS_GA = """
 [
   {
     "shortName": "displayname",
-    "type": "FIREWALL",
     "rules": [
       {
         "action": "goto_next",
@@ -2321,8 +2304,7 @@ EXPECTED_MULTIPLE_MIXED_RULE_INGRESS_GA = """
               "ports": ["80"]
             }
           ],
-          "srcIpRanges": ["10.0.0.0/8"],
-          "versionedExpr": "FIREWALL"
+          "srcIpRanges": ["10.0.0.0/8"]
         },
         "priority": 1
       },
@@ -2338,8 +2320,7 @@ EXPECTED_MULTIPLE_MIXED_RULE_INGRESS_GA = """
               "ports": ["80"]
             }
           ],
-          "srcIpRanges": ["2001:4860:8000::5/128"],
-          "versionedExpr": "FIREWALL"
+          "srcIpRanges": ["2001:4860:8000::5/128"]
         },
         "priority": 2
       }
@@ -2352,7 +2333,6 @@ EXPECTED_MULTIPLE_MIXED_RULE_INGRESS_WITH_ICMP_GA = """
 [
   {
     "shortName": "displayname",
-    "type": "FIREWALL",
     "rules": [
       {
         "action": "goto_next",
@@ -2371,8 +2351,7 @@ EXPECTED_MULTIPLE_MIXED_RULE_INGRESS_WITH_ICMP_GA = """
               "ipProtocol": "udp"
             }
           ],
-          "srcIpRanges": ["10.0.0.0/8"],
-          "versionedExpr": "FIREWALL"
+          "srcIpRanges": ["10.0.0.0/8"]
         },
         "priority": 1
       },
@@ -2390,8 +2369,7 @@ EXPECTED_MULTIPLE_MIXED_RULE_INGRESS_WITH_ICMP_GA = """
               "ipProtocol": "udp"
             }
           ],
-          "srcIpRanges": ["2001:4860:8000::5/128"],
-          "versionedExpr": "FIREWALL"
+          "srcIpRanges": ["2001:4860:8000::5/128"]
         },
         "priority": 2
       }
@@ -2404,7 +2382,6 @@ EXPECTED_MULTIPLE_MIXED_RULE_INGRESS_WITH_ICMPV6_GA = """
 [
   {
     "shortName": "displayname",
-    "type": "FIREWALL",
     "rules": [
       {
         "action": "goto_next",
@@ -2420,8 +2397,7 @@ EXPECTED_MULTIPLE_MIXED_RULE_INGRESS_WITH_ICMPV6_GA = """
               "ipProtocol": "udp"
             }
           ],
-          "srcIpRanges": ["10.0.0.0/8"],
-          "versionedExpr": "FIREWALL"
+          "srcIpRanges": ["10.0.0.0/8"]
         },
         "priority": 1
       },
@@ -2442,8 +2418,7 @@ EXPECTED_MULTIPLE_MIXED_RULE_INGRESS_WITH_ICMPV6_GA = """
               "ipProtocol": "udp"
             }
           ],
-          "srcIpRanges": ["2001:4860:8000::5/128"],
-          "versionedExpr": "FIREWALL"
+          "srcIpRanges": ["2001:4860:8000::5/128"]
         },
         "priority": 2
       }
@@ -2848,7 +2823,7 @@ class GcpHfTest(parameterized.TestCase):
                            + BAD_TERM_ICMP_VERSION_MISMATCH,
                            self.naming),
         EXP_INFO)
-    exp = [{'shortName': 'displayname', 'rules': [], 'type': 'FIREWALL'}]
+    exp = [{'shortName': 'displayname', 'rules': []}]
     self.assertEqual(exp, json.loads(self._StripAclHeaders(str(acl))))
 
   def testInet6IgnoreTermWithIGMP(self):
@@ -2860,7 +2835,7 @@ class GcpHfTest(parameterized.TestCase):
                            + BAD_TERM_IGMP_VERSION_MISMATCH,
                            self.naming),
         EXP_INFO)
-    exp = [{'shortName': 'displayname', 'rules': [], 'type': 'FIREWALL'}]
+    exp = [{'shortName': 'displayname', 'rules': []}]
     self.assertEqual(exp, json.loads(self._StripAclHeaders(str(acl))))
 
   def testInet6TermWithIPv6Addresses(self):
@@ -2893,7 +2868,7 @@ class GcpHfTest(parameterized.TestCase):
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_OPTION_INET6 + TERM_ALLOW_PORT,
                            self.naming), EXP_INFO)
-    exp = [{'shortName': 'displayname', 'rules': [], 'type': 'FIREWALL'}]
+    exp = [{'shortName': 'displayname', 'rules': []}]
     self.assertEqual(exp, json.loads(self._StripAclHeaders(str(acl))))
 
   def testInetTermWithMixedAddresses(self):
