@@ -393,6 +393,30 @@ term good-term-target-service-account {
 }
 """
 
+GOOD_TERM_MULTIPLE_SOURCETAG = """
+term good-term-multiple-sourcetag {
+  comment:: "DNS access from corp."
+  source-address:: CORP_EXTERNAL
+  source-tag:: dns-servers
+  source-tag:: web-servers
+  destination-port:: DNS
+  protocol:: udp tcp
+  action:: accept
+}
+"""
+
+GOOD_TERM_EMPTY_SOURCETAG = """
+term good-term-empty-sourcetag {
+  comment:: "DNS access from corp."
+  source-address:: CORP_EXTERNAL
+  source-tag:: dns-servers
+  source-tag:: empty-tag
+  destination-port:: DNS
+  protocol:: udp tcp
+  action:: accept
+}
+"""
+
 BAD_TERM_NO_SOURCE = """
 term bad-term-no-source {
   comment:: "Management access from corp."
@@ -1032,6 +1056,35 @@ class GCETest(parameterized.TestCase):
 
     self.assertIn('sourceTags', str(acl))
     self.assertNotIn('targetTags', str(acl))
+
+  def testMultipleTags(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    acl = gce.GCE(
+        policy.ParsePolicy(
+            GOOD_HEADER_INGRESS + GOOD_TERM_MULTIPLE_SOURCETAG, self.naming
+        ),
+        EXP_INFO,
+    )
+
+    self.assertIn('sourceTags', str(acl))
+    self.assertIn('dns-servers', str(acl))
+    self.assertIn('web-servers', str(acl))
+    self.assertNotIn('targetTags', str(acl))
+
+  def testEmptyTags(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+    pol = policy.ParsePolicy(
+        GOOD_HEADER_INGRESS + GOOD_TERM_EMPTY_SOURCETAG, self.naming
+    )
+    acl = gce.GCE(pol, EXP_INFO)
+    pol.filters[0][1][0].source_tag.append("")
+    self.assertIn('sourceTags', str(acl))
+    self.assertIn('empty-tag', str(acl))
+    self.assertIn('dns-servers', str(acl))
+    self.assertNotIn('targetTags', str(acl))
+    self.assertNotIn('""', str(acl))
 
   def testSourceServiceAccounts(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
@@ -1692,6 +1745,16 @@ class GCETest(parameterized.TestCase):
   }, 5))
   def testGetAttributeCount(self, dict_term, expected):
     self.assertEqual(gce.GetAttributeCount(dict_term), expected)
+
+  @parameterized.named_parameters(
+      ('Empty tag', [''], False),
+      ('Empty tags list', [], False),
+      ('Multiple empty tags', ['', ''], False),
+      ('Valid tags present', ['foo', 'bar'], True),
+  )
+  def testTagsPresent(self, tag_list, expected):
+    self.assertEqual(gce.TagsPresent(tag_list), expected)
+
 
 if __name__ == '__main__':
   absltest.main()

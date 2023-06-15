@@ -26,8 +26,7 @@ import ipaddress
 import json
 import logging
 import re
-
-from typing import Dict, Any
+from typing import Any, Dict, Iterable, List
 
 from capirca.lib import gcp
 from capirca.lib import nacaddr
@@ -71,6 +70,18 @@ def IsDefaultDeny(term):
 def GetNextPriority(priority):
   """Get the priority for the next rule."""
   return priority
+
+
+def TagsPresent(tags):
+  """Check if the tags list has empty elements, or is an empty list.
+
+  Returns:
+    False if there are actual non-empty tags. Otherwise returns True.
+  """
+  if tags:
+    # check if any element is non empty string
+    return any(len(i) != 0 for i in tags)
+  return False
 
 
 class Term(gcp.Term):
@@ -170,7 +181,7 @@ class Term(gcp.Term):
         raise GceFirewallError(
             'Egress rule missing required field "destinationRanges".')
 
-      if self.term.destination_tag:
+      if TagsPresent(self.term.destination_tag):
         raise GceFirewallError(
             'GCE Egress rule cannot have destination tag.')
 
@@ -224,12 +235,18 @@ class Term(gcp.Term):
           self.term.name)
 
     if self.term.source_tag:
-      if self.term.direction == 'INGRESS':
-        term_dict['sourceTags'] = self.term.source_tag
-      elif self.term.direction == 'EGRESS':
-        term_dict['targetTags'] = self.term.source_tag
+      # Iterate over and prune any empty tags. In GCE it doesn't matter, Since
+      # tags are ORed with IP addresses. Once the source tags are pruned, we
+      # only set it if it's not an empty list.
+      pruned_source_tags = [i for i in self.term.source_tag if i]
+      if pruned_source_tags and self.term.direction == 'INGRESS':
+        term_dict['sourceTags'] = pruned_source_tags
+      elif pruned_source_tags and self.term.direction == 'EGRESS':
+        term_dict['targetTags'] = pruned_source_tags
     if self.term.destination_tag and self.term.direction == 'INGRESS':
-      term_dict['targetTags'] = self.term.destination_tag
+      pruned_dest_tags = [i for i in self.term.destination_tag if i]
+      if pruned_dest_tags:
+        term_dict['targetTags'] = pruned_dest_tags
     if self.term.source_service_accounts:
       if 'targetTags' in term_dict or 'sourceTags' in term_dict:
         raise GceFirewallError(
