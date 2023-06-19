@@ -72,7 +72,6 @@ _NSXV_SUPPORTED_KEYWORDS = [
     'destination_address',
     'destination_address_exclude',
     'destination_port',
-    'expiration',
     'icmp_type',
     'protocol',
     'source_address',
@@ -487,8 +486,12 @@ class Nsxv(aclgenerator.ACLGenerator):
         continue
 
       filter_options = header.FilterOptions(self._PLATFORM)
-      if len(filter_options) >= 2:
-        filter_name = filter_options[1]
+      filter_name = f'<{str(header)}>'  # Default name.
+      if filter_options:
+        # filter_options[0]: policy name
+        # filter_options[1]: type (inet, inet6, mixed)
+        # Used in some of the warnings below.
+        filter_name = filter_options[0]
 
       # get filter type, section id and applied To
       self._ParseFilterOptions(filter_options)

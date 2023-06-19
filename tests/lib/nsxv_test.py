@@ -520,7 +520,7 @@ class TermTest(absltest.TestCase):
     translate_pol = nsxv.Nsxv(pol, EXP_INFO)
     nsxv_policies = translate_pol.nsxv_policies
     for (_, filter_name, filter_list, terms) in nsxv_policies:
-      self.assertEqual(filter_name, 'inet')
+      self.assertEqual(filter_name, 'INET_FILTER_NAME')
       self.assertEqual(filter_list, ['inet'])
       self.assertEqual(len(terms), 1)
 
@@ -538,7 +538,7 @@ class TermTest(absltest.TestCase):
     translate_pol = nsxv.Nsxv(pol, EXP_INFO)
     nsxv_policies = translate_pol.nsxv_policies
     for (_, filter_name, filter_list, terms) in nsxv_policies:
-      self.assertEqual(filter_name, 'mixed')
+      self.assertEqual(filter_name, 'MIXED_HEADER_NAME')
       self.assertEqual(filter_list, ['mixed'])
       self.assertEqual(len(terms), 1)
       self.assertIn('10.0.0.0/8', str(terms[0]))
@@ -558,7 +558,7 @@ class TermTest(absltest.TestCase):
     translate_pol = nsxv.Nsxv(pol, EXP_INFO)
     nsxv_policies = translate_pol.nsxv_policies
     for (_, filter_name, filter_list, terms) in nsxv_policies:
-      self.assertEqual(filter_name, 'mixed')
+      self.assertEqual(filter_name, 'MIXED_HEADER_NAME')
       self.assertEqual(filter_list, ['mixed'])
       self.assertEqual(len(terms), 1)
       self.assertIn('2001:4860:4860::8844', str(terms[0]))
@@ -580,7 +580,7 @@ class TermTest(absltest.TestCase):
     translate_pol = nsxv.Nsxv(pol, EXP_INFO)
     nsxv_policies = translate_pol.nsxv_policies
     for (_, filter_name, filter_list, terms) in nsxv_policies:
-      self.assertEqual(filter_name, 'mixed')
+      self.assertEqual(filter_name, 'MIXED_HEADER_NAME')
       self.assertEqual(filter_list, ['mixed'])
       self.assertEqual(len(terms), 1)
       self.assertIn('2001:4860:4860::8844', str(terms[0]))
@@ -603,7 +603,7 @@ class TermTest(absltest.TestCase):
     translate_pol = nsxv.Nsxv(pol, EXP_INFO)
     nsxv_policies = translate_pol.nsxv_policies
     for (_, filter_name, filter_list, terms) in nsxv_policies:
-      self.assertEqual(filter_name, 'inet')
+      self.assertEqual(filter_name, 'INET_FILTER_WITH_ESTABLISHED_NAME')
       self.assertEqual(filter_list, ['inet'])
       self.assertEqual(len(terms), 1)
 

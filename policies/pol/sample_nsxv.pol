@@ -4,7 +4,22 @@ header {
 }
 
 term accept-icmp {
+  comment:: "Allow ICMPv4."
   protocol:: icmp
+  action:: accept
+}
+
+term accept-icmpv6 {
+  comment:: "Allow ICMPv6."
+  protocol:: icmpv6
+  action:: accept
+}
+
+term accept-icmpv6-multiple-types {
+  comment:: "Allow specific ICMPv6 types router-solicit and echo-reply."
+  source-address:: GOOGLE_DNS
+  protocol:: icmpv6
+  icmp-type:: router-solicit echo-reply
   action:: accept
 }
 

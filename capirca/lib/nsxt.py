@@ -16,10 +16,14 @@
 
 """nsxt generator."""
 
+import datetime
 import json
+from typing import Literal, TypedDict, Optional, Union, Tuple
 
 from absl import logging
 from capirca.lib import aclgenerator
+from capirca.lib import nacaddr
+from capirca.lib import policy  # for typing information
 
 _ACTION_TABLE = {
     'accept': 'ALLOW',
@@ -31,31 +35,17 @@ _ACTION_TABLE = {
 _NSXT_SUPPORTED_KEYWORDS = [
     'name',
     'action',
-    'resource_type',
-    'display_name',
-    'marked_for_delete',
-    'overridden',
-    'rule_id',
-    'sequence_number',
-    'sources_excluded',
-    'destinations_excluded',
-    'source_groups',
-    'destination_groups',
-    'services',
-    'profiles',
-    'logged',
-    'scope',
-    'disabled',
-    'notes',
-    'direction',
-    'tag',
-    'ip_protocol',
-    'is_default',
-    'protocol',
-    'destination_port',
-    'source_address',
+    'comment',
     'destination_address',
-    'source_port'
+    'destination_address_exclude',
+    'destination_port',
+    'expiration',
+    'icmp_type',
+    'protocol',
+    'source_address',
+    'source_address_exclude',
+    'source_port',
+    'logging',
 ]
 
 _PROTOCOLS = {
@@ -100,11 +90,13 @@ class NsxtUnsupportedManyPoliciesError(Error):
 class ServiceEntries:
   """Represents service entries for a rule."""
 
-  def __init__(self, protocol, source_ports, destination_ports, icmp_types):
+  def __init__(self, protocol: int, source_ports: list[Tuple[str, str]],
+               destination_ports: list[Tuple[str, str]],
+               icmp_types: list[int]):
     """Setting things up.
 
     Args:
-      protocol: str, protocol.
+      protocol: int, protocol.
       source_ports: str list or none, the source port.
       destination_ports: str list or none, the destination port.
       icmp_types: icmp-type numeric specification (if any).
@@ -131,7 +123,7 @@ class ServiceEntries:
         new_service = service.copy()
         new_service['icmp_type'] = icmp_type
         services.append(new_service)
-        return services
+      return services
 
     # Handle TCP and UDP
     elif self.protocol == 6 or self.protocol == 17:
@@ -156,19 +148,26 @@ class ServiceEntries:
 class Term(aclgenerator.Term):
   """Creates a single ACL Term for NSX-T."""
 
-  def __init__(self, term, filter_type, applied_to=None, af=4):
+  def __init__(self, term: policy.Term,
+               filter_type: Literal['inet', 'inet6', 'mixed'],
+               af: Literal[4, 6] = 4):
     self.term = term
+    # Our caller should have already verified the filter type.
+    assert filter_type in ['inet', 'inet6', 'mixed']
     # Our caller should have already verified the address family.
     assert af in (4, 6)
     self.af = af
     self.filter_type = filter_type
-    self.applied_to = applied_to
 
   def __str__(self):
     """Convert term to a rule string.
 
     Returns:
-      A rule as a string.
+      A rule as a string. Either valid JSON or an empty string.
+
+    Raises:
+      NsxtAclTermError: When unknown icmp-types, options or other unsupported
+          features are specified
 
     """
     # Verify platform specific terms. Skip whole term if platform does not
@@ -180,10 +179,35 @@ class Term(aclgenerator.Term):
       if 'nsxt' in self.term.platform_exclude:
         return ''
 
+    # Don't render icmpv6 protocol terms under inet, or icmp under inet6
+    if ((self.af == 6 and 'icmp' in self.term.protocol) or
+        (self.af == 4 and 'icmpv6' in self.term.protocol)):
+      logging.debug(self.NO_AF_LOG_PROTO.substitute(term=self.term.name,
+                                                    proto=self.term.protocol,
+                                                    af=self.filter_type))
+      return ''
+
+    # Term verbatim is not supported
+    if self.term.verbatim:
+      raise NsxtAclTermError(
+          'Verbatim are not implemented in standard ACLs')
+
+    # Term option is not supported
+    if self.term.option:
+      for opt in [str(single_option) for single_option in self.term.option]:
+        if((opt.find('tcp-established') == 0)
+           or (opt.find('established') == 0)):
+          return ''
+        else:
+          raise NsxtAclTermError(
+              'Option are not implemented in standard ACLs')
+
+    # check for keywords Nsxt does not support
     term_keywords = self.term.__dict__
     unsupported_keywords = []
     for key in term_keywords:
       if term_keywords[key]:
+        # translated is obj attribute not keyword
         if ('translated' not in key) and (key not in _NSXT_SUPPORTED_KEYWORDS):
           unsupported_keywords.append(key)
     if unsupported_keywords:
@@ -194,30 +218,96 @@ class Term(aclgenerator.Term):
 
     notes = ''
     if self.term.comment:
-      notes = '\n'.join(self.term.comment)
+      notes += '\n'.join(self.term.comment)
 
     action = 'ALLOW'
     if self.term.action:
       action = _ACTION_TABLE.get(self.term.action[0])
 
-    source_address = ['ANY']
-    if self.term.source_address:
-      source_address = []
-      for i in self.term.source_address:
-        source_address.append(str(i))
+    # for mixed filter type get both IPV4address and IPv6Address
+    if self.filter_type == 'mixed':
+      af_list = [4, 6]
+    else:
+      af_list = [self.af]
 
-    destination_address = ['ANY']
-    if self.term.destination_address:
-      destination_address = []
-      for i in self.term.destination_address:
-        destination_address.append(str(i))
+    # There can be many source and destination addresses.
+    source_address: list[nacaddr.IPType] = []
+    destination_address: list[nacaddr.IPType] = []
+    source_addr = []
+    destination_addr = []
+
+    source_v4_addr = []
+    source_v6_addr = []
+    dest_v4_addr = []
+    dest_v6_addr = []
+
+    # Fix addresses for each of the IP protocol versions we support.
+    # This includes fixing up exclusion addresses as needed.
+    for af in af_list:
+      # source address
+      if self.term.source_address:
+        source_address: list[nacaddr.IPType] = self.term.GetAddressOfVersion(
+            'source_address', af)
+        source_address_exclude: list[nacaddr.IPType] = (
+            self.term.GetAddressOfVersion('source_address_exclude', af))
+        if source_address_exclude:
+          source_address: list[nacaddr.IPType] = nacaddr.ExcludeAddrs(
+              source_address, source_address_exclude)
+
+        if source_address:
+          if af == 4:
+            source_address: list[nacaddr.IPv4]
+            source_v4_addr: list[nacaddr.IPv4] = source_address
+          else:
+            source_address: list[nacaddr.IPv6]
+            source_v6_addr: list[nacaddr.IPv6] = source_address
+        source_addr = source_v4_addr + source_v6_addr
+
+      # destination address
+      if self.term.destination_address:
+        destination_address: list[
+            nacaddr.IPType] = self.term.GetAddressOfVersion(
+                'destination_address', af)
+        destination_address_exclude: list[nacaddr.IPType] = (
+            self.term.GetAddressOfVersion('destination_address_exclude', af))
+        if destination_address_exclude:
+          destination_address: list[nacaddr.IPType] = nacaddr.ExcludeAddrs(
+              destination_address,
+              destination_address_exclude)
+
+        if destination_address:
+          if af == 4:
+            destination_address: list[nacaddr.IPv4]
+            dest_v4_addr: list[nacaddr.IPv4] = destination_address
+          else:
+            destination_address: list[nacaddr.IPv6]
+            dest_v6_addr: list[nacaddr.IPv6] = destination_address
+        destination_addr = dest_v4_addr + dest_v6_addr
+
+    # Check for mismatch IP for source and destination address for mixed filter
+    if self.filter_type == 'mixed':
+      if source_addr and destination_addr:
+        if source_v4_addr and not dest_v4_addr:
+          source_addr = source_v6_addr
+        elif source_v6_addr and not dest_v6_addr:
+          source_addr = source_v4_addr
+        elif dest_v4_addr and not source_v4_addr:
+          destination_addr = dest_v6_addr
+        elif dest_v6_addr and not source_v6_addr:
+          destination_addr = dest_v4_addr
+
+        if not source_addr or not destination_addr:
+          logging.warning('Term %s will not be rendered as it has IPv4/IPv6 '
+                          'mismatch for source/destination for mixed address '
+                          'family.', self.term.name)
+          return ''
 
     rule = {
         'action': action,
         'resource_type': 'Rule',
         'display_name': name,
-        'source_groups': source_address,
-        'destination_groups': destination_address,
+        'source_groups': [str(i) for i in source_addr] or ['ANY'],
+        'destination_groups': [str(i) for i in destination_addr] or ['ANY'],
         # Set mandatory services to ANY, as service_entries will be used
         'services': ['ANY'],
         'profiles': ['ANY'],
@@ -225,9 +315,11 @@ class Term(aclgenerator.Term):
         'logged': bool(self.term.logging),
         'notes': notes,
         'direction': 'IN_OUT',
-        'ip_protocol': 'IPV4_IPV6'
+        'ip_protocol': '_'.join(['IPV%d' % af for af in af_list]),
     }
 
+    # Compute protocols used in this term. Normalize the ICMP types.
+    # Populate service entries (which is not done unless protocol is specified).
     if self.term.protocol:
       icmp_types = []
       services = []
@@ -247,43 +339,60 @@ class Term(aclgenerator.Term):
     return json.dumps(rule)
 
 
-class Nsxt(aclgenerator.ACLGenerator):
-  """nsxt rendering class.
+class FilterOptions(TypedDict):
+  section_name: str  # Display name of the SecurityPolicy.
+  filter_type: Literal['inet', 'inet6', 'mixed']  # IP version to apply to.
+  section_id: Optional[str]  # Numeric ID of the rule.
+  applied_to: Union[str, Literal['ANY']]  # Security group to apply to.
 
-    This class takes a policy object and renders the output into a syntax
-    which is understood by nsxt policy.
+
+class Nsxt(aclgenerator.ACLGenerator):
+  """NSX-T rendering class.
+
+  This class takes a policy object and renders the output into a syntax
+  which is understood by nsxt policy.
 
   Attributes:
     pol: policy.Policy object
 
   Raises:
-  UnsupportednsxtAccessListError: Raised when we're give a non named access
+    UnsupportedNsxtAccessListError: Raised when we're give a non named access
   list.
-
   """
 
   _PLATFORM = 'nsxt'
   _DEFAULT_PROTOCOL = 'ip'
   SUFFIX = '.nsxt'
 
-  _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration', 'logging'])
+  _OPTIONAL_SUPPORTED_KEYWORDS = set(['expiration', 'logging', 'comment'])
   _FILTER_OPTIONS_DICT = {}
 
-  def _TranslatePolicy(self, pol, exp_info):
-    self.nsxt_policies = []
+  def _TranslatePolicy(self, pol: policy.Policy, exp_info: int):
+    self.nsxt_policies: list[Tuple[policy.Header, str, list[Term]]] = []
+    current_date = datetime.datetime.utcnow().date()
 
-    for header, terms in pol.filters:
+    # Warn about policies that will expire in less than exp_info weeks.
+    exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
+
+    filters: list[Tuple[policy.Header, list[policy.Term]]] = pol.filters
+    for header, terms in filters:
       if self._PLATFORM not in header.platforms:
         continue
 
       filter_options = header.FilterOptions(self._PLATFORM)
-      if len(filter_options) >= 2:
-        filter_name = filter_options[1]
+      filter_name = f'<{str(header)}>'  # Default name.
+      if filter_options:
+        # filter_options[0]: policy name
+        # filter_options[1]: type (inet, inet6, mixed)
+        # Used in some of the warnings below.
+        filter_name = filter_options[0]
 
+      # extract filter type, section id and applied-to, and store them
       self._ParseFilterOptions(filter_options)
 
-      filter_type = ''
-      applied_to = ''
+      # One of 'inet', 'inet6' or 'mixed'.
+      filter_type: Literal['inet', 'inet6', 'mixed'] = (
+          self._FILTER_OPTIONS_DICT['filter_type'])
 
       term_names = set()
       new_terms = []
@@ -294,11 +403,62 @@ class Nsxt(aclgenerator.ACLGenerator):
                                        term.name)
         term_names.add(term.name)
 
+        # Warn about terms about to expire. Do not render expired terms.
+        if term.expiration:
+          if term.expiration <= exp_info_date:
+            logging.info('INFO: Term %s in policy %s expires '
+                         'in less than two weeks.', term.name, filter_name)
+          if term.expiration <= current_date:
+            logging.warning('WARNING: Term %s in policy %s is expired and '
+                            'will not be rendered.', term.name, filter_name)
+            continue
+
+        # Get the mapped action value
+        # If there is no mapped action value term is not rendered
+        mapped_action = _ACTION_TABLE.get(str(term.action[0]))
+        if not mapped_action:
+          logging.warning('WARNING: Action %s in Term %s is not valid and '
+                          'will not be rendered.', term.action, term.name)
+          continue
+
         term.name = self.FixTermLength(term.name)
 
-        new_terms.append(Term(term, filter_type, applied_to, 4))
+        # Generate terms depending on whether the filter_type is one of 'inet',
+        # 'inet6' or 'mixed' (for both v4 and v6).
 
-      self.nsxt_policies.append((header, filter_name, [filter_type],
+        if filter_type == 'inet':
+          af = 'inet'
+          term = self.FixHighPorts(term, af=af)
+          if not term:
+            continue
+          new_terms.append(Term(term, filter_type, 4))
+
+        elif filter_type == 'inet6':
+          af = 'inet6'
+          term = self.FixHighPorts(term, af=af)
+          if not term:
+            continue
+          new_terms.append(Term(term, filter_type, 6))
+
+        elif filter_type == 'mixed':
+          if 'icmpv6' not in term.protocol:
+            inet_term = self.FixHighPorts(term, 'inet')
+            if not inet_term:
+              continue
+            new_terms.append(Term(inet_term, filter_type, 4))
+          else:
+            inet6_term = self.FixHighPorts(term, 'inet6')
+            if not inet6_term:
+              continue
+            new_terms.append(Term(inet6_term, filter_type, 6))
+
+        else:
+          # This should have already been checked in _ParseFilterOptions.
+          raise UnsupportedNsxtAccessListError(
+              'Access list type %s not supported by %s' % (
+                  filter_type, self._PLATFORM))
+
+      self.nsxt_policies.append((header, filter_name,
                                  new_terms))
 
   def _ParseFilterOptions(self, filter_options):
@@ -364,21 +524,38 @@ class Nsxt(aclgenerator.ACLGenerator):
     """Render the output of the nsxt policy."""
     if (len(self.nsxt_policies) > 1):
       raise NsxtUnsupportedManyPoliciesError('Only one policy can be rendered')
-    for (_, _, _, terms) in self.nsxt_policies:
-      rules = [json.loads(str(term)) for term in terms]
+
+    # To support multiple policies, we would have to detect a change in the
+    # section ID / section name specified in a header, and then output a list of
+    # dicts. A pusher used to communicate with the NSX-T API would then have to
+    # support seeing a list instead of a dict, and apply multiple policies.
+
+    header, _, terms = self.nsxt_policies[0]
+    # A term may be rendered as an empty string if it must not be rendered
+    # under the current conditions (e.g. ICMPv6 term while rendering an IPv4
+    # policy).
+    rules = [json.loads(str(term)) for term in terms if str(term)]
 
     section_name = self._FILTER_OPTIONS_DICT['section_name']
     section_id = self._FILTER_OPTIONS_DICT['section_id']
     applied_to = self._FILTER_OPTIONS_DICT['applied_to']
 
-    policy = {
+    # compute the p4 tags
+    description = ' '.join(aclgenerator.AddRepositoryTags(''))
+
+    # add the header comment as well
+    if header.comment:
+      description += ' :: ' + ' :: '.join(header.comment)
+
+    policy_json = {
         'rules': rules,
         'resource_type': 'SecurityPolicy',
         'display_name': section_name,
         'id': section_id if section_id is not None else section_name,
         'category': 'Application',
         'is_default': 'false',
-        'scope': [applied_to]
+        'scope': [applied_to],
+        'description': description,
     }
 
-    return json.dumps(policy, indent=2)
+    return json.dumps(policy_json, indent=2)
