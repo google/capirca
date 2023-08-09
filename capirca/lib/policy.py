@@ -357,6 +357,7 @@ class Term:
     source-service-accounts: VarType.SOURCE_SERVICE_ACCOUNTS
     target-service-accounts: VarType.TARGET_SERVICE_ACCOUNTS
     source-zone: VarType.SZONE
+    versa-application: VarType.VERSA_APPLICATION
     vpn: VarType.VPN
   """  # fmt: skip
   ICMP_TYPE = {
@@ -457,6 +458,7 @@ class Term:
     self.protocol_except = []
     self.qos = None
     self.pan_application = []
+    self.versa_application = []
     self.routing_instance = None
     self.source_address = []
     self.source_address_exclude = []
@@ -827,6 +829,9 @@ class Term:
       ret_str.append('  qos: %s' % self.qos)
     if self.pan_application:
       ret_str.append('  pan_application: %s' % self.pan_application)
+    if self.versa_application:
+      # pylint: disable=consider-using-f-string
+      ret_str.append('  versa_application: %s' % self.versa_application)
     if self.logging:
       ret_str.append('  logging: %s' % self.logging)
     if self.log_limit:
@@ -929,6 +934,10 @@ class Term:
     if sorted(self.pan_application) != sorted(other.pan_application):
       return False
 
+    # versa-application
+    if sorted(self.versa_application) != sorted(other.versa_application):
+      return False
+
     # verbatim
     if self.verbatim != other.verbatim:
       return False
@@ -961,6 +970,8 @@ class Term:
     if self.qos != other.qos:
       return False
     if sorted(self.pan_application) != sorted(other.pan_application):
+      return False
+    if sorted(self.versa_application) != sorted(other.versa_application):
       return False
     if self.packet_length != other.packet_length:
       return False
@@ -1223,6 +1234,8 @@ class Term:
           self.forwarding_class_except.append(x.value)
         elif x.var_type is VarType.PAN_APPLICATION:
           self.pan_application.append(x.value)
+        elif x.var_type is VarType.VERSA_APPLICATION:
+          self.versa_application.append(x.value)
         elif x.var_type is VarType.NEXT_IP:
           self.next_ip = DEFINITIONS.GetNetAddr(x.value)
         elif x.var_type is VarType.PLATFORM:
@@ -1276,6 +1289,8 @@ class Term:
         self.forwarding_class_except.append(obj.value)
       elif obj.var_type is VarType.PAN_APPLICATION:
         self.pan_application.append(obj.value)
+      elif obj.var_type is VarType.VERSA_APPLICATION:
+        self.versa_application.append(obj.value)
       elif obj.var_type is VarType.NEXT_IP:
         self.next_ip = DEFINITIONS.GetNetAddr(obj.value)
       elif obj.var_type is VarType.VERBATIM:
@@ -1694,6 +1709,7 @@ class VarType:
   DZONE = 66
   DECAPSULATE = 67
   SOURCE_SERVICE_ACCOUNTS = 68
+  VERSA_APPLICATION = 69
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1931,6 +1947,7 @@ tokens = (
     'TRAFFIC_TYPE',
     'TTL',
     'VERBATIM',
+    'VERSA_APPLICATION',
     'VPN',
 )
 
@@ -2013,6 +2030,7 @@ reserved = {
     'traffic-type': 'TRAFFIC_TYPE',
     'ttl': 'TTL',
     'verbatim': 'VERBATIM',
+    'versa-application': 'VERSA_APPLICATION',
     'vpn': 'VPN',
 }
 
@@ -2194,6 +2212,7 @@ def p_term_spec(p):
   | term_spec ttl_spec
   | term_spec traffic_type_spec
   | term_spec verbatim_spec
+  | term_spec versa_application_spec
   | term_spec vpn_spec
   |
   """
@@ -2605,6 +2624,13 @@ def p_vpn_spec(p):
     p[0] = VarType(VarType.VPN, [p[4], p[5]])
   else:
     p[0] = VarType(VarType.VPN, [p[4], ''])
+
+
+def p_versa_application_spec(p):
+  """versa_application_spec : VERSA_APPLICATION ':' ':' one_or_more_strings"""
+  p[0] = []
+  for apps in p[4]:
+    p[0].append(VarType(VarType.VERSA_APPLICATION, apps))
 
 
 def p_qos_spec(p):
