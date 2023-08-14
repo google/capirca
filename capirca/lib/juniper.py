@@ -211,9 +211,17 @@ class Term(aclgenerator.Term):
     config = Config(indent=self._DEFAULT_INDENT)
     from_str = []
     # Don't render icmpv6 protocol terms under inet, or icmp under inet6
-    if ((self.term_type == 'inet6' and 'icmp' in self.term.protocol) or
-        (self.term_type == 'inet' and ('icmpv6' in self.term.protocol or
-                                       'icmp6' in self.term.protocol))):
+    icmp_mismatch_pruned = False
+    if (self.term_type == 'inet6' and 'icmp' in self.term.protocol):
+      self.term.protocol.remove('icmp')
+      icmp_mismatch_pruned = True
+    if (self.term_type == 'inet' and 'icmpv6' in self.term.protocol):
+      self.term.protocol.remove('icmpv6')
+      icmp_mismatch_pruned = True
+    if (self.term_type == 'inet' and 'icmp6' in self.term.protocol):
+      self.term.protocol.remove('icmp6')
+      icmp_mismatch_pruned = True
+    if not self.term.protocol and icmp_mismatch_pruned:
       logging.debug(self.NO_AF_LOG_PROTO.substitute(
           term=self.term.name,
           proto=', '.join(self.term.protocol),

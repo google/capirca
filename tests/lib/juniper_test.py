@@ -444,6 +444,20 @@ term icmptype-mismatch {
   action:: accept
 }
 """
+BAD_ICMPTYPE_TERM_3 = """
+term icmptype-mismatch {
+  comment:: "error when icmp paired with inet6 filter, but render tcp"
+  protocol:: icmp tcp
+  action:: accept
+}
+"""
+BAD_ICMPTYPE_TERM_4 = """
+term icmptype-mismatch {
+  comment:: "error when icmpv6 paired with inet filter, but render tcp"
+  protocol:: icmpv6 tcp
+  action:: accept
+}
+"""
 DEFAULT_TERM_1 = """
 term default-term-1 {
   action:: deny
@@ -1351,7 +1365,7 @@ class JuniperTest(parameterized.TestCase):
 
     mock_debug.assert_called_once_with(
         'Term icmptype-mismatch will not be rendered,'
-        ' as it has icmpv6 match specified but '
+        ' as it has  match specified but '
         'the ACL is of inet address family.')
 
   @mock.patch.object(juniper.logging, 'debug')
@@ -1364,8 +1378,30 @@ class JuniperTest(parameterized.TestCase):
 
     mock_debug.assert_called_once_with(
         'Term icmptype-mismatch will not be rendered,'
-        ' as it has icmp match specified but '
+        ' as it has  match specified but '
         'the ACL is of inet6 address family.')
+
+  @mock.patch.object(juniper.logging, 'debug')
+  def testIcmpTCPInet6Mismatch(self, mock_debug):
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(GOOD_HEADER_V6 + BAD_ICMPTYPE_TERM_3, self.naming),
+        EXP_INFO,
+    )
+    # output happens in __str_
+    output = str(jcl)
+    self.assertIn('tcp', output, output)
+    self.assertNotIn('next-header icmp', output, output)
+
+  @mock.patch.object(juniper.logging, 'debug')
+  def testIcmpv6TCPInetMismatch(self, mock_debug):
+    jcl = juniper.Juniper(
+        policy.ParsePolicy(GOOD_HEADER + BAD_ICMPTYPE_TERM_4, self.naming),
+        EXP_INFO,
+    )
+    # output happens in __str_
+    output = str(jcl)
+    self.assertIn('tcp', output, output)
+    self.assertNotIn('next-header icmp6', output, output)
 
   @mock.patch.object(juniper.logging, 'warning')
   def testExpiredTerm(self, mock_warn):
