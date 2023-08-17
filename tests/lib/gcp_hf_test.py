@@ -382,6 +382,39 @@ BAD_TERM_USING_DEST_TAG = """
 }
 """
 
+GOOD_TERM_USING_DEST_PREFIX = """
+  term good-term-with-dest-prefix {
+  comment:: "Generic description"
+  destination-address:: PUBLIC_NAT
+  destination-prefix:: iplist-search-engines-crawlers
+  action:: next
+}
+"""
+
+GOOD_TERM_USING_DEST_PREFIX_ONLY = """
+  term good-term-with-dest-prefix {
+  comment:: "Generic description"
+  destination-prefix:: iplist-search-engines-crawlers
+  action:: next
+}
+"""
+
+GOOD_TERM_USING_MULTIPLE_SOURCE_PREFIX = """
+  term good-term-with-source-prefix {
+  comment:: "Generic description"
+  source-prefix:: iplist-known-malicious-ips iplist-tor-exit-nodes
+  action:: deny
+}
+"""
+
+BAD_TERM_USING_SOURCE_PREFIX = """
+  term bad-term-with-source-prefix {
+  comment:: "Generic description"
+  source-prefix:: unknown-random-ip-list
+  action:: deny
+}
+"""
+
 BAD_TERM_SOURCE_PORT = """
 term allow-traffic-from-port {
   comment:: "Generic description"
@@ -1136,6 +1169,59 @@ EXPECTED_MULTIPLE_RULE_INGRESS_BETA = """
         "priority": 2
       }
     ]
+  }
+]
+"""
+
+EXPECTED_MIXED_RULE_EGRESS_BETA = """
+[
+  {
+    "rules": [
+      {
+        "action": "goto_next",
+        "description": "allow-internal-traffic: Generic description",
+        "direction": "EGRESS",
+        "enableLogging": false,
+        "match": {
+          "destIpRanges": [
+            "0.0.0.0/0"
+          ],
+          "layer4Configs": [
+            {
+              "ipProtocol": "tcp"
+            },
+            {
+              "ipProtocol": "icmp"
+            },
+            {
+              "ipProtocol": "udp"
+            }
+          ]
+        },
+        "priority": 1
+      },
+      {
+        "action": "goto_next",
+        "description": "allow-internal-traffic-v6: Generic description",
+        "direction": "EGRESS",
+        "enableLogging": false,
+        "match": {
+          "destIpRanges": [
+            "::/0"
+          ],
+          "layer4Configs": [
+            {
+              "ipProtocol": "tcp"
+            },
+            {
+              "ipProtocol": "udp"
+            }
+          ]
+        },
+        "priority": 2
+      }
+    ],
+    "shortName": "displayname"
   }
 ]
 """
@@ -2427,11 +2513,117 @@ EXPECTED_MULTIPLE_MIXED_RULE_INGRESS_WITH_ICMPV6_GA = """
 ]
 """
 
+EXPECTED_MIXED_RULE_EGRESS_WITH_DEST_PREFIX = """
+[
+  {
+    "rules": [
+      {
+        "action": "goto_next",
+        "description": "good-term-with-dest-prefix: Generic description",
+        "direction": "EGRESS",
+        "enableLogging": false,
+        "match": {
+          "destIpRanges": [
+            "10.0.0.0/8"
+          ],
+          "destThreatIntelligences": [
+            "iplist-search-engines-crawlers"
+          ],
+          "layer4Configs": [
+            {
+              "ipProtocol": "all"
+            }
+          ]
+        },
+        "priority": 1
+      },
+      {
+        "action": "goto_next",
+        "description": "good-term-with-dest-prefix-v6: Generic description",
+        "direction": "EGRESS",
+        "enableLogging": false,
+        "match": {
+          "destIpRanges": [
+            "2001:4860:8000::5/128"
+          ],
+          "destThreatIntelligences": [
+            "iplist-search-engines-crawlers"
+          ],
+          "layer4Configs": [
+            {
+              "ipProtocol": "all"
+            }
+          ]
+        },
+        "priority": 2
+      }
+    ],
+    "shortName": "displayname"
+  }
+]
+"""
+
+EXPECTED_MIXED_RULE_EGRESS_WITH_DEST_PREFIX_ONLY = """
+[
+  {
+    "rules": [
+      {
+        "action": "goto_next",
+        "description": "good-term-with-dest-prefix: Generic description",
+        "direction": "EGRESS",
+        "enableLogging": false,
+        "match": {
+          "destThreatIntelligences": [
+            "iplist-search-engines-crawlers"
+          ],
+          "layer4Configs": [
+            {
+              "ipProtocol": "all"
+            }
+          ]
+        },
+        "priority": 1
+      }
+    ],
+    "shortName": "displayname"
+  }
+]
+"""
+
+EXPECTED_MIXED_RULE_WITH_SOURCE_PREFIX = """
+[
+  {
+    "rules": [
+      {
+        "action": "deny",
+        "description": "good-term-with-source-prefix: Generic description",
+        "direction": "INGRESS",
+        "enableLogging": false,
+        "match": {
+          "layer4Configs": [
+            {
+              "ipProtocol": "all"
+            }
+          ],
+          "srcThreatIntelligences": [
+            "iplist-known-malicious-ips",
+            "iplist-tor-exit-nodes"
+          ]
+        },
+        "priority": 1
+      }
+    ],
+    "shortName": "displayname"
+  }
+]
+"""
+
 SUPPORTED_TOKENS = frozenset({
     'action',
     'comment',
     'destination_address',
     'destination_port',
+    'destination_prefix',
     'destination_tag',
     'logging',
     'name',
@@ -2439,6 +2631,7 @@ SUPPORTED_TOKENS = frozenset({
     'protocol',
     'source_address',
     'source_port',
+    'source_prefix',
     'source_tag',
     'stateless_reply',
     'target_resources',
@@ -2680,6 +2873,17 @@ class GcpHfTest(parameterized.TestCase):
     with self.assertRaises(gcp.TermError):
       gcp_hf.HierarchicalFirewall(
           policy.ParsePolicy(HEADER_NO_OPTIONS + BAD_TERM_USING_SOURCE_TAG,
+                             self.naming),
+          EXP_INFO)
+
+  def testRaisesTermErrorOnInvalidSourcePrefix(self):
+    """Test that a term with an invalid source prefix list raises an error.
+
+    Only well known threat intelligence source prefix lists are supported.
+    """
+    with self.assertRaises(gcp.TermError):
+      gcp_hf.HierarchicalFirewall(
+          policy.ParsePolicy(HEADER_NO_OPTIONS + BAD_TERM_USING_SOURCE_PREFIX,
                              self.naming),
           EXP_INFO)
 
@@ -2945,6 +3149,34 @@ class GcpHfTest(parameterized.TestCase):
     expected = json.loads(EXPECTED_MULTIPLE_MIXED_RULE_INGRESS_WITH_ICMPV6_GA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
+  def testMixedTermWithDestinationPrefix(self):
+    """Test that DestinationPrefix lists are supported with IPs."""
+    self.naming.GetNetAddr.return_value = TEST_MIXED_IPS
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(
+            HEADER_OPTION_EGRESS_MIXED + GOOD_TERM_USING_DEST_PREFIX,
+            self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_MIXED_RULE_EGRESS_WITH_DEST_PREFIX)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testMixedTermWithDestinationPrefixOnly(self):
+    """Test that DestinationPrefix lists are supported with IPs."""
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(
+            HEADER_OPTION_EGRESS_MIXED + GOOD_TERM_USING_DEST_PREFIX_ONLY,
+            self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_MIXED_RULE_EGRESS_WITH_DEST_PREFIX_ONLY)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testMixedTermWithMultipleSourcePrefix(self):
+    """Test that ICMPv6 protocol is supported with mixed."""
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(
+            HEADER_OPTION_MIXED + GOOD_TERM_USING_MULTIPLE_SOURCE_PREFIX,
+            self.naming), EXP_INFO)
+    expected = json.loads(EXPECTED_MIXED_RULE_WITH_SOURCE_PREFIX)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
   def testInetIsDefaultInetVersion(self):
     """Test that inet is the default inet version when not specified."""
     self.naming.GetNetAddr.return_value = TEST_MIXED_IPS
@@ -2966,6 +3198,19 @@ class GcpHfTest(parameterized.TestCase):
                            + TERM_ALLOW_DNS, self.naming),
         EXP_INFO)
     expected = json.loads(EXPECTED_MULTIPLE_RULE_INGRESS_BETA)
+    self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
+
+  def testMixedPriority(self):
+    """Test that priority is set based on terms' ordering."""
+    self.naming.GetNetAddr.return_value = ALL_IPV6_IPS
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+
+    acl = gcp_hf.HierarchicalFirewall(
+        policy.ParsePolicy(
+            HEADER_OPTION_EGRESS_MIXED + TERM_ALLOW_ALL_INTERNAL,
+            self.naming
+            ), EXP_INFO)
+    expected = json.loads(EXPECTED_MIXED_RULE_EGRESS_BETA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testLogging(self):
@@ -3315,6 +3560,16 @@ class GcpHfTest(parameterized.TestCase):
           },
           'targetResources': ['target1', 'target2']
       }, 5),
+      ('1 ip, 1 source prefix, 2 dest prefix', {
+          'match': {
+              'destIpRanges': ['0.0.0.0/0'],
+              'srcThreatIntelligences': ["iplist-known-malicious-ips"],
+              'destThreatIntelligences': [
+                  "iplist-known-malicious-ips",
+                  "iplist-search-engines-crawlers",
+              ],
+          },
+      }, 4)
   )
   def testGAGetRuleTupleCount(self, dict_term, expected):
     self.assertEqual(gcp_hf.GetRuleTupleCount(dict_term, 'ga'), expected)
