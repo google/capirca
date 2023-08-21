@@ -1,4 +1,4 @@
-# Copyright 2011 Google Inc. All Rights Reserved.
+# Copyright 2019 Versa Networks Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 
 import collections
 import copy
-#import datetime
+import datetime
 import itertools
 
 from absl import logging
@@ -27,8 +27,6 @@ from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 #import six
 
-
-ICMP_TERM_LIMIT = 8
 
 
 class Error(Exception):
@@ -116,18 +114,18 @@ class Tree:
 
   # Print the tree
   def PrintTree(self,num=0):
-    """Print to the tree.It returns the target """
+    """Prints the tree. It returns the target """
     self.ResetTarget()
     self.PrintTreeInt(num)
     return self.target
 
   def PrintTreeInt(self,num=0):
-    """Internal function to the tree. Does recursion"""
-    if len(self.name) > 0:
+    """Internal function to print the tree. Does recursion"""
+    if self.name:
       self.target.append(f'{self.INDENT*num}{self.name}' + '  {')
     if self.typ is not None:
       if isinstance(self.typ, str):
-        if len(self.name) > 0:
+        if self.name:
           self.target.append(f'{self.INDENT*(num+1)}{self.typ}')
         else:
           self.target.append(f'{self.INDENT*num}{self.typ}')
@@ -137,7 +135,7 @@ class Tree:
     if self.children:
       for child in self.children:
         child.PrintTreeInt(num+1)
-    if len(self.name) > 0:
+    if self.name:
       self.target.append(f'{self.INDENT*num}' + '}')
 
   def ResetTarget(self):
@@ -214,11 +212,22 @@ class Term(aclgenerator.Term):
       if addr_str + self.term.name in self.addrbook:
         addr_list = ['address-group-list [ ' + addr_str + self.term.name+ ' ];']
         if maddr_ex:
-          addr_list.append = 'negate;'
+          not_found = 0
+          maddr_st = map(str, maddr)
+          for ip in maddr_ex:
+            if str(ip) not in maddr_st:
+              not_found += 1
+          if not_found > 0:
+            # pylint: disable=logging-not-lazy
+            logging.warning( f'WARNING: Term {self.term.name} in policy '+
+                'has source or destination addresses that does not match ' +
+                 'address list')
+          addr_list.append('negate;')
         addr_t = Tree('address',addr_list)
         addr_t.AddParent(matchnode_zone )
       else:
         pass
+
 
   def BuildTermApp(self, p_node):
     """Build Term app"""
@@ -269,19 +278,32 @@ class Term(aclgenerator.Term):
     action.AddParent(set_term)
     log_event = ''
     if not self.term.logging:
+      log_event = 'never'
+    elif str(self.term.logging[0]).lower() == 'true':
       log_event = 'start'
+    elif str(self.term.logging[0]) == 'log-both':
+      log_event = 'both'
+    elif str(self.term.logging[0]) == 'disable':
+      log_event = 'never'
     else:
-      log_event = self.term.logging[0]
+      log_event = 'never'
     lef = Tree('lef', 'event '+ log_event + ';')
     lef.AddParent(set_term)
 
   def BuildTerm(self, p_node):
     """Build the Term Tree"""
 
+    max_comment_length = 60
     access_pn=Tree('access-policy ' + self.term.name )
     access_pn.AddParent(p_node)
     if self.verbose and self.term.comment:
-      comm=Tree('', '/* ' + self.term.comment[0] + ' */')
+      if len(self.term.comment[0]) < max_comment_length:
+        comm=Tree('', '/* ' + self.term.comment[0] + ' */')
+      else:
+        comments = aclgenerator.WrapWords(self.term.comment, 60)
+        comments.append( '*/')
+        comments.insert(0, '/*')
+        comm=Tree('', comments)
       comm.AddParent(access_pn)
 
     rule_match =Tree('match')
@@ -329,10 +351,6 @@ class Versa(aclgenerator.ACLGenerator):
   _VERSA_SUPPORTED_TARGET_OPTIONS = set(('template',
                                          'tenant',
                                          'policy'))
-  _VERSA_UNSUPPORTED_TERM_OPTIONS = set(('icmp_type',
-                                         'stateless_reply',
-                                         'translated',
-                                         'verbatim'))
 
   _AF_MAP = {'inet': (4,),
              'inet6': (6,),
@@ -387,7 +405,18 @@ class Versa(aclgenerator.ACLGenerator):
 
 
   def HeaderParams(self, mstr, val):
-    """HeaderParams populates the template name and tenant name."""
+    """HeaderParams populates the template name and tenant name
+    and policy name The basic config without the rules looks like this.
+
+    devices {  template template_name {
+    config { orgs { org-services tenantname { security { access-policies {
+        access-policy-group Default-Policy { rules
+        ...
+       } 
+    } } } } }
+    } }
+    """
+
     if len(val) > 0:
       if 'template' in mstr:
         self.templatename = val
@@ -419,8 +448,8 @@ class Versa(aclgenerator.ACLGenerator):
       ConflictingApplicationSetsError: When two duplicate named terms
                                have conflicting application entries
     """
-    #current_date = datetime.datetime.utcnow().date()
-    #exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
+    current_date = datetime.datetime.utcnow().date()
+    exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     for header, terms in pol.filters:
       if self._PLATFORM not in header.platforms:
@@ -428,9 +457,6 @@ class Versa(aclgenerator.ACLGenerator):
 
 
       filter_options = header.FilterOptions(self._PLATFORM)
-
-      #if self._NOVERBOSE in filter_options[4:]:
-      #  verbose = False
 
       # TODO(robankeny): Clean up option section.
       if (len(filter_options) < 4 or filter_options[0] != 'from-zone' or
@@ -505,6 +531,11 @@ class Versa(aclgenerator.ACLGenerator):
           if self._PLATFORM in term.platform_exclude:
             continue
 
+        if term.counter:
+          raise VersaUnsupportedTerm(
+            'Versa Generator currently does not support counter'
+            '{' '.join(term.counter)}in the protocol field of term')
+
         if term.icmp_type:
           raise VersaUnsupportedTerm(
             'Versa Generator currently does not support icmp-type'
@@ -532,8 +563,15 @@ class Versa(aclgenerator.ACLGenerator):
         term_dup_check.add(term.name)
 
         if term.expiration:
-          raise UnsupportedFilterError('Versa filter does not accept '
-                                        +' expiration.')
+          if term.expiration <= exp_info_date:
+            logging.info('INFO: Term %s in policy %s>%s expires '
+                         'in less than two weeks.', term.name, self.from_zone,
+                         self.to_zone)
+          if term.expiration <= current_date:
+            logging.warning('WARNING: Term %s in policy %s>%s is expired.',
+                            term.name, self.from_zone, self.to_zone)
+            continue
+
 
         # Versa address books leverage network token names for IPs.
         # When excluding addresses, we lose those distinct names so we need
@@ -584,8 +622,6 @@ class Versa(aclgenerator.ACLGenerator):
                                          self.addressbook, verbose)
         new_terms.append(new_term)
 
-        # we need to remove icmp from the protocol and add it to the
-        #pan-application list
         if term.protocol and 'icmp' in ' '.join(term.protocol):
           term.protocol.remove('icmp')
           term.versa_application.append('ICMP')
@@ -593,14 +629,6 @@ class Versa(aclgenerator.ACLGenerator):
         # have ability to recover proper AF for ICMP type we need.
         # If protocol is empty or we cannot map to inet or inet6 we insert bogus
         # af_type name which will cause new_term.NormalizeIcmpTypes to fail.
-
-        #if not term.protocol:
-        #  icmp_af_type = 'unknown_af_icmp'
-        #else:
-        #  icmp_af_type = self._AF_ICMP_MAP.get(
-        #      term.protocol[0], 'unknown_af_icmp')
-        #tmp_icmptype = new_term.NormalizeIcmpTypes(
-        #    term.icmp_type, term.protocol, icmp_af_type)
 
         # NormalizeIcmpTypes returns [''] for empty, convert to [] for eval
         #normalized_icmptype = tmp_icmptype if tmp_icmptype != [''] else []
@@ -860,9 +888,6 @@ class Versa(aclgenerator.ACLGenerator):
       for term in terms:
         term.BuildTerm(rules)
 
-    #target = root.PrintTree()
-    #print('\n'.join(target))
-
     if self.addressbook:
       objects = Tree('objects')
       objects.AddParent(org_services)
@@ -872,6 +897,5 @@ class Versa(aclgenerator.ACLGenerator):
       self.GenerateApplications(objects)
 
     target = root.PrintTree()
-    #print('\n'.join(target))
 
     return '\n'.join(target)
