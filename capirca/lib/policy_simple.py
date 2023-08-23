@@ -325,6 +325,8 @@ class TrafficClassCount(Field):
 class Verbatim(Field):
   """A verbatim field."""
 
+class VersaApplication(Field):
+  """A VersaApplication field."""
 
 class Vpn(Field):
   """A vpn field."""
@@ -385,6 +387,7 @@ field_map = {
     'traffic-class-count': TrafficClassCount,
     'traffic-type': TrafficType,
     'verbatim': Verbatim,
+    'versa-application': VersaApplication,
     'vpn': Vpn,
     'encapsulate': Encapsulate,
     'decapsulate': Decapsulate,

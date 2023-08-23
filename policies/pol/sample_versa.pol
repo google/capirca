@@ -1,0 +1,32 @@
+header {
+  comment:: "this is a sample policy to generate Versa filter"
+  target:: versa from-zone trust to-zone untrust template test tenant tenant1 policy Default-Policy
+}
+
+term test-tcp {
+  destination-address:: WEB_SERVERS
+  source-address:: INTERNAL
+  destination-port:: SMTP
+  protocol:: tcp
+  logging:: log-both
+  action:: accept
+}
+
+term test-icmp {
+  destination-address:: RFC1918
+  protocol:: icmp
+  action:: accept
+  logging:: true
+}
+term good-term-5 {
+  destination-address:: WEB_SERVERS
+  source-address:: INTERNAL
+  action:: accept
+  versa-application:: ssh who
+}
+
+
+term default-deny {
+  action:: deny
+  logging:: true
+}
