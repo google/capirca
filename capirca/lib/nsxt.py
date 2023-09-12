@@ -133,12 +133,20 @@ class ServiceEntries:
       }
 
       # Handle Layer 4 Ports
+      def format_port_range(ports: Tuple[str, str]) -> str:
+        if ports[0] == ports[1]:
+          return str(ports[0])
+        else:
+          return f'{ports[0]}-{ports[1]}'
+
       if self.source_ports:
-        source_ports = [f'{p[0]}-{p[1]}' for p in self.source_ports]
+        source_ports = [format_port_range(p) for p in self.source_ports]
         service['source_ports'] = source_ports
 
       if self.destination_ports:
-        destination_ports = [f'{p[0]}-{p[1]}' for p in self.destination_ports]
+        destination_ports = [
+            format_port_range(p) for p in self.destination_ports
+        ]
         service['destination_ports'] = destination_ports
       return [service]
     else:
@@ -244,20 +252,47 @@ class Term(aclgenerator.Term):
     # Fix addresses for each of the IP protocol versions we support.
     # This includes fixing up exclusion addresses as needed.
     for af in af_list:
+
+      # Excluding 0.0.0.0/32 is addressing the part where 0.0.0.0/anything
+      # cannot be a part of a netblock passed into NSX-T API. Currently only
+      # addressing IPv4 as that's where the issue has been identified.
+      # https://github.com/google/capirca/issues/348
+      zero_ip_address: list[nacaddr.IPType] = []
+      if af == 4:
+        zero_ip_address: list[nacaddr.IPType] = [nacaddr.IP('0.0.0.0/32')]
+
       # source address
       if self.term.source_address:
         source_address: list[nacaddr.IPType] = self.term.GetAddressOfVersion(
             'source_address', af)
         source_address_exclude: list[nacaddr.IPType] = (
             self.term.GetAddressOfVersion('source_address_exclude', af))
+
         if source_address_exclude:
           source_address: list[nacaddr.IPType] = nacaddr.ExcludeAddrs(
-              source_address, source_address_exclude)
-
+              source_address,
+              source_address_exclude + zero_ip_address)
+        else:
+          if (af == 4 and source_address and
+              '0.0.0.0/0' not in [str(a) for a in source_address]):
+            # Exclude 0.0.0.0/32, removing 0.0.0.0/anything netblocks. However,
+            # do so only if we would not already have 'ANY' in the list.
+            source_address: list[nacaddr.IPType] = nacaddr.ExcludeAddrs(
+                source_address, zero_ip_address)
         if source_address:
           if af == 4:
             source_address: list[nacaddr.IPv4]
             source_v4_addr: list[nacaddr.IPv4] = source_address
+            if (source_v4_addr and
+                '0.0.0.0/0' in [str(a) for a in source_address]):
+              # Once we make the address list empty, it'll be set to ANY later
+              # on, as expected by the API. If 0.0.0.0/0 appears in the list, it
+              # covers everything (but is itself forbidden in NSX-T API), so we
+              # might as well just use ANY. (If there's a v6 address tacked on
+              # later, we'll correctly not use ANY.)
+              #
+              # See https://github.com/google/capirca/issues/348
+              source_v4_addr: list[nacaddr.IPv4] = []
           else:
             source_address: list[nacaddr.IPv6]
             source_v6_addr: list[nacaddr.IPv6] = source_address
@@ -270,15 +305,32 @@ class Term(aclgenerator.Term):
                 'destination_address', af)
         destination_address_exclude: list[nacaddr.IPType] = (
             self.term.GetAddressOfVersion('destination_address_exclude', af))
+
         if destination_address_exclude:
           destination_address: list[nacaddr.IPType] = nacaddr.ExcludeAddrs(
               destination_address,
-              destination_address_exclude)
-
+              destination_address_exclude + zero_ip_address)
+        else:
+          if (af == 4 and source_address and
+              '0.0.0.0/0' not in [str(a) for a in source_address]):
+            # Exclude 0.0.0.0/32, removing 0.0.0.0/anything netblocks. However,
+            # do so only if we would not already have 'ANY' in the list.
+            destination_address: list[nacaddr.IPType] = nacaddr.ExcludeAddrs(
+                destination_address, zero_ip_address)
         if destination_address:
           if af == 4:
             destination_address: list[nacaddr.IPv4]
             dest_v4_addr: list[nacaddr.IPv4] = destination_address
+            if (dest_v4_addr and
+                '0.0.0.0/0' in [str(a) for a in destination_address]):
+              # Once we make the address list empty, it'll be set to ANY later
+              # on, as expected by the API. If 0.0.0.0/0 appears in the list, it
+              # covers everything (but is itself forbidden in NSX-T API), so we
+              # might as well just use ANY. (If there's a v6 address tacked on
+              # later, we'll correctly not use ANY.)
+              #
+              # See https://github.com/google/capirca/issues/348
+              dest_v4_addr: list[nacaddr.IPv4] = []
           else:
             destination_address: list[nacaddr.IPv6]
             dest_v6_addr: list[nacaddr.IPv6] = destination_address

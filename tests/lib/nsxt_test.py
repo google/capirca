@@ -69,9 +69,9 @@ UDP_NSXT_POLICY = {
         'service_entries': [{
             'l4_protocol': 'UDP',
             'resource_type': 'L4PortSetServiceEntry',
-            'source_ports': ['123-123'],
-            'destination_ports': ['123-123']
-        }]
+            'source_ports': ['123'],
+            'destination_ports': ['123'],
+        }],
     }],
     'resource_type': 'SecurityPolicy',
     'display_name': 'INET_FILTER_NAME',
@@ -98,9 +98,9 @@ UDP_RULE = {
     'service_entries': [{
         'l4_protocol': 'UDP',
         'resource_type': 'L4PortSetServiceEntry',
-        'source_ports': ['123-123'],
-        'destination_ports': ['123-123']
-    }]
+        'source_ports': ['123'],
+        'destination_ports': ['123'],
+    }],
 }
 
 ICMPV6_POLICY = """\
@@ -270,7 +270,7 @@ UDP_AND_TCP_NSXT_POLICY = {
             'service_entries': [{
                 'l4_protocol': 'UDP',
                 'resource_type': 'L4PortSetServiceEntry',
-                'destination_ports': ['53-53'],
+                'destination_ports': ['53'],
             }],
         },
         {
@@ -289,7 +289,7 @@ UDP_AND_TCP_NSXT_POLICY = {
             'service_entries': [{
                 'l4_protocol': 'TCP',
                 'resource_type': 'L4PortSetServiceEntry',
-                'destination_ports': ['53-53'],
+                'destination_ports': ['53'],
             }],
         },
     ],
@@ -414,8 +414,9 @@ ICMP_NSXT_POLICY_WITH_EXPIRY = {
             'resource_type': 'Rule',
             'display_name': 'accept-icmp',
             'source_groups': [
-                '200.1.1.4/32',
-                '200.1.1.5/32',
+                # note: nacaddr.ExcludeAddr merged two IPv4 addresses into one
+                # /31 netblock.
+                '200.1.1.4/31',
                 '2001:4860:4860::8845/128'
             ],
             'destination_groups': ['ANY'],
@@ -436,8 +437,9 @@ ICMP_NSXT_POLICY_WITH_EXPIRY = {
             'resource_type': 'Rule',
             'display_name': 'accept-icmpv6',
             'source_groups': [
-                '200.1.1.4/32',
-                '200.1.1.5/32',
+                # note: nacaddr.ExcludeAddr merged two IPv4 addresses into one
+                # /31 netblock.
+                '200.1.1.4/31',
                 '2001:4860:4860::8845/128'
             ],
             'destination_groups': ['ANY'],
@@ -495,6 +497,13 @@ ICMP_POLICY_WITH_EXCLUSION = """\
   term dst-exclude-from-corporate {
     protocol:: icmp
     destination-address:: CORPORATE
+    destination-exclude:: PUBLIC_NAT
+    action:: accept
+  }
+
+  term dst-exclude-from-first-half {
+    protocol:: icmp
+    destination-address:: FIRST_HALF
     destination-exclude:: PUBLIC_NAT
     action:: accept
   }
@@ -599,6 +608,57 @@ ICMP_NSXT_POLICY_WITH_EXCLUSION = {
                 'resource_type': 'ICMPTypeServiceEntry',
             }],
         },
+        {
+            'action': 'ALLOW',
+            'destination_groups': [
+                # Validate that 0.0.0.0/anything is not used.
+                # See https://github.com/google/capirca/issues/348
+                '0.0.0.1/32',
+                '0.0.0.2/31',
+                '0.0.0.4/30',
+                '0.0.0.8/29',
+                '0.0.0.16/28',
+                '0.0.0.32/27',
+                '0.0.0.64/26',
+                '0.0.0.128/25',
+                '0.0.1.0/24',
+                '0.0.2.0/23',
+                '0.0.4.0/22',
+                '0.0.8.0/21',
+                '0.0.16.0/20',
+                '0.0.32.0/19',
+                '0.0.64.0/18',
+                '0.0.128.0/17',
+                '0.1.0.0/16',
+                '0.2.0.0/15',
+                '0.4.0.0/14',
+                '0.8.0.0/13',
+                '0.16.0.0/12',
+                '0.32.0.0/11',
+                '0.64.0.0/10',
+                '0.128.0.0/9',
+                '1.0.0.0/8',
+                '2.0.0.0/7',
+                '4.0.0.0/6',
+                '8.0.0.0/5',
+                '16.0.0.0/4',
+                '32.0.0.0/3',
+                '64.0.0.0/2',
+            ],
+            'direction': 'IN_OUT',
+            'display_name': 'dst-exclude-from-first-half',
+            'ip_protocol': 'IPV4_IPV6',
+            'logged': False,
+            'notes': '',
+            'profiles': ['ANY'],
+            'resource_type': 'Rule',
+            'scope': ['ANY'],
+            'service_entries': [
+                {'protocol': 'ICMPv4', 'resource_type': 'ICMPTypeServiceEntry'},
+            ],
+            'services': ['ANY'],
+            'source_groups': ['ANY'],
+        },
     ],
     'resource_type': 'SecurityPolicy',
     'display_name': 'POLICY_WITH_EXCLUSION',
@@ -607,6 +667,152 @@ ICMP_NSXT_POLICY_WITH_EXCLUSION = {
     'id': '1010',
     'scope': ['/infra/domains/default/groups/securitygroup-Id'],
     'description': '$Id:$ $Date:$ $Revision:$ :: Sample filter with exclusion',
+}
+
+
+TCP_POLICY_WITH_PORT_RANGE = """\
+  header {
+    comment:: "Sample filter with port ranges"
+    target:: nsxt POLICY_WITH_PORT_RANGE mixed 1010 securitygroup \
+    securitygroup-Id
+  }
+
+  term src-not-range {
+    protocol:: tcp
+    source-address:: CORPORATE
+    source-exclude:: PUBLIC_NAT
+    source-port:: SMTP_SSL
+    action:: accept
+  }
+
+  term src-range {
+    protocol:: tcp
+    source-address:: CORPORATE
+    source-exclude:: PUBLIC_NAT
+    source-port:: H323
+    action:: accept
+  }
+  """
+
+
+TCP_NSXT_POLICY_WITH_PORT_RANGE = {
+    'rules': [
+        {
+            'action': 'ALLOW',
+            'resource_type': 'Rule',
+            'display_name': 'src-not-range',
+            'source_groups': [
+                '200.1.1.0/31',
+                '200.1.1.2/32',
+                '200.1.1.4/30',
+                '200.1.1.8/29',
+                '200.1.1.16/28',
+                '200.1.1.32/27',
+                '200.1.1.64/26',
+                '200.1.1.128/25',
+            ],
+            'destination_groups': ['ANY'],
+            'services': ['ANY'],
+            'profiles': ['ANY'],
+            'scope': ['ANY'],
+            'logged': False,
+            'notes': '',
+            'direction': 'IN_OUT',
+            'ip_protocol': 'IPV4_IPV6',
+            'service_entries': [
+                {
+                    'l4_protocol': 'TCP',
+                    'resource_type': 'L4PortSetServiceEntry',
+                    'source_ports': ['465'],
+                },
+            ],
+        },
+        {
+            'action': 'ALLOW',
+            'resource_type': 'Rule',
+            'display_name': 'src-range',
+            'source_groups': [
+                '200.1.1.0/31',
+                '200.1.1.2/32',
+                '200.1.1.4/30',
+                '200.1.1.8/29',
+                '200.1.1.16/28',
+                '200.1.1.32/27',
+                '200.1.1.64/26',
+                '200.1.1.128/25',
+            ],
+            'destination_groups': ['ANY'],
+            'services': ['ANY'],
+            'profiles': ['ANY'],
+            'scope': ['ANY'],
+            'logged': False,
+            'notes': '',
+            'direction': 'IN_OUT',
+            'ip_protocol': 'IPV4_IPV6',
+            'service_entries': [{
+                'l4_protocol': 'TCP',
+                'resource_type': 'L4PortSetServiceEntry',
+                'source_ports': ['1719-1720'],
+            }],
+        },
+    ],
+    'resource_type': 'SecurityPolicy',
+    'display_name': 'POLICY_WITH_PORT_RANGE',
+    'category': 'Application',
+    'is_default': 'false',
+    'id': '1010',
+    'scope': ['/infra/domains/default/groups/securitygroup-Id'],
+    'description': (
+        '$Id:$ $Date:$ $Revision:$ :: Sample filter with port ranges'),
+}
+
+
+ICMP_POLICY_WITH_ZERO_NETBLOCK = """\
+  header {
+    comment:: "Sample filter with a zero netblock"
+    target:: nsxt POLICY_WITH_ZERO_NETBLOCK mixed 1010 securitygroup \
+    securitygroup-Id
+  }
+
+  term src-zero-netblock {
+    protocol:: icmp
+    source-address:: ZERO_NETBLOCK
+    action:: accept
+  }
+  """
+
+
+ICMP_NSXT_POLICY_WITH_ZERO_NETBLOCK = {
+    'rules': [
+        {
+            'action': 'ALLOW',
+            'resource_type': 'Rule',
+            'display_name': 'src-zero-netblock',
+            'source_groups': [
+                'ANY'
+            ],
+            'destination_groups': ['ANY'],
+            'services': ['ANY'],
+            'profiles': ['ANY'],
+            'scope': ['ANY'],
+            'logged': False,
+            'notes': '',
+            'direction': 'IN_OUT',
+            'ip_protocol': 'IPV4_IPV6',
+            'service_entries': [{
+                'protocol': 'ICMPv4',
+                'resource_type': 'ICMPTypeServiceEntry',
+            }],
+        },
+    ],
+    'resource_type': 'SecurityPolicy',
+    'display_name': 'POLICY_WITH_ZERO_NETBLOCK',
+    'category': 'Application',
+    'is_default': 'false',
+    'id': '1010',
+    'scope': ['/infra/domains/default/groups/securitygroup-Id'],
+    'description': (
+        '$Id:$ $Date:$ $Revision:$ :: Sample filter with a zero netblock'),
 }
 
 
@@ -859,22 +1065,19 @@ NETWORK_NET = (
     '                            2001:4860:4860::8844/128 # IPv6 Anycast',
     '                            2001:4860:4860::8888/128 # IPv6 Anycast',
     'GOOGLE_DNS = GOOGLE_PUBLIC_DNS_ANYCAST',
-
     'MAIL_SERVERS = 200.1.1.4/32             # Example mail server 1',
     '               200.1.1.5/32             # Example mail server 2',
     '               2001:4860:4860::8845/128 # Example mail server 3',
-
     'NTP_SERVERS = 10.0.0.1/32   # Example NTP server',
     '              10.0.0.2/32   # Example NTP server',
-
     'CORPORATE = 200.1.1.0/24    # Example company netblock',
     'PUBLIC_NAT = 200.1.1.3/32   # Example company NAT address',
-
+    'FIRST_HALF = 0.0.0.0/1    # First half of the address space',
+    'ZERO_NETBLOCK = 0.0.0.0/0  # Entire address space',
     # In NSX-V tests, "INTERNAL".
     'INTERNAL_V4 = 10.0.0.0/8    # Used in tests for',
     '              172.16.0.0/12 # {v4,v6,mixed,any}_to_{v4,v6,mixed,any}.',
     '              192.168.0.0/16',
-
     # In NSX-V tests, "SOME_HOST".
     'INTERNAL_V6 = 2001:4860:8000::/33  # Also used in same tests',
 )
@@ -888,6 +1091,10 @@ SERVICES_SVC = (
     '                ESMTP',
     '                SMTP_SSL',
     '                POP_SSL',
+    'H323_REGISTRATION = 1719/tcp',
+    'H323_SIGNALING = 1720/tcp',
+    'H323 = H323_REGISTRATION',
+    '       H323_SIGNALING',
 )
 
 
@@ -1096,6 +1303,47 @@ class TermTest(absltest.TestCase):
                      json.dumps(ICMP_NSXT_POLICY_WITH_EXCLUSION,
                                 sort_keys=True,
                                 indent=2))
+
+  def test_tcp_policy_with_port_range(self):
+    """Test with a policy with TCP port ranges."""
+    defs = naming.Naming(None)
+    servicedata = copy.deepcopy(SERVICES_SVC)
+    networkdata = copy.deepcopy(NETWORK_NET)
+
+    defs.ParseServiceList(servicedata)
+    defs.ParseNetworkList(networkdata)
+
+    pol = policy.ParsePolicy(TCP_POLICY_WITH_PORT_RANGE, defs, False)
+    nsxt_policy = nsxt.Nsxt(pol, EXP_INFO)
+    api_policy = json.loads(str(nsxt_policy))
+
+    # Comparing prettified JSON strings because the output is easier to
+    # understand.
+    self.assertEqual(
+        json.dumps(api_policy, sort_keys=True, indent=2),
+        json.dumps(TCP_NSXT_POLICY_WITH_PORT_RANGE, sort_keys=True, indent=2),
+    )
+
+  def test_icmp_policy_with_zero_netblock(self):
+    """Test with a policy with a zero netblock 0.0.0.0/0."""
+    defs = naming.Naming(None)
+    servicedata = copy.deepcopy(SERVICES_SVC)
+    networkdata = copy.deepcopy(NETWORK_NET)
+
+    defs.ParseServiceList(servicedata)
+    defs.ParseNetworkList(networkdata)
+
+    pol = policy.ParsePolicy(ICMP_POLICY_WITH_ZERO_NETBLOCK, defs, False)
+    nsxt_policy = nsxt.Nsxt(pol, EXP_INFO)
+    api_policy = json.loads(str(nsxt_policy))
+
+    # Comparing prettified JSON strings because the output is easier to
+    # understand.
+    self.assertEqual(
+        json.dumps(api_policy, sort_keys=True, indent=2),
+        json.dumps(
+            ICMP_NSXT_POLICY_WITH_ZERO_NETBLOCK, sort_keys=True, indent=2),
+    )
 
   def test_bad_header_case_0(self):
     pol = policy.ParsePolicy(BAD_HEADER + ICMPV6_TERM, self.naming, False)
