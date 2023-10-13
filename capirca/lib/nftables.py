@@ -127,7 +127,8 @@ class Term(aclgenerator.Term):
 
     If we encounter certain keyword values in policy.Term.ICMP_TYPE keywords,
     we override them with NFTable specific values in order for rendered
-    policy to be semantically correct with what NFT expects.
+    policy to be semantically correct with what NFT expects. If NFT doesn't have
+    a keyword for a type, it uses the raw type code as an integer.
     https://www.netfilter.org/projects/nftables/manpage.html
 
     Function is used inside PortsAndProtocols.
@@ -152,6 +153,17 @@ class Term(aclgenerator.Term):
             'inverse-neighbor-discovery-solicitation': 'ind-neighbor-solicit',
             'inverse-neighbor-discovery-advertisement': 'ind-neighbor-advert',
             'version-2-multicast-listener-report': 'mld2-listener-report',
+            'icmp-node-information-query': '139',
+            'icmp-node-information-response': '140',
+            'home-agent-address-discovery-request': '144',
+            'home-agent-address-discovery-reply': '145',
+            'mobile-prefix-solicitation': '146',
+            'mobile-prefix-advertisement': '147',
+            'certification-path-solicitation': '148',
+            'certification-path-advertisement': '149',
+            'multicast-router-advertisement': '151',
+            'multicast-router-solicitation': '152',
+            'multicast-router-termination': '153',
         },
         4: {
             # IPv4 exceptions below
@@ -160,7 +172,10 @@ class Term(aclgenerator.Term):
             'information-reply': 'info-reply',
             'mask-request': 'address-mask-request',
             'mask-reply': 'address-mask-reply',
-        }
+            'alternate-address': '6',
+            'conversion-error': '31',
+            'mobile-redirect': '32',
+        },
     }
 
     for item in term_icmp_types:

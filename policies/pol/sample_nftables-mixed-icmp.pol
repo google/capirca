@@ -43,7 +43,7 @@ term test-icmp-type-ip4 {
 
 term test-icmp-type-ip6 {
   comment:: "IPv6 icmp-type test"
-  icmp-type:: multicast-listener-done router-solicit router-advertisement
+  icmp-type:: multicast-listener-done router-solicit router-advertisement multicast-router-solicitation multicast-router-advertisement
   protocol:: icmpv6
   action:: accept
 }

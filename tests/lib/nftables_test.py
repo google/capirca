@@ -265,7 +265,7 @@ term good-icmpv6-single-type {
 ICMPV6_MULTI_TERM = """
 term good-icmpv6-type {
   comment:: "IPv6 ICMP accept many types"
-  icmp-type:: router-solicit router-advertisement neighbor-advertisement neighbor-solicit
+  icmp-type:: router-solicit router-advertisement neighbor-advertisement neighbor-solicit multicast-router-solicitation multicast-router-advertisement
   protocol:: icmpv6
   action:: accept
 }
@@ -626,7 +626,7 @@ class NftablesTest(parameterized.TestCase):
     self.assertIn(
         (
             'icmpv6 type { nd-router-solicit, nd-router-advert,'
-            ' nd-neighbor-advert, nd-neighbor-solicit } accept'
+            ' nd-neighbor-advert, nd-neighbor-solicit, 152, 151 } accept'
         ),
         nft,
     )
