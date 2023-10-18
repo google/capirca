@@ -42,35 +42,35 @@ header {
 HEADER_OPTION_AF = """
 header {
   comment:: "The general policy comment."
-  target:: gcp_hf displayname inet
+  target:: gcp_hf displayname inet ga
 }
 """
 
 HEADER_OPTION_HIGH_QUOTA = """
 header {
   comment:: "The general policy comment."
-  target:: gcp_hf displayname 500
+  target:: gcp_hf displayname beta 500
 }
 """
 
 HEADER_OPTION_EGRESS_HIGH_QUOTA = """
 header {
   comment:: "The general policy comment."
-  target:: gcp_hf displayname EGRESS 500
+  target:: gcp_hf displayname EGRESS beta 500
 }
 """
 
 HEADER_OPTION_EGRESS_AND_MAX = """
 header {
   comment:: "The general policy comment."
-  target:: gcp_hf displayname EGRESS 20
+  target:: gcp_hf displayname EGRESS beta 20
 }
 """
 
 HEADER_OPTION_EGRESS_AND_AF = """
 header {
   comment:: "The general policy comment."
-  target:: gcp_hf displayname EGRESS inet
+  target:: gcp_hf displayname EGRESS inet beta
 }
 """
 
@@ -99,6 +99,13 @@ HEADER_OPTION_BETA = """
 header {
   comment:: "The general policy comment."
   target:: gcp_hf displayname inet beta
+}
+"""
+
+HEADER_OPTION_EGRESS_BETA = """
+header {
+  comment:: "The general policy comment."
+  target:: gcp_hf displayname EGRESS inet beta
 }
 """
 
@@ -1051,31 +1058,62 @@ EXPECTED_ONE_RULE_INGRESS_BETA = """
 ]
 """
 
-EXPECTED_ONE_RULE_INGRESS_W_LOGGING_BETA = """
+EXPECTED_ONE_RULE_INGRESS_GA = """
 [
   {
-    "displayName": "displayname",
-    "type": "FIREWALL",
+    "rules": [
+      {
+        "action": "goto_next",
+        "description": "allow-internal-traffic: Generic description",
+        "direction": "INGRESS",
+        "enableLogging": false,
+        "match": {
+          "layer4Configs": [
+            {
+              "ipProtocol": "tcp"
+            },
+            {
+              "ipProtocol": "icmp"
+            },
+            {
+              "ipProtocol": "udp"
+            }
+          ],
+          "srcIpRanges": [
+            "0.0.0.0/0"
+          ]
+        },
+        "priority": 1
+      }
+    ],
+    "shortName": "displayname"
+  }
+]
+"""
+
+EXPECTED_ONE_RULE_INGRESS_W_LOGGING_GA = """
+[
+  {
     "rules": [
       {
         "action": "allow",
         "description": "term-with-logging: Generic description",
         "direction": "INGRESS",
+        "enableLogging": true,
         "match": {
-          "config": {
-            "layer4Configs": [
-              {
-                "ipProtocol": "tcp"
-              }
-            ],
-            "srcIpRanges": ["10.0.0.0/8"]
-          },
-          "versionedExpr": "FIREWALL"
+          "layer4Configs": [
+            {
+              "ipProtocol": "tcp"
+            }
+          ],
+          "srcIpRanges": [
+            "10.0.0.0/8"
+          ]
         },
-        "priority": 1,
-        "enableLogging": true
+        "priority": 1
       }
-    ]
+    ],
+    "shortName": "displayname"
   }
 ]
 """
@@ -1304,31 +1342,29 @@ EXPECTED_PORT_RANGE_INGRESS_BETA = """
 ]
 """
 
-EXPECTED_DENY_INGRESS_BETA = """
+EXPECTED_DENY_INGRESS_GA = """
 [
   {
-    "displayName": "displayname",
-    "type": "FIREWALL",
     "rules": [
       {
         "action": "deny",
         "description": "default-deny-ingress: Generic description",
         "direction": "INGRESS",
+        "enableLogging": false,
         "match": {
-          "config": {
-            "layer4Configs": [
-              {
-                "ipProtocol": "all"
-              }
-            ],
-            "srcIpRanges": ["0.0.0.0/0"]
-          },
-          "versionedExpr": "FIREWALL"
+          "layer4Configs": [
+            {
+              "ipProtocol": "all"
+            }
+          ],
+          "srcIpRanges": [
+            "0.0.0.0/0"
+          ]
         },
-        "priority": 1,
-        "enableLogging": false
+        "priority": 1
       }
-    ]
+    ],
+    "shortName": "displayname"
   }
 ]
 """
@@ -1524,31 +1560,29 @@ EXPECTED_INGRESS_AND_EGRESS_W_DENY_BETA = """
 ]
 """
 
-EXPECTED_DENY_EGRESS_BETA = """
+EXPECTED_DENY_EGRESS_GA = """
 [
   {
-    "displayName": "displayname",
-    "type": "FIREWALL",
     "rules": [
       {
         "action": "deny",
         "description": "default-deny-egress: Generic description",
         "direction": "EGRESS",
+        "enableLogging": false,
         "match": {
-          "config": {
-            "destIpRanges": ["0.0.0.0/0"],
-            "layer4Configs": [
-              {
-                "ipProtocol": "all"
-              }
-            ]
-          },
-          "versionedExpr": "FIREWALL"
+          "destIpRanges": [
+            "0.0.0.0/0"
+          ],
+          "layer4Configs": [
+            {
+              "ipProtocol": "all"
+            }
+          ]
         },
-        "priority": 1,
-        "enableLogging": false
+        "priority": 1
       }
-    ]
+    ],
+    "shortName": "displayname"
   }
 ]
 """
@@ -2687,7 +2721,7 @@ class GcpHfTest(parameterized.TestCase):
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_ALLOW_ALL_INTERNAL,
                            self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_BETA)
+    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_GA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testOptionMaxHeader(self):
@@ -2698,7 +2732,7 @@ class GcpHfTest(parameterized.TestCase):
         policy.ParsePolicy(HEADER_OPTION_MAX + TERM_ALLOW_ALL_INTERNAL,
                            self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_BETA)
+    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_GA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testOptionEgressHeader(self):
@@ -2706,7 +2740,7 @@ class GcpHfTest(parameterized.TestCase):
     self.naming.GetNetAddr.return_value = TEST_IP
 
     acl = gcp_hf.HierarchicalFirewall(
-        policy.ParsePolicy(HEADER_OPTION_EGRESS + TERM_RESTRICT_EGRESS,
+        policy.ParsePolicy(HEADER_OPTION_EGRESS_BETA + TERM_RESTRICT_EGRESS,
                            self.naming),
         EXP_INFO)
     expected = json.loads(EXPECTED_ONE_RULE_EGRESS_BETA)
@@ -2720,7 +2754,7 @@ class GcpHfTest(parameterized.TestCase):
         policy.ParsePolicy(HEADER_OPTION_AF + TERM_ALLOW_ALL_INTERNAL,
                            self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_BETA)
+    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_GA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testOptionEgressAndMaxHeader(self):
@@ -2753,7 +2787,7 @@ class GcpHfTest(parameterized.TestCase):
         policy.ParsePolicy(HEADER_OPTION_MAX_AND_AF + TERM_ALLOW_ALL_INTERNAL,
                            self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_BETA)
+    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_GA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testOptionApiVersionAFHeader(self):
@@ -2892,7 +2926,7 @@ class GcpHfTest(parameterized.TestCase):
     self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
-        policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_NUMBERED_PROTOCOL,
+        policy.ParsePolicy(HEADER_OPTION_BETA + TERM_NUMBERED_PROTOCOL,
                            self.naming), EXP_INFO)
     expected = json.loads(EXPECTED_ONE_RULE_NUMBERED_PROTOCOL_BETA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
@@ -2992,7 +3026,7 @@ class GcpHfTest(parameterized.TestCase):
         policy.ParsePolicy(
             HEADER_OPTION_AF + TERM_PLATFORM_EXCLUDE + TERM_ALLOW_ALL_INTERNAL,
             self.naming), EXP_INFO)
-    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_BETA)
+    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_GA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testTermWithPlatformExists(self):
@@ -3003,7 +3037,7 @@ class GcpHfTest(parameterized.TestCase):
         policy.ParsePolicy(
             HEADER_OPTION_AF + TERM_PLATFORM_ALLOW_ALL_INTERNAL,
             self.naming), EXP_INFO)
-    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_BETA)
+    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_GA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testIgnoreTermWithICMPv6(self):
@@ -3015,7 +3049,7 @@ class GcpHfTest(parameterized.TestCase):
                            + BAD_TERM_IP_VERSION_MISMATCH,
                            self.naming),
         EXP_INFO)
-    exp = [{'displayName': 'displayname', 'rules': [], 'type': 'FIREWALL'}]
+    exp = [{'rules': [], 'shortName': 'displayname'}]
     self.assertEqual(exp, json.loads(self._StripAclHeaders(str(acl))))
 
   def testInet6IgnoreTermWithICMP(self):
@@ -3194,7 +3228,7 @@ class GcpHfTest(parameterized.TestCase):
     self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
 
     acl = gcp_hf.HierarchicalFirewall(
-        policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_ALLOW_ALL_INTERNAL
+        policy.ParsePolicy(HEADER_OPTION_BETA + TERM_ALLOW_ALL_INTERNAL
                            + TERM_ALLOW_DNS, self.naming),
         EXP_INFO)
     expected = json.loads(EXPECTED_MULTIPLE_RULE_INGRESS_BETA)
@@ -3221,7 +3255,8 @@ class GcpHfTest(parameterized.TestCase):
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_WITH_LOGGING, self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_W_LOGGING_BETA)
+    expected = json.loads(EXPECTED_ONE_RULE_INGRESS_W_LOGGING_GA)
+    print(str(acl))
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testTargetResources(self):
@@ -3229,7 +3264,7 @@ class GcpHfTest(parameterized.TestCase):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('0.0.0.0/0')]
 
     acl = gcp_hf.HierarchicalFirewall(
-        policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_WITH_TARGET_RESOURCES,
+        policy.ParsePolicy(HEADER_OPTION_BETA + TERM_WITH_TARGET_RESOURCES,
                            self.naming),
         EXP_INFO)
     expected = json.loads(EXPECTED_DENY_INGRESS_ON_TARGET_BETA)
@@ -3240,7 +3275,7 @@ class GcpHfTest(parameterized.TestCase):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('0.0.0.0/0')]
 
     acl = gcp_hf.HierarchicalFirewall(
-        policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_WITH_TARGET_RESOURCES_2,
+        policy.ParsePolicy(HEADER_OPTION_BETA + TERM_WITH_TARGET_RESOURCES_2,
                            self.naming),
         EXP_INFO)
     expected = json.loads(EXPECTED_DENY_INGRESS_ON_TARGET_BETA)
@@ -3252,8 +3287,8 @@ class GcpHfTest(parameterized.TestCase):
     self.naming.GetNetAddr.return_value = ALL_IPV4_IPS
 
     acl = gcp_hf.HierarchicalFirewall(
-        policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_ALLOW_ALL_INTERNAL +
-                           TERM_DENY_INGRESS + HEADER_OPTION_EGRESS +
+        policy.ParsePolicy(HEADER_OPTION_BETA + TERM_ALLOW_ALL_INTERNAL +
+                           TERM_DENY_INGRESS + HEADER_OPTION_EGRESS_BETA +
                            TERM_RESTRICT_EGRESS + TERM_DENY_EGRESS,
                            self.naming),
         EXP_INFO)
@@ -3266,7 +3301,7 @@ class GcpHfTest(parameterized.TestCase):
     self.naming.GetServiceByProto.side_effect = [['8000-9000']]
 
     acl = gcp_hf.HierarchicalFirewall(
-        policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_ALLOW_PORT_RANGE,
+        policy.ParsePolicy(HEADER_OPTION_BETA + TERM_ALLOW_PORT_RANGE,
                            self.naming),
         EXP_INFO)
     expected = json.loads(EXPECTED_PORT_RANGE_INGRESS_BETA)
@@ -3280,7 +3315,7 @@ class GcpHfTest(parameterized.TestCase):
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_LONG_COMMENT,
                            self.naming),
         EXP_INFO)
-    comment_truncated = EXPECTED_ONE_RULE_INGRESS_BETA.replace(
+    comment_truncated = EXPECTED_ONE_RULE_INGRESS_GA.replace(
         'Generic description',
         'This is a very long description, it is l')
     expected = json.loads(comment_truncated)
@@ -3293,7 +3328,7 @@ class GcpHfTest(parameterized.TestCase):
     acl = gcp_hf.HierarchicalFirewall(
         policy.ParsePolicy(HEADER_NO_OPTIONS + TERM_DENY_INGRESS, self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_DENY_INGRESS_BETA)
+    expected = json.loads(EXPECTED_DENY_INGRESS_GA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testInet6DefaultDenyIngressCreation(self):
@@ -3323,7 +3358,7 @@ class GcpHfTest(parameterized.TestCase):
         policy.ParsePolicy(HEADER_OPTION_EGRESS + TERM_DENY_EGRESS,
                            self.naming),
         EXP_INFO)
-    expected = json.loads(EXPECTED_DENY_EGRESS_BETA)
+    expected = json.loads(EXPECTED_DENY_EGRESS_GA)
     self.assertEqual(expected, json.loads(self._StripAclHeaders(str(acl))))
 
   def testInet6DefaultDenyEgressCreation(self):

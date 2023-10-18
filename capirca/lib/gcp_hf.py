@@ -449,7 +449,7 @@ class HierarchicalFirewall(gcp.GCP):
           filter_options.remove(i)
 
       # Get the compute API version if set.
-      api_version = 'beta'
+      api_version = 'ga'
       for i in self._SUPPORTED_API_VERSION:
         if i in filter_options:
           api_version = i
