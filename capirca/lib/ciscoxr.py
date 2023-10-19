@@ -37,7 +37,7 @@ class CiscoXR(cisco.Cisco):
       list of strings
     """
     target = []
-    if filter_type == 'inet6':
+    if filter_type == 'inet6' or filter_type == 'object-group-inet6':
       target.append('no ipv6 access-list %s' % filter_name)
       target.append('ipv6 access-list %s' % filter_name)
     else:
@@ -57,9 +57,9 @@ class CiscoXR(cisco.Cisco):
 
     return supported_tokens, supported_sub_tokens
 
-  def _GetObjectGroupTerm(self, term, filter_name, verbose=True):
+  def _GetObjectGroupTerm(self, term, filter_name, af=4, verbose=True):
     """Returns an ObjectGroupTerm object."""
-    return CiscoXRObjectGroupTerm(term, filter_name,
+    return CiscoXRObjectGroupTerm(term, filter_name, af=af,
                                   platform=self._PLATFORM, verbose=verbose)
 
 

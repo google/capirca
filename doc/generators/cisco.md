@@ -2,12 +2,13 @@
 
 The cisco header designation has the following format:
 ```
-target:: cisco [filter name] {extended|standard|object-group|inet6|mixed} {dsmo}
+target:: cisco [filter name] {extended|standard|object-group|object-group-inet6|inet6|mixed} {dsmo}
 ```
   * _filter name_: defines the name or number of the cisco filter.
   * _extended_: specifies that the output should be an extended access list, and the filter name should be non-numeric.  This is the default option.
   * _standard_: specifies that the output should be a standard access list, and the filter name should be numeric and in the range of 1-99.
   * _object-group_: specifies this is a cisco extended access list, and that object-groups should be used for ports and addresses.
+  * _object-group-inet6_: specifies this is a cisco extended ipv6 access list, and that object-groups should be used for ports and addresses.
   * _inet6_: specifies the output be for IPv6 only filters.
   * _mixed_: specifies output will include both IPv6 and IPv4 filters.
   * _dsmo_: Enable discontinuous subnet mask summarization.
