@@ -328,6 +328,12 @@ class CiscoXRTest(absltest.TestCase):
     acl = ciscoxr.CiscoXR(pol, EXP_INFO)
     self.assertIn('permit tcp any', str(acl))
 
+  def testObjectGroup(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.1.1.1/32')]
+    pol = policy.ParsePolicy(OBJECT_GROUP_HEADER + GOOD_TERM_4, self.naming)
+    acl = ciscoxr.CiscoXR(pol, EXP_INFO)
+    self.assertIn('permit ipv4  any', str(acl))
+
 
 if __name__ == '__main__':
   absltest.main()

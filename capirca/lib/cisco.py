@@ -832,7 +832,12 @@ class ObjectGroupTerm(Term):
 
     # protocol
     if not self.term.protocol:
-      protocol = ['ip']
+      if self.af == 6:
+        protocol = ['ipv6']
+      elif self.platform == 'ciscoxr':
+        protocol = ['ipv4']
+      else:
+        protocol = ['ip']
 
     else:
       protocol = [proto if proto in self.ALLOWED_PROTO_STRINGS
