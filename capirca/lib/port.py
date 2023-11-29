@@ -79,7 +79,7 @@ class PPP:
   @property
   def start(self):
     # return the first port in the range as int
-    if '-' in self.port:
+    if self.port is not None and '-' in self.port:
       self._start = int(self.port.split('-')[0])
     else:
       raise InvalidRange('%s is not a valid port range' % self.port)
@@ -88,7 +88,7 @@ class PPP:
   @property
   def end(self):
     # return the last port in the range as int
-    if '-' in self.port:
+    if self.port is not None and '-' in self.port:
       self._end = int(self.port.split('-')[1])
     else:
       raise InvalidRange('%s is not a valid port range' % self.port)
