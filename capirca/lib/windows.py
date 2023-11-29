@@ -127,8 +127,11 @@ class Term(aclgenerator.Term):
     # if a srcport or dstport is specified.  Fail if src or dst ports are
     # specified and of the protocols are not exactly one or both of 'tcp'
     # or 'udp'.
-    if ((not set(protocols).issubset(set(['tcp', 'udp']))) and
-        (len(src_ports) > 1 or len(dst_ports) > 1)):
+    if (
+        (not set(protocols).issubset(set(['tcp', 'udp']))) and
+        (src_ports is not None and dst_ports is not None) and
+        (len(src_ports) > 1 or len(dst_ports) > 1)
+    ):
       raise aclgenerator.UnsupportedFilterError('%s %s %s' % (
           '\n', self.term.name,
           'src or dst ports may only be specified with "tcp" and/or "udp".'))
