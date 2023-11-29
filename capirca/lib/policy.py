@@ -130,7 +130,13 @@ class InvalidTermTTLValue(Error):
 
 
 class MixedPortandNonPortProtos(Error):
-  """Error when protocols that use ports are mixed with protocols that do not"""
+  """Error when protocols that use ports are mixed with protocols that don't."""
+
+
+def _DEFINITIONS():
+  if DEFINITIONS is None:
+    raise ValueError('definitions object not defined.')
+  return DEFINITIONS
 
 
 def TranslatePorts(ports, protocols, term_name):
@@ -150,7 +156,7 @@ def TranslatePorts(ports, protocols, term_name):
   ret_array = []
   for proto in protocols:
     for port in ports:
-      service_by_proto = DEFINITIONS.GetServiceByProto(port, proto)
+      service_by_proto = _DEFINITIONS().GetServiceByProto(port, proto)
       if not service_by_proto:
         logging.warning(
             (
@@ -1174,29 +1180,29 @@ class Term:
         understand.
       InvalidTermLoggingError: when a option is set for logging not known.
     """
-    if type(obj) is list:
+    if isinstance(obj, list):
       for x in obj:
         # do we have a list of addresses?
         # expanded address fields consolidate naked address fields with
         # saddr/daddr.
         if x.var_type is VarType.SADDRESS:
-          saddr = DEFINITIONS.GetNetAddr(x.value)
+          saddr = _DEFINITIONS().GetNetAddr(x.value)
           self.source_address.extend(saddr)
         elif x.var_type is VarType.DADDRESS:
-          daddr = DEFINITIONS.GetNetAddr(x.value)
+          daddr = _DEFINITIONS().GetNetAddr(x.value)
           self.destination_address.extend(daddr)
         elif x.var_type is VarType.ADDRESS:
-          addr = DEFINITIONS.GetNetAddr(x.value)
+          addr = _DEFINITIONS().GetNetAddr(x.value)
           self.address.extend(addr)
         # do we have address excludes?
         elif x.var_type is VarType.SADDREXCLUDE:
-          saddr_exclude = DEFINITIONS.GetNetAddr(x.value)
+          saddr_exclude = _DEFINITIONS().GetNetAddr(x.value)
           self.source_address_exclude.extend(saddr_exclude)
         elif x.var_type is VarType.DADDREXCLUDE:
-          daddr_exclude = DEFINITIONS.GetNetAddr(x.value)
+          daddr_exclude = _DEFINITIONS().GetNetAddr(x.value)
           self.destination_address_exclude.extend(daddr_exclude)
         elif x.var_type is VarType.ADDREXCLUDE:
-          addr_exclude = DEFINITIONS.GetNetAddr(x.value)
+          addr_exclude = _DEFINITIONS().GetNetAddr(x.value)
           self.address_exclude.extend(addr_exclude)
         # do we have a list of ports?
         elif x.var_type is VarType.PORT:
@@ -1237,7 +1243,7 @@ class Term:
         elif x.var_type is VarType.VERSA_APPLICATION:
           self.versa_application.append(x.value)
         elif x.var_type is VarType.NEXT_IP:
-          self.next_ip = DEFINITIONS.GetNetAddr(x.value)
+          self.next_ip = _DEFINITIONS().GetNetAddr(x.value)
         elif x.var_type is VarType.PLATFORM:
           self.platform.append(x.value)
         elif x.var_type is VarType.PLATFORMEXCLUDE:
@@ -1292,7 +1298,7 @@ class Term:
       elif obj.var_type is VarType.VERSA_APPLICATION:
         self.versa_application.append(obj.value)
       elif obj.var_type is VarType.NEXT_IP:
-        self.next_ip = DEFINITIONS.GetNetAddr(obj.value)
+        self.next_ip = _DEFINITIONS().GetNetAddr(obj.value)
       elif obj.var_type is VarType.VERBATIM:
         self.verbatim.append(obj.value)
       elif obj.var_type is VarType.ACTION:
