@@ -16,7 +16,7 @@
 
 import copy
 import json
-from typing import Any, Literal, Tuple, Union
+from typing import Any, Tuple, Union, Dict, List
 from unittest import mock
 
 from absl.testing import absltest
@@ -25,6 +25,7 @@ from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import nsxt
 from capirca.lib import policy
+from typing_extensions import Literal
 
 
 ICMPV6_TERM = """\
@@ -864,14 +865,14 @@ class TestTrafficKindGrid(parameterized.TestCase):
 
   # Which address set should be put into the policy, based on the type of policy
   # we're testing?
-  KIND_TO_ADDRESS: dict[_TRAFFIC_KIND, _ADDRESSES] = {
+  KIND_TO_ADDRESS: Dict[_TRAFFIC_KIND, _ADDRESSES] = {
       'mixed': 'GOOGLE_DNS',
       'v4': 'INTERNAL_V4',
       'v6': 'INTERNAL_V6'}
 
   # Which expanded address group (e.g. netblocks) is expected, based on the type
   # of policy we're testing?
-  KIND_TO_ADDRESS_GROUPS: dict[
+  KIND_TO_ADDRESS_GROUPS: Dict[
       _TRAFFIC_KIND, Union[nacaddr.IPv4, nacaddr.IPv6, Literal['ANY']]] = {
           # 'GOOGLE_DNS'
           'mixed': [nacaddr.IP('8.8.4.4/32'), nacaddr.IP('8.8.8.8/32'),
@@ -961,11 +962,11 @@ class TestTrafficKindGrid(parameterized.TestCase):
         '  destination-address:: INTERNAL_V6',
         '}']))
 
-  def get_source_dest_addresses(self, nsxt_json: dict[str, Any]) -> (
-      Tuple[list[str], list[str]]):
-    rules: list[dict[str, Any]] = nsxt_json['rules']
-    src: list[str] = []
-    dst: list[str] = []
+  def get_source_dest_addresses(self, nsxt_json: Dict[str, Any]) -> (
+      Tuple[List[str], List[str]]):
+    rules: List[Dict[str, Any]] = nsxt_json['rules']
+    src: List[str] = []
+    dst: List[str] = []
 
     for rule in rules:
       src.extend(i for i in rule['source_groups'])
