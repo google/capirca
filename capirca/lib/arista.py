@@ -74,3 +74,16 @@ class Arista(cisco.Cisco):
           'access list type %s not supported by %s' % (
               filter_type, self._PLATFORM))
     return target
+
+  def __str__(self, **kwargs):
+    # Parent Cisco is generating "exit" at the end, which needs to be indentated
+    # for correct Arista syntax parsing.
+    s = super().__str__(**kwargs)
+    lines = s.split('\n')
+    while lines and not lines[-1]:
+      lines = lines[:-1]
+    if lines and lines[-1] == 'exit':
+      lines[-1] = ' exit'
+      lines.append('')
+      return '\n'.join(lines)
+    return s

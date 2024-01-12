@@ -231,6 +231,7 @@ class AristaTest(absltest.TestCase):
     acl = arista.Arista(
         policy.ParsePolicy(GOOD_HEADER + GOOD_TERM, self.naming), EXP_INFO)
     self.assertIn('ip access-list test-filter', str(acl))
+    self.assertIn(' exit', str(acl))
 
   def testESPIsAnInteger(self):
     acl = arista.Arista(
