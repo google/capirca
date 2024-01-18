@@ -170,7 +170,7 @@ term good-term-11 {
 GOOD_TERM_OWNER = """
 term owner-term {
   protocol:: tcp
-  owner:: foo@google.com
+  owner:: foo@gmail.com
   action:: accept
 }
 """
@@ -188,7 +188,7 @@ term address-exclusions {
   action:: accept
 }
 """
-# TODO(sulric): write a test for this term
+# write a test for this term.
 GOOD_TERM_19 = """
 term minimize-prefix-list {
   source-address:: INCLUDES
@@ -630,7 +630,7 @@ class AristaTpTest(absltest.TestCase):
         policy.ParsePolicy(GOOD_HEADER + COUNTER_CLEANUP_TERM, self.naming),
         EXP_INFO)
     output = str(atp)
-    self.assertIn("counter test-cleanup-check", output, output)
+    self.assertIn("      counter test-cleanup-check", output, output)
     self.assertIn("count test-cleanup-check", output, output)
 
   def testDefaultDeny(self):
@@ -934,7 +934,7 @@ class AristaTpTest(absltest.TestCase):
         policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_OWNER, self.naming),
         EXP_INFO)
     output = str(atp)
-    self.assertIn("!! owner: foo@google.com", output, output)
+    self.assertIn("!! owner: foo@gmail.com", output, output)
 
   # confirm that we don't generate a term for non-default
   @mock.patch.object(arista_tp.logging, "warning")
@@ -1150,8 +1150,7 @@ class AristaTpTest(absltest.TestCase):
     atp = arista_tp.AristaTrafficPolicy(
         policy.ParsePolicy(GOOD_HEADER + INET_INET6, self.naming), EXP_INFO)
     output = str(atp)
-    # we should not generate this term
-    # TODO(sulrich): we should, however, throw a warning
+    # we should not generate this term we should, however, throw a warning.
     self.assertNotIn("match INET_INET6 ipv4", output, output)
     self.assertNotIn("match ipv6-INET_INET6 ipv6", output, output)
 

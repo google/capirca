@@ -770,8 +770,7 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
           # appropriate default term name to be used in this filter.
           default_term = re.match(r"^default\-.*", term.name, re.IGNORECASE)
 
-          # TODO(sulrich): if term names become unique to address
-          # families, this can be removed.
+          # remove if term names become unique to address family.
           if (filter_type == "mixed" and ft == "inet6"):
             term.name = af_map_txt[ft] + "-" + term.name
 
@@ -944,7 +943,7 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
       # if there are counters, export the list of counters
       if counters:
         str_counters = " ".join(counters)
-        config.Append("   ", "counter %s" % str_counters)
+        config.Append("      ", "counter %s" % str_counters)
 
       for term in terms:
         term_str = str(term)
