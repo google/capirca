@@ -87,6 +87,42 @@ term good-term-1 {
 }
 """
 
+PLATFORM_EXCLUDE = """
+term excluded-term-2 {
+  comment:: "Allow TCP & UDP 53 with saddr/daddr."
+  source-address:: CORP_INTERNAL
+  action:: accept
+  platform-exclude:: openconfig
+}
+"""
+
+PLATFORM_EXCLUDE_NOTOC = """
+term not-excluded-term-1 {
+  comment:: "Allow TCP & UDP 53 with saddr/daddr."
+  source-address:: CORP_EXTERNAL
+  action:: accept
+  platform-exclude:: juniper
+}
+"""
+
+PLATFORM_OC = """
+term platform-term-1 {
+  comment:: "Allow TCP & UDP 53 with saddr/daddr."
+  source-address:: CORP_EXTERNAL
+  action:: accept
+  platform:: openconfig
+}
+"""
+
+PLATFORM_NOTOC = """
+term not-excluded-term-1 {
+  comment:: "Allow TCP & UDP 53 with saddr/daddr."
+  source-address:: CORP_EXTERNAL
+  action:: accept
+  platform:: juniper
+}
+"""
+
 GOOD_JSON_SADDR = """
 [
   {
@@ -338,10 +374,6 @@ class OpenConfigTest(absltest.TestCase):
     super().setUp()
     self.naming = mock.create_autospec(naming.Naming)
 
-  def _StripAclHeaders(self, acl):
-    return '\n'.join([line for line in str(acl).split('\n')
-                      if not line.lstrip().startswith('#')])
-
   def testSaddr(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
 
@@ -351,6 +383,44 @@ class OpenConfigTest(absltest.TestCase):
     self.assertEqual(expected, json.loads(str(acl)))
 
     self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+
+  def testPlatformExclude(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+
+    acl = openconfig.OpenConfig(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_SADDR + PLATFORM_EXCLUDE,
+                           self.naming), EXP_INFO)
+    expected = json.loads(GOOD_JSON_SADDR)
+    self.assertEqual(expected, json.loads(str(acl)))
+
+  def testPlatformExcludeNoTOC(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+
+    acl = openconfig.OpenConfig(policy.ParsePolicy(
+        GOOD_HEADER + PLATFORM_EXCLUDE_NOTOC, self.naming), EXP_INFO)
+    expected = json.loads(GOOD_JSON_SADDR)
+    self.assertEqual(expected, json.loads(str(acl)))
+
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+
+  def testPlatformOC(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+
+    acl = openconfig.OpenConfig(policy.ParsePolicy(
+        GOOD_HEADER + PLATFORM_OC, self.naming), EXP_INFO)
+    expected = json.loads(GOOD_JSON_SADDR)
+    self.assertEqual(expected, json.loads(str(acl)))
+
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+
+  def testPlatformJNPR(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+
+    acl = openconfig.OpenConfig(policy.ParsePolicy(
+        GOOD_HEADER + GOOD_SADDR + PLATFORM_NOTOC, self.naming), EXP_INFO)
+    expected = json.loads(GOOD_JSON_SADDR)
+    self.assertEqual(expected, json.loads(str(acl)))
+
 
   def testDaddr(self):
     self.naming.GetNetAddr.return_value = TEST_IPS
