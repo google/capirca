@@ -11,8 +11,6 @@ import logging
 
 from capirca.lib import aclgenerator
 
-import six
-
 
 # Generic error class
 class Error(Exception):
@@ -253,6 +251,6 @@ class CloudArmor(aclgenerator.ACLGenerator):
 
     out = '%s\n\n' % (
         json.dumps(self.cloudarmor_policies, indent=2,
-                   separators=(six.ensure_str(','), six.ensure_str(': ')),
+                   separators=(',', ': '),
                    sort_keys=True))
     return out

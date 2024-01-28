@@ -31,7 +31,6 @@ from typing import Dict, Any
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from collections import defaultdict
-import six
 
 
 class Error(Exception):
@@ -262,8 +261,7 @@ class OpenConfig(aclgenerator.ACLGenerator):
 
   def __str__(self):
     out = '%s\n\n' % (json.dumps(self.oc_policies, indent=2,
-                                 separators=(six.ensure_str(','),
-                                             six.ensure_str(': ')),
+                                 separators=(',', ': '),
                                  sort_keys=True))
 
     return out

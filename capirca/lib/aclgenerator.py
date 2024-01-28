@@ -21,7 +21,6 @@ import re
 import string
 
 from capirca.lib import policy
-import six
 import hashlib
 
 # generic error class

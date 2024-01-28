@@ -9,8 +9,6 @@ import re
 
 from capirca.lib import aclgenerator
 
-import six
-
 
 class Error(Exception):
   """Generic error class."""
@@ -68,7 +66,7 @@ class GCP(aclgenerator.ACLGenerator):
         json.dumps(
             self.policies,
             indent=2,
-            separators=(six.ensure_str(','), six.ensure_str(': ')),
+            separators=(',', ': '),
             sort_keys=True))
     return out
 
