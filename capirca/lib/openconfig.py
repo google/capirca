@@ -193,9 +193,7 @@ class OpenConfig(aclgenerator.ACLGenerator):
     supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     # Remove unsupported things
-    supported_tokens -= {'platform',
-                         'platform_exclude',
-                         'icmp-type',
+    supported_tokens -= {'icmp-type',
                          'verbatim'}
 
     # OpenConfig ACL model only supports these three forwarding actions.
@@ -228,6 +226,14 @@ class OpenConfig(aclgenerator.ACLGenerator):
           filter_options.remove(i)
 
       for term in terms:
+
+        if term.platform_exclude:
+          if self._PLATFORM in term.platform_exclude:
+            continue
+
+        if term.platform:
+          if self._PLATFORM not in term.platform:
+            continue
 
         if term.expiration:
           if term.expiration <= exp_info_date:
