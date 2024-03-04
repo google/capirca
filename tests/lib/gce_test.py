@@ -578,6 +578,15 @@ term bad-term-tags-and-service-accounts {
 }
 """
 
+BAD_TERM_COMMENT_LENGTH = """
+term bad-term-service-accounts-count {{
+  comment:: "{very_long_comment}"
+  protocol:: tcp
+  action:: accept
+  source-tag:: ssh-bastion
+}}""".format(very_long_comment='a' *
+             (gce.Term._MAX_TERM_COMMENT_LENGTH + 1) + 'truncated')
+
 GOOD_TERM_EXCLUDE_RANGE = """
 [
   {
@@ -1426,6 +1435,14 @@ class GCETest(parameterized.TestCase):
         policy.ParsePolicy(
             GOOD_HEADER_INET + BAD_TERM_TARGET_TAGS_AND_SERVICE_ACCOUNTS,
             self.naming), EXP_INFO)
+
+  def testLongCommentTruncation(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    acl = gce.GCE(
+        policy.ParsePolicy(GOOD_HEADER + BAD_TERM_COMMENT_LENGTH, self.naming),
+        EXP_INFO)
+    self.assertIn('a' * gce.Term._MAX_TERM_COMMENT_LENGTH, str(acl))
+    self.assertNotIn('truncated', str(acl))
 
   def testMixed(self):
     self.naming.GetNetAddr.return_value = TEST_IPS

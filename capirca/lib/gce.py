@@ -97,6 +97,7 @@ class Term(gcp.Term):
   _TERM_TARGET_TAGS_LIMIT = 70
   _TERM_PORTS_LIMIT = 256
   _TERM_SERVICE_ACCOUNTS_LIMIT = 10
+  _MAX_TERM_COMMENT_LENGTH = 2047
 
   # Firewall rule name has to match specific RE:
   # The first character must be a lowercase letter, and all following characters
@@ -200,11 +201,16 @@ class Term(gcp.Term):
     """
     if self.term.owner:
       self.term.comment.append('Owner: %s' % self.term.owner)
+    description = ' '.join(self.term.comment)
+    if len(description) > self._MAX_TERM_COMMENT_LENGTH:
+      description = gcp.TruncateString(
+          description, self._MAX_TERM_COMMENT_LENGTH
+      )
     term_dict = {
-        'description': ' '.join(self.term.comment),
+        'description': description,
         'name': self.term.name,
-        'direction': self.term.direction
-        }
+        'direction': self.term.direction,
+    }
     if self.term.network:
       term_dict['network'] = self.term.network
       term_dict['name'] = '%s-%s' % (
