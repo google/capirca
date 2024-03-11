@@ -110,7 +110,12 @@ class AclCheck:
     self.matches = []
     self.exact_matches = []
     for header, terms in self.pol_obj.filters:
-      filtername = header.target[0].options[0]
+      check_target = str(header.target[0])
+      if check_target == 'srx':
+        delim = " "
+        filtername = delim.join(header.target[0].options)
+      else:
+        filtername = header.target[0].options[0]
       for term in terms:
         possible = []
         logging.debug('checking term: %s', term.name)
