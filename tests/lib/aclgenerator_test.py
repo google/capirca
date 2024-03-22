@@ -99,7 +99,7 @@ class ACLGeneratorTest(parameterized.TestCase):
       'There is something very long about this comment that',
       'will require it to be truncated in order for nftables',
       'binary to be able to load the rulesets.'], '"There is something very long about this comment that will require it to be truncated in order for nftables binary to be able t"'),
-    (['some comment description', 'second comment item \nNewline'], '"some comment description second comment item Newline"'), ('a string comment', '"a string comment"'))
+    (['some "comment" description', 'second \'comment\' item\nNewline'], '"some \'comment\' description second \'comment\' item Newline"'), ('a string comment', '"a string comment"'))
   def testTruncateWords(self, input_data, expected_output):
     result = aclgenerator.TruncateWords(
         input_data, 126)

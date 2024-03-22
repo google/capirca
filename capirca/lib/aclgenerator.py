@@ -610,13 +610,15 @@ def TruncateWords(input_text, char_limit):
   Returns:
     truncated single string element within double quotes.
   """
-  CHAR_LIMIT = 126
+  hard_limit = 126
+  if char_limit > hard_limit:
+    char_limit = hard_limit
 
   if isinstance(input_text, list):
-    # handle multiple comments. Remove newline.
+    # Handle multiple comments. Newline to space and double to single quotes.
     sanitized_list = []
     for i in input_text:
-      sanitized_list.append(i.replace('\n', ''))
+      sanitized_list.append(i.replace('\n', ' ').replace('\"', '\''))
     comment = ' '.join(sanitized_list)
   else:
     comment = input_text
