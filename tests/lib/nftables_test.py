@@ -61,7 +61,7 @@ SUPPORTED_TOKENS = frozenset({
     'source_address',
     'source_address_exclude',
     'source_port',
-    'destination_interface',  # ouput interface
+    'destination_interface',  # output interface
     'translated',  # obj attribute, not token
     'stateless_reply',
 })
@@ -177,6 +177,12 @@ header {
 GOOD_HEADER_3 = """
 header {
   target:: nftables inet input
+}
+"""
+
+GOOD_HEADER_4 = """
+header {
+  target:: nftables mixed forward
 }
 """
 
@@ -597,6 +603,21 @@ class NftablesTest(parameterized.TestCase):
         )
     )
     self.assertIn('type filter hook input', nft)
+
+  def testForwardHeader(self):
+    nftables.Nftables(
+        policy.ParsePolicy(GOOD_HEADER_4 + GOOD_TERM_1, self.naming), EXP_INFO
+    )
+    nft = str(
+        nftables.Nftables(
+            policy.ParsePolicy(
+                GOOD_HEADER_4 + GOOD_TERM_1 + GOOD_HEADER_2 + IPV6_SRCIP,
+                self.naming,
+            ),
+            EXP_INFO,
+        )
+    )
+    self.assertIn('type filter hook forward', nft)
 
   def testStatefulFirewall(self):
     nftables.Nftables(

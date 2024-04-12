@@ -114,7 +114,7 @@ class Term(aclgenerator.Term):
       term: Term data.
       nf_af: nftables table type IPv4 only (ip), IPv6 (ip6) or dual-stack
         (inet).
-      nf_hook: INPUT or OUTPUT (packet processing/direction of traffic).
+      nf_hook: FORWARD, INPUT, or OUTPUT (Netfilter hook to filter on).
       verbose: used for comment handling.
     """
     self.term = term
@@ -605,7 +605,7 @@ class Nftables(aclgenerator.ACLGenerator):
   _PLATFORM = 'nftables'
   SUFFIX = '.nft'
   _HEADER_AF = frozenset(('inet', 'inet6', 'mixed'))
-  _SUPPORTED_HOOKS = frozenset(('input', 'output'))
+  _SUPPORTED_HOOKS = frozenset(('forward', 'input', 'output'))
   _HOOK_PRIORITY_DEFAULT = 0
   _BASE_CHAIN_PREFIX = 'root'
   _LOGGING = set()
