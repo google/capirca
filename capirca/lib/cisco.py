@@ -963,6 +963,11 @@ class Cisco(aclgenerator.ACLGenerator):
         filter_options.remove('noverbose')
         self.verbose = False
 
+      self.remove_duplicate_network_objectgroups = False
+      if 'remove_duplicate_network_objectgroups' in filter_options:
+        filter_options.remove('remove_duplicate_network_objectgroups')
+        self.remove_duplicate_network_objectgroups = True
+
       # extended is the most common filter type.
       filter_type = 'extended'
       if len(filter_options) > 1:
@@ -1082,6 +1087,174 @@ class Cisco(aclgenerator.ACLGenerator):
     """Returns an ObjectGroupTerm object."""
     return ObjectGroupTerm(term, filter_name, verbose=verbose)
 
+  def _remove_duplicate_objects(self, target):
+    """Remove all duplicate object-groups and rename to the first group found.
+
+    Args:
+      target: A string to remove duplicate object-groups from.
+
+    Returns:
+      A string with duplicate object-groups removed.
+    Example:
+    Remove all duplicate object-group and rename to the first group found
+    where the format looks like:
+    object-group network ipv4 firstgroup
+     10.1.1.0/8
+    exit
+    object-group network ipv4 secondgroup
+     10.1.1.0/8
+    exit
+    ipv4 access-list myacl
+     permit tcp net-group firstgroup net-group secondgroup port-group 443-443
+    exit
+    Result:
+    object-group network ipv4 sa_myfirstgroup
+     10.1.1.0/8
+    exit
+    ipv4 access-list myacl
+     permit tcp net-group firstgroup net-group secondgroup port-group 443-443
+    exit
+    """
+    for address_family in ['ipv4', 'ipv6']:
+      duplicate_object_groups = self._get_duplicate_object_groups(
+          target, address_family
+      )
+      target = self._remove_object_groups(
+          target, duplicate_object_groups.keys(), address_family
+      )
+      target = self._replace_object_groups_references(
+          target, duplicate_object_groups, address_family
+      )
+    return target
+
+  def _get_duplicate_object_groups(self, text, address_family):
+    """Parses the given text to extract all object-groups.
+
+    Args:
+      text: A multi-line string with multiple object-groups contained within it.
+      address_family: A string "ipv4" or "ipv6" to remove object-groups of.
+
+    Returns:
+      A dictionary of any duplicate content object-groups with the key of the
+      duplicate name and the value of the first occurrence found name.
+    """
+
+    object_groups = {}
+    duplicate_object_groups = {}
+
+    inside_networkobject = False
+    object_group_name = ''
+    object_group_content = []
+    for line in text.splitlines():
+      if line.startswith('object-group'):
+        fields = line.split()
+        if len(fields) == 4:
+          object_group_type = fields[1]
+          object_group_af = fields[2]
+          object_group_name = fields[3]
+          if (
+              object_group_type == 'network'
+              and object_group_af == address_family
+          ):
+            inside_networkobject = True
+      elif line.startswith('exit') and inside_networkobject:
+        inside_networkobject = False
+        if '\n'.join(object_group_content) in object_groups.keys():
+          duplicate_object_groups[object_group_name] = object_groups[
+              '\n'.join(object_group_content)
+          ]
+        else:
+          object_groups['\n'.join(object_group_content)] = object_group_name
+        object_group_content = []
+      else:
+        if inside_networkobject:
+          object_group_content.append(line)
+    return duplicate_object_groups
+
+  def _remove_object_groups(self, text, objgroups, address_family):
+    """Parses the given text to remove all object-groups asked to be removed.
+
+    Args:
+      text: A multi-line string with multiple object-groups contained within it.
+      objgroups: A set of object-groups to remove.
+      address_family: A string "ipv4" or "ipv6" to remove object-groups of.
+
+    Returns:
+      The original text with the duplicate object-groups removed.
+    """
+
+    inside_networkobject = False
+    skip_line = False
+    return_lines = []
+    for line in text.splitlines():
+      if line.startswith('object-group'):
+        fields = line.split()
+        if len(fields) == 4:
+          object_group_type = fields[1]
+          object_group_af = fields[2]
+          object_group_name = fields[3]
+          if (
+              object_group_type == 'network'
+              and object_group_af == address_family
+          ):
+            inside_networkobject = True
+            if object_group_name in objgroups:
+              skip_line = True
+          else:
+            skip_line = False
+        else:
+          skip_line = False
+      elif line.startswith('exit') and inside_networkobject:
+        inside_networkobject = False
+        if skip_line:
+          skip_line = False
+          continue
+        skip_line = False
+      if skip_line:
+        continue
+      return_lines.append(line)
+    return '\n'.join(return_lines)
+
+  def _replace_object_groups_references(
+      self, text, objgroups, address_family
+  ):
+    """Parses the given text to replace all object-groups in an ACL based on a dictionary.
+
+    Args:
+      text: A multi-line string with ACLs contained within it.
+      objgroups: A dict of object-groups to the key with the value of in
+        references.
+      address_family: A string "ipv4" or "ipv6" to remove object-groups of.
+
+    Returns:
+      The original text with the object-group references changed to those in the
+      dictionary.
+    """
+
+    inside = ''
+    return_lines = []
+    for line in text.splitlines():
+      if line.startswith('ip access-list extended ') or line.startswith(
+          'ipv4 access-list '
+      ):
+        inside = 'ipv4'
+      elif line.startswith('ipv6 access-list ') or line.startswith(
+          'ipv6 access-list '
+      ):
+        inside = 'ipv6'
+      elif line.startswith('exit'):
+        inside = ''
+      elif address_family == inside:
+        fields = line.split()
+        if len(fields) >= 2:
+          for i in range(len(fields) - 1):
+            if fields[i] == 'net-group':
+              if fields[i + 1] in objgroups:
+                fields[i + 1] = objgroups[fields[i + 1]]
+          line = ' ' + ' '.join(fields)
+      return_lines.append(line)
+    return '\n'.join(return_lines)
+
   def _AppendTargetByFilterType(self, filter_name, filter_type):
     """Takes in the filter name and type and appends headers.
 
@@ -1169,4 +1342,6 @@ class Cisco(aclgenerator.ACLGenerator):
       # ensure that the header is always first
       target = target_header + target
       target += ['', 'exit', '']
+    if self.remove_duplicate_network_objectgroups:
+      return self._remove_duplicate_objects('\n'.join(target))
     return '\n'.join(target)
