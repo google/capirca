@@ -16,9 +16,9 @@
 
 import datetime
 import re
-from absl.testing import absltest
 from unittest import mock
 
+from absl.testing import absltest
 from capirca.lib import aclgenerator
 from capirca.lib import cisco
 from capirca.lib import nacaddr
@@ -54,6 +54,12 @@ GOOD_OBJGRP_HEADER_1 = """
 header {
   comment:: "obj group header test"
   target:: cisco objgroupheader object-group
+}
+"""
+GOOD_OBJGRP_DEDUP_HEADER = """
+header {
+  comment:: "obj group header test"
+  target:: cisco objgroupheader object-group remove_duplicate_network_objectgroups
 }
 """
 GOOD_OBJGRP_HEADER_2 = """
@@ -193,6 +199,15 @@ GOOD_TERM_2 = """
 term good-term-2 {
   protocol:: tcp
   destination-address:: SOME_HOST
+  source-port:: HTTP
+  option:: established
+  action:: accept
+}
+"""
+GOOD_TERM_2_DUPE = """
+term good-term-2-dupe {
+  protocol:: tcp
+  destination-address:: SOME_HOST2
   source-port:: HTTP
   option:: established
   action:: accept
@@ -663,11 +678,80 @@ class CiscoTest(absltest.TestCase):
 
     # There should be no addrgroups that look like IP addresses.
     for addrgroup in re.findall(r'net-group ([a-f0-9.:/]+)', str(acl)):
-      self.assertRaises(ValueError, nacaddr.IP(addrgroup))
+      self.assertRaises(ValueError, nacaddr.IP, addrgroup)
 
     self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
                                              mock.call('SOME_HOST')])
     self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
+
+  def testObjectGroupNoDuplicates(self):
+    ip_grp1 = ['object-group network ipv4 SOME_HOST']
+    ip_grp1.append(' 10.0.0.0/8')
+    ip_grp1.append('exit')
+    ip_grp2 = ['object-group network ipv4 SOME_HOST2']
+    ip_grp2.append(' 10.0.0.0/8')
+    ip_grp2.append('exit')
+    port_grp1 = ['object-group port 80-80']
+    port_grp1.append(' eq 80')
+    port_grp1.append('exit')
+    port_grp2 = ['object-group port 1024-65535']
+    port_grp2.append(' range 1024 65535')
+    port_grp2.append('exit')
+
+    self.naming.GetNetAddr.side_effect = [
+        [nacaddr.IP('10.0.0.0/8', token='SOME_HOST')],
+        [nacaddr.IP('10.0.0.0/8', token='SOME_HOST2')],
+        [nacaddr.IP('10.0.0.0/8', token='SOME_HOST')],
+        [nacaddr.IP('10.0.0.0/8', token='SOME_HOST2')],
+    ]
+    self.naming.GetServiceByProto.return_value = ['80']
+
+    pol = policy.ParsePolicy(
+        GOOD_OBJGRP_DEDUP_HEADER + GOOD_TERM_2 + GOOD_TERM_2_DUPE, self.naming
+    )
+    acl = cisco.Cisco(pol, EXP_INFO)
+
+    self.assertIn(
+        '\n'.join(ip_grp1), str(acl), '%s %s' % ('\n'.join(ip_grp1), str(acl))
+    )
+    self.assertNotIn(
+        '\n'.join(ip_grp2), str(acl), '%s %s' % ('\n'.join(ip_grp2), str(acl))
+    )
+    self.assertIn(
+        '\n'.join(port_grp1),
+        str(acl),
+        '%s %s' % ('\n'.join(port_grp1), str(acl)),
+    )
+    self.assertIn(
+        '\n'.join(port_grp2),
+        str(acl),
+        '%s %s' % ('\n'.join(port_grp2), str(acl)),
+    )
+
+    # Object-group terms should use the object groups created.
+    self.assertIn(
+        ' permit tcp any port-group 80-80 net-group SOME_HOST port-group'
+        ' 1024-65535',
+        str(acl),
+        str(acl),
+    )
+
+    # Object-group terms should use the first object group not duplicates.
+    self.assertNotIn(
+        ' permit tcp any port-group 80-80 net-group SOME_HOST2 port-group'
+        ' 1024-65535',
+        str(acl),
+        str(acl),
+    )
+
+    # There should be no addrgroups that look like IP addresses.
+    for addrgroup in re.findall(r'net-group ([a-f0-9.:/]+)', str(acl)):
+      self.assertRaises(ValueError, nacaddr.IP, addrgroup)
+
+    self.naming.GetNetAddr.assert_has_calls(
+        [mock.call('SOME_HOST'), mock.call('SOME_HOST2')]
+    )
+    self.naming.GetServiceByProto.assert_called_with('HTTP', 'tcp')
 
   def testObjectGroupInet6(self):
     ip_grp = ['object-group network ipv6 SOME_HOST']
