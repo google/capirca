@@ -50,7 +50,7 @@ header {
   target:: cisco 50 standard
 }
 """
-GOOD_OBJGRP_HEADER = """
+GOOD_OBJGRP_HEADER_1 = """
 header {
   comment:: "obj group header test"
   target:: cisco objgroupheader object-group
@@ -60,6 +60,12 @@ GOOD_OBJGRP_DEDUP_HEADER = """
 header {
   comment:: "obj group header test"
   target:: cisco objgroupheader object-group remove_duplicate_network_objectgroups
+}
+"""
+GOOD_OBJGRP_HEADER_2 = """
+header {
+  comment:: "obj group header test"
+  target:: cisco objgroupheader object-group-inet6
 }
 """
 GOOD_INET6_HEADER = """
@@ -653,9 +659,8 @@ class CiscoTest(absltest.TestCase):
     self.naming.GetServiceByProto.return_value = ['80']
 
     pol = policy.ParsePolicy(
-        GOOD_OBJGRP_HEADER + GOOD_TERM_2 + GOOD_TERM_18, self.naming)
+        GOOD_OBJGRP_HEADER_1 + GOOD_TERM_2 + GOOD_TERM_18, self.naming)
     acl = cisco.Cisco(pol, EXP_INFO)
-
     self.assertIn('\n'.join(ip_grp), str(acl), '%s %s' % (
         '\n'.join(ip_grp), str(acl)))
     self.assertIn('\n'.join(port_grp1), str(acl), '%s %s' % (
@@ -747,6 +752,59 @@ class CiscoTest(absltest.TestCase):
         [mock.call('SOME_HOST'), mock.call('SOME_HOST2')]
     )
     self.naming.GetServiceByProto.assert_called_with('HTTP', 'tcp')
+
+  def testObjectGroupInet6(self):
+    ip_grp = ['object-group network ipv6 SOME_HOST']
+    ip_grp.append(' 2001::3/128')
+    ip_grp.append('exit')
+    port_grp1 = ['object-group port 80-80']
+    port_grp1.append(' eq 80')
+    port_grp1.append('exit')
+    port_grp2 = ['object-group port 1024-65535']
+    port_grp2.append(' range 1024 65535')
+    port_grp2.append('exit')
+
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IP('2001::3/128', token='SOME_HOST')]
+    self.naming.GetServiceByProto.return_value = ['80']
+
+    pol = policy.ParsePolicy(
+        GOOD_OBJGRP_HEADER_2 + GOOD_TERM_2 + GOOD_TERM_18, self.naming)
+    acl = cisco.Cisco(pol, EXP_INFO)
+    self.assertIn('\n'.join(ip_grp), str(acl), '%s %s' % (
+        '\n'.join(ip_grp), str(acl)))
+    self.assertIn('\n'.join(port_grp1), str(acl), '%s %s' % (
+        '\n'.join(port_grp1), str(acl)))
+    self.assertIn('\n'.join(port_grp2), str(acl), '%s %s' % (
+        '\n'.join(port_grp2), str(acl)))
+
+    # Object-group terms should use the object groups created.
+    self.assertIn(
+        ' permit tcp any port-group 80-80 net-group SOME_HOST port-group'
+        ' 1024-65535', str(acl), str(acl))
+    self.assertIn(
+        ' permit ipv6 net-group SOME_HOST net-group SOME_HOST', str(acl),
+        str(acl))
+
+    # There should be no addrgroups that look like IP addresses.
+    for addrgroup in re.findall(r'net-group ([a-f0-9.:/]+)', str(acl)):
+      self.assertRaises(ValueError, nacaddr.IP(addrgroup))
+
+    self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
+                                             mock.call('SOME_HOST')])
+    self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
+
+    # There should be no ipv4 addresses
+    self.naming.GetNetAddr.reset_mock()
+    self.naming.GetNetAddr.return_value = [
+      nacaddr.IP('192.168.0.1/32', token='SOME_HOST'),
+    ]
+    pol = policy.ParsePolicy(
+        GOOD_OBJGRP_HEADER_2 + GOOD_TERM_2 + GOOD_TERM_18, self.naming)
+    acl = cisco.Cisco(pol, EXP_INFO)
+    self.assertNotIn(' permit ip net-group SOME_HOST net-group SOME_HOST', str(acl))
+    self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
+                                             mock.call('SOME_HOST')])
 
   def testInet6(self):
     self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8'),

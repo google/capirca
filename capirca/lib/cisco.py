@@ -807,8 +807,8 @@ class ObjectGroupTerm(Term):
   # Protocols should be emitted as integers rather than strings.
   _PROTO_INT = True
 
-  def __init__(self, term, filter_name, platform='cisco', verbose=True):
-    super().__init__(term)
+  def __init__(self, term, filter_name, af=4, platform='cisco', verbose=True):
+    super().__init__(term, af=af)
     self.term = term
     self.filter_name = filter_name
     self.platform = platform
@@ -947,8 +947,8 @@ class Cisco(aclgenerator.ACLGenerator):
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     # a mixed filter outputs both ipv4 and ipv6 acls in the same output file
-    good_filters = ['extended', 'standard', 'object-group', 'inet6',
-                    'mixed', 'enable_dsmo']
+    good_filters = ['extended', 'standard', 'object-group',
+                    'object-group-inet6', 'inet6', 'mixed', 'enable_dsmo']
 
     for header, terms in pol.filters:
       if self._PLATFORM not in header.platforms:
@@ -1065,6 +1065,10 @@ class Cisco(aclgenerator.ACLGenerator):
                     term, filter_name, verbose=self.verbose
                 )
             )
+          elif next_filter == 'object-group-inet6':
+            obj_target.AddTerm(term)
+            new_terms.append(self._GetObjectGroupTerm(term, filter_name, af=6,
+                                                      verbose=self.verbose))
           elif next_filter == 'inet6':
             new_terms.append(
                 Term(
@@ -1083,9 +1087,9 @@ class Cisco(aclgenerator.ACLGenerator):
             (header, filter_name, [next_filter], new_terms, obj_target)
         )
 
-  def _GetObjectGroupTerm(self, term, filter_name, verbose=True):
+  def _GetObjectGroupTerm(self, term, filter_name, af=4, verbose=True):
     """Returns an ObjectGroupTerm object."""
-    return ObjectGroupTerm(term, filter_name, verbose=verbose)
+    return ObjectGroupTerm(term, filter_name, af=af, verbose=verbose)
 
   def _remove_duplicate_objects(self, target):
     """Remove all duplicate object-groups and rename to the first group found.
@@ -1281,7 +1285,7 @@ class Cisco(aclgenerator.ACLGenerator):
     elif filter_type == 'object-group':
       target.append('no ip access-list extended %s' % filter_name)
       target.append('ip access-list extended %s' % filter_name)
-    elif filter_type == 'inet6':
+    elif filter_type == 'inet6' or filter_type == 'object-group-inet6':
       target.append('no ipv6 access-list %s' % filter_name)
       target.append('ipv6 access-list %s' % filter_name)
     else:
@@ -1311,7 +1315,7 @@ class Cisco(aclgenerator.ACLGenerator):
         ) in self.cisco_policies:
       for filter_type in filter_list:
         target.extend(self._AppendTargetByFilterType(filter_name, filter_type))
-        if filter_type == 'object-group':
+        if filter_type == 'object-group' or filter_type == 'object-group-inet6':
           obj_target.AddName(filter_name)
 
         # Add the Perforce Id/Date tags, these must come after
