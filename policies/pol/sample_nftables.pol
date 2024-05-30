@@ -12,19 +12,9 @@ term default-accept {
   action:: accept
 }
 
-# TODO: move test-icmp-type-ip4-reject below, once targets have been changed
-# from newnftables to nftables in a followup commit. Use of nftables means the
-# terms do not show up in generated files.
-term test-icmp-type-ip4-reject {
-  comment:: "IPv4 icmp-type - test reject action"
-  icmp-type:: router-advertisement
-  protocol:: icmp
-  action:: reject
-}
-
 header {
   comment:: "Inbound traffic nftables policy example"
-  target:: newnftables inet INPUT
+  target:: nftables inet INPUT
 }
 
 term allow-anything {
@@ -33,7 +23,7 @@ term allow-anything {
 
 header {
   comment:: "2 Inbound traffic nftables policy example"
-  target:: newnftables inet INPUT ACCEPT
+  target:: nftables inet INPUT ACCEPT
 }
 
 term allow-anything {
@@ -42,7 +32,7 @@ term allow-anything {
 
 header {
   comment:: "Outbound dual-stack traffic nftables policy example"
-  target:: newnftables mixed OUTPUT
+  target:: nftables mixed OUTPUT
 }
 
 term default-deny {
@@ -72,7 +62,7 @@ term source-address-term {
 
 header {
   comment:: "Outbound IPv6 traffic nftables policy example"
-  target:: newnftables inet6 OUTPUT
+  target:: nftables inet6 OUTPUT
 }
 
 term default-deny {
@@ -81,7 +71,7 @@ term default-deny {
 
 header {
   comment:: "Priority outbound IPv6"
-  target:: newnftables inet6 OUTPUT 100
+  target:: nftables inet6 OUTPUT 100
 }
 
 term awesome-term {
@@ -103,7 +93,7 @@ term awesome-term3 {
 
 header {
   comment:: "This policy expected to test every combination of REQUIRED keywords."
-  target:: newnftables inet INPUT
+  target:: nftables inet INPUT
 }
 
 term test-icmp {
@@ -118,6 +108,13 @@ term test-icmp-type-ip4 {
   icmp-type:: echo-request echo-reply
   protocol:: icmp
   action:: accept
+}
+
+term test-icmp-type-ip4-reject {
+  comment:: "IPv4 icmp-type - test reject action"
+  icmp-type:: router-advertisement
+  protocol:: icmp
+  action:: reject
 }
 
 term test-icmp-type-ip6 {

@@ -19,7 +19,7 @@ term multi-proto-term {
 
 header {
   comment:: "Noverbose + custom priority policy example"
-  target:: newnftables mixed INPUT 400
+  target:: nftables mixed INPUT 400
 }
 
 term test-tcp-icmp {
@@ -31,7 +31,7 @@ term test-tcp-icmp {
 
 header {
   comment:: "Noverbose + custom priority policy example"
-  target:: newnftables mixed OUTPUT
+  target:: nftables mixed OUTPUT
 }
 
 term test-icmp {
