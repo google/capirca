@@ -67,7 +67,7 @@ SUPPORTED_TOKENS = frozenset({
 })
 
 SUPPORTED_SUB_TOKENS = {
-    'action': {'accept', 'deny'},
+    'action': {'accept', 'deny', 'reject'},
     'option': {'established', 'tcp-established'},
     'icmp_type': {
         'alternate-address',
@@ -355,6 +355,14 @@ term all-src-addr {
   comment:: "All IP address families. v4/v6"
   source-address:: TEST_IPS
   action:: deny
+}
+"""
+
+ALL_SRCIP_REJECT = """
+term all-src-addr {
+  comment:: "Test the reject action. v4/v6"
+  source-address:: TEST_IPS
+  action:: reject
 }
 """
 
@@ -927,6 +935,11 @@ class NftablesTest(parameterized.TestCase):
           HEADER_MIXED_AF + ALL_SRCIP,
           TEST_IPS,
           'ip saddr 10.2.3.4/32 drop comment "All IP address families. v4/v6"',
+      ),
+      (
+          HEADER_MIXED_AF + ALL_SRCIP_REJECT,
+          TEST_IPS,
+          'ip saddr 10.2.3.4/32 reject comment "Test the reject action. v4/v6"',
       ),
       (GOOD_HEADER_3 + ICMP_SINGLE_TYPE, TEST_IPS, 'icmp type router-solicit'),
       (

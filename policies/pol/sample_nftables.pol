@@ -12,6 +12,16 @@ term default-accept {
   action:: accept
 }
 
+# TODO: move test-icmp-type-ip4-reject below, once targets have been changed
+# from newnftables to nftables in a followup commit. Use of nftables means the
+# terms do not show up in generated files.
+term test-icmp-type-ip4-reject {
+  comment:: "IPv4 icmp-type - test reject action"
+  icmp-type:: router-advertisement
+  protocol:: icmp
+  action:: reject
+}
+
 header {
   comment:: "Inbound traffic nftables policy example"
   target:: newnftables inet INPUT

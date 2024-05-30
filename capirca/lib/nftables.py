@@ -105,7 +105,12 @@ class Term(aclgenerator.Term):
       'tcp', 'udp', 'icmp', 'esp', 'udp', 'ah', 'comp', 'udplite', 'dccp',
       'sctp', 'icmpv6'
   ])
-  _ACTIONS = {'accept': 'accept', 'deny': 'drop'}
+  # Keys: actions used in Capirca terms.
+  # Values: actions usable in nftables rules.
+  _ACTIONS = {
+      'accept': 'accept', 'deny': 'drop',
+      'reject': 'reject',
+  }
 
   def __init__(self, term, nf_af, nf_hook, verbose=True):
     """Individual instances of a Term for NFtables.
@@ -341,7 +346,8 @@ class Term(aclgenerator.Term):
     # Base chain already allows all return traffic of
     # state (ESTABLISHED, RELATED)
     # This should prevent invalid, untracked packets from being accepted.
-    if 'deny' not in term.action and not term.icmp_type:
+    if ('deny' not in term.action and 'reject' not in term.action and
+        not term.icmp_type):
       options.append('ct state new')
 
     # 'logging' handling.
@@ -663,6 +669,7 @@ class Nftables(aclgenerator.ACLGenerator):
         'action': {
             'accept',
             'deny',
+            'reject',
         },
         'icmp_type':
             set(
