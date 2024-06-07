@@ -29,7 +29,6 @@ from typing import Dict, Any
 
 from capirca.lib import gcp
 from capirca.lib import nacaddr
-import six
 
 
 class Error(Exception):
@@ -158,7 +157,7 @@ class Term(gcp.Term):
     json.dumps(
         self.ConvertToDict(priority_index=1),
         indent=2,
-        separators=(six.ensure_str(','), six.ensure_str(': ')))
+        separators=(',', ': '))
 
   def _validateDirection(self):
     if self.term.direction == 'INGRESS':
@@ -610,7 +609,7 @@ class TerraformGCE(gcp.GCP):
         json.dumps(
             self.resource_wrapper,
             indent=2,
-            separators=(six.ensure_str(','), six.ensure_str(': ')),
+            separators=(',', ': '),
             sort_keys=True))
     return out
 

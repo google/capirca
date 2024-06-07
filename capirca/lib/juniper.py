@@ -20,7 +20,6 @@ from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from capirca.lib import summarizer
-import six
 
 
 # generic error class

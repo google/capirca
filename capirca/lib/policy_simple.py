@@ -22,7 +22,6 @@ inline comments but preservers line-level comments. Fields expected to have
 """
 
 from absl import logging
-import six
 
 
 class Field:
