@@ -118,6 +118,7 @@ SUPPORTED_TOKENS = {
     'source_port',
     'source_prefix',
     'source_prefix_except',
+    'target_resources',
     'traffic_class_count',
     'traffic_type',
     'translated',

@@ -949,6 +949,7 @@ class Juniper(aclgenerator.ACLGenerator):
                          'routing_instance',
                          'source_prefix',
                          'source_prefix_except',
+                         'target_resources',
                          'traffic_type',
                          'traffic_class_count',
                          'ttl'}
