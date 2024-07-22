@@ -52,8 +52,6 @@ setuptools.setup(
     install_requires=[
         'absl-py',
         'ply',
-        'mock',
-        'six',
         'PyYAML',
     ],
     python_requires='>=3.6',

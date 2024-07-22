@@ -25,7 +25,6 @@ import itertools
 from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
-#import six
 
 
 

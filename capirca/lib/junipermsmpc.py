@@ -20,7 +20,6 @@ import logging
 from capirca.lib import aclgenerator
 from capirca.lib import juniper
 from capirca.lib import nacaddr
-import six
 
 MAX_IDENTIFIER_LEN = 55  # It is really 63, but leaving room for added chars
 

@@ -21,7 +21,6 @@ import textwrap
 
 from absl import logging
 from capirca.lib import aclgenerator
-import six
 
 #          1         2         3
 # 123456789012345678901234567890123456789
