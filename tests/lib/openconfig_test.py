@@ -231,10 +231,11 @@ GOOD_JSON_SPORT = """
     "ipv4": {
       "config": {
         "protocol": 6
+      }
     },
     "transport": {
       "config": {
-        "source-port": 53}
+        "source-port": 53
       }
     }
   }
@@ -252,10 +253,11 @@ GOOD_JSON_DPORT = """
     "ipv4": {
       "config": {
         "protocol": 6
+      }
     },
     "transport": {
       "config": {
-        "destination-port": 53}
+        "destination-port": 53
       }
     }
   }
@@ -273,10 +275,11 @@ GOOD_JSON_MULTI_PROTO_DPORT = """
     "ipv4": {
       "config": {
         "protocol": 17
+      }
     },
     "transport": {
       "config": {
-        "destination-port": 53}
+        "destination-port": 53
       }
     }
   },
@@ -289,12 +292,13 @@ GOOD_JSON_MULTI_PROTO_DPORT = """
     "ipv4": {
       "config": {
         "protocol": 6
-      },
-      "transport": {
-        "config": {
-          "destination-port": 53}
-        }
       }
+    },
+    "transport": {
+      "config": {
+        "destination-port": 53
+      }
+    }
   }
 ]
 """
@@ -312,11 +316,11 @@ GOOD_JSON_EVERYTHING = """
         "destination-address": "10.2.3.4/32",
         "protocol": 17,
         "source-address": "10.2.3.4/32"
-      },
-      "transport": {
-        "config": {
-          "destination-port": 53
-        }
+      }
+    },
+    "transport": {
+      "config": {
+        "destination-port": 53
       }
     }
   },
@@ -331,11 +335,11 @@ GOOD_JSON_EVERYTHING = """
         "destination-address": "10.2.3.4/32",
         "protocol": 6,
         "source-address": "10.2.3.4/32"
-      },
-      "transport": {
-        "config": {
-          "destination-port": 53
-        }
+      }
+    },
+    "transport": {
+      "config": {
+        "destination-port": 53
       }
     }
   }
