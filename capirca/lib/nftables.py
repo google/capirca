@@ -330,7 +330,7 @@ class Term(aclgenerator.Term):
     """Term 'option' handler.
 
     Function used to evaluate term.logging and also term.option values. Then
-    it builds any statement that would be appended before a veredict.
+    it builds any statement that would be appended before a verdict.
     Results of this function are then used in GroupExpressions() to combine
     a final valid NFTables chain.
 
@@ -700,11 +700,18 @@ class Nftables(aclgenerator.ACLGenerator):
       if self._PLATFORM not in header.platforms:
         continue
       filter_options = header.FilterOptions('nftables')
-      nf_af, nf_hook, nf_priority, filter_policy_default_action, verbose = self._ProcessHeader(
-          filter_options)
+      (
+          nf_af,
+          nf_hook,
+          nf_priority,
+          filter_policy_default_action,
+          verbose,
+          base_chain_name,
+          table_name
+      ) = self._ProcessHeader(filter_options)
 
       # Base chain determine name based on iteration of header.
-      base_chain_name = self._BASE_CHAIN_PREFIX + str(pol_counter)
+      base_chain_name = base_chain_name + str(pol_counter)
       child_chains = collections.defaultdict(dict)
       term_names = set()
       new_terms = []
@@ -760,7 +767,7 @@ class Nftables(aclgenerator.ACLGenerator):
       pol_counter += 1
       self.nftables_policies.append(
           (header, base_chain_name, nf_af, nf_hook, nf_priority,
-           filter_policy_default_action, verbose, child_chains))
+           filter_policy_default_action, verbose, child_chains, table_name))
 
   def _ProcessHeader(self, header_options):
     """Capirca policy header processing.
@@ -810,7 +817,22 @@ class Nftables(aclgenerator.ACLGenerator):
     if 'noverbose' in header_options:
       verbose = False
       header_options.remove('noverbose')
-    return netfilter_family, netfilter_hook, netfilter_priority, policy_default_action, verbose
+    base_chain_name = self._BASE_CHAIN_PREFIX
+    table_name = 'filtering_policies'
+    for option in header_options:
+      if option.startswith('base_chain_name='):
+        base_chain_name = option.split('=')[1].strip()
+      if option.startswith('table_name='):
+        table_name = option.split('=')[1].strip()
+    return (
+        netfilter_family,
+        netfilter_hook,
+        netfilter_priority,
+        policy_default_action,
+        verbose,
+        base_chain_name,
+        table_name,
+    )
 
   def _ConfigurationDictionary(self, nft_pol):
     """NFTables configuration object.
@@ -825,13 +847,24 @@ class Nftables(aclgenerator.ACLGenerator):
       nftables: dictionary of dictionaries NFTables policy object.
     """
     nftables = collections.defaultdict(dict)
-    for (header, base_chain_name, nf_af, nf_hook, nf_priority,
-         filter_policy_default_action, verbose, child_chains) in nft_pol:
+    for (
+        header,
+        base_chain_name,
+        nf_af,
+        nf_hook,
+        nf_priority,
+        filter_policy_default_action,
+        verbose,
+        child_chains,
+        table_name,
+    ) in nft_pol:
       base_chain_comment = ''
       # TODO: If child_chain ruleset is empty don't store term.
       if verbose:
         base_chain_comment = header.comment
-      nftables[nf_af][base_chain_name] = {
+      nftables[table_name] = nftables.get(table_name, {})
+      nftables[table_name][nf_af] = nftables[table_name].get(nf_af, {})
+      nftables[table_name][nf_af][base_chain_name] = {
           'hook': nf_hook,
           'comment': base_chain_comment,
           'priority': nf_priority,
@@ -844,42 +877,48 @@ class Nftables(aclgenerator.ACLGenerator):
     """Render the policy as Nftables configuration."""
     nft_config = []
     configuration = self._ConfigurationDictionary(self.nftables_policies)
-
-    for address_family in configuration:
-      nft_config.append('table %s filtering_policies {' % address_family)
-      base_chain_dict = configuration[address_family]
-      for item in base_chain_dict:
-        # TODO: If we ever add NFTables 'named counters' it would go here.
-        for k, v in base_chain_dict[item]['rules'][item].items():
-          nft_config.append(ChainFormat('chain', k, v))
-        # base chain header and contents.
-        nft_config.append(TabSpacer(4, 'chain %s {' % item))
-        if base_chain_dict[item]['comment']:
-          # Due to Nftables limits on comments, we handle this twice.
-          # First time we comment it out so .nft file is human-readable.
-          nft_config.append(
-              TabSpacer(8, '#' + ' '.join(base_chain_dict[item]['comment'])))
+    for table_name in configuration:
+      for address_family in configuration[table_name]:
         nft_config.append(
-            TabSpacer(
-                8, 'type filter hook %s priority %s; policy %s;' %
-                (base_chain_dict[item]['hook'],
-                 base_chain_dict[item]['priority'],
-                 base_chain_dict[item]['policy'])))
-        # Add policy header comment after stateful firewall rule.
-        if base_chain_dict[item]['comment']:
-          nft_config.append(TabSpacer(8, 'ct state established,related accept'
-                                      + Add('comment') +
-                                      Add(aclgenerator.TruncateWords(
-                                          base_chain_dict[item]['comment'],
-                                          self.COMMENT_CHAR_LIMIT))))
-        else:
-          # stateful firewall: allows reply traffic.
-          nft_config.append(TabSpacer(8, 'ct state established,related accept'))
-        # Reference the child chains with jump.
-        for child_chain in base_chain_dict[item]['rules'][item].keys():
-          nft_config.append(TabSpacer(8, 'jump %s' % child_chain))
-        nft_config.append(TabSpacer(4, '}'))  # chain_end
-      nft_config.append('}')  # table_end
+            'table %s %s {'
+            % (
+                address_family,
+                table_name,
+            )
+        )
+        base_chain_dict = configuration[table_name][address_family]
+        for item in base_chain_dict:
+          # TODO: If we ever add NFTables 'named counters' it would go here.
+          for k, v in base_chain_dict[item]['rules'][item].items():
+            nft_config.append(ChainFormat('chain', k, v))
+          # base chain header and contents.
+          nft_config.append(TabSpacer(4, 'chain %s {' % item))
+          if base_chain_dict[item]['comment']:
+            # Due to Nftables limits on comments, we handle this twice.
+            # First time we comment it out so .nft file is human-readable.
+            nft_config.append(
+                TabSpacer(8, '#' + ' '.join(base_chain_dict[item]['comment'])))
+          nft_config.append(
+              TabSpacer(
+                  8, 'type filter hook %s priority %s; policy %s;' %
+                  (base_chain_dict[item]['hook'],
+                  base_chain_dict[item]['priority'],
+                  base_chain_dict[item]['policy'])))
+          # Add policy header comment after stateful firewall rule.
+          if base_chain_dict[item]['comment']:
+            nft_config.append(TabSpacer(8, 'ct state established,related accept'
+                                        + Add('comment') +
+                                        Add(aclgenerator.TruncateWords(
+                                            base_chain_dict[item]['comment'],
+                                            self.COMMENT_CHAR_LIMIT))))
+          else:
+            # stateful firewall: allows reply traffic.
+            nft_config.append(TabSpacer(8, 'ct state established,related accept'))
+          # Reference the child chains with jump.
+          for child_chain in base_chain_dict[item]['rules'][item].keys():
+            nft_config.append(TabSpacer(8, 'jump %s' % child_chain))
+          nft_config.append(TabSpacer(4, '}'))  # chain_end
+        nft_config.append('}')  # table_end
 
     # Terminating newline.
     nft_config.append('\n')
