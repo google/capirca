@@ -707,7 +707,8 @@ class Nftables(aclgenerator.ACLGenerator):
           filter_policy_default_action,
           verbose,
           base_chain_name,
-          table_name
+          table_name,
+          as_regular_chain,
       ) = self._ProcessHeader(filter_options)
 
       # Base chain determine name based on iteration of header.
@@ -767,7 +768,8 @@ class Nftables(aclgenerator.ACLGenerator):
       pol_counter += 1
       self.nftables_policies.append(
           (header, base_chain_name, nf_af, nf_hook, nf_priority,
-           filter_policy_default_action, verbose, child_chains, table_name))
+           filter_policy_default_action, verbose,
+           child_chains, table_name, as_regular_chain))
 
   def _ProcessHeader(self, header_options):
     """Capirca policy header processing.
@@ -824,6 +826,7 @@ class Nftables(aclgenerator.ACLGenerator):
         base_chain_name = option.split('=')[1].strip()
       if option.startswith('table_name='):
         table_name = option.split('=')[1].strip()
+    as_regular_chain = True if 'as_regular_chain' in header_options else False
     return (
         netfilter_family,
         netfilter_hook,
@@ -832,6 +835,7 @@ class Nftables(aclgenerator.ACLGenerator):
         verbose,
         base_chain_name,
         table_name,
+        as_regular_chain,
     )
 
   def _ConfigurationDictionary(self, nft_pol):
@@ -857,6 +861,7 @@ class Nftables(aclgenerator.ACLGenerator):
         verbose,
         child_chains,
         table_name,
+        as_regular_chain,
     ) in nft_pol:
       base_chain_comment = ''
       # TODO: If child_chain ruleset is empty don't store term.
@@ -870,6 +875,7 @@ class Nftables(aclgenerator.ACLGenerator):
           'priority': nf_priority,
           'policy': filter_policy_default_action,
           'rules': child_chains,
+          'as_regular_chain': as_regular_chain,
       }
     return nftables
 
@@ -898,12 +904,13 @@ class Nftables(aclgenerator.ACLGenerator):
             # First time we comment it out so .nft file is human-readable.
             nft_config.append(
                 TabSpacer(8, '#' + ' '.join(base_chain_dict[item]['comment'])))
-          nft_config.append(
-              TabSpacer(
-                  8, 'type filter hook %s priority %s; policy %s;' %
-                  (base_chain_dict[item]['hook'],
-                  base_chain_dict[item]['priority'],
-                  base_chain_dict[item]['policy'])))
+          if not base_chain_dict[item]['as_regular_chain']:
+            nft_config.append(
+                TabSpacer(
+                    8, 'type filter hook %s priority %s; policy %s;' %
+                    (base_chain_dict[item]['hook'],
+                     base_chain_dict[item]['priority'],
+                     base_chain_dict[item]['policy'])))
           # Add policy header comment after stateful firewall rule.
           if base_chain_dict[item]['comment']:
             nft_config.append(TabSpacer(8, 'ct state established,related accept'
