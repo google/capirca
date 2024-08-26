@@ -372,7 +372,7 @@ SUPPORTED_TOKENS = frozenset([
     'expiration', 'icmp_code', 'icmp_type', 'stateless_reply', 'logging',
     'name', 'option', 'owner', 'platform', 'platform_exclude', 'protocol',
     'source_address', 'source_address_exclude', 'source_port', 'source_prefix',
-    'source_prefix_except', 'translated', 'verbatim'
+    'source_prefix_except', 'target_resources', 'translated', 'verbatim',
 ])
 
 SUPPORTED_SUB_TOKENS = {

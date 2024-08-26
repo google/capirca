@@ -348,7 +348,8 @@ class JuniperMSMPC(aclgenerator.ACLGenerator):
 
     supported_tokens |= {
         'destination_prefix', 'destination_prefix_except', 'icmp_code',
-        'logging', 'owner', 'source_prefix', 'source_prefix_except'
+        'logging', 'owner', 'source_prefix', 'source_prefix_except',
+        'target_resources',
     }
     supported_sub_tokens.update({
         'option': {

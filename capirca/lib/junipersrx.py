@@ -333,6 +333,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                          'option',
                          'owner',
                          'source_zone',
+                         'target_resources',
                          'timeout',
                          'verbatim',
                          'vpn'}
