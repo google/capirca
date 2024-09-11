@@ -186,3 +186,21 @@ term high-ports {
   destination-port:: HIGH_PORTS
   action:: accept
 }
+
+term nftables-platform {
+  comment:: "Term just for nftables platform example"
+  action:: accept
+  platform:: nftables
+}
+
+term different-platform {
+  comment:: "Platform is not for nftables, so this should be not rendered"
+  action:: accept
+  platform:: no_such_platform
+}
+
+term excludeed-platform {
+  comment:: "nftables platform is excluded, so this should be not rendered"
+  action:: accept
+  platform-exclude:: nftables
+}

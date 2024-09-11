@@ -753,6 +753,14 @@ class Nftables(aclgenerator.ACLGenerator):
                 'WARNING: Term %s in policy %s is expired and '
                 'will not be rendered.', term.name, nf_af)
             continue
+        # Only generate the term if it's for the appropriate platform
+        if term.platform:
+          if self._PLATFORM not in term.platform:
+            continue
+        if term.platform_exclude:
+          if self._PLATFORM in term.platform_exclude:
+            continue
+
         # Handle address excludes before building nft address book dict.
         for i in term.source_address_exclude:
           term.source_address = nacaddr.RemoveAddressFromList(

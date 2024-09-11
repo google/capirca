@@ -202,6 +202,51 @@ term src-interface-term {
 }
 """
 
+NFTABLES_ONLY_PLATFORM_TERM = """
+term src-interface-term {
+  source-interface:: eth123
+  protocol:: tcp
+  action:: accept
+  platform:: nftables
+}
+"""
+
+NFTABLES_IN_PLATFORM_TERM = """
+term src-interface-term {
+  source-interface:: eth123
+  protocol:: tcp
+  action:: accept
+  platform:: another_platform1 nftables another_platform2
+}
+"""
+
+DIFFERENT_PLATFORM_EXCLUDED_TERM = """
+term src-interface-term {
+  source-interface:: eth123
+  protocol:: tcp
+  action:: accept
+  platform-exclude:: another_platform1
+}
+"""
+
+DIFFERENT_PLATFORM_TERM = """
+term src-interface-term {
+  source-interface:: eth123
+  protocol:: tcp
+  action:: accept
+  platform:: another_platform1 another_platform2
+}
+"""
+
+EXCLUDE_NFTABLES_PLATFORM_TERM = """
+term src-interface-term {
+  source-interface:: eth123
+  protocol:: tcp
+  action:: accept
+  platform-exclude:: nftables
+}
+"""
+
 # Output interface name test term.
 DESTINATION_INTERFACE_TERM = """
 term dst-interface-term {
@@ -947,6 +992,21 @@ class NftablesTest(parameterized.TestCase):
           TEST_IPS,
           'icmpv6 type nd-router-solicit',
       ),
+      (
+          GOOD_HEADER_1 + NFTABLES_ONLY_PLATFORM_TERM,
+          TEST_IPS,
+          '    iifname eth123 meta l4proto',
+      ),
+      (
+          GOOD_HEADER_1 + NFTABLES_IN_PLATFORM_TERM,
+          TEST_IPS,
+          '    iifname eth123 meta l4proto',
+      ),
+      (
+          GOOD_HEADER_1 + DIFFERENT_PLATFORM_EXCLUDED_TERM,
+          TEST_IPS,
+          '    iifname eth123 meta l4proto',
+      ),
   )
   def testRulesetGenerator(self, policy_data: str, IPs, contains: str):
     self.naming.GetNetAddr.return_value = IPs
@@ -957,6 +1017,26 @@ class NftablesTest(parameterized.TestCase):
     )
     self.assertIn(contains, nft)
 
+  @parameterized.parameters(
+      (
+          GOOD_HEADER_1 + DIFFERENT_PLATFORM_TERM,
+          'eth123',
+      ),
+      (
+          GOOD_HEADER_1 + EXCLUDE_NFTABLES_PLATFORM_TERM,
+          'eth123',
+      ),
+  )
+  def testRulesetGeneratorSkippedPlatform(
+      self, policy_data: str, does_not_contain: str
+  ):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    nft = str(
+        nftables.Nftables(
+            policy.ParsePolicy(policy_data, self.naming), EXP_INFO
+        )
+    )
+    self.assertNotIn(does_not_contain, nft)
 
 if __name__ == '__main__':
   absltest.main()
