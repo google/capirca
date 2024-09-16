@@ -3,14 +3,14 @@
 The NFTables header designation has the following format:
 
 ```
-target:: newnftables [nf_address_family] [nf_hook] {default_policy_override} {int: base chain priority} {noverbose}
+target:: newnftables [nf_address_family] [nf_hook] {default_policy_override} {int: base chain priority} {noverbose} {base-chain-name chainname} {table-name tablename} {as-regular-chain}
 ```
 
 Unless otherwise stated, all fields are required unless they're marked optional.
 
 - nf_address_family: defines the IP address family for the policies. (inet, inet6, mixed)
 - nf_hook: defines the traffic direction and the nftables hook for the rules. (input, output)
-- default_policy_override: **OPTIONAL** defines the default action (ACCEPT, DROP) for non-matching packets. Default behavior is DROP.
+- default_policy_override: **OPTIONAL** defines the default action (ACCEPT, DROP) for non-matching packets. Default behavior is DROP. (Does not support specifying 'REJECT', only 'ACCEPT'. Case sensitive.)
 - priority: **OPTIONAL** By default, this generator creates base chains with a starting priority of 0. Defining an integer value will override this behavior.
 - noverbose: **OPTIONAL** Disable header and term comments in final ACL output. Default behavior is verbose.
 
@@ -52,7 +52,10 @@ Note: combining source-interface and destination-interface tokens within a term 
 ### Actions
 
 - _accept_
-- _drop_
+- _deny_
+- _reject_
+
+Note, _deny_ maps to _drop_.
 
 ### Logging
 
