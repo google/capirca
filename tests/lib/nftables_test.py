@@ -19,7 +19,6 @@ from unittest import mock
 from absl import logging
 from absl.testing import absltest
 from absl.testing import parameterized
-from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import nftables
@@ -183,6 +182,30 @@ header {
 GOOD_HEADER_4 = """
 header {
   target:: nftables mixed forward
+}
+"""
+
+GOOD_HEADER_5 = """
+header {
+  target:: nftables inet input base-chain-name my-chain
+}
+"""
+
+GOOD_HEADER_6 = """
+header {
+  target:: nftables inet6 output table-name my-table
+}
+"""
+
+GOOD_HEADER_7 = """
+header {
+  target:: nftables inet6 output as-regular-chain
+}
+"""
+
+BAD_HEADER_MULTIPLE_INTEGERS = """
+header {
+  target:: nftables inet6 OUTPUT 300 noverbose base-chain-name 1337 table-name 12345 as-regular-chain
 }
 """
 
@@ -1007,9 +1030,26 @@ class NftablesTest(parameterized.TestCase):
           TEST_IPS,
           '    iifname eth123 meta l4proto',
       ),
+      (
+          GOOD_HEADER_5 + ICMP_SINGLE_TYPE,
+          TEST_IPS,
+          'chain my-chain0',
+      ),
+      (
+          GOOD_HEADER_6 + ICMP_SINGLE_TYPE,
+          TEST_IPS,
+          'table ip6 my-table',
+      ),
+      (
+          GOOD_HEADER_7 + ICMP_SINGLE_TYPE,
+          TEST_IPS,
+          'chain good-icmp-single-type',
+          # Should have chain etc, but not 'type filter...'
+      ),
   )
-  def testRulesetGenerator(self, policy_data: str, IPs, contains: str):
-    self.naming.GetNetAddr.return_value = IPs
+  def testRulesetGenerator(self, policy_data: str, ips: list[str],
+                           contains: str):
+    self.naming.GetNetAddr.return_value = ips
     nft = str(
         nftables.Nftables(
             policy.ParsePolicy(policy_data, self.naming), EXP_INFO
@@ -1026,8 +1066,13 @@ class NftablesTest(parameterized.TestCase):
           GOOD_HEADER_1 + EXCLUDE_NFTABLES_PLATFORM_TERM,
           'eth123',
       ),
+      (
+          # Passing as-regular-chain disables 'type filter hook...'.
+          GOOD_HEADER_7 + ICMP_SINGLE_TYPE,
+          'type filter hook',
+      ),
   )
-  def testRulesetGeneratorSkippedPlatform(
+  def testRulesetGenerator_DoesNotContain(
       self, policy_data: str, does_not_contain: str
   ):
     self.naming.GetNetAddr.return_value = TEST_IPS
@@ -1037,6 +1082,18 @@ class NftablesTest(parameterized.TestCase):
         )
     )
     self.assertNotIn(does_not_contain, nft)
+
+  def testRulesetGenerator_RaisesOnMultipleIntegers(self):
+    self.naming.GetNetAddr.return_value = TEST_IPS
+    with self.assertRaises(nftables.HeaderError):
+      _ = str(
+          nftables.Nftables(
+              policy.ParsePolicy(
+                  BAD_HEADER_MULTIPLE_INTEGERS + ICMP_SINGLE_TYPE, self.naming
+              ),
+              EXP_INFO,
+          )
+      )
 
 if __name__ == '__main__':
   absltest.main()

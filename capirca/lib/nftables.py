@@ -803,38 +803,66 @@ class Nftables(aclgenerator.ACLGenerator):
       raise HeaderError('Invalid address family in header: %s. Supported: %s' %
                         (header_options[0], Nftables._HEADER_AF))
     netfilter_family = self.NF_TABLE_AF_MAP.get(header_options[0])
+
+    # Default action is drop.
     policy_default_action = 'drop'
+    # If 'ACCEPT' (case sensitive) is specified anywhere in header, set default
+    # action to accept.
     if 'ACCEPT' in header_options:
       policy_default_action = 'accept'
+
+    # Second header element should dictate the netfilter hook.
     netfilter_hook = header_options[1].lower()
     if netfilter_hook not in self._SUPPORTED_HOOKS:
       raise HeaderError(
           '%s is not a supported nftables hook. Supported hooks: %s' %
           (netfilter_hook, list(self._SUPPORTED_HOOKS)))
+
+    # If any element of the header is an integer, use it as the priority.
+    # Currently, there must be exactly one integer in the header.
+    netfilter_priority = self._HOOK_PRIORITY_DEFAULT
     if len(header_options) >= 2:
       numbers = [x for x in header_options if x.isdigit()]
       if not numbers:
-        netfilter_priority = self._HOOK_PRIORITY_DEFAULT
         logging.info(
             'INFO: NFtables priority not specified in header.'
-            'Defaulting to %s', self._HOOK_PRIORITY_DEFAULT)
+            'Defaulting to %s', netfilter_priority)
       if len(numbers) == 1:
         # A single integer value is used to set priority.
         netfilter_priority = numbers[0]
       if len(numbers) > 1:
         raise HeaderError('Too many integers in header.')
+
+    # If the string noverbose appears anywhere in the header, set verbose to
+    # False.
     verbose = True
     if 'noverbose' in header_options:
       verbose = False
       header_options.remove('noverbose')
+
+    # Process other options, especially those that take arguments.
     base_chain_name = self._BASE_CHAIN_PREFIX
     table_name = 'filtering_policies'
-    for option in header_options:
-      if option.startswith('base_chain_name='):
-        base_chain_name = option.split('=')[1].strip()
-      if option.startswith('table_name='):
-        table_name = option.split('=')[1].strip()
-    as_regular_chain = True if 'as_regular_chain' in header_options else False
+    as_regular_chain = False
+    skip_n = 0  # How many options should be skipped
+    for index in range(len(header_options)):
+      if skip_n > 0:
+        skip_n -= 1
+        continue
+      option = header_options[index]
+      if option == 'base-chain-name':
+        if index + 1 >= len(header_options):
+          raise HeaderError('base-chain-name option requires a value.')
+        base_chain_name = header_options[index + 1]
+        skip_n = 1
+      if option == 'table-name':
+        if index + 1 >= len(header_options):
+          raise HeaderError('table-name option requires a value.')
+        table_name = header_options[index + 1]
+        skip_n = 1
+      if option == 'as-regular-chain':
+        as_regular_chain = True
+
     return (
         netfilter_family,
         netfilter_hook,
