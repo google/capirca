@@ -612,6 +612,7 @@ class Nftables(aclgenerator.ACLGenerator):
   SUFFIX = '.nft'
   _HEADER_AF = frozenset(('inet', 'inet6', 'mixed'))
   _SUPPORTED_HOOKS = frozenset(('forward', 'input', 'output'))
+  _SUPPORTED_AF_OVERRIDE = frozenset(['bridge'])
   _HOOK_PRIORITY_DEFAULT = 0
   _BASE_CHAIN_PREFIX = 'root'
   _LOGGING = set()
@@ -709,6 +710,7 @@ class Nftables(aclgenerator.ACLGenerator):
           base_chain_name,
           table_name,
           as_regular_chain,
+          address_family_override,
       ) = self._ProcessHeader(filter_options)
 
       # Base chain determine name based on iteration of header.
@@ -777,7 +779,7 @@ class Nftables(aclgenerator.ACLGenerator):
       self.nftables_policies.append(
           (header, base_chain_name, nf_af, nf_hook, nf_priority,
            filter_policy_default_action, verbose,
-           child_chains, table_name, as_regular_chain))
+           child_chains, table_name, as_regular_chain, address_family_override))
 
   def _ProcessHeader(self, header_options):
     """Capirca policy header processing.
@@ -795,6 +797,12 @@ class Nftables(aclgenerator.ACLGenerator):
       netfilter_priority: numbers = [x for x in filter_options if x.isdigit()]
       policy_default_action: nftable action to take on unmatched packets.
       verbose: header and term verbosity.
+      child_chains: dictionary of child chains.
+      table_name: table name for the generated nftables table.
+      as_regular_chain: if true, generate nftables ACLs as regular chains
+        instead of base chains.
+      address_family_override: address family for the generated nftables table;
+        if value is None, use netfilter_family from above.
     """
     if len(header_options) < 2:
       raise HeaderError('Invalid header for Nftables. Required fields missing.')
@@ -844,6 +852,7 @@ class Nftables(aclgenerator.ACLGenerator):
     base_chain_name = self._BASE_CHAIN_PREFIX
     table_name = 'filtering_policies'
     as_regular_chain = False
+    address_family_override = None
     skip_n = 0  # How many options should be skipped
     for index in range(len(header_options)):
       if skip_n > 0:
@@ -862,6 +871,19 @@ class Nftables(aclgenerator.ACLGenerator):
         skip_n = 1
       if option == 'as-regular-chain':
         as_regular_chain = True
+      if option == 'address-family-override':
+        if index + 1 >= len(header_options):
+          raise HeaderError('address-family-override option requires a value.')
+        address_family_override = header_options[index + 1]
+        if address_family_override not in self._SUPPORTED_AF_OVERRIDE:
+          raise HeaderError(
+              'Unsupported address family override: %s. Supported overrides: %s'
+              % (
+                  address_family_override,
+                  list(self._SUPPORTED_AF_OVERRIDE),
+              )
+          )
+        skip_n = 1
 
     return (
         netfilter_family,
@@ -872,6 +894,7 @@ class Nftables(aclgenerator.ACLGenerator):
         base_chain_name,
         table_name,
         as_regular_chain,
+        address_family_override,
     )
 
   def _ConfigurationDictionary(self, nft_pol):
@@ -898,11 +921,14 @@ class Nftables(aclgenerator.ACLGenerator):
         child_chains,
         table_name,
         as_regular_chain,
+        address_family_override,
     ) in nft_pol:
       base_chain_comment = ''
       # TODO: If child_chain ruleset is empty don't store term.
       if verbose:
         base_chain_comment = header.comment
+      if address_family_override:
+        nf_af = address_family_override
       nftables[table_name] = nftables.get(table_name, {})
       nftables[table_name][nf_af] = nftables[table_name].get(nf_af, {})
       nftables[table_name][nf_af][base_chain_name] = {

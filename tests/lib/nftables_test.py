@@ -13,7 +13,6 @@
 # limitations under the License.
 """Unittest for Nftables rendering module."""
 
-import datetime
 import re
 from unittest import mock
 from absl import logging
@@ -158,6 +157,24 @@ header {
 HEADER_NOVERBOSE = """
 header {
   target:: nftables mixed output noverbose
+}
+"""
+
+HEADER_AF_OVERRIDE_1 = """
+header {
+  target:: nftables mixed output address-family-override bridge
+}
+"""
+
+HEADER_AF_OVERRIDE_2 = """
+header {
+  target:: nftables inet input noverbose base-chain-name multipleoptions-chain table-name multipleoptions-table as-regular-chain address-family-override bridge
+}
+"""
+
+HEADER_AF_OVERRIDE_3 = """
+header {
+  target:: nftables inet6 forward address-family-override bridge noverbose base-chain-name multipleoptions-chain table-name multipleoptions-table as-regular-chain
 }
 """
 
@@ -641,12 +658,13 @@ class NftablesTest(parameterized.TestCase):
 
   @parameterized.parameters(
       'chain_name input 0 inet extraneous_target_option',
-      'ip6 OUTPUT 300 400 mixed input', # pylint: disable=implicit-str-concat
+      'ip6 OUTPUT 300 400 mixed input',  # pylint: disable=implicit-str-concat
       'ip forwarding',
       'ip7 0 spaghetti',
       'ip6 prerouting',
       'chain_name',
       '',
+      'mixed output address-family-override ipv8',
   )
   def testBadHeader(self, case):
     logging.info('Testing bad header case %s.', case)
@@ -661,7 +679,7 @@ class NftablesTest(parameterized.TestCase):
   def testVerboseHeader(self, header_to_use, expected_output):
     pol = policy.ParsePolicy(header_to_use + GOOD_TERM_1, self.naming)
     data = nftables.Nftables(pol, EXP_INFO)
-    for _, _, _, _, _, _, verbose, _, _, _ in data.nftables_policies:
+    for _, _, _, _, _, _, verbose, _, _, _, _ in data.nftables_policies:
       result = verbose
     self.assertEqual(result, expected_output)
 
@@ -735,7 +753,7 @@ class NftablesTest(parameterized.TestCase):
         HEAD_OVERRIDE_DEFAULT_ACTION + GOOD_TERM_1, self.naming
     )
     data = nftables.Nftables(pol, EXP_INFO)
-    for _, _, _, _, _, default_policy, _, _, _, _ in data.nftables_policies:
+    for _, _, _, _, _, default_policy, _, _, _, _, _ in data.nftables_policies:
       result = default_policy
     self.assertEqual(result, expected_output)
 
@@ -955,7 +973,9 @@ class NftablesTest(parameterized.TestCase):
     )
     for header, terms in nft.policy.filters:
       filter_options = header.FilterOptions('nftables')
-      nf_af, nf_hook, _, _, verbose, _, _, _ = nft._ProcessHeader(filter_options)
+      nf_af, nf_hook, _, _, verbose, _, _, _, _ = nft._ProcessHeader(
+          filter_options
+      )
       for term in terms:
         term_object = nftables.Term(term, nf_af, nf_hook, verbose)
 
@@ -1094,6 +1114,30 @@ class NftablesTest(parameterized.TestCase):
               EXP_INFO,
           )
       )
+
+  @parameterized.parameters(
+      (HEADER_AF_OVERRIDE_1, True),
+      (HEADER_AF_OVERRIDE_2, True),
+      (HEADER_AF_OVERRIDE_3, True),
+      (GOOD_HEADER_1, False),
+      (GOOD_HEADER_2, False),
+      (GOOD_HEADER_3, False),
+  )
+  def testAfOverrideHeader(self, header_to_use, expected_af_bridge):
+    pol = policy.ParsePolicy(header_to_use + GOOD_TERM_1, self.naming)
+    data = nftables.Nftables(pol, EXP_INFO)
+    self.assertLen(data.nftables_policies, 1)
+    for _, _, _, _, _, _, _, _, _, _, af_override in data.nftables_policies:
+      if expected_af_bridge:
+        self.assertEqual(af_override, 'bridge')
+      else:
+        self.assertIsNone(af_override)
+
+    if expected_af_bridge:
+      self.assertIn('table bridge', str(data))
+    else:
+      self.assertNotIn('table bridge', str(data))
+
 
 if __name__ == '__main__':
   absltest.main()

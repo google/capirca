@@ -237,10 +237,19 @@ term awesome-term-as-regular-chain {
 
 header {
   comment:: "Demonstrate the use of multiple options with arguments at once."
-  target:: nftables inet6 OUTPUT 300 noverbose base-chain-name multipleoptions-chain table-name multipleoptions-table as-regular-chain
+  target:: nftables inet6 OUTPUT 300 noverbose base-chain-name multipleoptions-chain table-name multipleoptions-table as-regular-chain address-family-override bridge
 }
 
 term awesome-term-with-multiple-options {
   comment:: "Awesomeness with multiple options at once."
+  action:: accept
+}
+
+header {
+  comment:: "nftables with bridge address family override"
+  target:: nftables mixed INPUT address-family-override bridge
+}
+
+term allow-anything-bridge {
   action:: accept
 }
