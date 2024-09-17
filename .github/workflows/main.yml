@@ -23,20 +23,20 @@ jobs:
 
     steps:
     - name: Checkout branch with changes
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         path: current
     - name: Checkout master branch
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         path: master
         ref: master
     - name: Set up Node.js
-      uses: actions/setup-node@v2
+      uses: actions/setup-node@v4
       with:
         node-version: '14'
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Setup environment variables
@@ -97,12 +97,12 @@ jobs:
           true; done < ./artifacts-diff/files.list
         sed -i '/Diff to HTML by/d' ./artifacts-diff/*
     - name: Upload generated policies
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: capirca_output_${{ matrix.python-version }}_${{ env.wfdt }}
         path: ./artifacts/capirca_output_${{ env.wfdt }}.zip
     - name: Upload policy differences
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: capirca_output_policy_diff
         path: ./artifacts-diff
