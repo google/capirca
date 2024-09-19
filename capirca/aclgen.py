@@ -215,8 +215,8 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
         base_dir=base_directory,
         shade_check=shade_check)
   except policy.ShadingError as e:
-    logging.warning('shading errors for %s:\n%s', input_file, e)
-    return
+    logging.error('shading errors for %s:\n%s', input_file, e)
+    raise
   except (policy.Error, naming.Error):
     raise ACLParserError('Error parsing policy file %s:\n%s%s' %
                          (input_file, sys.exc_info()[0], sys.exc_info()[1]))
