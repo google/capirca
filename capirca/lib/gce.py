@@ -30,7 +30,6 @@ from typing import Any, Dict, Iterable, List
 
 from capirca.lib import gcp
 from capirca.lib import nacaddr
-import six
 
 
 class Error(Exception):
@@ -160,7 +159,7 @@ class Term(gcp.Term):
   def __str__(self):
     """Convert term to a string."""
     json.dumps(self.ConvertToDict(), indent=2,
-               separators=(six.ensure_str(','), six.ensure_str(': ')))
+               separators=(',', ': '))
 
   def _validateDirection(self):
     if self.term.direction == 'INGRESS':
@@ -588,8 +587,7 @@ class GCE(gcp.GCP):
 
   def __str__(self):
     out = '%s\n\n' % (json.dumps(self.gce_policies, indent=2,
-                                 separators=(six.ensure_str(','),
-                                             six.ensure_str(': ')),
+                                 separators=(',', ': '),
                                  sort_keys=True))
 
     return out
