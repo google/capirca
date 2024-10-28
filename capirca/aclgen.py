@@ -24,34 +24,35 @@ from absl import flags
 from absl import logging
 from capirca.lib import aclgenerator
 from capirca.lib import arista
-from capirca.lib import arista_tp
+#from capirca.lib import arista_tp
 from capirca.lib import aruba
 from capirca.lib import brocade
 from capirca.lib import cisco
 from capirca.lib import ciscoasa
-from capirca.lib import cisconx
+#from capirca.lib import cisconx
 from capirca.lib import ciscoxr
 from capirca.lib import cloudarmor
 from capirca.lib import gce
-from capirca.lib import gce_vpc_tf
+#from capirca.lib import gce_vpc_tf
 from capirca.lib import gcp_hf
+from capirca.lib import fortigate
 from capirca.lib import ipset
 from capirca.lib import iptables
 from capirca.lib import juniper
-from capirca.lib import juniperevo
+#from capirca.lib import juniperevo
 from capirca.lib import junipermsmpc
 from capirca.lib import junipersrx
-from capirca.lib import k8s
+#from capirca.lib import k8s
 from capirca.lib import naming
 from capirca.lib import nftables
 from capirca.lib import nsxv
-from capirca.lib import nsxt
-from capirca.lib import openconfig
+#from capirca.lib import nsxt
+#from capirca.lib import openconfig
 from capirca.lib import packetfilter
 from capirca.lib import paloaltofw
 from capirca.lib import pcap
 from capirca.lib import policy
-from capirca.lib import sonic
+#from capirca.lib import sonic
 from capirca.lib import speedway
 from capirca.lib import srxlo
 from capirca.lib import windows_advfirewall
@@ -198,6 +199,7 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
   sonic_pol = False
   k8s_pol = False
   gce_vpc_tf_pol = False
+  fcl = False
 
   try:
     with open(input_file) as f:
@@ -286,6 +288,8 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
     gca = copy.deepcopy(pol)
   if 'k8s' in platforms:
     k8s_pol = copy.deepcopy(pol)
+  if 'fortigate' in platforms:
+    fcl = copy.deepcopy(pol)
 
   acl_obj: aclgenerator.ACLGenerator
 
@@ -447,6 +451,11 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
       RenderACL(
           str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
           write_files)
+      
+    if fcl:
+      acl_obj = fortigate.Fortigate(fcl, exp_info)
+      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
+                input_file, write_files)
 
   # TODO(robankeny) add additional errors.
   except (
@@ -465,7 +474,8 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
       gce.Error,
       gce_vpc_tf.Error,
       cloudarmor.Error,
-      k8s.Error) as e:
+      k8s.Error,
+      fortigate.Error) as e:
     raise ACLGeneratorError('Error generating target ACL for %s:\n%s' %
                             (input_file, e))
 
