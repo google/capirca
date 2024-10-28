@@ -433,11 +433,11 @@ class Term(aclgenerator.Term):
 
     # source port generation
     if term.source_port:
-      port_str += " source port %s" % self._Group(term.source_port)
+      port_str += " source port %s" % self._Group(term.source_port, separator=", ")
 
     # destination port
     if term.destination_port:
-      port_str += (" destination port %s" % self._Group(term.destination_port))
+      port_str += (" destination port %s" % self._Group(term.destination_port, separator=", "))
 
     return port_str
 
@@ -589,13 +589,14 @@ class Term(aclgenerator.Term):
 
     return flags, misc_options
 
-  def _Group(self, group, lc=True):
+  def _Group(self, group, lc=True, separator=" "):
     """If 1 item return it, else return [item1 item2].
 
     Args:
       group: a list.  could be a list of strings(protocols) or a list of
              tuples(ports)
       lc: return a lower cased result for text.  Default is True.
+      separator: default space for protocols and icmp codes. comma for ports.
 
     Returns:
       string: surrounded by '[' and '];' if len(group) > 1, or with
@@ -627,7 +628,7 @@ class Term(aclgenerator.Term):
         return "%d-%d" % (el[0], el[1])
 
     if len(group) > 1:
-      rval = " ".join([_FormattedGroup(x, lc) for x in group])
+      rval = separator.join([_FormattedGroup(x, lc) for x in group])
     else:
       rval = _FormattedGroup(group[0])
     return rval

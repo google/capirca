@@ -227,6 +227,20 @@ term good_term_35 {
   action:: accept
 }
 """
+GOOD_TERM_36 = """
+term good_term_36 {
+  protocol:: tcp
+  source-port:: SSH DNS HTTP
+  action:: accept
+}
+"""
+GOOD_TERM_37 = """
+term good_term_37 {
+  protocol:: tcp
+  destination-port:: SSH DNS HTTP
+  action:: accept
+}
+"""
 GOOD_TERM_COMMENT = """
 term good-term-comment {
   protocol:: udp
@@ -681,6 +695,18 @@ class AristaTpTest(absltest.TestCase):
     )
     output = str(atp)
     self.assertIn("ttl 25", output, output)
+
+  def testPortsSrc(self):
+    self.naming.GetServiceByProto.return_value = ['22', '53', '80']
+    ports = arista_tp.AristaTrafficPolicy(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_36, self.naming), EXP_INFO)
+    output = str(ports)
+    self.assertIn("source port 22, 53, 80", output, output)
+
+  def testPortsDst(self):
+    self.naming.GetServiceByProto.return_value = ['22', '53', '80']
+    ports = arista_tp.AristaTrafficPolicy(policy.ParsePolicy(GOOD_HEADER + GOOD_TERM_37, self.naming), EXP_INFO)
+    output = str(ports)
+    self.assertIn("destination port 22, 53, 80", output, output)
 
   def testProtocol(self):
     atp = arista_tp.AristaTrafficPolicy(
