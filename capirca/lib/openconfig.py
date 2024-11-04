@@ -170,13 +170,39 @@ class Term(aclgenerator.Term):
                         f'Protocol {proto} unknown. Use an integer.'
                     ) from e
                   ace_dict[family]['config']['protocol'] = proto_num
-                rules.append(copy.deepcopy(ace_dict))
+                rule_dict = copy.deepcopy(ace_dict)
               else:
                 proto_num = proto
                 ace_dict[family]['config']['protocol'] = proto_num
                 # This is the business end of ace explosion.
                 # A dict is a reference type, so deepcopy is atually required.
-                rules.append(copy.deepcopy(ace_dict))
+                rule_dict = copy.deepcopy(ace_dict)
+
+              # options
+              for opt in self.term.option:
+                if opt == 'tcp-established' and proto != 'udp':
+                  rule_dict['transport']['config']['detail-mode'] = 'BUILTIN'
+                  rule_dict['transport']['config'][
+                      'builtin-detail'
+                  ] = 'TCP_ESTABLISHED'
+                if opt == 'established' and proto != 'udp':
+                  rule_dict['transport']['config']['detail-mode'] = 'BUILTIN'
+                  rule_dict['transport']['config'][
+                      'builtin-detail'
+                  ] = 'TCP_ESTABLISHED'
+                # initial only for tcp
+                if opt == 'initial' and proto == 'tcp':
+                  rule_dict['transport']['config']['detail-mode'] = 'BUILTIN'
+                  rule_dict['transport']['config'][
+                      'builtin-detail'
+                  ] = 'TCP_INITIAL'
+                # is-fragment only for ipv4
+                if opt == 'is-fragment' and term_af == 4:
+                  rule_dict['transport']['config']['detail-mode'] = 'BUILTIN'
+                  rule_dict['transport']['config'][
+                      'builtin-detail'
+                  ] = 'FRAGMENT'
+              rules.append(rule_dict)
 
     return rules
 
@@ -271,12 +297,11 @@ class OpenConfig(aclgenerator.ACLGenerator):
                   filter_name,
               )
               continue
-          # TODO(b/196430344): Add support for options such as
-          # established/rst/first-fragment
-          if term.option:
-            raise OcFirewallError(
-                'OpenConfig firewall does not support term options.'
-            )
+          for opt in term.option:
+            if opt in ['first-fragment', 'sample', 'rst']:
+              raise OcFirewallError(
+                  'OpenConfig firewall does not support term option %s.' % opt
+              )
 
           t = Term(term, term_af)
           for rule in t.ConvertToDict():

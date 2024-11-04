@@ -67,12 +67,13 @@ term good-term-1 {
 }
 """
 
-GOOD_MULTI_PROTO_DPORT = """
+GOOD_TCP_ESTABLISHED = """
 term good-term-1 {
-  comment:: "Allow TCP & UDP 53."
+  comment:: "Allow TCP 53 dest."
   destination-port:: DNS
-  protocol:: udp tcp
+  protocol:: tcp
   action:: accept
+  option:: tcp-established
 }
 """
 
@@ -84,6 +85,8 @@ term good-term-1 {
   destination-port:: DNS
   protocol:: udp tcp
   action:: accept
+  option:: is-fragment
+  option:: initial
 }
 """
 
@@ -504,6 +507,51 @@ GOOD_JSON_DPORT = """
 }
 """
 
+GOOD_JSON_DPORT_TCP_ESTABLISHED = """
+{
+  "acl-sets": {
+    "acl-set": [
+      {
+        "acl-entries": {
+          "acl-entry": [
+            {
+              "actions": {
+                "config": {
+                  "forwarding-action": "ACCEPT"
+                }
+              },
+              "config": {
+                "description": "[good-term-1]: Allow TCP 53 dest.",
+                "sequence-id": 1
+              },
+              "ipv4": {
+                "config": {
+                  "protocol": 6
+                }
+              },
+              "sequence-id": 1,
+              "transport": {
+                "config": {
+                  "builtin-detail": "TCP_ESTABLISHED",
+                  "destination-port": 53,
+                  "detail-mode": "BUILTIN"
+                }
+              }
+            }
+          ]
+        },
+        "config": {
+          "name": "test-filter",
+          "type": "ACL_IPV4"
+        },
+        "name": "test-filter",
+        "type": "ACL_IPV4"
+      }
+    ]
+  }
+}
+"""
+
 GOOD_JSON_EVERYTHING = """
 {
   "acl-sets": {
@@ -531,7 +579,9 @@ GOOD_JSON_EVERYTHING = """
               "sequence-id": 1,
               "transport": {
                 "config": {
-                  "destination-port": 53
+                  "builtin-detail": "FRAGMENT",
+                  "destination-port": 53,
+                  "detail-mode": "BUILTIN"
                 }
               }
             },
@@ -555,7 +605,9 @@ GOOD_JSON_EVERYTHING = """
               "sequence-id": 2,
               "transport": {
                 "config": {
-                  "destination-port": 53
+                  "builtin-detail": "TCP_INITIAL",
+                  "destination-port": 53,
+                  "detail-mode": "BUILTIN"
                 }
               }
             }
@@ -681,6 +733,16 @@ class OpenConfigTest(absltest.TestCase):
     acl = openconfig.OpenConfig(policy.ParsePolicy(
         GOOD_HEADER + GOOD_DPORT, self.naming), EXP_INFO)
     expected = json.loads(GOOD_JSON_DPORT)
+    self.assertEqual(expected, json.loads(str(acl)))
+
+    self.naming.GetServiceByProto.assert_has_calls([
+        mock.call('DNS', 'tcp')])
+  def testDportWithTCPEstablished(self):
+    self.naming.GetServiceByProto.side_effect = [['53'], ['53']]
+
+    acl = openconfig.OpenConfig(policy.ParsePolicy(
+        GOOD_HEADER + GOOD_TCP_ESTABLISHED, self.naming), EXP_INFO)
+    expected = json.loads(GOOD_JSON_DPORT_TCP_ESTABLISHED)
     self.assertEqual(expected, json.loads(str(acl)))
 
     self.naming.GetServiceByProto.assert_has_calls([
