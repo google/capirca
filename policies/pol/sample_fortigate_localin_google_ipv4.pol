@@ -1,0 +1,36 @@
+header {
+  target:: fortigatelocalin
+}
+
+term accept-https-requests{
+  source-interface:: loopback-1
+  destination-interface:: loopback-1
+  source-address:: HTTPS-PROXY-NETS
+  destination-address:: REGIONAL-LOOPBACKS
+  destination-port:: HTTPS
+  protocol:: tcp
+  comment:: "accept-https-requests"
+  action:: accept
+}
+
+term accept-ssh-requests{
+  source-interface:: loopback-1
+  destination-interface:: loopback-1
+  source-address:: SSH-RELAY-NET
+  destination-address:: REGIONAL-LOOPBACKS
+  destination-port:: SSH
+  protocol:: tcp
+  comment:: "accept-ssh-requests"
+  action:: accept
+}
+
+term accept-snmp-requests{
+  source-interface:: loopback-1
+  destination-interface:: loopback-1
+  source-address:: SNMP-SERVERS-NETS
+  destination-address:: REGIONAL-LOOPBACKS
+  destination-port:: SNMP
+  protocol:: udp
+  comment:: "accept-snmp-requests"
+  action:: accept
+}

@@ -162,9 +162,9 @@ class FortigatePortMap():
         return f_proto[port]
       except KeyError as exc:
         raise FortiGatePortDoesNotExistError(f"Port {exc} does not exist") from exc
-    else:
-      raise FortiGateFindServiceError(
-          f'service not found from {protocol} protocol and {port} port')
+    # else:
+    #   raise FortiGateFindServiceError(
+    #       f'service not found from {protocol} protocol and {port} port')
 
 
 class ObjectsContainer():
@@ -528,9 +528,9 @@ class Term(aclgenerator.Term):
     portranges = {}
     for protocol in protocols:
       port_map = FortigatePortMap()
-      if port_map.get_protocol(protocol) is None:
-        raise FortiGateValueError(
-          f"fortigate does not support {protocol} protocol")
+      # if port_map.get_protocol(protocol) is None:
+      #   raise FortiGateValueError(
+      #     f"fortigate does not support {protocol} protocol")
 
       if protocol in {'icmp', 'icmpv6'}:
         ip_v = 4 if protocol == 'icmp' else 6
@@ -683,7 +683,7 @@ class Term(aclgenerator.Term):
     if self._term.owner:
       self._term.comment += [f"Owner: {self._term.owner}"]
     if self._term.comment and self._term.verbose:
-       lines += [f"{_SP * 2} set comments {self._obj_container.FixCommentLength((' ').join(self._term.comment))}"]
+       lines += [f"{_SP * 2} set comments {self._obj_container.fix_comment_length((' ').join(self._term.comment))}"]
     lines += [f"{_SP * 2} set srcintf {self._term.source_interface or 'any'}"]
     lines += [f"{_SP * 2} set dstintf {self._term.destination_interface or 'any'}"]
     exist_src6 = False
@@ -725,7 +725,7 @@ class Term(aclgenerator.Term):
     if services:
       if self._NGFW_MODE == 'policy-based':
         lines += [_SP * 2 + 'set enforce-default-app-port disable']
-      lines += [f"{_SP * 2} set service '{', '.join(services)}'"]
+      lines += [f"{_SP * 2} set service '{services}'"]
     else:
       if self._NGFW_MODE == 'policy-based':
         lines += [_SP * 2 + 'set enforce-default-app-port enable']
@@ -884,12 +884,14 @@ class Fortigate(aclgenerator.ACLGenerator):
 
   def _get_fw_policies(self):
     target_policies = []
+    policy_id = 0
     for (_, _, term) in self.fortigate_policies:
       term_str = str(term)
       if term_str != '':
-        target_policies += [_SP + f'edit {term.id}']
+        target_policies += [_SP + f'edit {policy_id}']
         target_policies += [term_str]
         target_policies += [_SP + 'next']
+        policy_id += 1
 
     return target_policies
 

@@ -1,0 +1,201 @@
+terms: {
+ name: "accept-https-requests-v6"
+ source_net: "http-porxy6-nets"
+ destination_net: "regional-loopbacks6"
+ interface: "loopback-1"
+ source_protocols: {
+   ip_protocol: TCP
+ }
+ destination_protocols: {
+   port_spec: {
+     port: 443
+   }
+   ip_protocol: TCP
+ }
+ fields: {
+   action: ACCEPT
+   priority_offset: -1
+ }
+}
+terms: {
+ name: "accept-ssh-requests-v6"
+ source_net: "ssh-relay6-nets"
+ destination_net: "regional-loopbacks6"
+ interface: "loopback-1"
+ source_protocols: {
+   port_spec: {
+     lowest_port: 1024
+     highest_port: 65535
+   }
+   ip_protocol: TCP
+ }
+ destination_protocols: {
+   port_spec: {
+     port: 22
+   }
+   ip_protocol: TCP
+ }
+ fields: {
+   action: ACCEPT
+   priority_offset: -2
+ }
+}
+terms: {
+ name: "accept-snmp-requests-v6"
+ source_net: "snmp-servers-nets-v6"
+ destination_net: "regional-loopbacks6"
+ interface: "loopback-1"
+ source_protocols: {
+   ip_protocol: UDP
+ }
+ destination_protocols: {
+   port_spec: {
+     port: 161
+   }
+   ip_protocol: UDP
+ }
+ fields: {
+   action: ACCEPT
+   priority_offset: -3
+ }
+}
+terms: {
+ name: "accept-bgp-to-loopbacks-v6"
+ source_net: "loopback-nets-v6"
+ destination_net: "regional-loopbacks6"
+ interface: "loopback-2"
+ source_protocols: {
+   port_spec: {
+     lowest_port: 1024
+     highest_port: 65535
+   }
+   ip_protocol: TCP
+ }
+ destination_protocols: {
+   port_spec: {
+     port: 179
+   }
+   ip_protocol: TCP
+ }
+ fields: {
+   action: ACCEPT
+   priority_offset: -4
+ }
+}
+terms: {
+ name: "accept-esp-ah-tunnel-wan1-v6"
+ source_net: "p2p-range6"
+ destination_net: "all"
+ interface: "WAN-INTF-1"
+ source_protocols: {
+   ip_protocol: AH
+   ip_protocol: ESP
+ }
+ destination_protocols: {
+   ip_protocol: AH
+   ip_protocol: ESP
+ }
+ fields: {
+   action: ACCEPT
+   priority_offset: -5
+ }
+}
+terms: {
+ name: "accept-ike-tunnel-wan1-v6"
+ source_net: "p2p-range6"
+ destination_net: "all"
+ interface: "WAN-INTF-1"
+ source_protocols: 
+   port_spec: {
+     port: 500
+     port: 4500
+   }
+   ip_protocol: UDP
+ }
+ fields: {
+   action: ACCEPT
+   priority_offset: -6
+ }
+}
+terms: {
+ name: "accept-esp-ah-tunnel-wan2-v6"
+ source_net: "p2p-range6"
+ destination_net: "all"
+ interface: "WAN-INTF-2"
+ source_protocols: {
+   ip_protocol: AH
+   ip_protocol: ESP
+ }
+ destination_protocols: {
+   ip_protocol: AH
+   ip_protocol: ESP
+ }
+ fields: {
+   action: ACCEPT
+   priority_offset: -7
+ }
+}
+terms: {
+ name: "accept-ike-tunnel-wan2-v6"
+ source_net: "p2p-range6"
+ destination_net: "all"
+ interface: "WAN-INTF-2"
+ source_protocols: 
+   port_spec: {
+     port: 500
+     port: 4500
+   }
+   ip_protocol: UDP
+ }
+ fields: {
+   action: ACCEPT
+   priority_offset: -8
+ }
+}
+terms: {
+ name: "accept-bgp-wan-v6"
+ source_net: "all"
+ destination_net: "all"
+ interface: "WAN-INTF1"
+ source_protocols: {
+   port_spec: {
+     lowest_port: 1024
+     highest_port: 65535
+   }
+   ip_protocol: TCP
+ }
+ destination_protocols: {
+   port_spec: {
+     port: 179
+   }
+   ip_protocol: TCP
+ }
+ fields: {
+   action: ACCEPT
+   priority_offset: -7
+ }
+}
+terms: {
+ name: "accept-fgm-v6"
+ source_net: "regional-fgms6"
+ destination_net: "all"
+ interface: "WAN-INTF1"
+ source_protocols: {
+   port_spec: {
+     lowest_port: 1024
+     highest_port: 65535
+   }
+   ip_protocol: TCP
+ }
+ destination_protocols: {
+   port_spec: {
+     port: 541
+     port: 542
+   }
+   ip_protocol: TCP
+ }
+ fields: {
+   action: ACCEPT
+   priority_offset: -8
+ }
+}
