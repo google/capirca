@@ -40,12 +40,15 @@ class Arista(cisco.Cisco):
   _PROTO_INT = False
 
   # Arista omits the "extended" access-list argument.
-  def _AppendTargetByFilterType(self, filter_name, filter_type):
+  def _AppendTargetByFilterType(
+      self, filter_name, filter_type, configure_replace_compatible=False):
     """Takes in the filter name and type and appends headers.
 
     Args:
       filter_name: Name of the current filter
       filter_type: Type of current filter
+      configure_replace_compatible: Bool indicating if the resulting config
+        strings should be compatible with the configure replace command.
 
     Returns:
       list of strings
@@ -53,6 +56,10 @@ class Arista(cisco.Cisco):
     Raises:
       UnsupportedEosAccessListError: When unknown filter type is used.
     """
+    # `configure_replace_compatible` is included to satisfy the signature
+    # requirements for cisco.Cisco._AppendTargetByFilterType(). This is not
+    # currently required for the arista module.
+    del configure_replace_compatible
     target = []
     if filter_type == 'standard':
       if filter_name.isdigit():

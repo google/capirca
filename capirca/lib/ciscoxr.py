@@ -26,16 +26,23 @@ class CiscoXR(cisco.Cisco):
   SUFFIX = '.xacl'
   _PROTO_INT = False
 
-  def _AppendTargetByFilterType(self, filter_name, filter_type):
+  def _AppendTargetByFilterType(
+      self, filter_name, filter_type, configure_replace_compatible=False):
     """Takes in the filter name and type and appends headers.
 
     Args:
       filter_name: Name of the current filter
       filter_type: Type of current filter
+      configure_replace_compatible: Bool indicating if the resulting config
+        strings should be compatible with the configure replace command.
 
     Returns:
       list of strings
     """
+    # `configure_replace_compatible` is included to satisfy the signature
+    # requirements for cisco.Cisco._AppendTargetByFilterType(). This is not
+    # currently required for the ciscoxr module.
+    del configure_replace_compatible
     target = []
     if filter_type == 'inet6' or filter_type == 'object-group-inet6':
       target.append('no ipv6 access-list %s' % filter_name)
