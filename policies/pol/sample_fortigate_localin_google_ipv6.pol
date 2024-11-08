@@ -6,7 +6,7 @@ term accept-https-requests-v6{
   source-interface:: loopback-1
   destination-interface:: loopback-1
   source-address:: HTTP-PROXY6-NETS
-  destination-address:: REGIONAL-LOOPBACKS
+  destination-address:: REGIONAL-LOOPBACKS6
   destination-port:: HTTPS
   protocol:: tcp
   comment:: "accept-https-requests-v6"
@@ -17,7 +17,7 @@ term accept-ssh-requests-v6{
   source-interface:: loopback-1
   destination-interface:: loopback-1
   source-address:: SSH-RELAY6-NETS
-  destination-address:: REGIONAL-LOOPBACKS
+  destination-address:: REGIONAL-LOOPBACKS6
   destination-port:: SSH
   protocol:: tcp
   comment:: "accept-ssh-requests-v6"
@@ -28,7 +28,7 @@ term accept-snmp-requests-v6{
   source-interface:: loopback-1
   destination-interface:: loopback-1
   source-address:: SNMP-SERVER6-NETS
-  destination-address:: REGIONAL-LOOPBACKS
+  destination-address:: REGIONAL-LOOPBACKS6
   destination-port:: SNMP
   protocol:: udp
   comment:: "accept-snmp-requests-v6"
