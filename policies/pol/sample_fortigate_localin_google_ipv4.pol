@@ -34,3 +34,80 @@ term accept-snmp-requests{
   comment:: "accept-snmp-requests"
   action:: accept
 }
+
+term accept-bgp-loopbacks{
+  source-interface:: loopback-1
+  destination-interface:: loopback-1
+  source-address:: REGIONAL-LOOPBACKS
+  destination-address:: REGIONAL-LOOPBACKS
+  destination-port:: BGP
+  protocol:: tcp
+  comment:: "accept-bgp-loopbacks"
+  action:: accept
+}
+
+term accept-esp-ah-tunnel-wan1{
+  source-interface:: x1.15
+  destination-interface:: x1.15
+  source-address:: P2P-RANGE
+  destination-address:: ANY
+  destination-port:: HTTPS
+  protocol:: tcp
+  comment:: "accept-esp-ah-tunnel-wan1"
+  action:: accept
+}
+
+term accept-ike-tunnel-wan1{
+  source-interface:: x1.15
+  destination-interface:: x1.15
+  source-address:: P2P-RANGE
+  destination-address:: ANY
+  destination-port:: IKE
+  protocol:: udp
+  comment:: "accept-ike-tunnel-wan1"
+  action:: accept
+}
+
+term accept-esp-ah-tunnel-wan2{
+  source-interface:: x3.1
+  destination-interface:: x3.1
+  source-address:: P2P-RANGE
+  destination-address:: ANY
+  destination-port:: HTTPS
+  protocol:: tcp
+  comment:: "accept-esp-ah-tunnel-wan2"
+  action:: accept
+}
+
+term accept-ike-tunnel-wan2{
+  source-interface:: x3.1
+  destination-interface:: x3.1
+  source-address:: P2P-RANGE
+  destination-address:: ANY
+  destination-port:: IKE
+  protocol:: udp
+  comment:: "accept-ike-tunnel-wan2"
+  action:: accept
+}
+
+term accept-bgp-wan{
+  source-interface:: x3.2
+  destination-interface:: x3.2
+  source-address:: P2P-RANGE
+  destination-address:: ANY
+  destination-port:: BGP
+  protocol:: tcp
+  comment:: "accept-bgp-wan"
+  action:: accept
+}
+
+term accept-Fortigate-managers-request{
+  source-interface:: x5.5
+  destination-interface:: x5.5
+  source-address:: REGIONAL-FGMS
+  destination-address:: ANY
+  destination-port:: HTTPS
+  protocol:: tcp
+  comment:: "accept-Fortigate-managers-request"
+  action:: accept
+}

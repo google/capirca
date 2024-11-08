@@ -1,201 +1,113 @@
-terms: {
- name: "accept-https-requests-v6"
- source_net: "http-porxy6-nets"
- destination_net: "regional-loopbacks6"
- interface: "loopback-1"
- source_protocols: {
-   ip_protocol: TCP
- }
- destination_protocols: {
-   port_spec: {
-     port: 443
-   }
-   ip_protocol: TCP
- }
- fields: {
-   action: ACCEPT
-   priority_offset: -1
- }
+header {
+  target:: fortigatelocalin
 }
-terms: {
- name: "accept-ssh-requests-v6"
- source_net: "ssh-relay6-nets"
- destination_net: "regional-loopbacks6"
- interface: "loopback-1"
- source_protocols: {
-   port_spec: {
-     lowest_port: 1024
-     highest_port: 65535
-   }
-   ip_protocol: TCP
- }
- destination_protocols: {
-   port_spec: {
-     port: 22
-   }
-   ip_protocol: TCP
- }
- fields: {
-   action: ACCEPT
-   priority_offset: -2
- }
+
+term accept-https-requests-v6{
+  source-interface:: loopback-1
+  destination-interface:: loopback-1
+  source-address:: HTTP-PROXY6-NETS
+  destination-address:: REGIONAL-LOOPBACKS
+  destination-port:: HTTPS
+  protocol:: tcp
+  comment:: "accept-https-requests-v6"
+  action:: accept
 }
-terms: {
- name: "accept-snmp-requests-v6"
- source_net: "snmp-servers-nets-v6"
- destination_net: "regional-loopbacks6"
- interface: "loopback-1"
- source_protocols: {
-   ip_protocol: UDP
- }
- destination_protocols: {
-   port_spec: {
-     port: 161
-   }
-   ip_protocol: UDP
- }
- fields: {
-   action: ACCEPT
-   priority_offset: -3
- }
+
+term accept-ssh-requests-v6{
+  source-interface:: loopback-1
+  destination-interface:: loopback-1
+  source-address:: SSH-RELAY6-NETS
+  destination-address:: REGIONAL-LOOPBACKS
+  destination-port:: SSH
+  protocol:: tcp
+  comment:: "accept-ssh-requests-v6"
+  action:: accept
 }
-terms: {
- name: "accept-bgp-to-loopbacks-v6"
- source_net: "loopback-nets-v6"
- destination_net: "regional-loopbacks6"
- interface: "loopback-2"
- source_protocols: {
-   port_spec: {
-     lowest_port: 1024
-     highest_port: 65535
-   }
-   ip_protocol: TCP
- }
- destination_protocols: {
-   port_spec: {
-     port: 179
-   }
-   ip_protocol: TCP
- }
- fields: {
-   action: ACCEPT
-   priority_offset: -4
- }
+
+term accept-snmp-requests-v6{
+  source-interface:: loopback-1
+  destination-interface:: loopback-1
+  source-address:: SNMP-SERVER6-NETS
+  destination-address:: REGIONAL-LOOPBACKS
+  destination-port:: SNMP
+  protocol:: udp
+  comment:: "accept-snmp-requests-v6"
+  action:: accept
 }
-terms: {
- name: "accept-esp-ah-tunnel-wan1-v6"
- source_net: "p2p-range6"
- destination_net: "all"
- interface: "WAN-INTF-1"
- source_protocols: {
-   ip_protocol: AH
-   ip_protocol: ESP
- }
- destination_protocols: {
-   ip_protocol: AH
-   ip_protocol: ESP
- }
- fields: {
-   action: ACCEPT
-   priority_offset: -5
- }
+
+term accept-bgp-to-loopbacks-v6{
+  source-interface:: loopback-2
+  destination-interface:: loopback-2
+  source-address:: REGIONAL-LOOPBACKS6
+  destination-address:: REGIONAL-LOOPBACKS6
+  destination-port:: BGP
+  protocol:: tcp
+  comment:: "accept-bgp-to-loopbacks-v6"
+  action:: accept
 }
-terms: {
- name: "accept-ike-tunnel-wan1-v6"
- source_net: "p2p-range6"
- destination_net: "all"
- interface: "WAN-INTF-1"
- source_protocols: 
-   port_spec: {
-     port: 500
-     port: 4500
-   }
-   ip_protocol: UDP
- }
- fields: {
-   action: ACCEPT
-   priority_offset: -6
- }
+
+term accept-esp-ah-tunnel-wan1-v6{
+  source-interface:: x1.15
+  destination-interface:: x1.15
+  source-address:: P2P-RANGE6
+  destination-address:: ANY_V6
+  destination-port:: HTTPS
+  protocol:: tcp
+  comment:: "accept-esp-ah-tunnel-wan1-v6"
+  action:: accept
 }
-terms: {
- name: "accept-esp-ah-tunnel-wan2-v6"
- source_net: "p2p-range6"
- destination_net: "all"
- interface: "WAN-INTF-2"
- source_protocols: {
-   ip_protocol: AH
-   ip_protocol: ESP
- }
- destination_protocols: {
-   ip_protocol: AH
-   ip_protocol: ESP
- }
- fields: {
-   action: ACCEPT
-   priority_offset: -7
- }
+
+term accept-ike-tunnel-wan1-v6{
+  source-interface:: x1.15
+  destination-interface:: x1.15
+  source-address:: P2P-RANGE6
+  destination-address:: ANY_V6
+  destination-port:: IKE
+  protocol:: udp
+  comment:: "accept-ike-tunnel-wan1-v6"
+  action:: accept
 }
-terms: {
- name: "accept-ike-tunnel-wan2-v6"
- source_net: "p2p-range6"
- destination_net: "all"
- interface: "WAN-INTF-2"
- source_protocols: 
-   port_spec: {
-     port: 500
-     port: 4500
-   }
-   ip_protocol: UDP
- }
- fields: {
-   action: ACCEPT
-   priority_offset: -8
- }
+
+term accept-esp-ah-tunnel-wan2-v6{
+  source-interface:: x3.1
+  destination-interface:: x3.1
+  source-address:: P2P-RANGE6
+  destination-address:: ANY_V6
+  destination-port:: HTTPS
+  protocol:: tcp
+  comment:: "accept-esp-ah-tunnel-wan2-v6"
+  action:: accept
 }
-terms: {
- name: "accept-bgp-wan-v6"
- source_net: "all"
- destination_net: "all"
- interface: "WAN-INTF1"
- source_protocols: {
-   port_spec: {
-     lowest_port: 1024
-     highest_port: 65535
-   }
-   ip_protocol: TCP
- }
- destination_protocols: {
-   port_spec: {
-     port: 179
-   }
-   ip_protocol: TCP
- }
- fields: {
-   action: ACCEPT
-   priority_offset: -7
- }
+
+term accept-ike-tunnel-wan2-v6{
+  source-interface:: x3.1
+  destination-interface:: x3.1
+  source-address:: P2P-RANGE6
+  destination-address:: ANY_V6
+  destination-port:: IKE
+  protocol:: udp
+  comment:: "accept-ike-tunnel-wan2-v6"
+  action:: accept
 }
-terms: {
- name: "accept-fgm-v6"
- source_net: "regional-fgms6"
- destination_net: "all"
- interface: "WAN-INTF1"
- source_protocols: {
-   port_spec: {
-     lowest_port: 1024
-     highest_port: 65535
-   }
-   ip_protocol: TCP
- }
- destination_protocols: {
-   port_spec: {
-     port: 541
-     port: 542
-   }
-   ip_protocol: TCP
- }
- fields: {
-   action: ACCEPT
-   priority_offset: -8
- }
+
+term accept-bgp-wan-v6{
+  source-interface:: x6.15
+  destination-interface:: x6.15
+  source-address:: ANY_V6
+  destination-address:: ANY_V6
+  destination-port:: BGP
+  protocol:: tcp
+  comment:: "accept-bgp-wan-v6"
+  action:: accept
+}
+
+term accept-fgm-v6{
+  source-interface:: x6.15
+  destination-interface:: v6.15
+  source-address:: REGIONAL-FGMS6
+  destination-address:: ANY_V6
+  destination-port:: HTTPS
+  protocol:: tcp
+  comment:: "accept-fgm-v6"
+  action:: accept
 }

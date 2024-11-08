@@ -162,9 +162,9 @@ class FortigatePortMap():
         return f_proto[port]
       except KeyError as exc:
         raise FortiGatePortDoesNotExistError(f"Port {exc} does not exist") from exc
-    # else:
-    #   raise FortiGateFindServiceError(
-    #       f'service not found from {protocol} protocol and {port} port')
+    else:
+      raise FortiGateFindServiceError(
+          f'service not found from {protocol} protocol and {port} port')
 
 
 class ObjectsContainer():
@@ -500,8 +500,6 @@ class Term(aclgenerator.Term):
   Returns:
     string (all services separated by spaces).
   """
-    #if not protocols:
-    #  raise FortiGateFindServiceError('protocol not found')
 
     ports = set()
     # fortigate does not allow empty destination_ports
@@ -527,11 +525,6 @@ class Term(aclgenerator.Term):
     services = set()
     portranges = {}
     for protocol in protocols:
-      port_map = FortigatePortMap()
-      # if port_map.get_protocol(protocol) is None:
-      #   raise FortiGateValueError(
-      #     f"fortigate does not support {protocol} protocol")
-
       if protocol in {'icmp', 'icmpv6'}:
         ip_v = 4 if protocol == 'icmp' else 6
         icmp_type_dict = {}
@@ -707,17 +700,6 @@ class Term(aclgenerator.Term):
     elif not exist_src6 and exist_dst6:
       lines += [_SP * 2 + 'set srcaddr6 "all"']
 
-    # if self._term.destination_address_exclude
-    # and not self._term.destination_address:
-    #  lines += [_SP*2 + 'set dstaddr-negate enable']
-    # if self._term.source_address_exclude
-    # and not self._term.source_address:
-    #  lines += [_SP*2 + 'set srcaddr-negate enable']
-
-    # process verbatim items
-    # if self._term.verbatim:
-    #  lines.extend(self._process_verbatim_item())
-
     lines += [f"{_SP * 2} set action {action if action == 'accept' else 'deny'}"]
     if action == 'reject':
       lines += [_SP * 2 + 'set send-deny-packet enable']
@@ -729,22 +711,11 @@ class Term(aclgenerator.Term):
     else:
       if self._NGFW_MODE == 'policy-based':
         lines += [_SP * 2 + 'set enforce-default-app-port enable']
-
-    
-    # if self._NGFW_MODE == 'profile-based':
-    # if self._term.av_profile or self._term.webfilter_profile or
-    # self._term.ssl_ssh_profile or self._term.dnsfilter_profile or
-    # self._term.ips_sensor:
-    # lines += [_SP*2 + 'set utm-status enable']
   
     if self._NGFW_MODE == 'policy-based' and self._term.application_id:
       lines  += [f"{_SP * 2} set application {' '.join(str(v) for v in sorted(self._term.application_id))}"]
 
     lines  += [f"{_SP * 2} set schedule {schedule_name if schedule_name else 'always'}"]
-
-    # opts = [str(x) for x in self._term.option]
-    # if ('tcp-established' in opts or 'established' in opts):
-    #  lines += [_SP*2 + 'set something']
 
     if self._term.logging:
       if self._term.logging == 'log-both':
