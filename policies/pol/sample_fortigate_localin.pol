@@ -1,0 +1,50 @@
+# Header Option: from-id <int> -- Tells Capirca to number firewall
+#                                 policies starting at the provided integer.
+# Header Option: ngfw-mode <profile|policy> -- Default is profile.
+#                                              If Fortigate is using policy-based NGFW mode add 'ngfw-mode policy'
+
+header {
+  target:: fortigatelocalin
+}
+
+term allow-web-outbound{
+  source-address:: INTERNAL
+  destination-port:: HTTP HTTPS
+  source-port:: HTTP
+  protocol:: tcp udp
+  expiration:: 2020-12-20
+  logging:: syslog
+  action:: accept
+}
+
+term customers-policy {
+  destination-address:: INTERNAL
+  destination-exclude:: NTP_SERVERS
+  destination-port:: DNS HTTPS
+  source-exclude:: NTP_SERVERS
+  protocol:: tcp udp
+  action:: reject
+}
+
+term customers-policy2 {
+  source-interface:: port2
+  destination-interface:: port1
+  source-address:: INTERNAL
+  source-port:: SMTP
+  destination-address:: MAIL_SERVERS
+  destination-port:: SMTP
+  protocol:: tcp udp
+  comment:: "this a test policy"
+  owner:: foo@google.com
+  action:: accept
+}
+
+term ipv6-outbound{
+  source-address:: LINKLOCAL
+  destination-address:: SITELOCAL LINKLOCAL
+  destination-port:: HTTP HTTPS
+  source-port:: HTTP
+  protocol:: tcp
+  expiration:: 2020-12-20
+  action:: accept
+}

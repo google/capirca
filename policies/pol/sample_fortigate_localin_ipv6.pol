@@ -1,0 +1,113 @@
+header {
+  target:: fortigatelocalin
+}
+
+term accept-https-requests-v6{
+  source-interface:: loopback-1
+  destination-interface:: loopback-1
+  source-address:: HTTP-PROXY6-NETS
+  destination-address:: REGIONAL-LOOPBACKS6
+  destination-port:: HTTPS
+  protocol:: tcp
+  comment:: "accept-https-requests-v6"
+  action:: accept
+}
+
+term accept-ssh-requests-v6{
+  source-interface:: loopback-1
+  destination-interface:: loopback-1
+  source-address:: SSH-RELAY6-NETS
+  destination-address:: REGIONAL-LOOPBACKS6
+  destination-port:: SSH
+  protocol:: tcp
+  comment:: "accept-ssh-requests-v6"
+  action:: accept
+}
+
+term accept-snmp-requests-v6{
+  source-interface:: loopback-1
+  destination-interface:: loopback-1
+  source-address:: SNMP-SERVER6-NETS
+  destination-address:: REGIONAL-LOOPBACKS6
+  destination-port:: SNMP
+  protocol:: udp
+  comment:: "accept-snmp-requests-v6"
+  action:: accept
+}
+
+term accept-bgp-to-loopbacks-v6{
+  source-interface:: loopback-2
+  destination-interface:: loopback-2
+  source-address:: REGIONAL-LOOPBACKS6
+  destination-address:: REGIONAL-LOOPBACKS6
+  destination-port:: BGP
+  protocol:: tcp
+  comment:: "accept-bgp-to-loopbacks-v6"
+  action:: accept
+}
+
+term accept-esp-ah-tunnel-wan1-v6{
+  source-interface:: x1.15
+  destination-interface:: x1.15
+  source-address:: P2P-RANGE6
+  destination-address:: ANY_V6
+  destination-port:: HTTPS
+  protocol:: tcp
+  comment:: "accept-esp-ah-tunnel-wan1-v6"
+  action:: accept
+}
+
+term accept-ike-tunnel-wan1-v6{
+  source-interface:: x1.15
+  destination-interface:: x1.15
+  source-address:: P2P-RANGE6
+  destination-address:: ANY_V6
+  destination-port:: IKE
+  protocol:: udp
+  comment:: "accept-ike-tunnel-wan1-v6"
+  action:: accept
+}
+
+term accept-esp-ah-tunnel-wan2-v6{
+  source-interface:: x3.1
+  destination-interface:: x3.1
+  source-address:: P2P-RANGE6
+  destination-address:: ANY_V6
+  destination-port:: HTTPS
+  protocol:: tcp
+  comment:: "accept-esp-ah-tunnel-wan2-v6"
+  action:: accept
+}
+
+term accept-ike-tunnel-wan2-v6{
+  source-interface:: x3.1
+  destination-interface:: x3.1
+  source-address:: P2P-RANGE6
+  destination-address:: ANY_V6
+  destination-port:: IKE
+  protocol:: udp
+  comment:: "accept-ike-tunnel-wan2-v6"
+  action:: accept
+}
+
+term accept-bgp-wan-v6{
+  source-interface:: x6.15
+  destination-interface:: x6.15
+  source-address:: ANY_V6
+  destination-address:: ANY_V6
+  destination-port:: BGP
+  protocol:: tcp
+  comment:: "accept-bgp-wan-v6"
+  action:: accept
+}
+
+term accept-fgm-v6{
+  source-interface:: x6.15
+  destination-interface:: v6.15
+  source-address:: REGIONAL-FGMS6
+  destination-address:: ANY_V6
+  destination-port:: HTTPS
+  protocol:: tcp
+  comment:: "accept-fgm-v6"
+  action:: accept
+}

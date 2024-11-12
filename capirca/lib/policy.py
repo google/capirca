@@ -365,6 +365,7 @@ class Term:
     source-zone: VarType.SZONE
     versa-application: VarType.VERSA_APPLICATION
     vpn: VarType.VPN
+    application-id: VarType.APPLICATION_ID
   """  # fmt: skip
   ICMP_TYPE = {
       4: {
@@ -516,6 +517,8 @@ class Term:
     self.flattened_saddr = None
     self.flattened_daddr = None
     self.stateless_reply = False
+    # fortigate specific
+    self.application_id = []
 
     # AddObject touches variables which might not have been initialized
     # further up so this has to be at the end.
@@ -878,6 +881,8 @@ class Term:
       ret_str.append('  source_zone: %s' % sorted(self.source_zone))
     if self.destination_zone:
       ret_str.append('  destination_zone: %s' % sorted(self.destination_zone))
+    if self.application_id:
+      ret_str.append('  application_id: %s' % self.application_id)
 
     return '\n'.join(ret_str)
 
@@ -992,6 +997,8 @@ class Term:
     if sorted(self.ether_type) != sorted(other.ether_type):
       return False
     if sorted(self.traffic_type) != sorted(other.traffic_type):
+      return False
+    if sorted(self.application_id) != sorted(other.application_id):
       return False
 
     # vpn
@@ -1268,6 +1275,8 @@ class Term:
           self.source_zone.append(x.value)
         elif x.var_type is VarType.DZONE:
           self.destination_zone.append(x.value)
+        elif x.var_type is VarType.APPLICATION_ID:
+          self.application_id.append(x.value)
         else:
           raise TermObjectTypeError(
               "%s isn't a type I know how to deal with (contains '%s')"
@@ -1363,6 +1372,8 @@ class Term:
         self.target_service_accounts.append(obj.value)
       elif obj.var_type is VarType.FILTER_TERM:
         self.filter_term = obj.value
+      elif obj.var_type is VarType.APPLICATION_ID:
+        self.application_id.append(obj.value)
       else:
         raise TermObjectTypeError(
             "%s isn't a type I know how to deal with" % (type(obj))
@@ -1716,6 +1727,7 @@ class VarType:
   DECAPSULATE = 67
   SOURCE_SERVICE_ACCOUNTS = 68
   VERSA_APPLICATION = 69
+  APPLICATION_ID = 70
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1955,6 +1967,7 @@ tokens = (
     'VERBATIM',
     'VERSA_APPLICATION',
     'VPN',
+    'APPLICATION_ID',
 )
 
 literals = r':{},-/'
@@ -2038,6 +2051,7 @@ reserved = {
     'verbatim': 'VERBATIM',
     'versa-application': 'VERSA_APPLICATION',
     'vpn': 'VPN',
+    'application-id': 'APPLICATION_ID',
 }
 
 # disable linting warnings for lexx/yacc code
@@ -2650,6 +2664,11 @@ def p_pan_application_spec(p):
   for apps in p[4]:
     p[0].append(VarType(VarType.PAN_APPLICATION, apps))
 
+def p_application_id_spec(p):
+  """ application_id_spec : APPLICATION_ID ':' ':' one_or_more_ints """
+  p[0] = []
+  for apps in p[4]:
+    p[0].append(VarType(VarType.APPLICATION_ID, apps))
 
 def p_interface_spec(p):
   """interface_spec : SINTERFACE ':' ':' STRING
