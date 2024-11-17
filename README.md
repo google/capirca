@@ -402,6 +402,7 @@ generators:
 <!-- begin-generator-term-links -->
 
 *   [`arista`](./doc/generators/arista.md): Arista
+*   [`arista_tp`](./doc/generators/arista_tp.md): Arista Traffic Policies
 *   [`aruba`](./doc/generators/aruba.md): Aruba
 *   [`brocade`](./doc/generators/brocade.md): Brocade
 *   [`cisco`](./doc/generators/cisco.md): Cisco
