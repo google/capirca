@@ -19,6 +19,8 @@ header {
   target:: brocade edge-inbound
   target:: cisconx edge-inbound
   target:: ciscoxr edge-inbound
+  target:: fortigate
+  target:: fortigatelocalin
 }
 
 #include 'includes/untrusted-networks-blocking.inc'
@@ -63,6 +65,8 @@ header {
   target:: cisco edge-outbound mixed
   target:: speedway OUTPUT
   target:: ciscoasa asa_out
+  target:: fortigate
+  target:: fortigatelocalin
 }
 
 term deny-to-bad-destinations {

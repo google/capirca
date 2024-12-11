@@ -331,6 +331,11 @@ class VersaApplication(Field):
 class Vpn(Field):
   """A vpn field."""
 
+class ApplicationID(Field):
+  """A application id field."""
+
+class Interface(Field):
+  """An interface field."""
 
 destination_address_fields = (DestinationAddress, DestinationExclude,
                               DestinationPrefix)
@@ -391,6 +396,8 @@ field_map = {
     'vpn': Vpn,
     'encapsulate': Encapsulate,
     'decapsulate': Decapsulate,
+    'application-id': ApplicationID,
+    'interface': Interface,
 }
 
 
