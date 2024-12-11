@@ -519,6 +519,7 @@ class Term:
     self.stateless_reply = False
     # fortigate specific
     self.application_id = []
+    self.interface = None
 
     # AddObject touches variables which might not have been initialized
     # further up so this has to be at the end.
@@ -883,6 +884,8 @@ class Term:
       ret_str.append('  destination_zone: %s' % sorted(self.destination_zone))
     if self.application_id:
       ret_str.append('  application_id: %s' % self.application_id)
+    if self.interface:
+      ret_str.append('  interface: %s' % self.interface)
 
     return '\n'.join(ret_str)
 
@@ -962,6 +965,9 @@ class Term:
       return False
 
     if self.destination_interface != other.destination_interface:
+      return False
+    
+    if self.interface != other.interface:
       return False
 
     # tags
@@ -1277,6 +1283,8 @@ class Term:
           self.destination_zone.append(x.value)
         elif x.var_type is VarType.APPLICATION_ID:
           self.application_id.append(x.value)
+        elif x.var_type is VarType.INTERFACE:
+          self.interface.append(x.value)
         else:
           raise TermObjectTypeError(
               "%s isn't a type I know how to deal with (contains '%s')"
@@ -1374,6 +1382,8 @@ class Term:
         self.filter_term = obj.value
       elif obj.var_type is VarType.APPLICATION_ID:
         self.application_id.append(obj.value)
+      elif obj.var_type is VarType.INTERFACE:
+        self.interface = obj.value
       else:
         raise TermObjectTypeError(
             "%s isn't a type I know how to deal with" % (type(obj))
@@ -1728,6 +1738,7 @@ class VarType:
   SOURCE_SERVICE_ACCOUNTS = 68
   VERSA_APPLICATION = 69
   APPLICATION_ID = 70
+  INTERFACE = 71
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1968,6 +1979,7 @@ tokens = (
     'VERSA_APPLICATION',
     'VPN',
     'APPLICATION_ID',
+    'INTERFACE',
 )
 
 literals = r':{},-/'
@@ -2052,6 +2064,7 @@ reserved = {
     'versa-application': 'VERSA_APPLICATION',
     'vpn': 'VPN',
     'application-id': 'APPLICATION_ID',
+    'interface': 'INTERFACE',
 }
 
 # disable linting warnings for lexx/yacc code
@@ -2675,7 +2688,9 @@ def p_interface_spec(p):
 
   | DINTERFACE ':' ':' STRING
   """
-  if p[1].find('source-interface') >= 0:
+  if p[1].find('interface') >= 0:
+    p[0] = VarType(VarType.INTERFACE, p[4])
+  elif p[1].find('source-interface') >= 0:
     p[0] = VarType(VarType.SINTERFACE, p[4])
   elif p[1].find('destination-interface') >= 0:
     p[0] = VarType(VarType.DINTERFACE, p[4])

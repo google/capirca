@@ -748,7 +748,8 @@ class Fortigate(aclgenerator.ACLGenerator):
     tuple containing both supported tokens and sub tokens.
   """
     supported_tokens, supported_sub_tokens = super()._BuildTokens()
-    supported_tokens |= {'source_interface',
+    supported_tokens |= {'interface',
+                         'source_interface',
                          'destination_interface',
                          'source_address_exclude',
                          'destination_address_exclude',
