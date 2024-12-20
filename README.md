@@ -591,7 +591,7 @@ Next, test `capirca` by generating sample output filters for Cisco, Juniper,
 iptables, and other firewall platforms.
 
 ```bash
-~/.local/bin/capirca
+~/.local/bin/aclgen
 ```
 
 The generation of sample output while in the `capirca`'s source code directory
