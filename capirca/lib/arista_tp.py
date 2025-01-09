@@ -148,11 +148,14 @@ class Term(aclgenerator.Term):
       },
   }
 
-  def __init__(self, term, term_type, noverbose):
+  def __init__(self, term, term_type, noverbose, field_set):
     super().__init__(term)
     self.term = term
     self.term_type = term_type  # drives the address-family
     self.noverbose = noverbose
+    # Exclusively generate traffic-policies using field sets for setting the
+    # source and destination addresses.
+    self.field_set = field_set
 
     if term_type not in self._TERM_TYPE:
       raise ValueError("unknown filter type: %s" % term_type)
@@ -254,7 +257,9 @@ class Term(aclgenerator.Term):
 
       if src_addr:
         src_str = "source prefix"
-        if src_addr_ex:
+        # Use field sets if the term contains source addresses to exclude or if
+        # the field_set flag is set.
+        if src_addr_ex or self.field_set:
           # this should correspond to the generated field set
           src_str += " field-set src-%s" % self.term.name
         else:
@@ -275,7 +280,9 @@ class Term(aclgenerator.Term):
 
       if dst_addr:
         dst_str = "destination prefix"
-        if dst_addr_ex:
+        # Use field sets if the term contains destination addresses to exclude
+        # or if the field_set flag is set.
+        if dst_addr_ex or self.field_set:
           # this should correspond to the generated field set
           dst_str += " field-set dst-%s" % self.term.name
         else:
@@ -433,11 +440,15 @@ class Term(aclgenerator.Term):
 
     # source port generation
     if term.source_port:
-      port_str += " source port %s" % self._Group(term.source_port, separator=", ")
+      port_str += " source port %s" % self._Group(
+          term.source_port, separator=", "
+      )
 
     # destination port
     if term.destination_port:
-      port_str += (" destination port %s" % self._Group(term.destination_port, separator=", "))
+      port_str += " destination port %s" % self._Group(
+          term.destination_port, separator=", "
+      )
 
     return port_str
 
@@ -736,6 +747,9 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
       filter_options = header.FilterOptions(self._PLATFORM)
       filter_name = header.FilterName(self._PLATFORM)
       noverbose = "noverbose" in filter_options[1:]
+      field_set = "field_set" in filter_options[1:]
+      if field_set:
+        filter_options.remove("field_set")
 
       term_names = set()
       new_terms = []  # list of generated terms
@@ -881,31 +895,32 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
           # generate the prefix sets when there are inline addres
           # exclusions in a term. these will be referenced within the
           # term
-          if term.source_address_exclude:
-            src_addr = term.GetAddressOfVersion("source_address",
-                                                self._AF_MAP[ft])
-            src_addr_ex = term.GetAddressOfVersion("source_address_exclude",
-                                                   self._AF_MAP[ft])
-            src_addr, src_addr_ex = self._MinimizePrefixes(
-                src_addr, src_addr_ex)
+          src_addr, src_addr_ex = self._MinimizePrefixes(
+              term.GetAddressOfVersion("source_address", self._AF_MAP[ft]),
+              term.GetAddressOfVersion(
+                  "source_address_exclude", self._AF_MAP[ft]
+              ),
+          )
 
-            if src_addr_ex:
-              fs = self._GenPrefixFieldset("src", "%s" % term.name, src_addr,
-                                           src_addr_ex, af_map_txt[ft])
-              policy_field_sets.append(fs)
+          # if there are no addresses to match, don't generate a field-set
+          if (src_addr or src_addr_ex) and (src_addr_ex or field_set):
+            fs = self._GenPrefixFieldset(
+                "src", term.name, src_addr, src_addr_ex, af_map_txt[ft]
+            )
+            policy_field_sets.append(fs)
 
-          if term.destination_address_exclude:
-            dst_addr = term.GetAddressOfVersion("destination_address",
-                                                self._AF_MAP[ft])
-            dst_addr_ex = term.GetAddressOfVersion(
-                "destination_address_exclude", self._AF_MAP[ft])
-            dst_addr, dst_addr_ex = self._MinimizePrefixes(
-                dst_addr, dst_addr_ex)
+          dst_addr, dst_addr_ex = self._MinimizePrefixes(
+              term.GetAddressOfVersion("destination_address", self._AF_MAP[ft]),
+              term.GetAddressOfVersion(
+                  "destination_address_exclude", self._AF_MAP[ft]
+              ),
+          )
 
-            if dst_addr_ex:
-              fs = self._GenPrefixFieldset("dst", "%s" % term.name, dst_addr,
-                                           dst_addr_ex, af_map_txt[ft])
-              policy_field_sets.append(fs)
+          if (dst_addr or dst_addr_ex) and (dst_addr_ex or field_set):
+            fs = self._GenPrefixFieldset(
+                "dst", term.name, dst_addr, dst_addr_ex, af_map_txt[ft]
+            )
+            policy_field_sets.append(fs)
 
           # generate the unique list of named counters
           if term.counter:
@@ -913,7 +928,7 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
             term.counter = re.sub(r"\.", "-", str(term.counter))
             policy_counters.add(term.counter)
 
-          new_terms.append(self._TERM(term, ft, noverbose))
+          new_terms.append(self._TERM(term, ft, noverbose, field_set))
 
       self.arista_traffic_policies.append(
           (header, filter_name, filter_type, new_terms, policy_counters,

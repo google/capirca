@@ -60,6 +60,11 @@ header {
   target:: arista_tp test-filter inet6 noverbose
 }
 """
+GOOD_FIELD_SET_HEADER = """
+header {
+  target:: arista_tp test-filter mixed noverbose field_set
+}
+"""
 
 BAD_HEADER = """
 header {
@@ -238,6 +243,22 @@ GOOD_TERM_37 = """
 term good_term_37 {
   protocol:: tcp
   destination-port:: SSH DNS HTTP
+  action:: accept
+}
+"""
+GOOD_TERM_38 = """
+term good-term-1 {
+  protocol:: icmp
+  action:: accept
+}
+term good-term-2 {
+  protocol:: icmpv6
+  action:: accept
+}
+term good-term-3 {
+  protocol:: tcp
+  destination-port:: SMTP
+  destination-address:: SOME_HOST
   action:: accept
 }
 """
@@ -820,6 +841,48 @@ class AristaTpTest(absltest.TestCase):
     self.assertNotIn("COMMENT", str(atp))
     self.naming.GetNetAddr.assert_called_once_with("SOME_HOST")
     self.naming.GetServiceByProto.assert_called_once_with("SMTP", "tcp")
+
+  def testUsingFieldSetMixed(self):
+    addr_list = list()
+    for octet in range(0, 256):
+      net = nacaddr.IP("192.168." + str(octet) + ".64/27")
+      addr_list.append(net)
+    for octet in range(0, 256):
+      net = nacaddr.IPv6(
+          "2001:db8:1010:" + str(octet) + "::64/64", strict=False
+      )
+      addr_list.append(net)
+    self.naming.GetNetAddr.return_value = addr_list
+    self.naming.GetServiceByProto.return_value = ["25"]
+
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(
+            GOOD_FIELD_SET_HEADER + GOOD_TERM_38 + GOOD_TERM_COMMENT,
+            self.naming,
+        ),
+        EXP_INFO,
+    )
+
+    output = str(atp)
+    # Assert IPv4 address-family for ICMP and not for IPv6.
+    self.assertIn("match good-term-1 ipv4", output)
+    self.assertNotIn("match ipv6-good-term-1 ipv6", output)
+
+    # Assert IPv6 address-family for ICMPv6 and not for IPv4.
+    self.assertIn("match ipv6-good-term-2 ipv6", output)
+    self.assertNotIn("match good-term-2 ipv4", output)
+
+    # Assertion for IPv4 field sets.
+    self.assertIn("field-set ipv4 prefix dst-good-term-3", output)
+    self.assertIn("destination prefix field-set dst-good-term-3", output)
+    self.assertIn("field-set ipv4 prefix dst-good-term-3", output, output)
+    self.assertIn("destination prefix field-set dst-good-term-3", output)
+
+    # Assertion for IPv6 field sets.
+    self.assertIn("field-set ipv6 prefix dst-ipv6-good-term-3", output)
+    self.assertIn("destination prefix field-set dst-ipv6-good-term-3", output)
+    self.assertIn("field-set ipv6 prefix dst-ipv6-good-term-3", output)
+    self.assertIn("destination prefix field-set dst-ipv6-good-term-3", output)
 
   def testTermTypeIndexKeys(self):
     # ensure an _INET entry for each _TERM_TYPE entry
