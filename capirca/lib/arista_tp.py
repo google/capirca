@@ -727,11 +727,10 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
       field_list += (" " * 6) + "%s\n" % p
     for p in ex_pfxs:
       field_list += (" " * 6) + "except %s\n" % p
-
-    fieldset_hdr = ("field-set " + af + " prefix " + direction + "-" +
-                    ("%s" % name) + "\n")
+    fieldset_name = "%s-%s" % (direction, name)
+    fieldset_hdr = ("field-set " + af + " prefix " + fieldset_name + "\n")
     field_set = fieldset_hdr + field_list
-    return field_set
+    return fieldset_name, field_set
 
   def _TranslatePolicy(self, pol, exp_info):
     self.arista_traffic_policies = []
@@ -753,7 +752,8 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
 
       term_names = set()
       new_terms = []  # list of generated terms
-      policy_field_sets = []  # list of generated field-sets
+      # Dictionary of generated field-sets with field-set name used as the key.
+      policy_field_sets = dict()
       policy_counters = set()  # set of the counters in the policy
 
       # default to mixed policies
@@ -904,10 +904,10 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
 
           # if there are no addresses to match, don't generate a field-set
           if (src_addr or src_addr_ex) and (src_addr_ex or field_set):
-            fs = self._GenPrefixFieldset(
+            name, fs = self._GenPrefixFieldset(
                 "src", term.name, src_addr, src_addr_ex, af_map_txt[ft]
             )
-            policy_field_sets.append(fs)
+            policy_field_sets[name] = fs
 
           dst_addr, dst_addr_ex = self._MinimizePrefixes(
               term.GetAddressOfVersion("destination_address", self._AF_MAP[ft]),
@@ -917,10 +917,10 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
           )
 
           if (dst_addr or dst_addr_ex) and (dst_addr_ex or field_set):
-            fs = self._GenPrefixFieldset(
+            name, fs = self._GenPrefixFieldset(
                 "dst", term.name, dst_addr, dst_addr_ex, af_map_txt[ft]
             )
-            policy_field_sets.append(fs)
+            policy_field_sets[name] = fs
 
           # generate the unique list of named counters
           if term.counter:
@@ -933,6 +933,63 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
       self.arista_traffic_policies.append(
           (header, filter_name, filter_type, new_terms, policy_counters,
            policy_field_sets))
+
+  @staticmethod
+  def _remove_duplicate_field_sets(field_sets):
+    """Removes duplicate field-sets and maps duplicate names to the original names.
+
+    Args:
+      field_sets (dict): A dictionary where keys are field-set names and values
+                         are the field-set content as strings.
+
+    Returns:
+        tuple: A tuple containing:
+            - A list of unique field-set content.
+            - A dictionary mapping duplicate field-set names to original names.
+    Example:
+      If a policy has field-sets with identical prefixes, the function will
+      return only the unique field-sets.
+      !
+      field-set ipv6 prefix src-ipv6-term-1
+        2001:4860:4860::8888/128
+        2001:4860:4860::8844/128
+      !
+      field-set ipv6 prefix src-ipv6-term-2
+        2001:4860:4860::8888/128
+        2001:4860:4860::8844/128
+      !
+      Result:
+      !
+      field-set ipv6 prefix src-ipv6-term-1
+        2001:4860:4860::8888/128
+        2001:4860:4860::8844/128
+      !
+    """
+
+    # Key: field-set name (str), Value: Set() of prefixes.
+    unique_field_sets = dict()
+    # Key: duplicate field-set name, Value: Existing field-set name.
+    field_sets_to_rename = dict()
+
+    for curr_name, field_set_pfxs in field_sets.items():
+      # Extract the prefixes from the field-set (lines excluding the header).
+      current_prefixes = tuple(
+          line.strip() for line in field_set_pfxs.splitlines()[1:]
+      )
+
+      for existing_name, existing_prefixes in unique_field_sets.items():
+        if current_prefixes == existing_prefixes:
+          # Found a duplicate; Mark the field-set for reanming.
+          field_sets_to_rename[curr_name] = existing_name
+          break
+      else:
+        # No duplicate found; add to unique field-sets.
+        unique_field_sets[curr_name] = current_prefixes
+
+    return (
+        [field_sets[name] for name in unique_field_sets.keys()],
+        field_sets_to_rename,
+    )
 
   def __str__(self):
     config = Config()
@@ -948,22 +1005,37 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
       # add the header information
       config.Append("", "traffic-policies")
 
+      # duplicate field-sets to be renamed in the traffic policy.
+      field_sets_to_rename = dict()
       if field_sets:
-        for fs in field_sets:
-          config.Append("   ", fs)
-          config.Append("   ", "!")
+        # Remove duplicate field-sets if any.
+        unique_field_sets, field_sets_to_rename = (
+            self._remove_duplicate_field_sets(field_sets)
+        )
+        for fs in unique_field_sets:
+          config.Append(INDENT_STR, fs)
+          config.Append(INDENT_STR, "!")
 
-      config.Append("   ", "no traffic-policy %s" % filter_name)
-      config.Append("   ", "traffic-policy %s" % filter_name)
+      config.Append(INDENT_STR, "no traffic-policy %s" % filter_name)
+      config.Append(INDENT_STR, "traffic-policy %s" % filter_name)
 
       # if there are counters, export the list of counters
       if counters:
         str_counters = " ".join(counters)
         config.Append("      ", "counter %s" % str_counters)
 
+      # regex pattern for matching duplicate field-sets names in the policy.
+      rename_pattern = re.compile("|".join(field_sets_to_rename.keys()))
       for term in terms:
         term_str = str(term)
         if term_str:
+          if field_sets_to_rename:
+            # Rename all duplicate field-set references in the policy.
+            term_str = rename_pattern.sub(
+                lambda match, rename_field_sets=field_sets_to_rename:
+                rename_field_sets[match.group()],
+                term_str,
+            )
           config.Append("", term_str, verbatim=True)
 
     return str(config) + "\n"

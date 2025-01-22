@@ -464,6 +464,20 @@ term FS_MIXED {
   action:: accept
 }
 """
+SRC_FIELD_SET_MIXED_1 = """
+term FS_TERM_1 {
+  source-address:: INTERNAL
+  protocol:: tcp
+  action:: accept
+}
+"""
+SRC_FIELD_SET_MIXED_2 = """
+term FS_TERM_2 {
+  source-address:: INTERNAL
+  protocol:: tcp
+  action:: accept
+}
+"""
 
 DST_FIELD_SET_INET = """
 term FS_INET {
@@ -483,6 +497,20 @@ DST_FIELD_SET_MIXED = """
 term FS_MIXED {
   destination-address:: INTERNAL
   destination-exclude:: SOME_HOST
+  action:: accept
+}
+"""
+DST_FIELD_SET_MIXED_3 = """
+term FS_TERM_3 {
+  destination-address:: INTERNAL
+  protocol:: tcp
+  action:: accept
+}
+"""
+DST_FIELD_SET_MIXED_4 = """
+term FS_TERM_4 {
+  destination-address:: INTERNAL
+  protocol:: tcp
   action:: accept
 }
 """
@@ -883,6 +911,65 @@ class AristaTpTest(absltest.TestCase):
     self.assertIn("destination prefix field-set dst-ipv6-good-term-3", output)
     self.assertIn("field-set ipv6 prefix dst-ipv6-good-term-3", output)
     self.assertIn("destination prefix field-set dst-ipv6-good-term-3", output)
+
+  def testDuplicateFieldSets(self):
+    addr_list = list()
+    for octet in range(0, 256):
+      net = nacaddr.IP("192.168." + str(octet) + ".64/27")
+      addr_list.append(net)
+    for octet in range(0, 256):
+      net = nacaddr.IPv6(
+          "2001:db8:1010:" + str(octet) + "::64/64", strict=False
+      )
+      addr_list.append(net)
+    self.naming.GetNetAddr.return_value = addr_list
+    self.naming.GetServiceByProto.return_value = ["25"]
+
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(
+            GOOD_FIELD_SET_HEADER
+            + SRC_FIELD_SET_MIXED_1
+            + SRC_FIELD_SET_MIXED_2
+            + DST_FIELD_SET_MIXED_3
+            + DST_FIELD_SET_MIXED_4,
+            self.naming,
+        ),
+        EXP_INFO,
+    )
+
+    output = str(atp)
+    # Assertion for term matches.
+    self.assertIn("match FS_TERM_1 ipv4", output)
+    self.assertIn("match ipv6-FS_TERM_1 ipv6", output)
+    self.assertIn("match FS_TERM_2 ipv4", output)
+    self.assertIn("match ipv6-FS_TERM_2 ipv6", output)
+    self.assertIn("match FS_TERM_3 ipv4", output)
+    self.assertIn("match ipv6-FS_TERM_3 ipv6", output)
+    self.assertIn("match FS_TERM_4 ipv4", output)
+    self.assertIn("match ipv6-FS_TERM_4 ipv6", output)
+
+    # Assertion for unique field sets.
+    self.assertIn("field-set ipv4 prefix src-FS_TERM_1", output)
+    self.assertIn("field-set ipv6 prefix src-ipv6-FS_TERM_1", output)
+
+    # Assertion for the presence of duplicate field sets.
+    self.assertNotIn("field-set ipv4 prefix src-FS_TERM_2", output, output)
+    self.assertNotIn("field-set ipv6 prefix src-ipv6-FS_TERM_2", output)
+    self.assertNotIn("field-set ipv4 prefix src-FS_TERM_3", output, output)
+    self.assertNotIn("field-set ipv6 prefix src-ipv6-FS_TERM_3", output)
+    self.assertNotIn("field-set ipv4 prefix src-FS_TERM_4", output, output)
+    self.assertNotIn("field-set ipv6 prefix src-ipv6-FS_TERM_4", output)
+
+    # Assertion for the presence of duplicate field set references in the
+    # traffic-policy.
+    self.assertIn("source prefix field-set src-FS_TERM_1", output)
+    self.assertIn("source prefix field-set src-ipv6-FS_TERM_1", output)
+    self.assertNotIn("field-set src-FS_TERM_2", output)
+    self.assertNotIn("field-set src-ipv6-FS_TERM_2", output)
+    self.assertNotIn("field-set dst-FS_TERM_3", output)
+    self.assertNotIn("field-set dst-ipv6-FS_TERM_3", output)
+    self.assertNotIn("field-set dst-FS_TERM_4", output)
+    self.assertNotIn("field-set dst-ipv6-FS_TERM_4", output)
 
   def testTermTypeIndexKeys(self):
     # ensure an _INET entry for each _TERM_TYPE entry
