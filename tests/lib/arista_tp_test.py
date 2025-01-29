@@ -262,6 +262,14 @@ term good-term-3 {
   action:: accept
 }
 """
+GOOD_TERM_39 = """
+term good_term_39 {
+  protocol:: tcp
+  destination-port:: http
+  action:: accept
+  dscp-set:: 32
+}
+"""
 GOOD_TERM_COMMENT = """
 term good-term-comment {
   protocol:: udp
@@ -311,6 +319,14 @@ term icmptype-mismatch {
   protocol:: icmp
   icmp-type:: echo-request echo-reply
   action:: accept
+}
+"""
+BAD_DSCP_TERM_1 = """
+term bad_dscp_term_1 {
+  protocol:: tcp
+  destination-port:: http
+  action:: accept
+  dscp-set:: ef
 }
 """
 DEFAULT_TERM_1 = """
@@ -1289,6 +1305,41 @@ class AristaTpTest(absltest.TestCase):
 
     self.assertIn("match ipv6-ANY_MIXED ipv6", output, output)
     self.assertIn("destination prefix 2001:4860:4860::8844/128", output, output)
+
+  def testDscpSet(self):
+    self.naming.GetNetAddr.side_effect = [[
+        nacaddr.IP("8.8.4.4"),
+        nacaddr.IP("8.8.8.8"),
+        nacaddr.IP("2001:4860:4860::8844"),
+        nacaddr.IP("2001:4860:4860::8888"),
+    ]]
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_FIELD_SET_HEADER + GOOD_TERM_39, self.naming),
+        EXP_INFO,
+    )
+    output = str(atp)
+    self.assertIn("set dscp 32", output)
+
+  def testBadDscpSet(self):
+    self.naming.GetNetAddr.side_effect = [[
+        nacaddr.IP("8.8.4.4"),
+        nacaddr.IP("8.8.8.8"),
+        nacaddr.IP("2001:4860:4860::8844"),
+        nacaddr.IP("2001:4860:4860::8888"),
+    ]]
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(
+            GOOD_FIELD_SET_HEADER + BAD_DSCP_TERM_1, self.naming
+        ),
+        EXP_INFO,
+    )
+    with self.assertRaises(ValueError) as msg:
+      str(atp)
+    self.assertEqual(
+        str(msg.exception), "Invalid DSCP value: ef. Valid range is 0-63."
+    )
 
   def testInetInet(self):
     self.naming.GetNetAddr.side_effect = [

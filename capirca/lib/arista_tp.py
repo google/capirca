@@ -400,6 +400,12 @@ class Term(aclgenerator.Term):
             [ACTION_INDENT,
              "count %s" % self.term.counter, False])
 
+      # set dscp bits if any.
+      if self.term.dscp_set and self._is_valid_dscp_value(self.term.dscp_set):
+        term_block.append(
+            [ACTION_INDENT, f"set dscp {self.term.dscp_set}", False]
+        )
+
       term_block.append([MATCH_INDENT, "!", False])  # end of actions
     term_block.append([TERM_INDENT, "!", False])  # end of match entry
 
@@ -407,6 +413,11 @@ class Term(aclgenerator.Term):
       config.Append(tindent, tstr, verbatim=tverb)
 
     return str(config)
+
+  def _is_valid_dscp_value(self, dscp):
+    if dscp.isdigit() and 0 <= int(dscp) <= 63:
+      return True
+    raise ValueError(f"Invalid DSCP value: {dscp}. Valid range is 0-63.")
 
   def _reflowComments(self, comments, max_length):
     """reflows capirca comments to stay within max_length.
