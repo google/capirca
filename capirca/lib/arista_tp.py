@@ -372,7 +372,11 @@ class Term(aclgenerator.Term):
     current_action = self._ACTIONS.get(self.term.action[0])
     # non-permit/drop actions should be added here
     has_extra_actions = (
-        self.term.logging or self.term.counter or self.term.dscp_set)
+        self.term.logging or
+        self.term.counter or
+        self.term.dscp_set or
+        self.term.traffic_class
+        )
 
     # if !accept - generate an action statement
     # if accept and there are extra actions generate an actions statement
@@ -405,6 +409,13 @@ class Term(aclgenerator.Term):
         term_block.append(
             [ACTION_INDENT, f"set dscp {self.term.dscp_set}", False]
         )
+
+      if self.term.traffic_class:
+        term_block.append([
+            ACTION_INDENT,
+            f"set traffic-class {self.term.traffic_class}",
+            False,
+        ])
 
       term_block.append([MATCH_INDENT, "!", False])  # end of actions
     term_block.append([TERM_INDENT, "!", False])  # end of match entry
@@ -685,7 +696,7 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
         "icmp_type", "logging", "name", "option", "owner", "packet_length",
         "platform", "platform_exclude", "port", "protocol", "protocol_except",
         "source_address", "source_address_exclude", "source_port",
-        "source_prefix", "ttl", "verbatim"
+        "source_prefix", "traffic_class", "ttl", "verbatim"
     }
     supported_sub_tokens.update({
         "option": {

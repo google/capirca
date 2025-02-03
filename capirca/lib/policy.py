@@ -129,6 +129,10 @@ class InvalidTermTTLValue(Error):
   """Error when TTL value is invalid."""
 
 
+class InvalidTrafficClassValue(Error):
+  """Error when Traffic Class value is invalid."""
+
+
 class MixedPortandNonPortProtos(Error):
   """Error when protocols that use ports are mixed with protocols that don't."""
 
@@ -337,6 +341,7 @@ class Term:
     options: list of VarType.OPTION's.
     protocol: list of VarType.PROTOCOL's.
     counter: VarType.COUNTER
+    traffic-class: VarType.TRAFFIC_CLASS
     traffic-class-count: VarType.TRAFFIC_CLASS_COUNT
     action: list of VarType.ACTION's
     dscp-set: VarType.DSCP_SET
@@ -463,6 +468,7 @@ class Term:
     self.protocol = []
     self.protocol_except = []
     self.qos = None
+    self.traffic_class = None
     self.pan_application = []
     self.versa_application = []
     self.routing_instance = None
@@ -833,6 +839,8 @@ class Term:
       ret_str.append('  flexible_match_range: %s' % self.flexible_match_range)
     if self.qos:
       ret_str.append('  qos: %s' % self.qos)
+    if self.traffic_class:
+      ret_str.append('  traffic-class: %s' % self.traffic_class)
     if self.pan_application:
       ret_str.append('  pan_application: %s' % self.pan_application)
     if self.versa_application:
@@ -934,6 +942,10 @@ class Term:
 
     # qos
     if self.qos != other.qos:
+      return False
+
+    # traffic-class
+    if self.traffic_class != other.traffic_class:
       return False
 
     # pan-application
@@ -1337,6 +1349,8 @@ class Term:
       # qos?
       elif obj.var_type is VarType.QOS:
         self.qos = obj.value
+      elif obj.var_type is VarType.TRAFFIC_CLASS:
+        self.traffic_class = int(obj.value)
       elif obj.var_type is VarType.PACKET_LEN:
         self.packet_length = obj.value
       elif obj.var_type is VarType.FRAGMENT_OFFSET:
@@ -1386,6 +1400,7 @@ class Term:
       InvalidTermTTLValue: TTL value is invalid.
       MixedPortandNonPortProtos: Ports specified with protocol that doesn't
         support ports.
+      InvalidTrafficClassValue: Traffic class value is invalid.
 
     This should be called when the term is fully formed, and
     all of the options are set.
@@ -1489,6 +1504,13 @@ class Term:
       if not _MIN_TTL <= self.ttl <= _MAX_TTL:
         raise InvalidTermTTLValue(
             'Term %s contains invalid TTL: %s' % (self.name, self.ttl)
+        )
+
+    if self.traffic_class:
+      if not 0 <= self.traffic_class <= 7:
+        raise InvalidTrafficClassValue(
+            'Term %s contains invalid traffic class: %s'
+            % (self.name, self.traffic_class)
         )
 
   def AddressCleanup(self, optimize=True, addressbook=False):
@@ -1716,6 +1738,7 @@ class VarType:
   DECAPSULATE = 67
   SOURCE_SERVICE_ACCOUNTS = 68
   VERSA_APPLICATION = 69
+  TRAFFIC_CLASS = 70
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1949,6 +1972,7 @@ tokens = (
     'TARGET_SERVICE_ACCOUNTS',
     'TERM',
     'TIMEOUT',
+    'TRAFFIC_CLASS',
     'TRAFFIC_CLASS_COUNT',
     'TRAFFIC_TYPE',
     'TTL',
@@ -2032,6 +2056,7 @@ reserved = {
     'target-service-accounts': 'TARGET_SERVICE_ACCOUNTS',
     'term': 'TERM',
     'timeout': 'TIMEOUT',
+    'traffic-class': 'TRAFFIC_CLASS',
     'traffic-class-count': 'TRAFFIC_CLASS_COUNT',
     'traffic-type': 'TRAFFIC_TYPE',
     'ttl': 'TTL',
@@ -2216,6 +2241,7 @@ def p_term_spec(p):
   | term_spec target_service_accounts_spec
   | term_spec timeout_spec
   | term_spec ttl_spec
+  | term_spec traffic_class_spec
   | term_spec traffic_type_spec
   | term_spec verbatim_spec
   | term_spec versa_application_spec
@@ -2642,6 +2668,11 @@ def p_versa_application_spec(p):
 def p_qos_spec(p):
   """qos_spec : QOS ':' ':' STRING"""
   p[0] = VarType(VarType.QOS, p[4])
+
+
+def p_traffic_class_spec(p):
+  """traffic_class_spec : TRAFFIC_CLASS ':' ':' INTEGER"""
+  p[0] = VarType(VarType.TRAFFIC_CLASS, p[4])
 
 
 def p_pan_application_spec(p):

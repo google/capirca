@@ -268,6 +268,7 @@ term good_term_39 {
   destination-port:: http
   action:: accept
   dscp-set:: 32
+  traffic-class:: 4
 }
 """
 GOOD_TERM_COMMENT = """
@@ -577,6 +578,7 @@ SUPPORTED_TOKENS = frozenset([
     "source_port",
     "source_prefix",
     "stateless_reply",
+    "traffic_class",
     "translated",
     "ttl",
     "verbatim",
@@ -1320,6 +1322,7 @@ class AristaTpTest(absltest.TestCase):
     )
     output = str(atp)
     self.assertIn("set dscp 32", output)
+    self.assertIn("set traffic-class 4", output)
 
   def testBadDscpSet(self):
     self.naming.GetNetAddr.side_effect = [[
