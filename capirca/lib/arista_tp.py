@@ -413,7 +413,7 @@ class Term(aclgenerator.Term):
       if self.term.traffic_class:
         term_block.append([
             ACTION_INDENT,
-            f"set traffic-class {self.term.traffic_class}",
+            f"set traffic class {self.term.traffic_class}",
             False,
         ])
 

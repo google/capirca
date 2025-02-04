@@ -1322,7 +1322,7 @@ class AristaTpTest(absltest.TestCase):
     )
     output = str(atp)
     self.assertIn("set dscp 32", output)
-    self.assertIn("set traffic-class 4", output)
+    self.assertIn("set traffic class 4", output)
 
   def testBadDscpSet(self):
     self.naming.GetNetAddr.side_effect = [[
