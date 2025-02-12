@@ -11,6 +11,7 @@ The following tokens are supported:
 - `destination-port`
 - `destination-prefix` - this should resolve to a configured field-set in
   traffic-policy format.
+- `dscp-set`
 - `fragment-offset`
 - `icmp-type`
 - `logging`
@@ -26,6 +27,7 @@ The following tokens are supported:
 - `source-port`
 - `source-prefix` - this should resolve to a configured field-set in
   traffic-policy format.
+- `traffic-class`
 - `verbatim`
 
 ## documentation
@@ -94,7 +96,7 @@ references within the policy.
         2001:4860:4860::8888/128
         2001:4860:4860::8844/128
       !
-      traffic-policy management-inbound-v6
+      traffic-policy policy-1
         match src-ipv6-term-1 ipv6
           destination prefix field-set src-ipv6-term-1
           protocol udp destination port 53
@@ -113,6 +115,19 @@ In EOS traffic-policies, ports can be configured using:
 
 Currently, all and field-sets are not supported for ports. Only port-lists are
 supported.
+
+## traffic-class
+
+An optional traffic class can be set in the action block with a value between 0
+and 7.
+
+- `set traffic class <0-7>`
+
+## dscp-set
+
+DSCP can be set in the action block with decimal values ranging between 0 and 63.
+
+- `set dscp <0-63>`
 
 ## default-terms
 
