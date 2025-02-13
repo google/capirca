@@ -510,6 +510,12 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           term.destination_address = nacaddr.RemoveAddressFromList(
               term.destination_address, i)
 
+        # note: CollapseAddrList must be called after above exclusions.
+        if len(term.source_address) > 1:
+          term.source_address = nacaddr.CollapseAddrList(term.source_address)
+        if len(term.destination_address) > 1:
+          term.destination_address = nacaddr.CollapseAddrList(term.destination_address)
+
         # Count the number of occurencies of a particular version of the
         # address family, i.e. v4/v6 in source and destination IP addresses.
         afc = {
