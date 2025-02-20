@@ -1137,7 +1137,7 @@ class AristaTpTest(absltest.TestCase):
         policy.ParsePolicy(GOOD_HEADER + MISSING_MATCH, self.naming), EXP_INFO)
     output = str(atp)
     self.assertNotIn("match", output, output)
-    mock_warn.has_calls(
+    mock_warn.assert_any_call(
         "WARNING: term %s has no valid match criteria and "
         "will not be rendered.",
         "missing-match",
