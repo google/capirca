@@ -1,5 +1,9 @@
 name: Docker Publish
 
+permissions:
+      packages: write
+      contents: read
+
 on:
   push:
     branches:
