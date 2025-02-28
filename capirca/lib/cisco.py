@@ -217,9 +217,10 @@ class ObjectGroup:
     exit
   """
 
-  def __init__(self):
+  def __init__(self, af=4):
     self.filter_name = ''
     self.terms = []
+    self.af = af
 
   @property
   def valid(self):
@@ -247,22 +248,20 @@ class ObjectGroup:
 
       # Create network object-groups
       addr_type = ('source_address', 'destination_address')
-      addr_family = (4, 6)
 
       for source_or_dest in addr_type:
-        for family in addr_family:
-          addrs = term.GetAddressOfVersion(source_or_dest, family)
-          if addrs:
-            net_def_name = addrs[0].parent_token
-            # We have addresses for this family and have not already seen it.
-            if (net_def_name, family) not in netgroups:
-              netgroups.add((net_def_name, family))
-              ret_str.append('object-group network ipv%d %s' % (
-                  family, net_def_name))
-              for addr in addrs:
-                ret_str.append(' %s/%s' % (addr.network_address,
-                                           addr.prefixlen))
-              ret_str.append('exit\n')
+        addrs = term.GetAddressOfVersion(source_or_dest, self.af)
+        if addrs:
+          net_def_name = addrs[0].parent_token
+          # We have addresses for this family and have not already seen it.
+          if (net_def_name, self.af) not in netgroups:
+            netgroups.add((net_def_name, self.af))
+            ret_str.append('object-group network ipv%d %s' % (
+                self.af, net_def_name))
+            for addr in addrs:
+              ret_str.append(' %s/%s' % (addr.network_address,
+                                         addr.prefixlen))
+            ret_str.append('exit\n')
 
       # Create port object-groups
       for port in term.source_port + term.destination_port:
@@ -959,7 +958,6 @@ class Cisco(aclgenerator.ACLGenerator):
     for header, terms in pol.filters:
       if self._PLATFORM not in header.platforms:
         continue
-      obj_target = ObjectGroup()
 
       filter_options = header.FilterOptions(self._PLATFORM)
       filter_name = header.FilterName(self._PLATFORM)
@@ -984,6 +982,11 @@ class Cisco(aclgenerator.ACLGenerator):
         raise UnsupportedCiscoAccessListError(
             'access list type %s not supported by %s (good types: %s)' % (
                 filter_type, self._PLATFORM, str(good_filters)))
+
+      if filter_type == 'object-group-inet6':
+        obj_target = ObjectGroup(af=6)
+      else:
+        obj_target = ObjectGroup()
 
       filter_list = [filter_type]
       if filter_type == 'mixed':
@@ -1065,6 +1068,14 @@ class Cisco(aclgenerator.ACLGenerator):
                 )
             )
           elif next_filter == 'object-group':
+            if term.source_address:
+              srcs = term.GetAddressOfVersion('source_address', 4)
+              if not srcs:
+                continue
+            if term.destination_address:
+              dsts = term.GetAddressOfVersion('destination_address', 4)
+              if not dsts:
+                continue
             obj_target.AddTerm(term)
             new_terms.append(
                 self._GetObjectGroupTerm(
@@ -1072,6 +1083,14 @@ class Cisco(aclgenerator.ACLGenerator):
                 )
             )
           elif next_filter == 'object-group-inet6':
+            if term.source_address:
+              srcs = term.GetAddressOfVersion('source_address', 6)
+              if not srcs:
+                continue
+            if term.destination_address:
+              dsts = term.GetAddressOfVersion('destination_address', 6)
+              if not dsts:
+                continue
             obj_target.AddTerm(term)
             new_terms.append(self._GetObjectGroupTerm(term, filter_name, af=6,
                                                       verbose=self.verbose))

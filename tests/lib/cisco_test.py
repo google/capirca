@@ -1089,5 +1089,60 @@ class CiscoTest(absltest.TestCase):
     self.assertTrue(re.search(inet6_test6, aclout), aclout)
     self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
+  def testObjectGroupMismatch(self):
+    definitions = naming.Naming()
+    definitions._ParseLine('NET1 = 10.1.0.0/24', 'networks')
+    definitions._ParseLine('NET2 = 10.2.0.0/24', 'networks')
+    definitions._ParseLine('NET3 = 10.3.1.0/24', 'networks')
+    definitions._ParseLine('       10.3.2.0/24', 'networks')
+    definitions._ParseLine('NET4 = 2001:db8:0:aa::/64', 'networks')
+    definitions._ParseLine('       2001:db8:0:bb::/64', 'networks')
+    definitions._ParseLine('NET5 = NET3 NET4', 'networks')
+    definitions._ParseLine('NET6 = 4000::/2', 'networks')
+    definitions._ParseLine('NET7 = 8000::/1', 'networks')
+    POL = """
+    term rule-1 {
+      source-address:: NET1
+      destination-address:: NET2 NET3
+      action:: accept
+      protocol:: tcp
+    }
+    term rule-2 {
+      source-address:: NET6
+      destination-address:: NET7
+      action:: accept
+      protocol:: tcp
+    }
+    term rule-3 {
+      source-address:: NET3
+      destination-address:: NET4
+      action:: accept
+      protocol:: tcp
+    }
+    term rule-4 {
+      source-address:: NET4
+      destination-address:: NET3
+      action:: accept
+      protocol:: tcp
+    }
+    """
+    pol = policy.ParsePolicy(GOOD_OBJGRP_HEADER_1 + POL, definitions)
+    acl = cisco.Cisco(pol, EXP_INFO)
+    acl_text = str(acl)
+    self.assertIn('10.1.0.0', acl_text)
+    self.assertIn('NET1', acl_text)
+    self.assertIn('permit tcp net-group NET1', acl_text)
+    self.assertNotIn('4000::', acl_text)
+    self.assertNotIn('NET4', acl_text)
+    pol = policy.ParsePolicy(GOOD_OBJGRP_HEADER_2 + POL, definitions)
+    acl = cisco.Cisco(pol, EXP_INFO)
+    acl_text = str(acl)
+    self.assertNotIn('10.1.0.0', acl_text)
+    self.assertNotIn('NET1', acl_text)
+    self.assertIn('permit tcp net-group NET6', acl_text)
+    self.assertIn('4000::', acl_text)
+    self.assertNotIn('NET4', acl_text)
+
+
 if __name__ == '__main__':
   absltest.main()
