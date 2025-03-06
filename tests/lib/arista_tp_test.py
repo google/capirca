@@ -271,6 +271,30 @@ term good_term_39 {
   traffic-class:: 4
 }
 """
+NEXT_HOP_GROUP_TERM = """
+term next-hop-group-term {
+  protocol:: tcp
+  destination-port:: http
+  next-hop-group:: test-nhg
+  action:: accept
+}
+"""
+NEXT_INTERFACE_TERM = """
+term next-interface-term {
+  protocol:: tcp
+  destination-port:: http
+  next-interface:: Ethernet1/1
+  action:: accept
+}
+"""
+BAD_NEXT_INTERFACE_TERM = """
+term next-interface-term {
+  protocol:: tcp
+  destination-port:: http
+  next-interface:: BadInterface
+  action:: accept
+}
+"""
 GOOD_TERM_COMMENT = """
 term good-term-comment {
   protocol:: udp
@@ -565,6 +589,8 @@ SUPPORTED_TOKENS = frozenset([
     "icmp_type",
     "logging",
     "name",
+    "next_hop_group",
+    "next_interface",
     "option",
     "owner",
     "packet_length",
@@ -1323,6 +1349,40 @@ class AristaTpTest(absltest.TestCase):
     output = str(atp)
     self.assertIn("set dscp 32", output)
     self.assertIn("set traffic class 4", output)
+
+  def testNextHopGroup(self):
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + NEXT_HOP_GROUP_TERM,
+                           self.naming),
+        EXP_INFO,
+    )
+    output = str(atp)
+    self.assertIn("redirect next-hop group test-nhg", output, output)
+
+  def testNextInterface(self):
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + NEXT_INTERFACE_TERM,
+                           self.naming),
+        EXP_INFO,
+    )
+    output = str(atp)
+    self.assertIn("redirect interface Ethernet1/1", output, output)
+
+  def testBadNextInterface(self):
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + BAD_NEXT_INTERFACE_TERM, self.naming),
+        EXP_INFO,
+    )
+    with self.assertRaises(ValueError) as msg:
+      str(atp)
+    self.assertEqual(
+        str(msg.exception),
+        "Invalid next interface value: BadInterface. Must begin with"
+        " Ethernet, InternalRecirc, or Port-Channel.",
+    )
 
   def testBadDscpSet(self):
     self.naming.GetNetAddr.side_effect = [[

@@ -232,6 +232,14 @@ class NextIP(Field):
   """An owner field."""
 
 
+class NextHopGroup(Field):
+  """A next-hop-group field."""
+
+
+class NextInterface(Field):
+  """A next-interface field."""
+
+
 class PacketLength(Field):
   """A packet-length field."""
 
@@ -362,6 +370,8 @@ field_map = {
     'option': Option,
     'owner': Owner,
     'next-ip': NextIP,
+    'next-hop-group': NextHopGroup,
+    'next-interface': NextInterface,
     'packet-length': PacketLength,
     'platform': Platform,
     'platform-exclude': PlatformExclude,

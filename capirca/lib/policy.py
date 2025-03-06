@@ -359,6 +359,8 @@ class Term:
     logging: VarType.LOGGING
     log_name: VarType.LOG_NAME
     next-ip: VarType.NEXT_IP
+    next-interface: VarType.NEXT_INTERFACE
+    next-hop-group: VarType.NEXT_HOP_GROUP
     port-mirror: VarType.PORT_MIRROR
     qos: VarType.QOS
     pan-application: VarType.PAN_APPLICATION
@@ -492,6 +494,8 @@ class Term:
     self.dscp_match = []
     self.dscp_except = []
     self.next_ip = None
+    self.next_interface = None
+    self.next_hop_group = None
     self.flexible_match_range = []
     self.source_prefix_except = []
     self.destination_prefix_except = []
@@ -682,6 +686,12 @@ class Term:
     if self.next_ip:
       if not other.next_ip:
         return False
+    if self.next_interface:
+      if not other.next_interface:
+        return False
+    if self.next_hop_group:
+      if not other.next_hop_group:
+        return False
     if self.encapsulate:
       if not other.encapsulate:
         return False
@@ -813,6 +823,10 @@ class Term:
       ret_str.append('  icmp_code: %s' % sorted(self.icmp_code))
     if self.next_ip:
       ret_str.append('  next_ip: %s' % self.next_ip)
+    if self.next_interface:
+      ret_str.append('  next_interface: %s' % self.next_interface)
+    if self.next_hop_group:
+      ret_str.append('  next_hop_group: %s' % self.next_hop_group)
     if self.encapsulate:
       ret_str.append('  encapsulate: %s' % self.encapsulate)
     if self.decapsulate:
@@ -1043,6 +1057,14 @@ class Term:
     if self.next_ip != other.next_ip:
       return False
 
+    # next_interface
+    if self.next_interface != other.next_interface:
+      return False
+
+    # next_hop_group
+    if self.next_hop_group != other.next_hop_group:
+      return False
+
     # encapsulate
     if self.encapsulate != other.encapsulate:
       return False
@@ -1256,6 +1278,8 @@ class Term:
           self.versa_application.append(x.value)
         elif x.var_type is VarType.NEXT_IP:
           self.next_ip = _DEFINITIONS().GetNetAddr(x.value)
+        elif x.var_type is VarType.NEXT_INTERFACE:
+          self.next_interface = x.value
         elif x.var_type is VarType.PLATFORM:
           self.platform.append(x.value)
         elif x.var_type is VarType.PLATFORMEXCLUDE:
@@ -1311,6 +1335,10 @@ class Term:
         self.versa_application.append(obj.value)
       elif obj.var_type is VarType.NEXT_IP:
         self.next_ip = _DEFINITIONS().GetNetAddr(obj.value)
+      elif obj.var_type is VarType.NEXT_INTERFACE:
+        self.next_interface = obj.value
+      elif obj.var_type is VarType.NEXT_HOP_GROUP:
+        self.next_hop_group = obj.value
       elif obj.var_type is VarType.VERBATIM:
         self.verbatim.append(obj.value)
       elif obj.var_type is VarType.ACTION:
@@ -1422,6 +1450,8 @@ class Term:
           not self.action
           and not self.routing_instance
           and not self.next_ip
+          and not self.next_interface
+          and not self.next_hop_group
           and not self.encapsulate
           and not self.decapsulate
           and not self.filter_term
@@ -1739,6 +1769,8 @@ class VarType:
   SOURCE_SERVICE_ACCOUNTS = 68
   VERSA_APPLICATION = 69
   TRAFFIC_CLASS = 70
+  NEXT_HOP_GROUP = 71
+  NEXT_INTERFACE = 72
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1940,6 +1972,8 @@ tokens = (
     'LPAREN',
     'LSQUARE',
     'NEXT_IP',
+    'NEXT_INTERFACE',
+    'NEXT_HOP_GROUP',
     'OPTION',
     'OWNER',
     'PACKET_LEN',
@@ -2027,6 +2061,8 @@ reserved = {
     'log_name': 'LOG_NAME',
     'loss-priority': 'LOSS_PRIORITY',
     'next-ip': 'NEXT_IP',
+    'next-interface': 'NEXT_INTERFACE',
+    'next-hop-group': 'NEXT_HOP_GROUP',
     'option': 'OPTION',
     'owner': 'OWNER',
     'packet-length': 'PACKET_LEN',
@@ -2220,6 +2256,8 @@ def p_term_spec(p):
   | term_spec log_name_spec
   | term_spec losspriority_spec
   | term_spec next_ip_spec
+  | term_spec next_interface_spec
+  | term_spec next_hop_group_spec
   | term_spec option_spec
   | term_spec owner_spec
   | term_spec packet_length_spec
@@ -2337,6 +2375,16 @@ def p_forwarding_class_except_spec(p):
 def p_next_ip_spec(p):
   """next_ip_spec : NEXT_IP ':' ':' STRING"""
   p[0] = VarType(VarType.NEXT_IP, p[4])
+
+
+def p_next_interface_spec(p):
+  """next_interface_spec : NEXT_INTERFACE ':' ':' STRING"""
+  p[0] = VarType(VarType.NEXT_INTERFACE, p[4])
+
+
+def p_next_hop_group_spec(p):
+  """next_hop_group_spec : NEXT_HOP_GROUP ':' ':' STRING"""
+  p[0] = VarType(VarType.NEXT_HOP_GROUP, p[4])
 
 
 def p_encapsulate_spec(p):

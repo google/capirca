@@ -375,7 +375,9 @@ class Term(aclgenerator.Term):
         self.term.logging or
         self.term.counter or
         self.term.dscp_set or
-        self.term.traffic_class
+        self.term.traffic_class or
+        self.term.next_hop_group or
+        self.term.next_interface
         )
 
     # if !accept - generate an action statement
@@ -397,7 +399,6 @@ class Term(aclgenerator.Term):
             "action. logging will not be added.",
             self.term.name,
         )
-
         # counters
       if self.term.counter:
         term_block.append(
@@ -417,6 +418,21 @@ class Term(aclgenerator.Term):
             False,
         ])
 
+      if self.term.next_hop_group:
+        term_block.append([
+            ACTION_INDENT,
+            f"redirect next-hop group {self.term.next_hop_group}",
+            False,
+        ])
+
+      if self.term.next_interface and self._is_valid_next_interface(
+          self.term.next_interface):
+        term_block.append([
+            ACTION_INDENT,
+            f"redirect interface {self.term.next_interface}",
+            False,
+        ])
+
       term_block.append([MATCH_INDENT, "!", False])  # end of actions
     term_block.append([TERM_INDENT, "!", False])  # end of match entry
 
@@ -429,6 +445,18 @@ class Term(aclgenerator.Term):
     if dscp.isdigit() and 0 <= int(dscp) <= 63:
       return True
     raise ValueError(f"Invalid DSCP value: {dscp}. Valid range is 0-63.")
+
+  def _is_valid_next_interface(self, interface):
+    if (
+        interface.startswith("Ethernet")
+        or interface.startswith("InternalRecirc")
+        or interface.startswith("Port-Channel")
+    ):
+      return True
+    raise ValueError(
+        f"Invalid next interface value: {self.term.next_interface}. "
+        "Must begin with Ethernet, InternalRecirc, or Port-Channel."
+    )
 
   def _reflowComments(self, comments, max_length):
     """reflows capirca comments to stay within max_length.
@@ -695,8 +723,8 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
         "dscp_set", "expiration", "fragment_offset", "hop_limit", "icmp_code",
         "icmp_type", "logging", "name", "option", "owner", "packet_length",
         "platform", "platform_exclude", "port", "protocol", "protocol_except",
-        "source_address", "source_address_exclude", "source_port",
-        "source_prefix", "traffic_class", "ttl", "verbatim"
+        "source_address", "source_address_exclude", "source_port", "source_prefix",
+        "traffic_class", "ttl", "verbatim", "next_hop_group", "next_interface"
     }
     supported_sub_tokens.update({
         "option": {
