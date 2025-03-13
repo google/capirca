@@ -1645,6 +1645,30 @@ class AristaTpTest(absltest.TestCase):
         "the ipv6 version of the term will not be rendered.",
         "ipv6-option-term", "test-filter")
 
+  def testMultipleFiltersSameFilterName(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP("10.0.0.0/8")]
+    self.naming.GetServiceByProto.return_value = ["80"]
+    pol = policy.ParsePolicy(
+        GOOD_HEADER + GOOD_TERM_1 + GOOD_HEADER + GOOD_TERM_2,
+        self.naming,
+    )
+    atp = arista_tp.AristaTrafficPolicy(pol, EXP_INFO)
+    output = str(atp)
+    self.assertIn(
+        "no traffic-policy test-filter\n   traffic-policy test-filter\n     "
+        " match good-term-1 ipv4",
+        output,
+        output,
+    )
+    # Ensure that we don't generate "no traffic-policy" for the second filter
+    # if the filter name is the same for both filters.
+    self.assertNotIn(
+        "no traffic-policy test-filter\n   traffic-policy test-filter\n     "
+        " match good-term-3 ipv4",
+        output,
+        output,
+    )
+
 
 if __name__ == "__main__":
   absltest.main()

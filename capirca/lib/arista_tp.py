@@ -1043,7 +1043,20 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
 
   def __str__(self):
     config = Config()
-
+    filter_names_all_same = False
+    first_policy = True
+    filter_names = dict()
+    for (
+        _,
+        filter_name,
+        _,
+        _,
+        _,
+        _,
+    ) in self.arista_traffic_policies:
+      filter_names[filter_name] = True
+    if len(filter_names) == 1:
+      filter_names_all_same = True
     for (
         _,
         filter_name,
@@ -1066,7 +1079,11 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
           config.Append(INDENT_STR, fs)
           config.Append(INDENT_STR, "!")
 
-      config.Append(INDENT_STR, "no traffic-policy %s" % filter_name)
+      if not filter_names_all_same:
+        config.Append(INDENT_STR, "no traffic-policy %s" % filter_name)
+      elif first_policy:
+        config.Append(INDENT_STR, "no traffic-policy %s" % filter_name)
+        first_policy = False
       config.Append(INDENT_STR, "traffic-policy %s" % filter_name)
 
       # if there are counters, export the list of counters
