@@ -372,13 +372,16 @@ class Term(aclgenerator.Term):
     current_action = self._ACTIONS.get(self.term.action[0])
     # non-permit/drop actions should be added here
     has_extra_actions = (
-        self.term.logging or
-        self.term.counter or
-        self.term.dscp_set or
-        self.term.traffic_class or
-        self.term.next_hop_group or
-        self.term.next_interface
-        )
+        self.term.logging
+        or self.term.counter
+        or self.term.dscp_set
+        or self.term.traffic_class
+        or self.term.police_kbps
+        or self.term.police_burst
+        or self.term.police_pps
+        or self.term.next_hop_group
+        or self.term.next_interface
+    )
 
     # if !accept - generate an action statement
     # if accept and there are extra actions generate an actions statement
@@ -417,6 +420,46 @@ class Term(aclgenerator.Term):
             f"set traffic class {self.term.traffic_class}",
             False,
         ])
+      if self.term.police_kbps and self.term.police_pps:
+        logging.warning(
+            "WARNING: term %s uses police_pps and police_kbps."
+            "Only one of these options can be used.",
+            self.term.name,
+        )
+      elif self.term.police_burst and self.term.police_pps:
+        logging.warning(
+            "WARNING: term %s uses police_burst, "
+            "which is not supported with police_pps.",
+            self.term.name,
+        )
+      elif self.term.police_burst and not self.term.police_kbps:
+        logging.warning(
+            "WARNING: term %s uses police_burst option but not police_kbps. "
+            "police_burst will not be added.",
+            self.term.name,
+        )
+      elif self.term.police_kbps and self.term.police_burst:
+        term_block.append([
+            ACTION_INDENT,
+            (
+                f"police rate {self.term.police_kbps} kbps burst-size"
+                f" {self.term.police_burst}"
+            ),
+            False,
+        ])
+      elif self.term.police_kbps:
+        term_block.append([
+            ACTION_INDENT,
+            f"police rate {self.term.police_kbps} kbps",
+            False,
+        ])
+      elif self.term.police_pps:
+        term_block.append([
+            ACTION_INDENT,
+            f"police rate {self.term.police_pps} pps",
+            False,
+        ])
+
 
       if self.term.next_hop_group:
         term_block.append([
@@ -718,13 +761,41 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
     supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {
-        "action", "comment", "counter", "destination_address",
-        "destination_address_exclude", "destination_port", "destination_prefix",
-        "dscp_set", "expiration", "fragment_offset", "hop_limit", "icmp_code",
-        "icmp_type", "logging", "name", "option", "owner", "packet_length",
-        "platform", "platform_exclude", "port", "protocol", "protocol_except",
-        "source_address", "source_address_exclude", "source_port", "source_prefix",
-        "traffic_class", "ttl", "verbatim", "next_hop_group", "next_interface"
+        "action",
+        "comment",
+        "counter",
+        "destination_address",
+        "destination_address_exclude",
+        "destination_port",
+        "destination_prefix",
+        "dscp_set",
+        "expiration",
+        "fragment_offset",
+        "hop_limit",
+        "icmp_code",
+        "icmp_type",
+        "logging",
+        "name",
+        "option",
+        "owner",
+        "packet_length",
+        "platform",
+        "platform_exclude",
+        "port",
+        "protocol",
+        "protocol_except",
+        "police_burst",
+        "police_kbps",
+        "police_pps",
+        "source_address",
+        "source_address_exclude",
+        "source_port",
+        "source_prefix",
+        "traffic_class",
+        "ttl",
+        "verbatim",
+        "next_hop_group",
+        "next_interface"
     }
     supported_sub_tokens.update({
         "option": {

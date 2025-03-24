@@ -366,6 +366,9 @@ class Term:
     pan-application: VarType.PAN_APPLICATION
     policer: VarType.POLICER
     priority: VarType.PRIORITY
+    police_kbps: VarType.POLICE_KBPS
+    police_burst: VarType.POLICE_BURST
+    police_pps: VarType.POLICE_PPS
     destination-zone: VarType.DZONE
     source-service-accounts: VarType.SOURCE_SERVICE_ACCOUNTS
     target-service-accounts: VarType.TARGET_SERVICE_ACCOUNTS
@@ -466,6 +469,9 @@ class Term:
     self.owner = None
     self.policer = None
     self.port = []
+    self.police_kbps = None
+    self.police_burst = None
+    self.police_pps = None
     self.precedence = []
     self.protocol = []
     self.protocol_except = []
@@ -870,6 +876,12 @@ class Term:
       ret_str.append('  log_name: %s' % self.log_name)
     if self.priority:
       ret_str.append('  priority: %s' % self.priority)
+    if self.police_kbps:
+      ret_str.append('  police_kbps: %s' % self.police_kbps)
+    if self.police_burst:
+      ret_str.append('  police_burst: %s' % self.police_burst)
+    if self.police_pps:
+      ret_str.append('  police_pps: %s' % self.police_pps)
     if self.counter:
       ret_str.append('  counter: %s' % self.counter)
     if self.traffic_class_count:
@@ -976,6 +988,18 @@ class Term:
 
     # policer
     if self.policer != other.policer:
+      return False
+
+    # police_kbps
+    if self.police_kbps != other.police_kbps:
+      return False
+
+    # police_burst
+    if self.police_burst != other.police_burst:
+      return False
+
+    # police_pps
+    if self.police_pps != other.police_pps:
       return False
 
     # interface
@@ -1372,6 +1396,12 @@ class Term:
       # police man, tryin'a take you jail
       elif obj.var_type is VarType.POLICER:
         self.policer = obj.value
+      elif obj.var_type is VarType.POLICE_KBPS:
+        self.police_kbps = int(obj.value)
+      elif obj.var_type is VarType.POLICE_BURST:
+        self.police_burst = int(obj.value)
+      elif obj.var_type is VarType.POLICE_PPS:
+        self.police_pps = int(obj.value)
       elif obj.var_type is VarType.PRIORITY:
         self.priority = obj.value
       # qos?
@@ -1771,6 +1801,9 @@ class VarType:
   TRAFFIC_CLASS = 70
   NEXT_HOP_GROUP = 71
   NEXT_INTERFACE = 72
+  POLICE_KBPS = 73
+  POLICE_BURST = 74
+  POLICE_PPS = 75
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1980,6 +2013,9 @@ tokens = (
     'PLATFORM',
     'PLATFORMEXCLUDE',
     'POLICER',
+    'POLICE_KBPS',
+    'POLICE_BURST',
+    'POLICE_PPS',
     'PORT',
     'PORT_MIRROR',
     'PRECEDENCE',
@@ -2069,6 +2105,9 @@ reserved = {
     'platform': 'PLATFORM',
     'platform-exclude': 'PLATFORMEXCLUDE',
     'policer': 'POLICER',
+    'police-kbps': 'POLICE_KBPS',
+    'police-burst': 'POLICE_BURST',
+    'police-pps': 'POLICE_PPS',
     'port': 'PORT',
     'port-mirror': 'PORT_MIRROR',
     'precedence': 'PRECEDENCE',
@@ -2264,6 +2303,9 @@ def p_term_spec(p):
   | term_spec platform_spec
   | term_spec policer_spec
   | term_spec port_spec
+  | term_spec police_kbps_spec
+  | term_spec police_burst_spec
+  | term_spec police_pps_spec
   | term_spec port_mirror_spec
   | term_spec precedence_spec
   | term_spec priority_spec
@@ -2618,6 +2660,21 @@ def p_traffic_type_spec(p):
 def p_policer_spec(p):
   """policer_spec : POLICER ':' ':' STRING"""
   p[0] = VarType(VarType.POLICER, p[4])
+
+
+def p_police_kbps_spec(p):
+  """police_kbps_spec : POLICE_KBPS ':' ':' INTEGER"""
+  p[0] = VarType(VarType.POLICE_KBPS, p[4])
+
+
+def p_police_burst_spec(p):
+  """police_burst_spec : POLICE_BURST ':' ':' INTEGER"""
+  p[0] = VarType(VarType.POLICE_BURST, p[4])
+
+
+def p_police_pps_spec(p):
+  """police_pps_spec : POLICE_PPS ':' ':' INTEGER"""
+  p[0] = VarType(VarType.POLICE_PPS, p[4])
 
 
 def p_logging_spec(p):

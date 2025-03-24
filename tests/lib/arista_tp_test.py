@@ -534,6 +534,57 @@ term FS_INET6 {
   action:: accept
 }
 """
+POLICE_KBPS_TERM_1 = """
+term police-term-1 {
+  protocol:: tcp
+  destination-port:: HTTP
+  action:: accept
+  police-kbps:: 1000
+  police-burst:: 1000
+}
+"""
+POLICE_KBPS_TERM_2 = """
+term police-term-2 {
+  protocol:: tcp
+  destination-port:: HTTP
+  action:: accept
+  police-kbps:: 1000
+}
+"""
+BAD_POLICE_KBPS_TERM = """
+term bad-police-term {
+  protocol:: tcp
+  destination-port:: HTTP
+  action:: accept
+  police-burst:: 1000
+}
+"""
+BAD_MIXED_POLICE_TERM = """
+term bad-police-term {
+  protocol:: tcp
+  destination-port:: HTTP
+  action:: accept
+  police-kbps:: 1000
+  police-pps:: 1000
+}
+"""
+POLICE_PPS_TERM_1 = """
+term police-term-1 {
+  protocol:: tcp
+  destination-port:: HTTP
+  action:: accept
+  police-pps:: 1000
+}
+"""
+BAD_POLICE_PPS_TERM = """
+term bad-police-term {
+  protocol:: tcp
+  destination-port:: HTTP
+  action:: accept
+  police-pps:: 1000
+  police-burst:: 1000
+}
+"""
 DST_FIELD_SET_MIXED = """
 term FS_MIXED {
   destination-address:: INTERNAL
@@ -597,6 +648,9 @@ SUPPORTED_TOKENS = frozenset([
     "platform",
     "platform_exclude",
     "port",
+    "police_burst",
+    "police_kbps",
+    "police_pps",
     "protocol",
     "protocol_except",
     "source_address",
@@ -1524,6 +1578,73 @@ class AristaTpTest(absltest.TestCase):
     output = str(atp)
     self.assertIn("field-set ipv4 prefix dst-FS_INET", output, output)
     self.assertIn("destination prefix field-set dst-FS_INET", output, output)
+
+  def testPoliceWithBurst(self):
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + POLICE_KBPS_TERM_1, self.naming),
+        EXP_INFO,
+    )
+    output = str(atp)
+    self.assertIn("police rate 1000 kbps burst-size 1000", output, output)
+
+  def testPoliceKbpsNoBurst(self):
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + POLICE_KBPS_TERM_2, self.naming),
+        EXP_INFO,
+    )
+    output = str(atp)
+    self.assertIn("police rate 1000 kbps", output, output)
+    self.assertNotIn("burst-size", output, output)
+
+  def testPolicePps(self):
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + POLICE_PPS_TERM_1, self.naming),
+        EXP_INFO,
+    )
+    output = str(atp)
+    self.assertIn("police rate 1000 pps", output, output)
+
+  @mock.patch.object(arista_tp.logging, "warning")
+  def testPoliceOnlyBurst(self, mock_warn):
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + BAD_POLICE_KBPS_TERM, self.naming),
+        EXP_INFO,
+    )
+    output = str(atp)
+    self.assertNotIn("police rate", output, output)
+    mock_warn.assert_any_call(
+        "WARNING: term %s uses police_burst option but not police_kbps. "
+        "police_burst will not be added.", "bad-police-term")
+
+  @mock.patch.object(arista_tp.logging, "warning")
+  def testBadPolicePpsWithBurst(self, mock_warn):
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + BAD_POLICE_PPS_TERM, self.naming),
+        EXP_INFO,
+    )
+    output = str(atp)
+    self.assertNotIn("police rate", output, output)
+    mock_warn.assert_any_call(
+        "WARNING: term %s uses police_burst, "
+        "which is not supported with police_pps.", "bad-police-term")
+
+  @mock.patch.object(arista_tp.logging, "warning")
+  def testPoliceMixed(self, mock_warn):
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + BAD_MIXED_POLICE_TERM, self.naming),
+        EXP_INFO,
+    )
+    output = str(atp)
+    self.assertNotIn("police rate", output, output)
+    mock_warn.assert_any_call(
+        "WARNING: term %s uses police_pps and police_kbps."
+        "Only one of these options can be used.", "bad-police-term")
 
   def testDstFsInet6(self):
     self.naming.GetNetAddr.side_effect = [

@@ -256,6 +256,18 @@ class Policer(Field):
   """A rate-limit-icmp field."""
 
 
+class PoliceKbps(Field):
+  """A police-kbps field."""
+
+
+class PoliceBurst(Field):
+  """A police-burst field."""
+
+
+class PolicePps(Field):
+  """A police-pps field."""
+
+
 class PortMirror(Field):
   """A port-mirror field."""
 
@@ -376,6 +388,9 @@ field_map = {
     'platform': Platform,
     'platform-exclude': PlatformExclude,
     'policer': Policer,
+    'police-kbps': PoliceKbps,
+    'police-burst': PoliceBurst,
+    'police-pps': PolicePps,
     'port': Port,
     'port-mirror': PortMirror,
     'precedence': Precedence,
