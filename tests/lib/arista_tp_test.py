@@ -359,6 +359,12 @@ term default-term-1 {
   action:: deny
 }
 """
+NO_MATCH_TERM_COUNTER = """
+term deny-and-count {
+  counter:: deny-counter
+  action:: deny
+}
+"""
 LONG_COMMENT_TERM_1 = """
 term long-comment-term-1 {
   comment:: "this is very very very very very very very very very very very
@@ -800,6 +806,13 @@ class AristaTpTest(absltest.TestCase):
     output = str(atp)
     self.assertIn("match ipv4-default-all ipv4", output, output)
     self.assertIn("match ipv6-default-all ipv6", output, output)
+
+  def testEmptyMatchDenyCounter(self):
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + NO_MATCH_TERM_COUNTER, self.naming),
+        EXP_INFO)
+    output = str(atp)
+    self.assertIn("count deny-counter", output, output)
 
   def testIcmpType(self):
     atp = arista_tp.AristaTrafficPolicy(

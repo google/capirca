@@ -233,14 +233,17 @@ class Term(aclgenerator.Term):
         self.term.hop_limit or self.term.port or self.term.protocol or
         self.term.protocol_except or self.term.source_address or
         self.term.source_address_exclude or self.term.source_port or
-        self.term.source_prefix or self.term.ttl)
+        self.term.source_prefix or self.term.ttl )
 
     # if the term name is default-* we will render this into the
     # appropriate default term name to be used in this filter.
     is_default_term = re.match(r"^ipv(4|6)\-default\-.*", self.term.name,
                                re.IGNORECASE)
 
-    if (not has_match_criteria and not is_default_term):
+    # if the term doesn't match on anything and isn't a default-term and
+    # isn't a counter term, then we don't render it.
+    if (not has_match_criteria and not is_default_term
+        and not self.term.counter):
       # this term doesn't match on anything and isn't a default-term
       logging.warning(
           "WARNING: term %s has no valid match criteria and "
