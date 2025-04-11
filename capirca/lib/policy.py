@@ -129,6 +129,10 @@ class InvalidTermTTLValue(Error):
   """Error when TTL value is invalid."""
 
 
+class InvalidTrafficClassValue(Error):
+  """Error when Traffic Class value is invalid."""
+
+
 class MixedPortandNonPortProtos(Error):
   """Error when protocols that use ports are mixed with protocols that don't."""
 
@@ -337,6 +341,7 @@ class Term:
     options: list of VarType.OPTION's.
     protocol: list of VarType.PROTOCOL's.
     counter: VarType.COUNTER
+    traffic-class: VarType.TRAFFIC_CLASS
     traffic-class-count: VarType.TRAFFIC_CLASS_COUNT
     action: list of VarType.ACTION's
     dscp-set: VarType.DSCP_SET
@@ -354,11 +359,16 @@ class Term:
     logging: VarType.LOGGING
     log_name: VarType.LOG_NAME
     next-ip: VarType.NEXT_IP
+    next-interface: VarType.NEXT_INTERFACE
+    next-hop-group: VarType.NEXT_HOP_GROUP
     port-mirror: VarType.PORT_MIRROR
     qos: VarType.QOS
     pan-application: VarType.PAN_APPLICATION
     policer: VarType.POLICER
     priority: VarType.PRIORITY
+    police_kbps: VarType.POLICE_KBPS
+    police_burst: VarType.POLICE_BURST
+    police_pps: VarType.POLICE_PPS
     destination-zone: VarType.DZONE
     source-service-accounts: VarType.SOURCE_SERVICE_ACCOUNTS
     target-service-accounts: VarType.TARGET_SERVICE_ACCOUNTS
@@ -460,10 +470,14 @@ class Term:
     self.owner = None
     self.policer = None
     self.port = []
+    self.police_kbps = None
+    self.police_burst = None
+    self.police_pps = None
     self.precedence = []
     self.protocol = []
     self.protocol_except = []
     self.qos = None
+    self.traffic_class = None
     self.pan_application = []
     self.versa_application = []
     self.routing_instance = None
@@ -487,6 +501,8 @@ class Term:
     self.dscp_match = []
     self.dscp_except = []
     self.next_ip = None
+    self.next_interface = None
+    self.next_hop_group = None
     self.flexible_match_range = []
     self.source_prefix_except = []
     self.destination_prefix_except = []
@@ -680,6 +696,12 @@ class Term:
     if self.next_ip:
       if not other.next_ip:
         return False
+    if self.next_interface:
+      if not other.next_interface:
+        return False
+    if self.next_hop_group:
+      if not other.next_hop_group:
+        return False
     if self.encapsulate:
       if not other.encapsulate:
         return False
@@ -811,6 +833,10 @@ class Term:
       ret_str.append('  icmp_code: %s' % sorted(self.icmp_code))
     if self.next_ip:
       ret_str.append('  next_ip: %s' % self.next_ip)
+    if self.next_interface:
+      ret_str.append('  next_interface: %s' % self.next_interface)
+    if self.next_hop_group:
+      ret_str.append('  next_hop_group: %s' % self.next_hop_group)
     if self.encapsulate:
       ret_str.append('  encapsulate: %s' % self.encapsulate)
     if self.decapsulate:
@@ -837,6 +863,8 @@ class Term:
       ret_str.append('  flexible_match_range: %s' % self.flexible_match_range)
     if self.qos:
       ret_str.append('  qos: %s' % self.qos)
+    if self.traffic_class:
+      ret_str.append('  traffic-class: %s' % self.traffic_class)
     if self.pan_application:
       ret_str.append('  pan_application: %s' % self.pan_application)
     if self.versa_application:
@@ -852,6 +880,12 @@ class Term:
       ret_str.append('  log_name: %s' % self.log_name)
     if self.priority:
       ret_str.append('  priority: %s' % self.priority)
+    if self.police_kbps:
+      ret_str.append('  police_kbps: %s' % self.police_kbps)
+    if self.police_burst:
+      ret_str.append('  police_burst: %s' % self.police_burst)
+    if self.police_pps:
+      ret_str.append('  police_pps: %s' % self.police_pps)
     if self.counter:
       ret_str.append('  counter: %s' % self.counter)
     if self.traffic_class_count:
@@ -944,6 +978,10 @@ class Term:
     if self.qos != other.qos:
       return False
 
+    # traffic-class
+    if self.traffic_class != other.traffic_class:
+      return False
+
     # pan-application
     if sorted(self.pan_application) != sorted(other.pan_application):
       return False
@@ -958,6 +996,18 @@ class Term:
 
     # policer
     if self.policer != other.policer:
+      return False
+
+    # police_kbps
+    if self.police_kbps != other.police_kbps:
+      return False
+
+    # police_burst
+    if self.police_burst != other.police_burst:
+      return False
+
+    # police_pps
+    if self.police_pps != other.police_pps:
       return False
 
     # interface
@@ -1042,6 +1092,14 @@ class Term:
 
     # next_ip
     if self.next_ip != other.next_ip:
+      return False
+
+    # next_interface
+    if self.next_interface != other.next_interface:
+      return False
+
+    # next_hop_group
+    if self.next_hop_group != other.next_hop_group:
       return False
 
     # encapsulate
@@ -1257,6 +1315,8 @@ class Term:
           self.versa_application.append(x.value)
         elif x.var_type is VarType.NEXT_IP:
           self.next_ip = _DEFINITIONS().GetNetAddr(x.value)
+        elif x.var_type is VarType.NEXT_INTERFACE:
+          self.next_interface = x.value
         elif x.var_type is VarType.PLATFORM:
           self.platform.append(x.value)
         elif x.var_type is VarType.PLATFORMEXCLUDE:
@@ -1316,6 +1376,10 @@ class Term:
         self.versa_application.append(obj.value)
       elif obj.var_type is VarType.NEXT_IP:
         self.next_ip = _DEFINITIONS().GetNetAddr(obj.value)
+      elif obj.var_type is VarType.NEXT_INTERFACE:
+        self.next_interface = obj.value
+      elif obj.var_type is VarType.NEXT_HOP_GROUP:
+        self.next_hop_group = obj.value
       elif obj.var_type is VarType.VERBATIM:
         self.verbatim.append(obj.value)
       elif obj.var_type is VarType.ACTION:
@@ -1349,11 +1413,19 @@ class Term:
       # police man, tryin'a take you jail
       elif obj.var_type is VarType.POLICER:
         self.policer = obj.value
+      elif obj.var_type is VarType.POLICE_KBPS:
+        self.police_kbps = int(obj.value)
+      elif obj.var_type is VarType.POLICE_BURST:
+        self.police_burst = int(obj.value)
+      elif obj.var_type is VarType.POLICE_PPS:
+        self.police_pps = int(obj.value)
       elif obj.var_type is VarType.PRIORITY:
         self.priority = obj.value
       # qos?
       elif obj.var_type is VarType.QOS:
         self.qos = obj.value
+      elif obj.var_type is VarType.TRAFFIC_CLASS:
+        self.traffic_class = int(obj.value)
       elif obj.var_type is VarType.PACKET_LEN:
         self.packet_length = obj.value
       elif obj.var_type is VarType.FRAGMENT_OFFSET:
@@ -1407,6 +1479,7 @@ class Term:
       InvalidTermTTLValue: TTL value is invalid.
       MixedPortandNonPortProtos: Ports specified with protocol that doesn't
         support ports.
+      InvalidTrafficClassValue: Traffic class value is invalid.
 
     This should be called when the term is fully formed, and
     all of the options are set.
@@ -1428,6 +1501,8 @@ class Term:
           not self.action
           and not self.routing_instance
           and not self.next_ip
+          and not self.next_interface
+          and not self.next_hop_group
           and not self.encapsulate
           and not self.decapsulate
           and not self.filter_term
@@ -1510,6 +1585,13 @@ class Term:
       if not _MIN_TTL <= self.ttl <= _MAX_TTL:
         raise InvalidTermTTLValue(
             'Term %s contains invalid TTL: %s' % (self.name, self.ttl)
+        )
+
+    if self.traffic_class:
+      if not 0 <= self.traffic_class <= 7:
+        raise InvalidTrafficClassValue(
+            'Term %s contains invalid traffic class: %s'
+            % (self.name, self.traffic_class)
         )
 
   def AddressCleanup(self, optimize=True, addressbook=False):
@@ -1737,8 +1819,14 @@ class VarType:
   DECAPSULATE = 67
   SOURCE_SERVICE_ACCOUNTS = 68
   VERSA_APPLICATION = 69
-  APPLICATION_ID = 70
-  INTERFACE = 71
+  TRAFFIC_CLASS = 70
+  NEXT_HOP_GROUP = 71
+  NEXT_INTERFACE = 72
+  POLICE_KBPS = 73
+  POLICE_BURST = 74
+  POLICE_PPS = 75
+  APPLICATION_ID = 76
+  INTERFACE = 77
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1940,12 +2028,17 @@ tokens = (
     'LPAREN',
     'LSQUARE',
     'NEXT_IP',
+    'NEXT_INTERFACE',
+    'NEXT_HOP_GROUP',
     'OPTION',
     'OWNER',
     'PACKET_LEN',
     'PLATFORM',
     'PLATFORMEXCLUDE',
     'POLICER',
+    'POLICE_KBPS',
+    'POLICE_BURST',
+    'POLICE_PPS',
     'PORT',
     'PORT_MIRROR',
     'PRECEDENCE',
@@ -1972,6 +2065,7 @@ tokens = (
     'TARGET_SERVICE_ACCOUNTS',
     'TERM',
     'TIMEOUT',
+    'TRAFFIC_CLASS',
     'TRAFFIC_CLASS_COUNT',
     'TRAFFIC_TYPE',
     'TTL',
@@ -2028,12 +2122,17 @@ reserved = {
     'log_name': 'LOG_NAME',
     'loss-priority': 'LOSS_PRIORITY',
     'next-ip': 'NEXT_IP',
+    'next-interface': 'NEXT_INTERFACE',
+    'next-hop-group': 'NEXT_HOP_GROUP',
     'option': 'OPTION',
     'owner': 'OWNER',
     'packet-length': 'PACKET_LEN',
     'platform': 'PLATFORM',
     'platform-exclude': 'PLATFORMEXCLUDE',
     'policer': 'POLICER',
+    'police-kbps': 'POLICE_KBPS',
+    'police-burst': 'POLICE_BURST',
+    'police-pps': 'POLICE_PPS',
     'port': 'PORT',
     'port-mirror': 'PORT_MIRROR',
     'precedence': 'PRECEDENCE',
@@ -2057,6 +2156,7 @@ reserved = {
     'target-service-accounts': 'TARGET_SERVICE_ACCOUNTS',
     'term': 'TERM',
     'timeout': 'TIMEOUT',
+    'traffic-class': 'TRAFFIC_CLASS',
     'traffic-class-count': 'TRAFFIC_CLASS_COUNT',
     'traffic-type': 'TRAFFIC_TYPE',
     'ttl': 'TTL',
@@ -2222,12 +2322,17 @@ def p_term_spec(p):
   | term_spec log_name_spec
   | term_spec losspriority_spec
   | term_spec next_ip_spec
+  | term_spec next_interface_spec
+  | term_spec next_hop_group_spec
   | term_spec option_spec
   | term_spec owner_spec
   | term_spec packet_length_spec
   | term_spec platform_spec
   | term_spec policer_spec
   | term_spec port_spec
+  | term_spec police_kbps_spec
+  | term_spec police_burst_spec
+  | term_spec police_pps_spec
   | term_spec port_mirror_spec
   | term_spec precedence_spec
   | term_spec priority_spec
@@ -2243,6 +2348,7 @@ def p_term_spec(p):
   | term_spec target_service_accounts_spec
   | term_spec timeout_spec
   | term_spec ttl_spec
+  | term_spec traffic_class_spec
   | term_spec traffic_type_spec
   | term_spec verbatim_spec
   | term_spec versa_application_spec
@@ -2338,6 +2444,16 @@ def p_forwarding_class_except_spec(p):
 def p_next_ip_spec(p):
   """next_ip_spec : NEXT_IP ':' ':' STRING"""
   p[0] = VarType(VarType.NEXT_IP, p[4])
+
+
+def p_next_interface_spec(p):
+  """next_interface_spec : NEXT_INTERFACE ':' ':' STRING"""
+  p[0] = VarType(VarType.NEXT_INTERFACE, p[4])
+
+
+def p_next_hop_group_spec(p):
+  """next_hop_group_spec : NEXT_HOP_GROUP ':' ':' STRING"""
+  p[0] = VarType(VarType.NEXT_HOP_GROUP, p[4])
 
 
 def p_encapsulate_spec(p):
@@ -2573,6 +2689,21 @@ def p_policer_spec(p):
   p[0] = VarType(VarType.POLICER, p[4])
 
 
+def p_police_kbps_spec(p):
+  """police_kbps_spec : POLICE_KBPS ':' ':' INTEGER"""
+  p[0] = VarType(VarType.POLICE_KBPS, p[4])
+
+
+def p_police_burst_spec(p):
+  """police_burst_spec : POLICE_BURST ':' ':' INTEGER"""
+  p[0] = VarType(VarType.POLICE_BURST, p[4])
+
+
+def p_police_pps_spec(p):
+  """police_pps_spec : POLICE_PPS ':' ':' INTEGER"""
+  p[0] = VarType(VarType.POLICE_PPS, p[4])
+
+
 def p_logging_spec(p):
   """logging_spec : LOGGING ':' ':' STRING"""
   p[0] = VarType(VarType.LOGGING, p[4])
@@ -2669,6 +2800,11 @@ def p_versa_application_spec(p):
 def p_qos_spec(p):
   """qos_spec : QOS ':' ':' STRING"""
   p[0] = VarType(VarType.QOS, p[4])
+
+
+def p_traffic_class_spec(p):
+  """traffic_class_spec : TRAFFIC_CLASS ':' ':' INTEGER"""
+  p[0] = VarType(VarType.TRAFFIC_CLASS, p[4])
 
 
 def p_pan_application_spec(p):

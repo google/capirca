@@ -60,6 +60,11 @@ header {
   target:: arista_tp test-filter inet6 noverbose
 }
 """
+GOOD_FIELD_SET_HEADER = """
+header {
+  target:: arista_tp test-filter mixed noverbose field_set
+}
+"""
 
 BAD_HEADER = """
 header {
@@ -241,6 +246,55 @@ term good_term_37 {
   action:: accept
 }
 """
+GOOD_TERM_38 = """
+term good-term-1 {
+  protocol:: icmp
+  action:: accept
+}
+term good-term-2 {
+  protocol:: icmpv6
+  action:: accept
+}
+term good-term-3 {
+  protocol:: tcp
+  destination-port:: SMTP
+  destination-address:: SOME_HOST
+  action:: accept
+}
+"""
+GOOD_TERM_39 = """
+term good_term_39 {
+  protocol:: tcp
+  destination-port:: http
+  action:: accept
+  dscp-set:: 32
+  traffic-class:: 4
+}
+"""
+NEXT_HOP_GROUP_TERM = """
+term next-hop-group-term {
+  protocol:: tcp
+  destination-port:: http
+  next-hop-group:: test-nhg
+  action:: accept
+}
+"""
+NEXT_INTERFACE_TERM = """
+term next-interface-term {
+  protocol:: tcp
+  destination-port:: http
+  next-interface:: Ethernet1/1
+  action:: accept
+}
+"""
+BAD_NEXT_INTERFACE_TERM = """
+term next-interface-term {
+  protocol:: tcp
+  destination-port:: http
+  next-interface:: BadInterface
+  action:: accept
+}
+"""
 GOOD_TERM_COMMENT = """
 term good-term-comment {
   protocol:: udp
@@ -292,8 +346,22 @@ term icmptype-mismatch {
   action:: accept
 }
 """
+BAD_DSCP_TERM_1 = """
+term bad_dscp_term_1 {
+  protocol:: tcp
+  destination-port:: http
+  action:: accept
+  dscp-set:: ef
+}
+"""
 DEFAULT_TERM_1 = """
 term default-term-1 {
+  action:: deny
+}
+"""
+NO_MATCH_TERM_COUNTER = """
+term deny-and-count {
+  counter:: deny-counter
   action:: deny
 }
 """
@@ -443,6 +511,20 @@ term FS_MIXED {
   action:: accept
 }
 """
+SRC_FIELD_SET_MIXED_1 = """
+term FS_TERM_1 {
+  source-address:: INTERNAL
+  protocol:: tcp
+  action:: accept
+}
+"""
+SRC_FIELD_SET_MIXED_2 = """
+term FS_TERM_2 {
+  source-address:: INTERNAL
+  protocol:: tcp
+  action:: accept
+}
+"""
 
 DST_FIELD_SET_INET = """
 term FS_INET {
@@ -458,10 +540,75 @@ term FS_INET6 {
   action:: accept
 }
 """
+POLICE_KBPS_TERM_1 = """
+term police-term-1 {
+  protocol:: tcp
+  destination-port:: HTTP
+  action:: accept
+  police-kbps:: 1000
+  police-burst:: 1000
+}
+"""
+POLICE_KBPS_TERM_2 = """
+term police-term-2 {
+  protocol:: tcp
+  destination-port:: HTTP
+  action:: accept
+  police-kbps:: 1000
+}
+"""
+BAD_POLICE_KBPS_TERM = """
+term bad-police-term {
+  protocol:: tcp
+  destination-port:: HTTP
+  action:: accept
+  police-burst:: 1000
+}
+"""
+BAD_MIXED_POLICE_TERM = """
+term bad-police-term {
+  protocol:: tcp
+  destination-port:: HTTP
+  action:: accept
+  police-kbps:: 1000
+  police-pps:: 1000
+}
+"""
+POLICE_PPS_TERM_1 = """
+term police-term-1 {
+  protocol:: tcp
+  destination-port:: HTTP
+  action:: accept
+  police-pps:: 1000
+}
+"""
+BAD_POLICE_PPS_TERM = """
+term bad-police-term {
+  protocol:: tcp
+  destination-port:: HTTP
+  action:: accept
+  police-pps:: 1000
+  police-burst:: 1000
+}
+"""
 DST_FIELD_SET_MIXED = """
 term FS_MIXED {
   destination-address:: INTERNAL
   destination-exclude:: SOME_HOST
+  action:: accept
+}
+"""
+DST_FIELD_SET_MIXED_3 = """
+term FS_TERM_3 {
+  destination-address:: INTERNAL
+  protocol:: tcp
+  action:: accept
+}
+"""
+DST_FIELD_SET_MIXED_4 = """
+term FS_TERM_4 {
+  destination-address:: INTERNAL
+  protocol:: tcp
   action:: accept
 }
 """
@@ -499,12 +646,17 @@ SUPPORTED_TOKENS = frozenset([
     "icmp_type",
     "logging",
     "name",
+    "next_hop_group",
+    "next_interface",
     "option",
     "owner",
     "packet_length",
     "platform",
     "platform_exclude",
     "port",
+    "police_burst",
+    "police_kbps",
+    "police_pps",
     "protocol",
     "protocol_except",
     "source_address",
@@ -512,6 +664,7 @@ SUPPORTED_TOKENS = frozenset([
     "source_port",
     "source_prefix",
     "stateless_reply",
+    "traffic_class",
     "translated",
     "ttl",
     "verbatim",
@@ -653,6 +806,13 @@ class AristaTpTest(absltest.TestCase):
     output = str(atp)
     self.assertIn("match ipv4-default-all ipv4", output, output)
     self.assertIn("match ipv6-default-all ipv6", output, output)
+
+  def testEmptyMatchDenyCounter(self):
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + NO_MATCH_TERM_COUNTER, self.naming),
+        EXP_INFO)
+    output = str(atp)
+    self.assertIn("count deny-counter", output, output)
 
   def testIcmpType(self):
     atp = arista_tp.AristaTrafficPolicy(
@@ -821,6 +981,107 @@ class AristaTpTest(absltest.TestCase):
     self.naming.GetNetAddr.assert_called_once_with("SOME_HOST")
     self.naming.GetServiceByProto.assert_called_once_with("SMTP", "tcp")
 
+  def testUsingFieldSetMixed(self):
+    addr_list = list()
+    for octet in range(0, 256):
+      net = nacaddr.IP("192.168." + str(octet) + ".64/27")
+      addr_list.append(net)
+    for octet in range(0, 256):
+      net = nacaddr.IPv6(
+          "2001:db8:1010:" + str(octet) + "::64/64", strict=False
+      )
+      addr_list.append(net)
+    self.naming.GetNetAddr.return_value = addr_list
+    self.naming.GetServiceByProto.return_value = ["25"]
+
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(
+            GOOD_FIELD_SET_HEADER + GOOD_TERM_38 + GOOD_TERM_COMMENT,
+            self.naming,
+        ),
+        EXP_INFO,
+    )
+
+    output = str(atp)
+    # Assert IPv4 address-family for ICMP and not for IPv6.
+    self.assertIn("match good-term-1 ipv4", output)
+    self.assertNotIn("match ipv6-good-term-1 ipv6", output)
+
+    # Assert IPv6 address-family for ICMPv6 and not for IPv4.
+    self.assertIn("match ipv6-good-term-2 ipv6", output)
+    self.assertNotIn("match good-term-2 ipv4", output)
+
+    # Assertion for IPv4 field sets.
+    self.assertIn("field-set ipv4 prefix dst-good-term-3", output)
+    self.assertIn("destination prefix field-set dst-good-term-3", output)
+    self.assertIn("field-set ipv4 prefix dst-good-term-3", output, output)
+    self.assertIn("destination prefix field-set dst-good-term-3", output)
+
+    # Assertion for IPv6 field sets.
+    self.assertIn("field-set ipv6 prefix dst-ipv6-good-term-3", output)
+    self.assertIn("destination prefix field-set dst-ipv6-good-term-3", output)
+    self.assertIn("field-set ipv6 prefix dst-ipv6-good-term-3", output)
+    self.assertIn("destination prefix field-set dst-ipv6-good-term-3", output)
+
+  def testDuplicateFieldSets(self):
+    addr_list = list()
+    for octet in range(0, 256):
+      net = nacaddr.IP("192.168." + str(octet) + ".64/27")
+      addr_list.append(net)
+    for octet in range(0, 256):
+      net = nacaddr.IPv6(
+          "2001:db8:1010:" + str(octet) + "::64/64", strict=False
+      )
+      addr_list.append(net)
+    self.naming.GetNetAddr.return_value = addr_list
+    self.naming.GetServiceByProto.return_value = ["25"]
+
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(
+            GOOD_FIELD_SET_HEADER
+            + SRC_FIELD_SET_MIXED_1
+            + SRC_FIELD_SET_MIXED_2
+            + DST_FIELD_SET_MIXED_3
+            + DST_FIELD_SET_MIXED_4,
+            self.naming,
+        ),
+        EXP_INFO,
+    )
+
+    output = str(atp)
+    # Assertion for term matches.
+    self.assertIn("match FS_TERM_1 ipv4", output)
+    self.assertIn("match ipv6-FS_TERM_1 ipv6", output)
+    self.assertIn("match FS_TERM_2 ipv4", output)
+    self.assertIn("match ipv6-FS_TERM_2 ipv6", output)
+    self.assertIn("match FS_TERM_3 ipv4", output)
+    self.assertIn("match ipv6-FS_TERM_3 ipv6", output)
+    self.assertIn("match FS_TERM_4 ipv4", output)
+    self.assertIn("match ipv6-FS_TERM_4 ipv6", output)
+
+    # Assertion for unique field sets.
+    self.assertIn("field-set ipv4 prefix src-FS_TERM_1", output)
+    self.assertIn("field-set ipv6 prefix src-ipv6-FS_TERM_1", output)
+
+    # Assertion for the presence of duplicate field sets.
+    self.assertNotIn("field-set ipv4 prefix src-FS_TERM_2", output, output)
+    self.assertNotIn("field-set ipv6 prefix src-ipv6-FS_TERM_2", output)
+    self.assertNotIn("field-set ipv4 prefix src-FS_TERM_3", output, output)
+    self.assertNotIn("field-set ipv6 prefix src-ipv6-FS_TERM_3", output)
+    self.assertNotIn("field-set ipv4 prefix src-FS_TERM_4", output, output)
+    self.assertNotIn("field-set ipv6 prefix src-ipv6-FS_TERM_4", output)
+
+    # Assertion for the presence of duplicate field set references in the
+    # traffic-policy.
+    self.assertIn("source prefix field-set src-FS_TERM_1", output)
+    self.assertIn("source prefix field-set src-ipv6-FS_TERM_1", output)
+    self.assertNotIn("field-set src-FS_TERM_2", output)
+    self.assertNotIn("field-set src-ipv6-FS_TERM_2", output)
+    self.assertNotIn("field-set dst-FS_TERM_3", output)
+    self.assertNotIn("field-set dst-ipv6-FS_TERM_3", output)
+    self.assertNotIn("field-set dst-FS_TERM_4", output)
+    self.assertNotIn("field-set dst-ipv6-FS_TERM_4", output)
+
   def testTermTypeIndexKeys(self):
     # ensure an _INET entry for each _TERM_TYPE entry
     self.assertCountEqual(
@@ -969,7 +1230,7 @@ class AristaTpTest(absltest.TestCase):
         policy.ParsePolicy(GOOD_HEADER + MISSING_MATCH, self.naming), EXP_INFO)
     output = str(atp)
     self.assertNotIn("match", output, output)
-    mock_warn.has_calls(
+    mock_warn.assert_any_call(
         "WARNING: term %s has no valid match criteria and "
         "will not be rendered.",
         "missing-match",
@@ -1140,6 +1401,76 @@ class AristaTpTest(absltest.TestCase):
     self.assertIn("match ipv6-ANY_MIXED ipv6", output, output)
     self.assertIn("destination prefix 2001:4860:4860::8844/128", output, output)
 
+  def testDscpSet(self):
+    self.naming.GetNetAddr.side_effect = [[
+        nacaddr.IP("8.8.4.4"),
+        nacaddr.IP("8.8.8.8"),
+        nacaddr.IP("2001:4860:4860::8844"),
+        nacaddr.IP("2001:4860:4860::8888"),
+    ]]
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_FIELD_SET_HEADER + GOOD_TERM_39, self.naming),
+        EXP_INFO,
+    )
+    output = str(atp)
+    self.assertIn("set dscp 32", output)
+    self.assertIn("set traffic class 4", output)
+
+  def testNextHopGroup(self):
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + NEXT_HOP_GROUP_TERM,
+                           self.naming),
+        EXP_INFO,
+    )
+    output = str(atp)
+    self.assertIn("redirect next-hop group test-nhg", output, output)
+
+  def testNextInterface(self):
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + NEXT_INTERFACE_TERM,
+                           self.naming),
+        EXP_INFO,
+    )
+    output = str(atp)
+    self.assertIn("redirect interface Ethernet1/1", output, output)
+
+  def testBadNextInterface(self):
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + BAD_NEXT_INTERFACE_TERM, self.naming),
+        EXP_INFO,
+    )
+    with self.assertRaises(ValueError) as msg:
+      str(atp)
+    self.assertEqual(
+        str(msg.exception),
+        "Invalid next interface value: BadInterface. Must begin with"
+        " Ethernet, InternalRecirc, or Port-Channel.",
+    )
+
+  def testBadDscpSet(self):
+    self.naming.GetNetAddr.side_effect = [[
+        nacaddr.IP("8.8.4.4"),
+        nacaddr.IP("8.8.8.8"),
+        nacaddr.IP("2001:4860:4860::8844"),
+        nacaddr.IP("2001:4860:4860::8888"),
+    ]]
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(
+            GOOD_FIELD_SET_HEADER + BAD_DSCP_TERM_1, self.naming
+        ),
+        EXP_INFO,
+    )
+    with self.assertRaises(ValueError) as msg:
+      str(atp)
+    self.assertEqual(
+        str(msg.exception), "Invalid DSCP value: ef. Valid range is 0-63."
+    )
+
   def testInetInet(self):
     self.naming.GetNetAddr.side_effect = [
         [nacaddr.IP("8.8.4.4"), nacaddr.IP("8.8.8.8")],
@@ -1261,6 +1592,73 @@ class AristaTpTest(absltest.TestCase):
     self.assertIn("field-set ipv4 prefix dst-FS_INET", output, output)
     self.assertIn("destination prefix field-set dst-FS_INET", output, output)
 
+  def testPoliceWithBurst(self):
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + POLICE_KBPS_TERM_1, self.naming),
+        EXP_INFO,
+    )
+    output = str(atp)
+    self.assertIn("police rate 1000 kbps burst-size 1000", output, output)
+
+  def testPoliceKbpsNoBurst(self):
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + POLICE_KBPS_TERM_2, self.naming),
+        EXP_INFO,
+    )
+    output = str(atp)
+    self.assertIn("police rate 1000 kbps", output, output)
+    self.assertNotIn("burst-size", output, output)
+
+  def testPolicePps(self):
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + POLICE_PPS_TERM_1, self.naming),
+        EXP_INFO,
+    )
+    output = str(atp)
+    self.assertIn("police rate 1000 pps", output, output)
+
+  @mock.patch.object(arista_tp.logging, "warning")
+  def testPoliceOnlyBurst(self, mock_warn):
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + BAD_POLICE_KBPS_TERM, self.naming),
+        EXP_INFO,
+    )
+    output = str(atp)
+    self.assertNotIn("police rate", output, output)
+    mock_warn.assert_any_call(
+        "WARNING: term %s uses police_burst option but not police_kbps. "
+        "police_burst will not be added.", "bad-police-term")
+
+  @mock.patch.object(arista_tp.logging, "warning")
+  def testBadPolicePpsWithBurst(self, mock_warn):
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + BAD_POLICE_PPS_TERM, self.naming),
+        EXP_INFO,
+    )
+    output = str(atp)
+    self.assertNotIn("police rate", output, output)
+    mock_warn.assert_any_call(
+        "WARNING: term %s uses police_burst, "
+        "which is not supported with police_pps.", "bad-police-term")
+
+  @mock.patch.object(arista_tp.logging, "warning")
+  def testPoliceMixed(self, mock_warn):
+    self.naming.GetServiceByProto.return_value = ["80"]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + BAD_MIXED_POLICE_TERM, self.naming),
+        EXP_INFO,
+    )
+    output = str(atp)
+    self.assertNotIn("police rate", output, output)
+    mock_warn.assert_any_call(
+        "WARNING: term %s uses police_pps and police_kbps."
+        "Only one of these options can be used.", "bad-police-term")
+
   def testDstFsInet6(self):
     self.naming.GetNetAddr.side_effect = [
         [nacaddr.IP("2001:4860:4860::/64"),
@@ -1380,6 +1778,30 @@ class AristaTpTest(absltest.TestCase):
         "WARNING: term %s in mixed policy %s uses fragment "
         "the ipv6 version of the term will not be rendered.",
         "ipv6-option-term", "test-filter")
+
+  def testMultipleFiltersSameFilterName(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP("10.0.0.0/8")]
+    self.naming.GetServiceByProto.return_value = ["80"]
+    pol = policy.ParsePolicy(
+        GOOD_HEADER + GOOD_TERM_1 + GOOD_HEADER + GOOD_TERM_2,
+        self.naming,
+    )
+    atp = arista_tp.AristaTrafficPolicy(pol, EXP_INFO)
+    output = str(atp)
+    self.assertIn(
+        "no traffic-policy test-filter\n   traffic-policy test-filter\n     "
+        " match good-term-1 ipv4",
+        output,
+        output,
+    )
+    # Ensure that we don't generate "no traffic-policy" for the second filter
+    # if the filter name is the same for both filters.
+    self.assertNotIn(
+        "no traffic-policy test-filter\n   traffic-policy test-filter\n     "
+        " match good-term-3 ipv4",
+        output,
+        output,
+    )
 
 
 if __name__ == "__main__":

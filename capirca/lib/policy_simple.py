@@ -232,6 +232,14 @@ class NextIP(Field):
   """An owner field."""
 
 
+class NextHopGroup(Field):
+  """A next-hop-group field."""
+
+
+class NextInterface(Field):
+  """A next-interface field."""
+
+
 class PacketLength(Field):
   """A packet-length field."""
 
@@ -246,6 +254,18 @@ class PlatformExclude(Field):
 
 class Policer(Field):
   """A rate-limit-icmp field."""
+
+
+class PoliceKbps(Field):
+  """A police-kbps field."""
+
+
+class PoliceBurst(Field):
+  """A police-burst field."""
+
+
+class PolicePps(Field):
+  """A police-pps field."""
 
 
 class PortMirror(Field):
@@ -367,10 +387,15 @@ field_map = {
     'option': Option,
     'owner': Owner,
     'next-ip': NextIP,
+    'next-hop-group': NextHopGroup,
+    'next-interface': NextInterface,
     'packet-length': PacketLength,
     'platform': Platform,
     'platform-exclude': PlatformExclude,
     'policer': Policer,
+    'police-kbps': PoliceKbps,
+    'police-burst': PoliceBurst,
+    'police-pps': PolicePps,
     'port': Port,
     'port-mirror': PortMirror,
     'precedence': Precedence,

@@ -402,6 +402,7 @@ generators:
 <!-- begin-generator-term-links -->
 
 *   [`arista`](./doc/generators/arista.md): Arista
+*   [`arista_tp`](./doc/generators/arista_tp.md): Arista Traffic Policy
 *   [`aruba`](./doc/generators/aruba.md): Aruba
 *   [`brocade`](./doc/generators/brocade.md): Brocade
 *   [`cisco`](./doc/generators/cisco.md): Cisco
@@ -591,7 +592,7 @@ Next, test `capirca` by generating sample output filters for Cisco, Juniper,
 iptables, and other firewall platforms.
 
 ```bash
-~/.local/bin/capirca
+~/.local/bin/aclgen
 ```
 
 The generation of sample output while in the `capirca`'s source code directory

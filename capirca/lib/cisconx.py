@@ -46,12 +46,15 @@ class CiscoNX(cisco.Cisco):
     return target
 
   # CiscoNX omits the "extended" access-list argument.
-  def _AppendTargetByFilterType(self, filter_name, filter_type):
+  def _AppendTargetByFilterType(
+      self, filter_name, filter_type, configure_replace_compatible=False):
     """Takes in the filter name and type and appends headers.
 
     Args:
       filter_name: Name of the current filter
       filter_type: Type of current filter
+      configure_replace_compatible: Bool indicating if the resulting config
+        strings should be compatible with the configure replace command.
 
     Returns:
       list of strings
@@ -59,6 +62,10 @@ class CiscoNX(cisco.Cisco):
     Raises:
       UnsupportedNXosAccessListError: When unknown filter type is used.
     """
+    # `configure_replace_compatible` is included to satisfy the signature
+    # requirements for cisco.Cisco._AppendTargetByFilterType(). This is not
+    # currently required for the cisconx module.
+    del configure_replace_compatible
     target = []
     if filter_type == 'extended':
       target.append('no ip access-list %s' % filter_name)

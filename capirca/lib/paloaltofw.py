@@ -586,9 +586,23 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
           exclude_address_family.append(4)
         elif filter_type == "mixed":
           if "ip4-ip4" in flows and "ip6-ip6" not in flows:
+            if "icmpv6" in term.protocol:
+              logging.warning(
+                  "WARNING: Term %s in policy %s>%s references ICMPv6,"
+                  "but does not have IPv6 traffic flows, "
+                  "term will not be rendered.", term.name, self.from_zone,
+                  self.to_zone)
+              continue
             exclude_address_family.append(6)
             pass
           elif "ip6-ip6" in flows and "ip4-ip4" not in flows:
+            if "icmp" in term.protocol:
+              logging.warning(
+                  "WARNING: Term %s in policy %s>%s references ICMP protocol, "
+                  "but does not have IPv4 traffic flows, "
+                  "term will not be rendered.", term.name, self.from_zone,
+                  self.to_zone)
+              continue
             exclude_address_family.append(4)
             pass
           elif "ip4-ip4" in flows and "ip6-ip6" in flows:

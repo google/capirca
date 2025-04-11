@@ -217,9 +217,10 @@ class ObjectGroup:
     exit
   """
 
-  def __init__(self):
+  def __init__(self, af=4):
     self.filter_name = ''
     self.terms = []
+    self.af = af
 
   @property
   def valid(self):
@@ -247,22 +248,20 @@ class ObjectGroup:
 
       # Create network object-groups
       addr_type = ('source_address', 'destination_address')
-      addr_family = (4, 6)
 
       for source_or_dest in addr_type:
-        for family in addr_family:
-          addrs = term.GetAddressOfVersion(source_or_dest, family)
-          if addrs:
-            net_def_name = addrs[0].parent_token
-            # We have addresses for this family and have not already seen it.
-            if (net_def_name, family) not in netgroups:
-              netgroups.add((net_def_name, family))
-              ret_str.append('object-group network ipv%d %s' % (
-                  family, net_def_name))
-              for addr in addrs:
-                ret_str.append(' %s/%s' % (addr.network_address,
-                                           addr.prefixlen))
-              ret_str.append('exit\n')
+        addrs = term.GetAddressOfVersion(source_or_dest, self.af)
+        if addrs:
+          net_def_name = addrs[0].parent_token
+          # We have addresses for this family and have not already seen it.
+          if (net_def_name, self.af) not in netgroups:
+            netgroups.add((net_def_name, self.af))
+            ret_str.append('object-group network ipv%d %s' % (
+                self.af, net_def_name))
+            for addr in addrs:
+              ret_str.append(' %s/%s' % (addr.network_address,
+                                         addr.prefixlen))
+            ret_str.append('exit\n')
 
       # Create port object-groups
       for port in term.source_port + term.destination_port:
@@ -941,6 +940,12 @@ class Cisco(aclgenerator.ACLGenerator):
                                             'reject-with-tcp-rst'}})
     return supported_tokens, supported_sub_tokens
 
+  def _IsConfigureReplaceCompatible(self, filter_options):
+    if filter_options is not None:
+      if 'configure_replace_compatible' in filter_options:
+        return True
+    return False
+
   def _TranslatePolicy(self, pol, exp_info):
     self.cisco_policies = []
     current_date = datetime.datetime.now(datetime.timezone.utc).date()
@@ -953,7 +958,6 @@ class Cisco(aclgenerator.ACLGenerator):
     for header, terms in pol.filters:
       if self._PLATFORM not in header.platforms:
         continue
-      obj_target = ObjectGroup()
 
       filter_options = header.FilterOptions(self._PLATFORM)
       filter_name = header.FilterName(self._PLATFORM)
@@ -978,6 +982,11 @@ class Cisco(aclgenerator.ACLGenerator):
         raise UnsupportedCiscoAccessListError(
             'access list type %s not supported by %s (good types: %s)' % (
                 filter_type, self._PLATFORM, str(good_filters)))
+
+      if filter_type == 'object-group-inet6':
+        obj_target = ObjectGroup(af=6)
+      else:
+        obj_target = ObjectGroup()
 
       filter_list = [filter_type]
       if filter_type == 'mixed':
@@ -1059,6 +1068,14 @@ class Cisco(aclgenerator.ACLGenerator):
                 )
             )
           elif next_filter == 'object-group':
+            if term.source_address:
+              srcs = term.GetAddressOfVersion('source_address', 4)
+              if not srcs:
+                continue
+            if term.destination_address:
+              dsts = term.GetAddressOfVersion('destination_address', 4)
+              if not dsts:
+                continue
             obj_target.AddTerm(term)
             new_terms.append(
                 self._GetObjectGroupTerm(
@@ -1066,6 +1083,14 @@ class Cisco(aclgenerator.ACLGenerator):
                 )
             )
           elif next_filter == 'object-group-inet6':
+            if term.source_address:
+              srcs = term.GetAddressOfVersion('source_address', 6)
+              if not srcs:
+                continue
+            if term.destination_address:
+              dsts = term.GetAddressOfVersion('destination_address', 6)
+              if not dsts:
+                continue
             obj_target.AddTerm(term)
             new_terms.append(self._GetObjectGroupTerm(term, filter_name, af=6,
                                                       verbose=self.verbose))
@@ -1083,8 +1108,8 @@ class Cisco(aclgenerator.ACLGenerator):
         # cisco requires different name for the v4 and v6 acls
         if filter_type == 'mixed' and next_filter == 'inet6':
           filter_name = 'ipv6-%s' % filter_name
-        self.cisco_policies.append(
-            (header, filter_name, [next_filter], new_terms, obj_target)
+        self.cisco_policies.append((header, filter_name, [next_filter],
+                                    new_terms, obj_target, filter_options)
         )
 
   def _GetObjectGroupTerm(self, term, filter_name, af=4, verbose=True):
@@ -1259,39 +1284,53 @@ class Cisco(aclgenerator.ACLGenerator):
       return_lines.append(line)
     return '\n'.join(return_lines)
 
-  def _AppendTargetByFilterType(self, filter_name, filter_type):
-    """Takes in the filter name and type and appends headers.
+  def _FilterCmd(self, filter_name, filter_type):
+    """Returns the filter name command.
 
     Args:
       filter_name: Name of the current filter
       filter_type: Type of current filter
 
     Returns:
-      list of strings
+      string
 
     Raises:
       UnsupportedCiscoAccessListError: When unknown filter type is used.
     """
-    target = []
     if filter_type == 'standard':
-      if filter_name.isdigit():
-        target.append('no access-list %s' % filter_name)
-      else:
-        target.append('no ip access-list standard %s' % filter_name)
-        target.append('ip access-list standard %s' % filter_name)
-    elif filter_type == 'extended':
-      target.append('no ip access-list extended %s' % filter_name)
-      target.append('ip access-list extended %s' % filter_name)
-    elif filter_type == 'object-group':
-      target.append('no ip access-list extended %s' % filter_name)
-      target.append('ip access-list extended %s' % filter_name)
-    elif filter_type == 'inet6' or filter_type == 'object-group-inet6':
-      target.append('no ipv6 access-list %s' % filter_name)
-      target.append('ipv6 access-list %s' % filter_name)
-    else:
-      raise UnsupportedCiscoAccessListError(
-          'access list type %s not supported by %s' % (
-              filter_type, self._PLATFORM))
+      return 'ip access-list standard %s' % filter_name
+    if filter_type == 'extended':
+      return 'ip access-list extended %s' % filter_name
+    if filter_type == 'object-group':
+      return 'ip access-list extended %s' % filter_name
+    if filter_type == 'inet6' or filter_type == 'object-group-inet6':
+      return 'ipv6 access-list %s' % filter_name
+    raise UnsupportedCiscoAccessListError(
+        'access list type %s not supported by %s'
+        % (filter_type, self._PLATFORM)
+    )
+
+  def _AppendTargetByFilterType(
+      self, filter_name, filter_type, configure_replace_compatible):
+    """Takes in the filter name and type and appends headers.
+
+    Args:
+      filter_name: Name of the current filter
+      filter_type: Type of current filter
+      configure_replace_compatible: Bool indicating if the resulting config
+        strings should be compatible with the configure replace command.
+
+    Returns:
+      list of strings
+    """
+    if filter_type == 'standard' and filter_name.isdigit():
+      return ['no access-list %s' % filter_name]
+
+    target = []
+    filter_cmd = self._FilterCmd(filter_name, filter_type)
+    if not configure_replace_compatible:
+      target.append('no %s' % filter_cmd)
+    target.append(filter_cmd)
     return target
 
   def _RepositoryTagsHelper(self, target=None, filter_type='', filter_name=''):
@@ -1311,10 +1350,13 @@ class Cisco(aclgenerator.ACLGenerator):
     # add the p4 tags
     target.extend(aclgenerator.AddRepositoryTags('! '))
 
-    for (header, filter_name, filter_list, terms, obj_target
+    for (header, filter_name, filter_list, terms, obj_target, filter_options
         ) in self.cisco_policies:
+      configure_replace_compatible = self._IsConfigureReplaceCompatible(
+          filter_options)
       for filter_type in filter_list:
-        target.extend(self._AppendTargetByFilterType(filter_name, filter_type))
+        target.extend(self._AppendTargetByFilterType(
+            filter_name, filter_type, configure_replace_compatible))
         if filter_type == 'object-group' or filter_type == 'object-group-inet6':
           obj_target.AddName(filter_name)
 
@@ -1345,7 +1387,8 @@ class Cisco(aclgenerator.ACLGenerator):
         target = [str(obj_target)] + target
       # ensure that the header is always first
       target = target_header + target
-      target += ['', 'exit', '']
+      if not configure_replace_compatible:
+        target += ['', 'exit', '']
     if self.remove_duplicate_network_objectgroups:
       return self._remove_duplicate_objects('\n'.join(target))
     return '\n'.join(target)

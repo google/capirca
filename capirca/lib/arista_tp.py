@@ -148,11 +148,14 @@ class Term(aclgenerator.Term):
       },
   }
 
-  def __init__(self, term, term_type, noverbose):
+  def __init__(self, term, term_type, noverbose, field_set):
     super().__init__(term)
     self.term = term
     self.term_type = term_type  # drives the address-family
     self.noverbose = noverbose
+    # Exclusively generate traffic-policies using field sets for setting the
+    # source and destination addresses.
+    self.field_set = field_set
 
     if term_type not in self._TERM_TYPE:
       raise ValueError("unknown filter type: %s" % term_type)
@@ -230,14 +233,17 @@ class Term(aclgenerator.Term):
         self.term.hop_limit or self.term.port or self.term.protocol or
         self.term.protocol_except or self.term.source_address or
         self.term.source_address_exclude or self.term.source_port or
-        self.term.source_prefix or self.term.ttl)
+        self.term.source_prefix or self.term.ttl )
 
     # if the term name is default-* we will render this into the
     # appropriate default term name to be used in this filter.
     is_default_term = re.match(r"^ipv(4|6)\-default\-.*", self.term.name,
                                re.IGNORECASE)
 
-    if (not has_match_criteria and not is_default_term):
+    # if the term doesn't match on anything and isn't a default-term and
+    # isn't a counter term, then we don't render it.
+    if (not has_match_criteria and not is_default_term
+        and not self.term.counter):
       # this term doesn't match on anything and isn't a default-term
       logging.warning(
           "WARNING: term %s has no valid match criteria and "
@@ -254,7 +260,9 @@ class Term(aclgenerator.Term):
 
       if src_addr:
         src_str = "source prefix"
-        if src_addr_ex:
+        # Use field sets if the term contains source addresses to exclude or if
+        # the field_set flag is set.
+        if src_addr_ex or self.field_set:
           # this should correspond to the generated field set
           src_str += " field-set src-%s" % self.term.name
         else:
@@ -275,7 +283,9 @@ class Term(aclgenerator.Term):
 
       if dst_addr:
         dst_str = "destination prefix"
-        if dst_addr_ex:
+        # Use field sets if the term contains destination addresses to exclude
+        # or if the field_set flag is set.
+        if dst_addr_ex or self.field_set:
           # this should correspond to the generated field set
           dst_str += " field-set dst-%s" % self.term.name
         else:
@@ -365,7 +375,16 @@ class Term(aclgenerator.Term):
     current_action = self._ACTIONS.get(self.term.action[0])
     # non-permit/drop actions should be added here
     has_extra_actions = (
-        self.term.logging or self.term.counter or self.term.dscp_set)
+        self.term.logging
+        or self.term.counter
+        or self.term.dscp_set
+        or self.term.traffic_class
+        or self.term.police_kbps
+        or self.term.police_burst
+        or self.term.police_pps
+        or self.term.next_hop_group
+        or self.term.next_interface
+    )
 
     # if !accept - generate an action statement
     # if accept and there are extra actions generate an actions statement
@@ -386,12 +405,79 @@ class Term(aclgenerator.Term):
             "action. logging will not be added.",
             self.term.name,
         )
-
         # counters
       if self.term.counter:
         term_block.append(
             [ACTION_INDENT,
              "count %s" % self.term.counter, False])
+
+      # set dscp bits if any.
+      if self.term.dscp_set and self._is_valid_dscp_value(self.term.dscp_set):
+        term_block.append(
+            [ACTION_INDENT, f"set dscp {self.term.dscp_set}", False]
+        )
+
+      if self.term.traffic_class:
+        term_block.append([
+            ACTION_INDENT,
+            f"set traffic class {self.term.traffic_class}",
+            False,
+        ])
+      if self.term.police_kbps and self.term.police_pps:
+        logging.warning(
+            "WARNING: term %s uses police_pps and police_kbps."
+            "Only one of these options can be used.",
+            self.term.name,
+        )
+      elif self.term.police_burst and self.term.police_pps:
+        logging.warning(
+            "WARNING: term %s uses police_burst, "
+            "which is not supported with police_pps.",
+            self.term.name,
+        )
+      elif self.term.police_burst and not self.term.police_kbps:
+        logging.warning(
+            "WARNING: term %s uses police_burst option but not police_kbps. "
+            "police_burst will not be added.",
+            self.term.name,
+        )
+      elif self.term.police_kbps and self.term.police_burst:
+        term_block.append([
+            ACTION_INDENT,
+            (
+                f"police rate {self.term.police_kbps} kbps burst-size"
+                f" {self.term.police_burst}"
+            ),
+            False,
+        ])
+      elif self.term.police_kbps:
+        term_block.append([
+            ACTION_INDENT,
+            f"police rate {self.term.police_kbps} kbps",
+            False,
+        ])
+      elif self.term.police_pps:
+        term_block.append([
+            ACTION_INDENT,
+            f"police rate {self.term.police_pps} pps",
+            False,
+        ])
+
+
+      if self.term.next_hop_group:
+        term_block.append([
+            ACTION_INDENT,
+            f"redirect next-hop group {self.term.next_hop_group}",
+            False,
+        ])
+
+      if self.term.next_interface and self._is_valid_next_interface(
+          self.term.next_interface):
+        term_block.append([
+            ACTION_INDENT,
+            f"redirect interface {self.term.next_interface}",
+            False,
+        ])
 
       term_block.append([MATCH_INDENT, "!", False])  # end of actions
     term_block.append([TERM_INDENT, "!", False])  # end of match entry
@@ -400,6 +486,23 @@ class Term(aclgenerator.Term):
       config.Append(tindent, tstr, verbatim=tverb)
 
     return str(config)
+
+  def _is_valid_dscp_value(self, dscp):
+    if dscp.isdigit() and 0 <= int(dscp) <= 63:
+      return True
+    raise ValueError(f"Invalid DSCP value: {dscp}. Valid range is 0-63.")
+
+  def _is_valid_next_interface(self, interface):
+    if (
+        interface.startswith("Ethernet")
+        or interface.startswith("InternalRecirc")
+        or interface.startswith("Port-Channel")
+    ):
+      return True
+    raise ValueError(
+        f"Invalid next interface value: {self.term.next_interface}. "
+        "Must begin with Ethernet, InternalRecirc, or Port-Channel."
+    )
 
   def _reflowComments(self, comments, max_length):
     """reflows capirca comments to stay within max_length.
@@ -433,11 +536,15 @@ class Term(aclgenerator.Term):
 
     # source port generation
     if term.source_port:
-      port_str += " source port %s" % self._Group(term.source_port, separator=", ")
+      port_str += " source port %s" % self._Group(
+          term.source_port, separator=", "
+      )
 
     # destination port
     if term.destination_port:
-      port_str += (" destination port %s" % self._Group(term.destination_port, separator=", "))
+      port_str += " destination port %s" % self._Group(
+          term.destination_port, separator=", "
+      )
 
     return port_str
 
@@ -657,13 +764,41 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
     supported_tokens, supported_sub_tokens = super()._BuildTokens()
 
     supported_tokens |= {
-        "action", "comment", "counter", "destination_address",
-        "destination_address_exclude", "destination_port", "destination_prefix",
-        "dscp_set", "expiration", "fragment_offset", "hop_limit", "icmp_code",
-        "icmp_type", "logging", "name", "option", "owner", "packet_length",
-        "platform", "platform_exclude", "port", "protocol", "protocol_except",
-        "source_address", "source_address_exclude", "source_port",
-        "source_prefix", "ttl", "verbatim"
+        "action",
+        "comment",
+        "counter",
+        "destination_address",
+        "destination_address_exclude",
+        "destination_port",
+        "destination_prefix",
+        "dscp_set",
+        "expiration",
+        "fragment_offset",
+        "hop_limit",
+        "icmp_code",
+        "icmp_type",
+        "logging",
+        "name",
+        "option",
+        "owner",
+        "packet_length",
+        "platform",
+        "platform_exclude",
+        "port",
+        "protocol",
+        "protocol_except",
+        "police_burst",
+        "police_kbps",
+        "police_pps",
+        "source_address",
+        "source_address_exclude",
+        "source_port",
+        "source_prefix",
+        "traffic_class",
+        "ttl",
+        "verbatim",
+        "next_hop_group",
+        "next_interface"
     }
     supported_sub_tokens.update({
         "option": {
@@ -716,11 +851,10 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
       field_list += (" " * 6) + "%s\n" % p
     for p in ex_pfxs:
       field_list += (" " * 6) + "except %s\n" % p
-
-    fieldset_hdr = ("field-set " + af + " prefix " + direction + "-" +
-                    ("%s" % name) + "\n")
+    fieldset_name = "%s-%s" % (direction, name)
+    fieldset_hdr = ("field-set " + af + " prefix " + fieldset_name + "\n")
     field_set = fieldset_hdr + field_list
-    return field_set
+    return fieldset_name, field_set
 
   def _TranslatePolicy(self, pol, exp_info):
     self.arista_traffic_policies = []
@@ -736,10 +870,14 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
       filter_options = header.FilterOptions(self._PLATFORM)
       filter_name = header.FilterName(self._PLATFORM)
       noverbose = "noverbose" in filter_options[1:]
+      field_set = "field_set" in filter_options[1:]
+      if field_set:
+        filter_options.remove("field_set")
 
       term_names = set()
       new_terms = []  # list of generated terms
-      policy_field_sets = []  # list of generated field-sets
+      # Dictionary of generated field-sets with field-set name used as the key.
+      policy_field_sets = dict()
       policy_counters = set()  # set of the counters in the policy
 
       # default to mixed policies
@@ -881,31 +1019,32 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
           # generate the prefix sets when there are inline addres
           # exclusions in a term. these will be referenced within the
           # term
-          if term.source_address_exclude:
-            src_addr = term.GetAddressOfVersion("source_address",
-                                                self._AF_MAP[ft])
-            src_addr_ex = term.GetAddressOfVersion("source_address_exclude",
-                                                   self._AF_MAP[ft])
-            src_addr, src_addr_ex = self._MinimizePrefixes(
-                src_addr, src_addr_ex)
+          src_addr, src_addr_ex = self._MinimizePrefixes(
+              term.GetAddressOfVersion("source_address", self._AF_MAP[ft]),
+              term.GetAddressOfVersion(
+                  "source_address_exclude", self._AF_MAP[ft]
+              ),
+          )
 
-            if src_addr_ex:
-              fs = self._GenPrefixFieldset("src", "%s" % term.name, src_addr,
-                                           src_addr_ex, af_map_txt[ft])
-              policy_field_sets.append(fs)
+          # if there are no addresses to match, don't generate a field-set
+          if (src_addr or src_addr_ex) and (src_addr_ex or field_set):
+            name, fs = self._GenPrefixFieldset(
+                "src", term.name, src_addr, src_addr_ex, af_map_txt[ft]
+            )
+            policy_field_sets[name] = fs
 
-          if term.destination_address_exclude:
-            dst_addr = term.GetAddressOfVersion("destination_address",
-                                                self._AF_MAP[ft])
-            dst_addr_ex = term.GetAddressOfVersion(
-                "destination_address_exclude", self._AF_MAP[ft])
-            dst_addr, dst_addr_ex = self._MinimizePrefixes(
-                dst_addr, dst_addr_ex)
+          dst_addr, dst_addr_ex = self._MinimizePrefixes(
+              term.GetAddressOfVersion("destination_address", self._AF_MAP[ft]),
+              term.GetAddressOfVersion(
+                  "destination_address_exclude", self._AF_MAP[ft]
+              ),
+          )
 
-            if dst_addr_ex:
-              fs = self._GenPrefixFieldset("dst", "%s" % term.name, dst_addr,
-                                           dst_addr_ex, af_map_txt[ft])
-              policy_field_sets.append(fs)
+          if (dst_addr or dst_addr_ex) and (dst_addr_ex or field_set):
+            name, fs = self._GenPrefixFieldset(
+                "dst", term.name, dst_addr, dst_addr_ex, af_map_txt[ft]
+            )
+            policy_field_sets[name] = fs
 
           # generate the unique list of named counters
           if term.counter:
@@ -913,15 +1052,85 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
             term.counter = re.sub(r"\.", "-", str(term.counter))
             policy_counters.add(term.counter)
 
-          new_terms.append(self._TERM(term, ft, noverbose))
+          new_terms.append(self._TERM(term, ft, noverbose, field_set))
 
       self.arista_traffic_policies.append(
           (header, filter_name, filter_type, new_terms, policy_counters,
            policy_field_sets))
 
+  @staticmethod
+  def _remove_duplicate_field_sets(field_sets):
+    """Removes duplicate field-sets and maps duplicate names to the original names.
+
+    Args:
+      field_sets (dict): A dictionary where keys are field-set names and values
+                         are the field-set content as strings.
+
+    Returns:
+        tuple: A tuple containing:
+            - A list of unique field-set content.
+            - A dictionary mapping duplicate field-set names to original names.
+    Example:
+      If a policy has field-sets with identical prefixes, the function will
+      return only the unique field-sets.
+      !
+      field-set ipv6 prefix src-ipv6-term-1
+        2001:4860:4860::8888/128
+        2001:4860:4860::8844/128
+      !
+      field-set ipv6 prefix src-ipv6-term-2
+        2001:4860:4860::8888/128
+        2001:4860:4860::8844/128
+      !
+      Result:
+      !
+      field-set ipv6 prefix src-ipv6-term-1
+        2001:4860:4860::8888/128
+        2001:4860:4860::8844/128
+      !
+    """
+
+    # Key: field-set name (str), Value: Set() of prefixes.
+    unique_field_sets = dict()
+    # Key: duplicate field-set name, Value: Existing field-set name.
+    field_sets_to_rename = dict()
+
+    for curr_name, field_set_pfxs in field_sets.items():
+      # Extract the prefixes from the field-set (lines excluding the header).
+      current_prefixes = tuple(
+          line.strip() for line in field_set_pfxs.splitlines()[1:]
+      )
+
+      for existing_name, existing_prefixes in unique_field_sets.items():
+        if current_prefixes == existing_prefixes:
+          # Found a duplicate; Mark the field-set for reanming.
+          field_sets_to_rename[curr_name] = existing_name
+          break
+      else:
+        # No duplicate found; add to unique field-sets.
+        unique_field_sets[curr_name] = current_prefixes
+
+    return (
+        [field_sets[name] for name in unique_field_sets.keys()],
+        field_sets_to_rename,
+    )
+
   def __str__(self):
     config = Config()
-
+    filter_names_all_same = False
+    first_policy = True
+    filter_names = dict()
+    for (
+        _,
+        filter_name,
+        _,
+        _,
+        _,
+        _,
+    ) in self.arista_traffic_policies:
+      filter_names[filter_name] = True
+    if len(filter_names) == 1:
+      filter_names_all_same = True
     for (
         _,
         filter_name,
@@ -933,22 +1142,41 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
       # add the header information
       config.Append("", "traffic-policies")
 
+      # duplicate field-sets to be renamed in the traffic policy.
+      field_sets_to_rename = dict()
       if field_sets:
-        for fs in field_sets:
-          config.Append("   ", fs)
-          config.Append("   ", "!")
+        # Remove duplicate field-sets if any.
+        unique_field_sets, field_sets_to_rename = (
+            self._remove_duplicate_field_sets(field_sets)
+        )
+        for fs in unique_field_sets:
+          config.Append(INDENT_STR, fs)
+          config.Append(INDENT_STR, "!")
 
-      config.Append("   ", "no traffic-policy %s" % filter_name)
-      config.Append("   ", "traffic-policy %s" % filter_name)
+      if not filter_names_all_same:
+        config.Append(INDENT_STR, "no traffic-policy %s" % filter_name)
+      elif first_policy:
+        config.Append(INDENT_STR, "no traffic-policy %s" % filter_name)
+        first_policy = False
+      config.Append(INDENT_STR, "traffic-policy %s" % filter_name)
 
       # if there are counters, export the list of counters
       if counters:
         str_counters = " ".join(counters)
         config.Append("      ", "counter %s" % str_counters)
 
+      # regex pattern for matching duplicate field-sets names in the policy.
+      rename_pattern = re.compile("|".join(field_sets_to_rename.keys()))
       for term in terms:
         term_str = str(term)
         if term_str:
+          if field_sets_to_rename:
+            # Rename all duplicate field-set references in the policy.
+            term_str = rename_pattern.sub(
+                lambda match, rename_field_sets=field_sets_to_rename:
+                rename_field_sets[match.group()],
+                term_str,
+            )
           config.Append("", term_str, verbatim=True)
 
     return str(config) + "\n"

@@ -19,18 +19,13 @@ More information about the Openconfig ACL model schema:
 http://ops.openconfig.net/branches/models/master/openconfig-acl.html
 """
 
+import collections
 import copy
 import datetime
-import ipaddress
 import json
 import logging
-import re
-
-from typing import Dict, Any
 
 from capirca.lib import aclgenerator
-from capirca.lib import nacaddr
-from collections import defaultdict
 import six
 
 
@@ -48,24 +43,24 @@ class ExceededAttributeCountError(Error):
 
 # Graceful handling of dict heierarchy for OpenConfig JSON.
 def RecursiveDict():
-  return defaultdict(RecursiveDict)
+  return collections.defaultdict(RecursiveDict)
 
 
 class Term(aclgenerator.Term):
   """Creates the term for the OpenConfig firewall."""
 
-  ACTION_MAP = {'accept': 'ACCEPT',
-                'deny': 'DROP',
-                'reject': 'REJECT'}
+  ACTION_MAP = {'accept': 'ACCEPT', 'deny': 'DROP', 'reject': 'REJECT'}
 
   # OpenConfig ip-protocols always will resolve to an 8-bit int, but these
   # common names are more convenient in a policy file.
   _ALLOW_PROTO_NAME = frozenset(
-      ['tcp', 'udp', 'icmp', 'esp', 'ah', 'ipip', 'sctp'])
+      ['tcp', 'udp', 'icmp', 'esp', 'ah', 'ipip', 'sctp']
+  )
 
-  AF_RENAME = { 4: 'ipv4',
-                6: 'ipv6',
-              }
+  AF_RENAME = {
+      4: 'ipv4',
+      6: 'ipv6',
+  }
 
   def __init__(self, term, inet_version='inet'):
     super().__init__(term)
@@ -79,7 +74,7 @@ class Term(aclgenerator.Term):
   def __str__(self):
     """Convert term to a string."""
     rules = self.ConvertToDict()
-    json.dumps(rules, indent=2)
+    return json.dumps(rules, indent=2)
 
   def ConvertToDict(self):
     """Convert term to a dictionary.
@@ -107,6 +102,9 @@ class Term(aclgenerator.Term):
     term_dict['actions']['config'] = {}
     term_dict['actions']['config']['forwarding-action'] = action
 
+    desc = f'[{self.term.name}]: {" ".join(self.term.comment)}'
+    term_dict['config']['description'] = desc
+
     # Ballot fatigue handling for 'any'.
     saddrs = self.term.GetAddressOfVersion('flattened_saddr', term_af)
     if not saddrs:
@@ -118,11 +116,11 @@ class Term(aclgenerator.Term):
 
     sports = self.term.source_port
     if not sports:
-      sports = [(0,0)]
+      sports = [(0, 0)]
 
     dports = self.term.destination_port
     if not dports:
-      dports = [(0,0)]
+      dports = [(0, 0)]
 
     protos = self.term.protocol
     if not protos:
@@ -167,17 +165,44 @@ class Term(aclgenerator.Term):
                 if proto != 'none':
                   try:
                     proto_num = self.PROTO_MAP[proto]
-                  except KeyError:
+                  except KeyError as e:
                     raise OcFirewallError(
-                        'Protocol %s unknown. Use an integer.', proto)
+                        f'Protocol {proto} unknown. Use an integer.'
+                    ) from e
                   ace_dict[family]['config']['protocol'] = proto_num
-                rules.append(copy.deepcopy(ace_dict))
+                rule_dict = copy.deepcopy(ace_dict)
               else:
                 proto_num = proto
                 ace_dict[family]['config']['protocol'] = proto_num
                 # This is the business end of ace explosion.
                 # A dict is a reference type, so deepcopy is atually required.
-                rules.append(copy.deepcopy(ace_dict))
+                rule_dict = copy.deepcopy(ace_dict)
+
+              # options
+              for opt in self.term.option:
+                if opt == 'tcp-established' and proto != 'udp':
+                  rule_dict['transport']['config']['detail-mode'] = 'BUILTIN'
+                  rule_dict['transport']['config'][
+                      'builtin-detail'
+                  ] = 'TCP_ESTABLISHED'
+                if opt == 'established' and proto != 'udp':
+                  rule_dict['transport']['config']['detail-mode'] = 'BUILTIN'
+                  rule_dict['transport']['config'][
+                      'builtin-detail'
+                  ] = 'TCP_ESTABLISHED'
+                # initial only for tcp
+                if opt == 'initial' and proto == 'tcp':
+                  rule_dict['transport']['config']['detail-mode'] = 'BUILTIN'
+                  rule_dict['transport']['config'][
+                      'builtin-detail'
+                  ] = 'TCP_INITIAL'
+                # is-fragment only for ipv4
+                if opt == 'is-fragment' and term_af == 4:
+                  rule_dict['transport']['config']['detail-mode'] = 'BUILTIN'
+                  rule_dict['transport']['config'][
+                      'builtin-detail'
+                  ] = 'FRAGMENT'
+              rules.append(rule_dict)
 
     return rules
 
@@ -188,6 +213,7 @@ class OpenConfig(aclgenerator.ACLGenerator):
   _PLATFORM = 'openconfig'
   SUFFIX = '.oacl'
   _SUPPORTED_AF = frozenset(('inet', 'inet6', 'mixed'))
+  OC_AF_TYPE = {'inet': 'ACL_IPV4', 'inet6': 'ACL_IPV6'}
 
   def _BuildTokens(self):
     """Build supported tokens for platform.
@@ -207,10 +233,10 @@ class OpenConfig(aclgenerator.ACLGenerator):
     return supported_tokens, supported_sub_tokens
 
   def _TranslatePolicy(self, pol, exp_info):
-    self.oc_policies = []
-    total_rule_count = 0
+    acl_sets = []
+    sequence_id = 0
 
-    current_date = datetime.datetime.utcnow().date()
+    current_date = datetime.datetime.now(datetime.UTC).date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     for header, terms in pol.filters:
@@ -218,7 +244,6 @@ class OpenConfig(aclgenerator.ACLGenerator):
         continue
 
       filter_options = header.FilterOptions(self._PLATFORM)
-      filter_name = header.FilterName(self._PLATFORM)
 
       # Options are anything after the platform name in the target message of
       # the policy header, [1:].
@@ -229,52 +254,80 @@ class OpenConfig(aclgenerator.ACLGenerator):
         if i in filter_options:
           address_family = i
           filter_options.remove(i)
+      # Handle mixed for each indvidual term as inet and inet6.
+      # inet/inet6 are treated the same.
+      term_address_families = [address_family]
+      if address_family == 'mixed':
+        term_address_families = ['inet', 'inet6']
 
-      for term in terms:
-
-        if term.platform_exclude:
-          if self._PLATFORM in term.platform_exclude:
-            continue
-
-        if term.platform:
-          if self._PLATFORM not in term.platform:
-            continue
-
-        if term.expiration:
-          if term.expiration <= exp_info_date:
-            logging.info('INFO: Term %s in policy %s expires '
-                         'in less than two weeks.', term.name, filter_name)
-          if term.expiration <= current_date:
-            logging.warning('WARNING: Term %s in policy %s is expired and '
-                            'will not be rendered.', term.name, filter_name)
-            continue
-        # TODO(b/196430344): Add support for options such as
-        # established/rst/first-fragment
-        if term.option:
-          raise OcFirewallError(
-              'OpenConfig firewall does not support term options.')
-
-        # Handle mixed for each indvidual term as inet and inet6.
-        # inet/inet6 are treated the same.
-        term_address_families = []
+      for term_af in term_address_families:
+        acl_set = RecursiveDict()
+        filter_name = header.FilterName(self._PLATFORM)
+        # If mixed filter_type, will append 4 or 6 to the filter name
         if address_family == 'mixed':
-          term_address_families = ['inet', 'inet6']
-        else:
-          term_address_families = [address_family]
-        for term_af in term_address_families:
+          suffix = '4' if term_af == 'inet' else '6'
+          filter_name = f'{filter_name}{suffix}'
+        acl_set['name'] = filter_name
+        acl_set['type'] = self.OC_AF_TYPE[term_af]
+        acl_set['config']['name'] = filter_name
+        acl_set['config']['type'] = self.OC_AF_TYPE[term_af]
+
+        oc_policies = []
+        for term in terms:
+          if term.platform_exclude:
+            if self._PLATFORM in term.platform_exclude:
+              continue
+
+          if term.platform:
+            if self._PLATFORM not in term.platform:
+              continue
+
+          if term.expiration:
+            if term.expiration <= exp_info_date:
+              logging.info(
+                  'INFO: Term %s in policy %s expires in less than two weeks.',
+                  term.name,
+                  filter_name,
+              )
+            if term.expiration <= current_date:
+              logging.warning(
+                  'WARNING: Term %s in policy %s is expired and '
+                  'will not be rendered.',
+                  term.name,
+                  filter_name,
+              )
+              continue
+          for opt in term.option:
+            if opt in ['first-fragment', 'sample', 'rst']:
+              raise OcFirewallError(
+                  'OpenConfig firewall does not support term option %s.' % opt
+              )
+
           t = Term(term, term_af)
           for rule in t.ConvertToDict():
-            total_rule_count += 1
-            self.oc_policies.append(rule)
+            sequence_id += 1
+            rule['sequence-id'] = sequence_id
+            rule['config']['sequence-id'] = sequence_id
+            oc_policies.append(rule)
 
-    logging.info('Total rule count of policy %s is: %d', filter_name,
-                 total_rule_count)
+        acl_set['acl-entries']['acl-entry'] = oc_policies
+        acl_sets.append(acl_set)
 
+        logging.info(
+            'Total rule count of policy %s is: %d',
+            filter_name,
+            len(oc_policies),
+        )
+    self.acl_data = {'acl-sets': {'acl-set': acl_sets}}
 
   def __str__(self):
-    out = '%s\n\n' % (json.dumps(self.oc_policies, indent=2,
-                                 separators=(six.ensure_str(','),
-                                             six.ensure_str(': ')),
-                                 sort_keys=True))
+    out = '%s\n\n' % (
+        json.dumps(
+            self.acl_data,
+            indent=2,
+            separators=(six.ensure_str(','), six.ensure_str(': ')),
+            sort_keys=True,
+        )
+    )
 
     return out

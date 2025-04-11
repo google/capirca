@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Unit test for Palo Alto Firewalls acl rendering module."""
-
 from absl.testing import absltest
 from unittest import mock
 
@@ -1813,6 +1812,92 @@ term rule-1 {
     self.assertTrue(len(x) > 0, output)
     addrs = {elem.text for elem in x}
     self.assertEqual({"6000::/3"}, addrs, output)
+
+  def testMixedICMPFlow(self):
+    definitions = naming.Naming()
+    definitions._ParseLine('NET1 = 10.1.0.0/24', 'networks')
+    definitions._ParseLine('NET2 = 10.2.0.0/24', 'networks')
+    definitions._ParseLine('NET3 = 2001:db8:0:aa::/64', 'networks')
+    definitions._ParseLine('       2001:db8:0:bb::/64', 'networks')
+    definitions._ParseLine('NET4 = 4000::/2', 'networks')
+
+    POL = """
+header {
+  target:: paloalto from-zone trust to-zone untrust %s
+}
+term rule-1 {
+%s
+  action:: accept
+  protocol::icmpv6
+}"""
+
+    T = """
+  source-address:: NET1
+  destination-address:: NET2 NET3
+"""
+    # This checks if the rule is properly dropped due to ICMPv6 being used with
+    # no IPv6 source address
+    pol = policy.ParsePolicy(POL % ('mixed', T), definitions)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findall(PATH_RULES + "/entry[@name='rule-1']/")
+    self.assertFalse(x, output)
+
+    T = """
+  source-address:: NET3
+  destination-address:: NET4
+"""
+    pol = policy.ParsePolicy(POL % ('mixed', T), definitions)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findall(
+        PATH_RULES + "/entry[@name='rule-1']/application"
+    )
+    self.assertIsNotNone(x, output)
+    x = paloalto.config.findall(
+        PATH_RULES + "/entry[@name='rule-1']/application/member"
+    )
+    apps = {elem.text for elem in x}
+    self.assertIn('ipv6-icmp', apps)
+
+    POL = """
+header {
+  target:: paloalto from-zone trust to-zone untrust %s
+}
+term rule-1 {
+%s
+  action:: accept
+  protocol::icmp
+}"""
+
+    T = """
+  source-address:: NET1
+  destination-address:: NET2 NET3
+"""
+
+    pol = policy.ParsePolicy(POL % ('mixed', T), definitions)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findall(
+        PATH_RULES + "/entry[@name='rule-1']/application"
+    )
+    self.assertIsNotNone(x, output)
+    x = paloalto.config.findall(
+        PATH_RULES + "/entry[@name='rule-1']/application/member"
+    )
+    apps = {elem.text for elem in x}
+    self.assertIn('icmp', apps)
+    T = """
+  source-address:: NET3
+  destination-address:: NET4
+"""
+    # This checks if the rule is properly dropped due to ICMP being used with
+    # no IPv4 source or destination address
+    pol = policy.ParsePolicy(POL % ('mixed', T), definitions)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    x = paloalto.config.findall(PATH_RULES + "/entry[@name='rule-1']/")
+    self.assertFalse(x, output)
 
 if __name__ == '__main__':
   absltest.main()

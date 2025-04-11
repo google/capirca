@@ -11,6 +11,7 @@ The following tokens are supported:
 - `destination-port`
 - `destination-prefix` - this should resolve to a configured field-set in
   traffic-policy format.
+- `dscp-set`
 - `fragment-offset`
 - `icmp-type`
 - `logging`
@@ -26,6 +27,7 @@ The following tokens are supported:
 - `source-port`
 - `source-prefix` - this should resolve to a configured field-set in
   traffic-policy format.
+- `traffic-class`
 - `verbatim`
 
 ## documentation
@@ -76,6 +78,34 @@ field-set generated with no prefix, while the ipv6 field-set will have `ipv6`
 inserted into the field-set name after the direction and before the name.
 (form: `src|dst-ipv6-term_name`)
 
+## using field-sets
+
+Arista traffic policies can be generated with source or destination prefixes
+directly embedded within the match conditions.  If any prefixes are to be
+excluded from the match, the generator uses field-sets to contain the prefixes.
+Alternatively, a `field-set` flag in the header can force the generator to
+always use field-sets for prefix definitions, even when direct nesting under
+match conditions would otherwise be possible.
+
+The generator also removes any duplicate field-sets and their associated
+references within the policy.
+
+### Sample Policy with unique field-sets
+
+      field-set ipv6 prefix src-ipv6-term-1
+        2001:4860:4860::8888/128
+        2001:4860:4860::8844/128
+      !
+      traffic-policy policy-1
+        match src-ipv6-term-1 ipv6
+          destination prefix field-set src-ipv6-term-1
+          protocol udp destination port 53
+      !
+        match src-ipv6-term-2 ipv6
+          destination prefix field-set src-ipv6-term-1
+          protocol icmp type 0,3,8,11,12 code all
+      !
+
 ## ports
 
 In EOS traffic-policies, ports can be configured using:
@@ -85,6 +115,19 @@ In EOS traffic-policies, ports can be configured using:
 
 Currently, all and field-sets are not supported for ports. Only port-lists are
 supported.
+
+## traffic-class
+
+An optional traffic class can be set in the action block with a value between 0
+and 7.
+
+- `set traffic class <0-7>`
+
+## dscp-set
+
+DSCP can be set in the action block with decimal values ranging between 0 and 63.
+
+- `set dscp <0-63>`
 
 ## default-terms
 

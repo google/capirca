@@ -477,6 +477,13 @@ term good-term-45 {
   source-service-accounts:: acct1@blah.com
 }
 """
+GOOD_TERM_51 = """
+term good-term-51 {
+  source-address:: ANY
+  action:: accept
+  traffic-class:: 4
+}
+"""
 GOOD_TERM_V6_1 = """
 term good-term-v6-1 {
   hop-limit:: 5
@@ -622,7 +629,12 @@ term bad-term-16 {
   action:: accept
 }
 """
-
+BAD_TERM_17 = """
+term bad-term-17 {
+  traffic-class:: 20
+  action:: accept
+}
+"""
 # pylint: disable=maybe-no-member
 
 
@@ -1080,6 +1092,14 @@ class PolicyTest(absltest.TestCase):
     self.assertEqual(terms[0].qos, 'af4')
     self.assertEqual(terms[0].name, 'qos-good-term-12')
 
+  def testTrafficClass(self):
+    pol = HEADER + GOOD_TERM_51
+    ret = policy.ParsePolicy(pol, self.naming)
+    self.assertEqual(len(ret.filters), 1)
+    _, terms = ret.filters[0]
+    self.assertEqual(terms[0].traffic_class, 4)
+    self.assertEqual(terms[0].name, 'good-term-51')
+
   def testMultiPortLines(self):
     pol = HEADER + GOOD_TERM_13
     self.naming.GetServiceByProto.side_effect = [['22', '160-162'], ['161']]
@@ -1429,6 +1449,12 @@ class PolicyTest(absltest.TestCase):
     pol = HEADER + BAD_TERM_15
     self.assertRaises(
         policy.InvalidTermTTLValue, policy.ParsePolicy, pol, self.naming
+    )
+
+  def testInvalidTrafficClass(self):
+    pol = HEADER + BAD_TERM_17
+    self.assertRaises(
+        policy.InvalidTrafficClassValue, policy.ParsePolicy, pol, self.naming
     )
 
   def testNeedAddressBook(self):

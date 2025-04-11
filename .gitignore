@@ -5,6 +5,8 @@ def/AUTOGEN.net
 tests/characterization_data/filters_actual
 tools/new_lint_errors.txt
 
+# Exclude secrets
+gha-creds-*.json
 
 # Recommended python excludes
 # Byte-compiled / optimized / DLL files
