@@ -823,6 +823,19 @@ class ObjectGroupTerm(Term):
       if self.platform in self.term.platform_exclude:
         return ''
 
+    # Don't render icmpv6 protocol terms under inet, or icmp under inet6
+    if (self.af == 6 and 'icmp' in self.term.protocol) or (
+        self.af == 4 and 'icmpv6' in self.term.protocol
+    ):
+      logging.debug(
+          self.NO_AF_LOG_PROTO.substitute(
+              term=self.term.name,
+              proto=', '.join(self.term.protocol),
+              af=self.text_af,
+          )
+      )
+      return ''
+
     source_address_set = set()
     destination_address_set = set()
     ret_str = ['\n']
@@ -1108,9 +1121,14 @@ class Cisco(aclgenerator.ACLGenerator):
         # cisco requires different name for the v4 and v6 acls
         if filter_type == 'mixed' and next_filter == 'inet6':
           filter_name = 'ipv6-%s' % filter_name
-        self.cisco_policies.append((header, filter_name, [next_filter],
-                                    new_terms, obj_target, filter_options)
-        )
+        self.cisco_policies.append((
+            header,
+            filter_name,
+            [next_filter],
+            new_terms,
+            obj_target,
+            filter_options,
+        ))
 
   def _GetObjectGroupTerm(self, term, filter_name, af=4, verbose=True):
     """Returns an ObjectGroupTerm object."""

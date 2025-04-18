@@ -661,34 +661,78 @@ class CiscoTest(absltest.TestCase):
     port_grp2.append('exit')
 
     self.naming.GetNetAddr.return_value = [
-        nacaddr.IP('10.0.0.0/8', token='SOME_HOST')]
+        nacaddr.IP('10.0.0.0/8', token='SOME_HOST')
+    ]
     self.naming.GetServiceByProto.return_value = ['80']
 
     pol = policy.ParsePolicy(
-        GOOD_OBJGRP_HEADER_1 + GOOD_TERM_2 + GOOD_TERM_18, self.naming)
+        GOOD_OBJGRP_HEADER_1 + GOOD_TERM_2 + GOOD_TERM_18, self.naming
+    )
     acl = cisco.Cisco(pol, EXP_INFO)
-    self.assertIn('\n'.join(ip_grp), str(acl), '%s %s' % (
-        '\n'.join(ip_grp), str(acl)))
-    self.assertIn('\n'.join(port_grp1), str(acl), '%s %s' % (
-        '\n'.join(port_grp1), str(acl)))
-    self.assertIn('\n'.join(port_grp2), str(acl), '%s %s' % (
-        '\n'.join(port_grp2), str(acl)))
+    self.assertIn(
+        '\n'.join(ip_grp), str(acl), '%s %s' % ('\n'.join(ip_grp), str(acl))
+    )
+    self.assertIn(
+        '\n'.join(port_grp1),
+        str(acl),
+        '%s %s' % ('\n'.join(port_grp1), str(acl)),
+    )
+    self.assertIn(
+        '\n'.join(port_grp2),
+        str(acl),
+        '%s %s' % ('\n'.join(port_grp2), str(acl)),
+    )
 
     # Object-group terms should use the object groups created.
     self.assertIn(
         ' permit tcp any port-group 80-80 net-group SOME_HOST port-group'
-        ' 1024-65535', str(acl), str(acl))
+        ' 1024-65535',
+        str(acl),
+        str(acl),
+    )
     self.assertIn(
-        ' permit ip net-group SOME_HOST net-group SOME_HOST', str(acl),
-        str(acl))
+        ' permit ip net-group SOME_HOST net-group SOME_HOST', str(acl), str(acl)
+    )
 
     # There should be no addrgroups that look like IP addresses.
     for addrgroup in re.findall(r'net-group ([a-f0-9.:/]+)', str(acl)):
       self.assertRaises(ValueError, nacaddr.IP, addrgroup)
 
-    self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
-                                             mock.call('SOME_HOST')])
+    self.naming.GetNetAddr.assert_has_calls(
+        [mock.call('SOME_HOST'), mock.call('SOME_HOST')]
+    )
     self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
+
+  @mock.patch.object(cisco.logging, 'debug')
+  def testObjectGroupIcmpv6InetMismatch(self, mock_debug):
+    acl = cisco.Cisco(
+        policy.ParsePolicy(GOOD_OBJGRP_HEADER_1 + GOOD_TERM_11, self.naming),
+        EXP_INFO,
+    )
+
+    # output happens in __str_
+    str(acl)
+
+    mock_debug.assert_called_once_with(
+        'Term good-term-11 will not be rendered,'
+        ' as it has icmpv6 match specified but '
+        'the ACL is of inet address family.'
+    )
+
+  @mock.patch.object(cisco.logging, 'debug')
+  def testObjectGroupIcmpInet6Mismatch(self, mock_debug):
+    acl = cisco.Cisco(
+        policy.ParsePolicy(GOOD_OBJGRP_HEADER_2 + GOOD_TERM_1, self.naming),
+        EXP_INFO,
+    )
+    # output happens in __str_
+    str(acl)
+
+    mock_debug.assert_called_once_with(
+        'Term good-term-1 will not be rendered,'
+        ' as it has icmp match specified but '
+        'the ACL is of inet6 address family.'
+    )
 
   def testObjectGroupNoDuplicates(self):
     ip_grp1 = ['object-group network ipv4 SOME_HOST']
@@ -771,53 +815,76 @@ class CiscoTest(absltest.TestCase):
     port_grp2.append('exit')
 
     self.naming.GetNetAddr.return_value = [
-        nacaddr.IP('2001::3/128', token='SOME_HOST')]
+        nacaddr.IP('2001::3/128', token='SOME_HOST')
+    ]
     self.naming.GetServiceByProto.return_value = ['80']
 
     pol = policy.ParsePolicy(
-        GOOD_OBJGRP_HEADER_2 + GOOD_TERM_2 + GOOD_TERM_18, self.naming)
+        GOOD_OBJGRP_HEADER_2 + GOOD_TERM_2 + GOOD_TERM_18, self.naming
+    )
     acl = cisco.Cisco(pol, EXP_INFO)
-    self.assertIn('\n'.join(ip_grp), str(acl), '%s %s' % (
-        '\n'.join(ip_grp), str(acl)))
-    self.assertIn('\n'.join(port_grp1), str(acl), '%s %s' % (
-        '\n'.join(port_grp1), str(acl)))
-    self.assertIn('\n'.join(port_grp2), str(acl), '%s %s' % (
-        '\n'.join(port_grp2), str(acl)))
+    self.assertIn(
+        '\n'.join(ip_grp), str(acl), '%s %s' % ('\n'.join(ip_grp), str(acl))
+    )
+    self.assertIn(
+        '\n'.join(port_grp1),
+        str(acl),
+        '%s %s' % ('\n'.join(port_grp1), str(acl)),
+    )
+    self.assertIn(
+        '\n'.join(port_grp2),
+        str(acl),
+        '%s %s' % ('\n'.join(port_grp2), str(acl)),
+    )
 
     # Object-group terms should use the object groups created.
     self.assertIn(
         ' permit tcp any port-group 80-80 net-group SOME_HOST port-group'
-        ' 1024-65535', str(acl), str(acl))
+        ' 1024-65535',
+        str(acl),
+        str(acl),
+    )
     self.assertIn(
-        ' permit ipv6 net-group SOME_HOST net-group SOME_HOST', str(acl),
-        str(acl))
+        ' permit ipv6 net-group SOME_HOST net-group SOME_HOST',
+        str(acl),
+        str(acl),
+    )
 
     # There should be no addrgroups that look like IP addresses.
     for addrgroup in re.findall(r'net-group ([a-f0-9.:/]+)', str(acl)):
-      self.assertRaises(ValueError, nacaddr.IP(addrgroup))
+      self.assertRaises(ValueError, nacaddr.IP, addrgroup)
 
-    self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
-                                             mock.call('SOME_HOST')])
+    self.naming.GetNetAddr.assert_has_calls(
+        [mock.call('SOME_HOST'), mock.call('SOME_HOST')]
+    )
     self.naming.GetServiceByProto.assert_called_once_with('HTTP', 'tcp')
 
     # There should be no ipv4 addresses
     self.naming.GetNetAddr.reset_mock()
     self.naming.GetNetAddr.return_value = [
-      nacaddr.IP('192.168.0.1/32', token='SOME_HOST'),
+        nacaddr.IP('192.168.0.1/32', token='SOME_HOST'),
     ]
     pol = policy.ParsePolicy(
-        GOOD_OBJGRP_HEADER_2 + GOOD_TERM_2 + GOOD_TERM_18, self.naming)
+        GOOD_OBJGRP_HEADER_2 + GOOD_TERM_2 + GOOD_TERM_18, self.naming
+    )
     acl = cisco.Cisco(pol, EXP_INFO)
-    self.assertNotIn(' permit ip net-group SOME_HOST net-group SOME_HOST', str(acl))
-    self.naming.GetNetAddr.assert_has_calls([mock.call('SOME_HOST'),
-                                             mock.call('SOME_HOST')])
+    self.assertNotIn(
+        ' permit ip net-group SOME_HOST net-group SOME_HOST', str(acl)
+    )
+    self.naming.GetNetAddr.assert_has_calls(
+        [mock.call('SOME_HOST'), mock.call('SOME_HOST')]
+    )
 
   def testInet6(self):
-    self.naming.GetNetAddr.return_value = [nacaddr.IP('10.0.0.0/8'),
-                                           nacaddr.IP('2001:4860:8000::/33')]
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IP('10.0.0.0/8'),
+        nacaddr.IP('2001:4860:8000::/33'),
+    ]
 
-    acl = cisco.Cisco(policy.ParsePolicy(GOOD_INET6_HEADER + GOOD_TERM_8,
-                                         self.naming), EXP_INFO)
+    acl = cisco.Cisco(
+        policy.ParsePolicy(GOOD_INET6_HEADER + GOOD_TERM_8, self.naming),
+        EXP_INFO,
+    )
     inet6_test1 = 'no ipv6 access-list inet6_acl'
     inet6_test2 = 'ipv6 access-list inet6_acl'
     inet6_test3 = 'permit tcp any 2001:4860:8000::/33'
@@ -1100,7 +1167,7 @@ class CiscoTest(absltest.TestCase):
     definitions._ParseLine('NET5 = NET3 NET4', 'networks')
     definitions._ParseLine('NET6 = 4000::/2', 'networks')
     definitions._ParseLine('NET7 = 8000::/1', 'networks')
-    POL = """
+    test_policy = """
     term rule-1 {
       source-address:: NET1
       destination-address:: NET2 NET3
@@ -1126,7 +1193,7 @@ class CiscoTest(absltest.TestCase):
       protocol:: tcp
     }
     """
-    pol = policy.ParsePolicy(GOOD_OBJGRP_HEADER_1 + POL, definitions)
+    pol = policy.ParsePolicy(GOOD_OBJGRP_HEADER_1 + test_policy, definitions)
     acl = cisco.Cisco(pol, EXP_INFO)
     acl_text = str(acl)
     self.assertIn('10.1.0.0', acl_text)
@@ -1134,7 +1201,7 @@ class CiscoTest(absltest.TestCase):
     self.assertIn('permit tcp net-group NET1', acl_text)
     self.assertNotIn('4000::', acl_text)
     self.assertNotIn('NET4', acl_text)
-    pol = policy.ParsePolicy(GOOD_OBJGRP_HEADER_2 + POL, definitions)
+    pol = policy.ParsePolicy(GOOD_OBJGRP_HEADER_2 + test_policy, definitions)
     acl = cisco.Cisco(pol, EXP_INFO)
     acl_text = str(acl)
     self.assertNotIn('10.1.0.0', acl_text)
