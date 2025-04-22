@@ -1408,5 +1408,5 @@ class Cisco(aclgenerator.ACLGenerator):
       if not configure_replace_compatible:
         target += ['', 'exit', '']
     if self.remove_duplicate_network_objectgroups:
-      return self._remove_duplicate_objects('\n'.join(target))
+      return self._remove_duplicate_objects('\n'.join(target)) + '\n'
     return '\n'.join(target)
