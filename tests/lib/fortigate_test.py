@@ -309,10 +309,6 @@ class FortigateTest(unittest.TestCase):
     ip_acl = fortigate.Fortigate(policy.ParsePolicy(
         GOOD_HEADER + ip_term,
         self.naming), EXP_INFO)
-    custom_port_acl = fortigate.Fortigate(
-        policy.ParsePolicy(GOOD_HEADER + custom_port_term,
-                           self.naming), EXP_INFO)
-    #print("\ncustom_port_acl=========\n", custom_port_acl)
 
     dest_only_sig = 'set service HTTP\n'
     diff_sig = 'set service HTTP HTTPS\n'

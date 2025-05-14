@@ -24,7 +24,7 @@ import string
 import unittest
 import mock
 
-from capirca.lib import fortigate
+from capirca.lib import fortigatelocalin
 from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
@@ -111,9 +111,9 @@ class CustomFormatter(string.Formatter):
       return self.DEFAULT_VALUES[key]
 
 
-class FortigateTest(unittest.TestCase):
+class FortigateLocalInTest(unittest.TestCase):
   """
-  Fortigate test class.
+  FortigateLocalIn test class.
 
   """
   def setUp(self):
@@ -146,7 +146,7 @@ class FortigateTest(unittest.TestCase):
 
     """
     term = self.fmt.format(TERM_TEMPLATE)
-    acl = fortigate.Fortigate(policy.ParsePolicy(GOOD_HEADER + term,
+    acl = fortigatelocalin.FortigateLocalIn(policy.ParsePolicy(GOOD_HEADER + term,
                                                  self.naming), EXP_INFO)
 
     expected_sig = 'edit 2'
@@ -167,8 +167,8 @@ class FortigateTest(unittest.TestCase):
     parsed_p = policy.ParsePolicy(BAD_HEADER + term,
                                   self.naming)
 
-    self.assertRaises(fortigate.FilterError,
-                      fortigate.Fortigate,
+    self.assertRaises(fortigatelocalin.FilterError,
+                      fortigatelocalin.FortigateLocalIn,
                       parsed_p,
                       EXP_INFO)
 
@@ -181,13 +181,13 @@ class FortigateTest(unittest.TestCase):
     deny_term = self.fmt.format(TERM_TEMPLATE, action='deny')
     reject_term = self.fmt.format(TERM_TEMPLATE, action='reject')
 
-    accept_acl = fortigate.Fortigate(
+    accept_acl = fortigatelocalin.FortigateLocalIn(
         policy.ParsePolicy(GOOD_HEADER + accept_term,
                            self.naming), EXP_INFO)
-    deny_acl = fortigate.Fortigate(
+    deny_acl = fortigatelocalin.FortigateLocalIn(
         policy.ParsePolicy(GOOD_HEADER + deny_term,
                            self.naming), EXP_INFO)
-    reject_acl = fortigate.Fortigate(
+    reject_acl = fortigatelocalin.FortigateLocalIn(
         policy.ParsePolicy(GOOD_HEADER + reject_term,
                            self.naming), EXP_INFO)
 
@@ -228,23 +228,23 @@ class FortigateTest(unittest.TestCase):
                                       src_addr='SOME_HOST6',
                                       dest_addr='SOME_HOST6')
 
-    diff_addr_acl = fortigate.Fortigate(
+    diff_addr_acl = fortigatelocalin.FortigateLocalIn(
         policy.ParsePolicy(GOOD_HEADER + diff_addr_term,
                            self.naming), EXP_INFO)
 
-    same_addr_acl = fortigate.Fortigate(
+    same_addr_acl = fortigatelocalin.FortigateLocalIn(
         policy.ParsePolicy(GOOD_HEADER + same_addr_term,
                            self.naming), EXP_INFO)
 
-    any_src_acl = fortigate.Fortigate(
+    any_src_acl = fortigatelocalin.FortigateLocalIn(
         policy.ParsePolicy(GOOD_HEADER + any_src_term,
                            self.naming), EXP_INFO)
 
-    any_dest_acl = fortigate.Fortigate(
+    any_dest_acl = fortigatelocalin.FortigateLocalIn(
         policy.ParsePolicy(GOOD_HEADER + any_dest_term,
                            self.naming), EXP_INFO)
 
-    same_addr6_acl = fortigate.Fortigate(
+    same_addr6_acl = fortigatelocalin.FortigateLocalIn(
         policy.ParsePolicy(GOOD_HEADER + same_addr6_term,
                            self.naming), EXP_INFO)
 
@@ -294,25 +294,21 @@ class FortigateTest(unittest.TestCase):
     custom_port_term = self.fmt.format(TERM_TEMPLATE, src_port='WHOIS')
     #print("\icmp_term=========\n", icmp_term)
 
-    dest_only_acl = fortigate.Fortigate(policy.ParsePolicy(
+    dest_only_acl = fortigatelocalin.FortigateLocalIn(policy.ParsePolicy(
         GOOD_HEADER + dest_only_term,
         self.naming), EXP_INFO)
-    diff_acl = fortigate.Fortigate(policy.ParsePolicy(
+    diff_acl = fortigatelocalin.FortigateLocalIn(policy.ParsePolicy(
         GOOD_HEADER + diff_port_term,
         self.naming), EXP_INFO)
-    dup_acl = fortigate.Fortigate(policy.ParsePolicy(
+    dup_acl = fortigatelocalin.FortigateLocalIn(policy.ParsePolicy(
         GOOD_HEADER + dup_port_term,
         self.naming), EXP_INFO)
-    icmp_acl = fortigate.Fortigate(policy.ParsePolicy(
+    icmp_acl = fortigatelocalin.FortigateLocalIn(policy.ParsePolicy(
         GOOD_HEADER + icmp_term,
         self.naming), EXP_INFO)
-    ip_acl = fortigate.Fortigate(policy.ParsePolicy(
+    ip_acl = fortigatelocalin.FortigateLocalIn(policy.ParsePolicy(
         GOOD_HEADER + ip_term,
         self.naming), EXP_INFO)
-    custom_port_acl = fortigate.Fortigate(
-        policy.ParsePolicy(GOOD_HEADER + custom_port_term,
-                           self.naming), EXP_INFO)
-    #print("\ncustom_port_acl=========\n", custom_port_acl)
 
     dest_only_sig = 'set service HTTP\n'
     diff_sig = 'set service HTTP HTTPS\n'
@@ -357,16 +353,16 @@ class FortigateTest(unittest.TestCase):
                                            src_interface='wan1',
                                            dest_interface='wan2',)
 
-    no_interfaces_acl = fortigate.Fortigate(
+    no_interfaces_acl = fortigatelocalin.FortigateLocalIn(
         policy.ParsePolicy(GOOD_HEADER + no_interfaces_term,
                            self.naming), EXP_INFO)
-    src_only_int_acl = fortigate.Fortigate(
+    src_only_int_acl = fortigatelocalin.FortigateLocalIn(
         policy.ParsePolicy(GOOD_HEADER + src_only_int_term,
                            self.naming), EXP_INFO)
-    dest_only_int_acl = fortigate.Fortigate(
+    dest_only_int_acl = fortigatelocalin.FortigateLocalIn(
         policy.ParsePolicy(GOOD_HEADER + dest_only_int_term,
                            self.naming), EXP_INFO)
-    both_interfaces_acl = fortigate.Fortigate(
+    both_interfaces_acl = fortigatelocalin.FortigateLocalIn(
         policy.ParsePolicy(GOOD_HEADER + both_interfaces_term,
                            self.naming), EXP_INFO)
 
@@ -400,10 +396,10 @@ class FortigateTest(unittest.TestCase):
                                                   'comment':
                                                   '"test expiration"'})
 
-    no_expiration_acl = fortigate.Fortigate(
+    no_expiration_acl = fortigatelocalin.FortigateLocalIn(
         policy.ParsePolicy(GOOD_HEADER + no_expiration_term,
                            self.naming), EXP_INFO)
-    expiration_acl = fortigate.Fortigate(
+    expiration_acl = fortigatelocalin.FortigateLocalIn(
         policy.ParsePolicy(GOOD_HEADER + expiration_term,
                            self.naming), EXP_INFO)
 
@@ -432,7 +428,7 @@ class FortigateTest(unittest.TestCase):
                                        add_fields={'application-id': '15816'},
                                        remove_fields=('src_addr', 'src_port'))
 
-    application_acl = fortigate.Fortigate(
+    application_acl = fortigatelocalin.FortigateLocalIn(
         policy.ParsePolicy(GOOD_HEADER_1 + application_term,
                            self.naming), EXP_INFO)
 
@@ -452,10 +448,10 @@ class FortigateTest(unittest.TestCase):
     no_log_term = self.fmt.format(TERM_TEMPLATE,
                                   remove_fields=('logging',))
 
-    log_acl = fortigate.Fortigate(
+    log_acl = fortigatelocalin.FortigateLocalIn(
         policy.ParsePolicy(GOOD_HEADER + log_term,
                            self.naming), EXP_INFO)
-    no_log_acl = fortigate.Fortigate(
+    no_log_acl = fortigatelocalin.FortigateLocalIn(
         policy.ParsePolicy(GOOD_HEADER + no_log_term,
                            self.naming), EXP_INFO)
 
@@ -476,8 +472,8 @@ class FortigateTest(unittest.TestCase):
     parsed_p = policy.ParsePolicy(GOOD_HEADER + duplicate_terms,
                                   self.naming)
 
-    self.assertRaises(fortigate.FortiGateDuplicateTermError,
-                      fortigate.Fortigate,
+    self.assertRaises(fortigatelocalin.FortiGateDuplicateTermError,
+                      fortigatelocalin.FortigateLocalIn,
                       parsed_p,
                       EXP_INFO)
 
@@ -486,11 +482,11 @@ class FortigateTest(unittest.TestCase):
     Tests port map object.
 
     """
-    port_map = fortigate.FortigatePortMap()
+    port_map = fortigatelocalin.FortigatePortMap()
     self.assertEqual('SSH', port_map.get_protocol('tcp', '22'))
-    self.assertRaises(fortigate.FortiGatePortDoesNotExistError,
+    self.assertRaises(fortigatelocalin.FortiGatePortDoesNotExistError,
                       port_map.get_protocol,
                       'tcp', 5000)
-    self.assertRaises(fortigate.FortiGateValueError,
+    self.assertRaises(fortigatelocalin.FortiGateValueError,
                       port_map.get_protocol,
                       'bad_proto', 22)
