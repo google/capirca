@@ -35,6 +35,8 @@ from capirca.lib import cloudarmor
 from capirca.lib import gce
 from capirca.lib import gce_vpc_tf
 from capirca.lib import gcp_hf
+from capirca.lib import fortigate
+from capirca.lib import fortigatelocalin
 from capirca.lib import ipset
 from capirca.lib import iptables
 from capirca.lib import juniper
@@ -198,6 +200,8 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
   sonic_pol = False
   k8s_pol = False
   gce_vpc_tf_pol = False
+  fcl = False
+  lipfcl = False
 
   try:
     with open(input_file) as f:
@@ -286,6 +290,10 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
     gca = copy.deepcopy(pol)
   if 'k8s' in platforms:
     k8s_pol = copy.deepcopy(pol)
+  if 'fortigate' in platforms:
+    fcl = copy.deepcopy(pol)
+  if 'fortigatelocalin' in platforms:
+    lipfcl = copy.deepcopy(pol)
 
   acl_obj: aclgenerator.ACLGenerator
 
@@ -447,6 +455,15 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
       RenderACL(
           str(acl_obj), acl_obj.SUFFIX, output_directory, input_file,
           write_files)
+      
+    if fcl:
+      acl_obj = fortigate.Fortigate(fcl, exp_info)
+      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
+                input_file, write_files)
+    if lipfcl:
+      acl_obj = fortigatelocalin.FortigateLocalIn(lipfcl, exp_info)
+      RenderACL(str(acl_obj), acl_obj.SUFFIX, output_directory,
+                input_file, write_files)
 
   # TODO(robankeny) add additional errors.
   except (
@@ -465,7 +482,9 @@ def RenderFile(base_directory: str, input_file: pathlib.Path,
       gce.Error,
       gce_vpc_tf.Error,
       cloudarmor.Error,
-      k8s.Error) as e:
+      k8s.Error,
+      fortigate.Error,
+      fortigatelocalin.Error) as e:
     raise ACLGeneratorError('Error generating target ACL for %s:\n%s' %
                             (input_file, e))
 
