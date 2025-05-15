@@ -227,10 +227,6 @@ class Term(aclgenerator.Term):
     if self.term.destination_interface:
       destination_interface = self.term.destination_interface
 
-    interface = ''
-    if self.term.interface:
-      interface = self.term.interface
-
     log_hits = False
     if self.term.logging:
       # Iptables sends logs to hosts configured syslog
@@ -308,7 +304,6 @@ class Term(aclgenerator.Term):
                     tcp_matcher,
                     source_interface,
                     destination_interface,
-                    interface,
                     log_hits,
                     self._action_table.get(str(self.term.action[0]))
                     ))
@@ -661,7 +656,6 @@ class Iptables(aclgenerator.ACLGenerator):
                          'destination_prefix',
                          'fragment_offset',
                          'icmp_code',
-                         'interface',
                          'logging',
                          'log_limit',
                          'owner',
