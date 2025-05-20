@@ -677,8 +677,12 @@ class Term(aclgenerator.Term):
       self._term.comment += [f"Owner: {self._term.owner}"]
     if self._term.comment and self._term.verbose:
        lines += [f'{_SP * 2} set comments "{self._obj_container.fix_comment_length((" ").join(self._term.comment))}"']
-    lines += [f"{_SP * 2} set srcintf {self._term.source_interface or 'any'}"]
-    lines += [f"{_SP * 2} set dstintf {self._term.destination_interface or 'any'}"]
+    # fortigate local-in policy exception
+    if self._term.destination_interface and not self._term.source_interface:
+      lines += [f"{_SP * 2} set intf {self._term.destination_interface or 'any'}"]
+    else:
+      lines += [f"{_SP * 2} set srcintf {self._term.source_interface or 'any'}"]
+      lines += [f"{_SP * 2} set dstintf {self._term.destination_interface or 'any'}"]      
     exist_src6 = False
     exist_dst6 = False
     if isinstance(dest_addresses, list):

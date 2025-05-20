@@ -27,7 +27,6 @@ term customers-policy {
 }
 
 term customers-policy2 {
-  source-interface:: port2
   destination-interface:: port1
   source-address:: INTERNAL
   source-port:: SMTP
