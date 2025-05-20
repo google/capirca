@@ -111,3 +111,14 @@ term accept-fgm-v6{
   comment:: "accept-fgm-v6"
   action:: accept
 }
+
+term accept-test-v6{
+  source-interface:: x6.15
+  destination-interface:: v6.15
+  source-address:: REGIONAL-FGMS6
+  destination-address:: ANY_V6
+  destination-port:: HTTP
+  protocol:: tcp
+  comment:: "TESTING"
+  action:: accept
+}
