@@ -89,6 +89,9 @@ class FortigateLocalIn(fortigate.Fortigate):
 
     return '\n'.join(target)
   
+class Term(fortigate.Term):
+  _PLATFORM = 'fortigatelocalin'
+  
 class Error(Exception):
   pass
 

@@ -479,10 +479,11 @@ class Term(aclgenerator.Term):
   _NGFW_MODE = 'profile-based'
   CURRENT_ID = 0
 
-  def __init__(self, term, object_container, verbose=True):
+  def __init__(self, term, object_container, platform, verbose=True):
     super().__init__(term)
     self._term = term
     self._obj_container = object_container
+    self.platform = platform
     self._term.verbose = verbose
 
     self.id_ = type(self).CURRENT_ID
@@ -678,7 +679,7 @@ class Term(aclgenerator.Term):
     if self._term.comment and self._term.verbose:
        lines += [f'{_SP * 2} set comments "{self._obj_container.fix_comment_length((" ").join(self._term.comment))}"']
     # fortigate local-in policy exception
-    if self._term.destination_interface and not self._term.source_interface:
+    if self.platform == "fortigatelocalin":
       lines += [f"{_SP * 2} set intf {self._term.destination_interface or 'any'}"]
     else:
       lines += [f"{_SP * 2} set srcintf {self._term.source_interface or 'any'}"]
@@ -854,7 +855,7 @@ class Fortigate(aclgenerator.ACLGenerator):
           raise FortiGateDuplicateTermError(f"You have a duplicate term: {term.name}")
         term_dup_check.add(term.name)
 
-        new_term = Term(term, self._obj_container, verbose)
+        new_term = Term(term, self._obj_container, self._PLATFORM, verbose)
 
         self.fortigate_policies += [(header, term.name, new_term)]
 
