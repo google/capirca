@@ -354,9 +354,6 @@ class Vpn(Field):
 class ApplicationID(Field):
   """A application id field."""
 
-class Interface(Field):
-  """An interface field."""
-
 destination_address_fields = (DestinationAddress, DestinationExclude,
                               DestinationPrefix)
 
@@ -422,7 +419,6 @@ field_map = {
     'encapsulate': Encapsulate,
     'decapsulate': Decapsulate,
     'application-id': ApplicationID,
-    'interface': Interface,
 }
 
 

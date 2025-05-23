@@ -535,7 +535,6 @@ class Term:
     self.stateless_reply = False
     # fortigate specific
     self.fortigate_application_id = []
-    self.interface = None
 
     # AddObject touches variables which might not have been initialized
     # further up so this has to be at the end.
@@ -918,8 +917,6 @@ class Term:
       ret_str.append('  destination_zone: %s' % sorted(self.destination_zone))
     if self.fortigate_application_id:
       ret_str.append('  application_id: %s' % self.fortigate_application_id)
-    if self.interface:
-      ret_str.append('  interface: %s' % self.interface)
 
     return '\n'.join(ret_str)
 
@@ -1017,9 +1014,6 @@ class Term:
     if self.destination_interface != other.destination_interface:
       return False
     
-    if self.interface != other.interface:
-      return False
-
     # tags
     if not (
         sorted(self.source_tag) == sorted(other.source_tag)
@@ -1343,8 +1337,6 @@ class Term:
           self.destination_zone.append(x.value)
         elif x.var_type is VarType.FORTIGATE_APPLICATION_ID:
           self.fortigate_application_id.append(x.value)
-        elif x.var_type is VarType.INTERFACE:
-          self.interface.append(x.value)
         else:
           raise TermObjectTypeError(
               "%s isn't a type I know how to deal with (contains '%s')"
@@ -1454,8 +1446,6 @@ class Term:
         self.filter_term = obj.value
       elif obj.var_type is VarType.FORTIGATE_APPLICATION_ID:
         self.fortigate_application_id.append(obj.value)
-      elif obj.var_type is VarType.INTERFACE:
-        self.interface = obj.value
       else:
         raise TermObjectTypeError(
             "%s isn't a type I know how to deal with" % (type(obj))
@@ -1826,7 +1816,6 @@ class VarType:
   POLICE_BURST = 74
   POLICE_PPS = 75
   FORTIGATE_APPLICATION_ID = 76
-  INTERFACE = 77
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -2022,7 +2011,6 @@ tokens = (
     'ICMP_TYPE',
     'ICMP_CODE',
     'INTEGER',
-    'INTERFACE',
     'LOGGING',
     'LOG_LIMIT',
     'LOG_NAME',
@@ -2118,7 +2106,6 @@ reserved = {
     'header': 'HEADER',
     'icmp-type': 'ICMP_TYPE',
     'icmp-code': 'ICMP_CODE',
-    'interface': 'INTERFACE',
     'logging': 'LOGGING',
     'log-limit': 'LOG_LIMIT',
     'log_name': 'LOG_NAME',
@@ -2827,9 +2814,6 @@ def p_interface_spec(p):
     p[0] = VarType(VarType.SINTERFACE, p[4])
   if p[1].find('destination-interface') >= 0:
     p[0] = VarType(VarType.DINTERFACE, p[4])
-  elif p[1].find('interface') >= 0:
-    p[0] = VarType(VarType.INTERFACE, p[4])
-
 
 def p_platform_spec(p):
   """platform_spec : PLATFORM ':' ':' one_or_more_strings
