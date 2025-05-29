@@ -2151,6 +2151,7 @@ reserved = {
     'ttl': 'TTL',
     'verbatim': 'VERBATIM',
     'versa-application': 'VERSA_APPLICATION',
+    'vpn': 'VPN',
 }
 
 # disable linting warnings for lexx/yacc code
