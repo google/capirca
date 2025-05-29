@@ -243,15 +243,19 @@ class ObjectsContainer():
         if self.verbose:
           addrgrps += [f'{_SP * 2} set comment "{_DEFAULT_COMMENT}"']
         if address:
-          addrgrps += [f'{_SP * 2} set member {" ".join(f"\"{v}\"" for v in address)}']
+          quoted_members = ('"' + v + '"' for v in address)
+          addrgrps += [f'{_SP * 2} set member {" ".join(quoted_members)}']
         else:
           addrgrps += [_SP * 2 + 'set member "all"']
         if exclude_address:
           addrgrps += [_SP * 2 + 'set exclude enable']
-          addrgrps += [f'{_SP * 2} set exclude-member {" ".join(f"\"{v}\"" for v in exclude_address)}']
+          quoted_excludes = ('"' + v + '"' for v in exclude_address)
+          addrgrps += [f'{_SP * 2} set exclude-member {" ".join(quoted_excludes)}']
         addrgrps += [_SP + 'next']
 
     return addrgrps
+
+
 
   def get_port_range(self, port):
     """
