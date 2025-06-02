@@ -352,6 +352,7 @@ class Term:
     decapsulate: VarType.DECAPSULATE
     filter-term: VarType.FILTER_TERM
     flexible-match-range: VarType.FLEXIBLE_MATCH_RANGE
+    fortigate-application-id: VarType.FORTIGATE_APPLICATION_ID
     forwarding-class: VarType.FORWARDING_CLASS
     forwarding-class-except: VarType.FORWARDING_CLASS_EXCEPT
     expiration: VarType.EXPIRATION
@@ -532,6 +533,8 @@ class Term:
     self.flattened_saddr = None
     self.flattened_daddr = None
     self.stateless_reply = False
+    # fortigate specific
+    self.fortigate_application_id = []
 
     # AddObject touches variables which might not have been initialized
     # further up so this has to be at the end.
@@ -912,6 +915,8 @@ class Term:
       ret_str.append('  source_zone: %s' % sorted(self.source_zone))
     if self.destination_zone:
       ret_str.append('  destination_zone: %s' % sorted(self.destination_zone))
+    if self.fortigate_application_id:
+      ret_str.append('  application_id: %s' % self.fortigate_application_id)
 
     return '\n'.join(ret_str)
 
@@ -1042,6 +1047,8 @@ class Term:
     if sorted(self.ether_type) != sorted(other.ether_type):
       return False
     if sorted(self.traffic_type) != sorted(other.traffic_type):
+      return False
+    if sorted(self.fortigate_application_id) != sorted(other.fortigate_application_id):
       return False
 
     # vpn
@@ -1328,6 +1335,8 @@ class Term:
           self.source_zone.append(x.value)
         elif x.var_type is VarType.DZONE:
           self.destination_zone.append(x.value)
+        elif x.var_type is VarType.FORTIGATE_APPLICATION_ID:
+          self.fortigate_application_id.append(x.value)
         else:
           raise TermObjectTypeError(
               "%s isn't a type I know how to deal with (contains '%s')"
@@ -1435,6 +1444,8 @@ class Term:
         self.target_service_accounts.append(obj.value)
       elif obj.var_type is VarType.FILTER_TERM:
         self.filter_term = obj.value
+      elif obj.var_type is VarType.FORTIGATE_APPLICATION_ID:
+        self.fortigate_application_id.append(obj.value)
       else:
         raise TermObjectTypeError(
             "%s isn't a type I know how to deal with" % (type(obj))
@@ -1804,6 +1815,7 @@ class VarType:
   POLICE_KBPS = 73
   POLICE_BURST = 74
   POLICE_PPS = 75
+  FORTIGATE_APPLICATION_ID = 76
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1987,6 +1999,7 @@ tokens = (
     'EXPIRATION',
     'FILTER_TERM',
     'FLEXIBLE_MATCH_RANGE',
+    'FORTIGATE_APPLICATION_ID',
     'FORWARDING_CLASS',
     'FORWARDING_CLASS_EXCEPT',
     'FRAGMENT_OFFSET',
@@ -2082,6 +2095,7 @@ reserved = {
     'expiration': 'EXPIRATION',
     'filter-term': 'FILTER_TERM',
     'flexible-match-range': 'FLEXIBLE_MATCH_RANGE',
+    'fortigate-application-id': 'FORTIGATE_APPLICATION_ID',
     'forwarding-class': 'FORWARDING_CLASS',
     'forwarding-class-except': 'FORWARDING_CLASS_EXCEPT',
     'fragment-offset': 'FRAGMENT_OFFSET',
@@ -2787,6 +2801,13 @@ def p_pan_application_spec(p):
     p[0].append(VarType(VarType.PAN_APPLICATION, apps))
 
 
+def p_fortigate_application_id_spec(p):
+  """ fortigate_application_id_spec : FORTIGATE_APPLICATION_ID ':' ':' one_or_more_ints """
+  p[0] = []
+  for apps in p[4]:
+    p[0].append(VarType(VarType.FORTIGATE_APPLICATION_ID, apps))
+
+
 def p_interface_spec(p):
   """interface_spec : SINTERFACE ':' ':' STRING
 
@@ -2794,7 +2815,7 @@ def p_interface_spec(p):
   """
   if p[1].find('source-interface') >= 0:
     p[0] = VarType(VarType.SINTERFACE, p[4])
-  elif p[1].find('destination-interface') >= 0:
+  if p[1].find('destination-interface') >= 0:
     p[0] = VarType(VarType.DINTERFACE, p[4])
 
 
