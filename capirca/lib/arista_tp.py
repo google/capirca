@@ -909,8 +909,8 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
           # appropriate default term name to be used in this filter.
           default_term = re.match(r"^default\-.*", term.name, re.IGNORECASE)
 
-          # remove if term names become unique to address family.
-          if (filter_type == "mixed" and ft == "inet6"):
+          # make the term names unique to address family.
+          if ft == "inet6":
             term.name = af_map_txt[ft] + "-" + term.name
 
           if default_term:

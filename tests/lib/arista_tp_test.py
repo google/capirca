@@ -1154,7 +1154,7 @@ class AristaTpTest(absltest.TestCase):
     str(atp)
 
     mock_debug.assert_called_once_with(
-        "Term icmptype-mismatch will not be rendered, "
+        "Term ipv6-icmptype-mismatch will not be rendered, "
         "as it has icmp match specified but "
         "the ACL is of inet6 address family.")
 
