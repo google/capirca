@@ -120,7 +120,7 @@ def ToDottedQuad(net, negate=False, nondsm=False):
     raise ValueError('Addresses larger than 32 bits '
                      'are currently not supported.')
   if net.netmask.bit_length() not in (0, 32):
-    raise ValueError('Subnet masks other than 0 or 32 '
+    raise ValueError(f'Subnet masks({net}/{net.netmask}) other than 0 or 32 '
                      'are currently not supported.')
   if negate:
     netmask = ~net.netmask
