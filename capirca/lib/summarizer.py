@@ -119,17 +119,17 @@ def ToDottedQuad(net, negate=False, nondsm=False):
   if net.address.bit_length() > 32:
     raise ValueError('Addresses larger than 32 bits '
                      'are currently not supported.')
+  int32addr = _Int32ToDottedQuad(net.address)
   if net.netmask.bit_length() not in (0, 32):
-    raise ValueError(f'Subnet masks({net}/{net.netmask}) other than 0 or 32 '
-                     'are currently not supported.')
+    raise ValueError('Only subnet masks of length 0 or 32 are supported, got ('
+                     f'{int32addr}/{_PrefixlenForNonDSM(net.netmask)}).')
   if negate:
     netmask = ~net.netmask
   else:
     netmask = net.netmask
 
-  return (_Int32ToDottedQuad(net.address),
-          _PrefixlenForNonDSM(netmask)) if nondsm else (
-              _Int32ToDottedQuad(net.address), _Int32ToDottedQuad(netmask))
+  return (int32addr, _PrefixlenForNonDSM(netmask)) if nondsm else (
+            int32addr, _Int32ToDottedQuad(netmask))
 
 
 def _PrefixlenForNonDSM(intmask):
