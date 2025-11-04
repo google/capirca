@@ -261,11 +261,14 @@ def _SummarizeSameMask(nets):
         # or they are "a pair".
         if (current_net.netmask == pair_net.netmask and
             (xored_address & (xored_address - 1) == 0) and xored_address > 0):
+          new_netmask = current_net.netmask ^ xored_address
+          if new_netmask.bit_length() not in (0, 32):
+            singletons.append(current_net)
+            break
           # if pair was found, remove both, add paired up network
           # to combinetons for next run and move along
           # otherwise this network can never be paired
           current_nets.pop(pair_net_index)
-          new_netmask = current_net.netmask ^ xored_address
           # summarize supplied networks into one using discontinuous
           # subnet mask.
           combinetons.append(DSMNet(min(current_net.address, pair_net.address),

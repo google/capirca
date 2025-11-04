@@ -85,6 +85,16 @@ class SummarizerTest(absltest.TestCase):
     result = summarizer.Summarize(nets)
     self.assertEqual(len(result), 256)
 
+  def testDontSummarizeWeirdMasks(self):
+    nets = [
+        # combining these results in a weird netmask, dont do it
+        nacaddr.IPv4('34.144.128.0/19'),
+        nacaddr.IPv4('162.144.128.0/19'),
+    ]
+    result = summarizer.Summarize(nets)
+    self.assertEqual(result, [summarizer.DSMNet(579895296, 4294959104),
+                              summarizer.DSMNet(2727378944, 4294959104)])
+
   def testSummarizeSomeNetworks(self):
     nets = [
         # continiously summarizable to one /25
