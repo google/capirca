@@ -70,6 +70,9 @@ class AristaTpFragmentInV6Error(Error):
   pass
 
 
+class TooManyAddressAttributesError(Error):
+  pass
+
 class Config:
   """config allows a configuration to be assembled easily.
 
@@ -233,7 +236,7 @@ class Term(aclgenerator.Term):
         self.term.hop_limit or self.term.port or self.term.protocol or
         self.term.protocol_except or self.term.source_address or
         self.term.source_address_exclude or self.term.source_port or
-        self.term.source_prefix or self.term.ttl )
+        self.term.source_prefix or self.term.ttl or self.term.destination_self)
 
     # if the term name is default-* we will render this into the
     # appropriate default term name to be used in this filter.
@@ -275,6 +278,20 @@ class Term(aclgenerator.Term):
             self.NO_AF_LOG_ADDR.substitute(
                 term=self.term.name, direction="source", af=self.term_type))
         return ""
+
+      # destination self
+      if self.term.destination_self:
+        if (
+            self.term.destination_address
+            or self.term.destination_address_exclude
+            or self.term.destination_prefix
+        ):
+          raise TooManyAddressAttributesError(
+              "'destination_self', 'destination_address', "
+              "'destination_address_exclude', and 'destination_prefix' "
+              "are mutually exclusive."
+          )
+        term_block.append([MATCH_INDENT, "destination prefix self unicast", False])
 
       # destination address
       dst_addr = self.term.GetAddressOfVersion("destination_address", term_af)
@@ -771,6 +788,7 @@ class AristaTrafficPolicy(aclgenerator.ACLGenerator):
         "destination_address_exclude",
         "destination_port",
         "destination_prefix",
+        "destination_self",
         "dscp_set",
         "expiration",
         "fragment_offset",

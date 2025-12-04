@@ -458,6 +458,7 @@ class Term:
     self.destination_address = []
     self.destination_address_exclude = []
     self.destination_port = []
+    self.destination_self = False
     self.destination_prefix = []
     self.filter_term = None
     self.forwarding_class = []
@@ -796,6 +797,8 @@ class Term:
           '  destination_address_exclude: %s'
           % self._SortAddressesByFamily('destination_address_exclude')
       )
+    if self.destination_self:
+      ret_str.append('  destination_self: true')
     if self.destination_tag:
       ret_str.append('  destination_tag: %s' % self.destination_tag)
     if self.target_resources:
@@ -1120,6 +1123,9 @@ class Term:
     if sorted(self.destination_zone) != sorted(other.destination_zone):
       return False
 
+    if self.destination_self != other.destination_self:
+      return False
+
     return True
 
   def __ne__(self, other):
@@ -1335,6 +1341,9 @@ class Term:
           self.source_zone.append(x.value)
         elif x.var_type is VarType.DZONE:
           self.destination_zone.append(x.value)
+        elif x.var_type is VarType.DESTINATION_SELF:
+          if x.value == 'true':
+            self.destination_self = True
         elif x.var_type is VarType.FORTIGATE_APPLICATION_ID:
           self.fortigate_application_id.append(x.value)
         else:
@@ -1444,6 +1453,9 @@ class Term:
         self.target_service_accounts.append(obj.value)
       elif obj.var_type is VarType.FILTER_TERM:
         self.filter_term = obj.value
+      elif obj.var_type is VarType.DESTINATION_SELF:
+        if obj.value == 'true':
+          self.destination_self = True
       elif obj.var_type is VarType.FORTIGATE_APPLICATION_ID:
         self.fortigate_application_id.append(obj.value)
       else:
@@ -1816,6 +1828,7 @@ class VarType:
   POLICE_BURST = 74
   POLICE_PPS = 75
   FORTIGATE_APPLICATION_ID = 76
+  DESTINATION_SELF = 77
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -1993,6 +2006,7 @@ tokens = (
     'DSCP_SET',
     'DTAG',
     'DZONE',
+    'DESTINATION_SELF',
     'ENCAPSULATE',
     'ESCAPEDSTRING',
     'ETHER_TYPE',
@@ -2085,6 +2099,7 @@ reserved = {
     'destination-prefix': 'DPFX',
     'destination-prefix-except': 'EDPFX',
     'destination-port': 'DPORT',
+    'destination-self': 'DESTINATION_SELF',
     'destination-tag': 'DTAG',
     'destination-zone': 'DZONE',
     'dscp-except': 'DSCP_EXCEPT',
@@ -2283,6 +2298,7 @@ def p_term_spec(p):
   """term_spec : term_spec action_spec
 
   | term_spec addr_spec
+  | term_spec destination_self_spec
   | term_spec restrict_address_family_spec
   | term_spec comment_spec
   | term_spec counter_spec
@@ -2543,6 +2559,11 @@ def p_dscp_except_spec(p):
   p[0] = []
   for dscp in p[4]:
     p[0].append(VarType(VarType.DSCP_EXCEPT, dscp))
+
+
+def p_destination_self_spec(p):
+  """destination_self_spec : DESTINATION_SELF ':' ':' STRING"""
+  p[0] = VarType(VarType.DESTINATION_SELF, p[4])
 
 
 def p_exclude_spec(p):

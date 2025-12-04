@@ -271,6 +271,19 @@ term good_term_39 {
   traffic-class:: 4
 }
 """
+GOOD_DST_SELF_TERM = """
+term good-dst-self-term {
+  destination-self:: true
+  action:: accept
+}
+"""
+BAD_DST_SELF_ADDR_TERM = """
+term bad-dst-self-addr-term {
+  destination-address:: SOME_HOST
+  destination-self:: true
+  action:: accept
+}
+"""
 NEXT_HOP_GROUP_TERM = """
 term next-hop-group-term {
   protocol:: tcp
@@ -638,6 +651,7 @@ SUPPORTED_TOKENS = frozenset([
     "destination_address_exclude",
     "destination_port",
     "destination_prefix",
+    "destination_self",
     "dscp_set",
     "expiration",
     "fragment_offset",
@@ -1400,6 +1414,20 @@ class AristaTpTest(absltest.TestCase):
 
     self.assertIn("match ipv6-ANY_MIXED ipv6", output, output)
     self.assertIn("destination prefix 2001:4860:4860::8844/128", output, output)
+
+  def testDestinationSelf(self):
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_DST_SELF_TERM, self.naming),
+        EXP_INFO)
+    output = str(atp)
+    self.assertIn("destination prefix self unicast", output, output)
+
+  def testDestinationSelfAddrConflict(self):
+    self.naming.GetNetAddr.return_value = [nacaddr.IP("10.0.0.0/8")]
+    atp = arista_tp.AristaTrafficPolicy(
+        policy.ParsePolicy(GOOD_HEADER + BAD_DST_SELF_ADDR_TERM, self.naming),
+        EXP_INFO)
+    self.assertRaises(arista_tp.TooManyAddressAttributesError, str, atp)
 
   def testDscpSet(self):
     self.naming.GetNetAddr.side_effect = [[

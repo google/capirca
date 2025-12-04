@@ -170,6 +170,10 @@ class DestinationPrefixExcept(Field):
   """A destination-prefix-except field."""
 
 
+class DestinationSelf(Field):
+  """A destination-self field."""
+
+
 class DestinationTag(Field):
   """A destination tag field."""
 
@@ -368,6 +372,7 @@ field_map = {
     'destination-port': DestinationPort,
     'destination-prefix': DestinationPrefix,
     'destination-prefix-except': DestinationPrefixExcept,
+    'destination-self': DestinationSelf,
     'destination-tag': DestinationTag,
     'destination-zone': DestinationZone,
     'dscp-match': DscpMatch,
