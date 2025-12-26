@@ -169,7 +169,13 @@ class Term(aclgenerator.Term):
                            'daddr': 'ip-destination-address',
                            'protocol': 'ip-protocol',
                            'protocol-except': 'ip-protocol-except',
-                           'tcp-est': 'tcp-flags "(ack|rst)"'}
+                           'tcp-est': 'tcp-flags "(ack|rst)"'},
+                'ethernet-switching': {'addr': 'ip-address',
+                           'saddr': 'ip-source-address',
+                           'daddr': 'ip-destination-address',
+                           'protocol': 'ip-protocol',
+                           'protocol-except': 'ip-protocol-except',
+                           'tcp-est': 'tcp-established'}
               }
 
   def __init__(self, term, term_type, enable_dsmo, noverbose, filter_direction=None, interface_type=None):
@@ -288,7 +294,8 @@ class Term(aclgenerator.Term):
           from_str.append('tcp-initial;')
         elif opt.startswith('first-fragment'):
           from_str.append('first-fragment;')
-
+        elif opt.startswith('no-syn-ack'):
+          from_str.append('tcp-flags "!(syn&ack)";')
         # we don't have a special way of dealing with this, so we output it and
         # hope the user knows what they're doing.
         else:
@@ -905,7 +912,7 @@ class Juniper(aclgenerator.ACLGenerator):
 
   _PLATFORM = 'juniper'
   _DEFAULT_PROTOCOL = 'ip'
-  _SUPPORTED_AF = frozenset(('inet', 'inet6', 'bridge', 'mixed'))
+  _SUPPORTED_AF = frozenset(('inet', 'inet6', 'bridge', 'ethernet-switching', 'mixed'))
   _TERM = Term
   SUFFIX = '.jcl'
 
