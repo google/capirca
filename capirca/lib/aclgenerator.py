@@ -173,9 +173,10 @@ class Term:
     if not icmp_types:
       return ['']
     # only protocols icmp or icmpv6 can be used with icmp-types
-    if protocols != ['icmp'] and protocols != ['icmpv6']:
-      raise UnsupportedFilterError('%s %s' % (
-          'icmp-types specified for non-icmp protocols in term: ',
+    if protocols != ['icmp'] and protocols != ['icmp6'] and protocols != ['icmpv6']:
+      raise UnsupportedFilterError(
+        'icmp-types specified for non-icmp protocols %s in term: %s' % (
+          protocols,
           self.term.name))
     # make sure we have a numeric address family (4 or 6)
     af = self.NormalizeAddressFamily(af)
