@@ -100,7 +100,7 @@ class Term(cisco.Term):
       for line in self.term.verbatim:
         if line[0] == 'ciscoasa':
           ret_str.append(str(line[1]))
-        return '\n'.join(ret_str)
+      return '\n'.join(ret_str)
 
     # protocol
     if not self.term.protocol:
