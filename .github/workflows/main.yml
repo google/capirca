@@ -72,7 +72,7 @@ jobs:
         python3 -m pip -v install dist/capirca*py3*.whl
         aclgen --output_directory ./output --logtostderr
         cd ./output/ && \
-          zip -r ../../artifacts/capirca_output_${{ env.wfdt }}.zip .
+          zip -r ../../artifacts/capirca_output_${wfdt}.zip .
         cd ..
         python3 -m pip -v uninstall -y capirca
     - name: Perform end-to-end testing with master branch

@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Log into registry
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${GITHUB_ACTOR} --password-stdin
 
       - name: Build and tag the image
         run: docker build . --tag $IMAGE_NAME
