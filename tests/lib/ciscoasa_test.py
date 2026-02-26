@@ -18,6 +18,7 @@ from absl.testing import absltest
 from unittest import mock
 
 from capirca.lib import ciscoasa
+from capirca.lib import nacaddr
 from capirca.lib import naming
 from capirca.lib import policy
 
@@ -26,6 +27,13 @@ GOOD_HEADER = """
 header {
   comment:: "this is a test acl"
   target:: ciscoasa test-filter
+}
+"""
+
+GOOD_DSMO_HEADER = """
+header {
+  comment:: "this is a test acl"
+  target:: ciscoasa test-filter enable_dsmo
 }
 """
 
@@ -41,6 +49,14 @@ GOOD_TERM_2 = """
 term good-term-2 {
   verbatim:: ciscoasa "mary had a little lamb"
   policer:: batman
+}
+"""
+
+GOOD_DSMO_TERM = """
+term good-dsmo-term {
+  protocol:: tcp
+  destination-address:: SOME_HOST
+  action:: accept
 }
 """
 
@@ -138,6 +154,19 @@ class CiscoASATest(absltest.TestCase):
     st, sst = pol1._BuildTokens()
     self.assertEqual(st, SUPPORTED_TOKENS)
     self.assertEqual(sst, SUPPORTED_SUB_TOKENS)
+
+  def testDsmo(self):
+    addr_list = list()
+    for octet in range(0, 256):
+      net = nacaddr.IP('192.168.' + str(octet) + '.64/27')
+      addr_list.append(net)
+    self.naming.GetNetAddr.return_value = addr_list
+
+    acl = ciscoasa.CiscoASA(policy.ParsePolicy(GOOD_DSMO_HEADER + GOOD_DSMO_TERM,
+                                               self.naming), EXP_INFO)
+    self.assertIn('permit tcp any 192.168.0.64 255.255.0.224', str(acl))
+
+    self.naming.GetNetAddr.assert_called_once_with('SOME_HOST')
 
 
 if __name__ == '__main__':
