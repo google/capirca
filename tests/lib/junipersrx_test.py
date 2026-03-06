@@ -553,6 +553,14 @@ term platform-exclude-term {
   action:: accept
 }
 """
+COUNTER_GOOD_TERM = """
+term counter-term-{counter_num} {{
+  platform:: srx juniper
+  protocol:: tcp
+  counter:: count-name
+  action:: accept
+}}
+"""
 
 SUPPORTED_TOKENS = frozenset({
     'action',
@@ -1966,6 +1974,14 @@ class JuniperSRXTest(absltest.TestCase):
     pattern = re.compile(r'delete: applications;')
     self.assertTrue(pattern.search(str(''.join(output))), ''.join(output))
 
+  def testTooManyCounters(self):
+    policy_text = GOOD_HEADER
+    for i in range(270):
+      policy_text += COUNTER_GOOD_TERM.format(counter_num=i)
+    pol = policy.ParsePolicy(policy_text, self.naming)
+    self.assertRaises(
+        junipersrx.SRXTooManyCountersError, junipersrx.JuniperSRX, pol, EXP_INFO
+    )
 
 if __name__ == '__main__':
   absltest.main()

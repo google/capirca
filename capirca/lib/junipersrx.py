@@ -70,6 +70,9 @@ class ConflictingTargetOptionsError(Error):
 class ConflictingApplicationSetsError(Error):
   pass
 
+class SRXTooManyCountersError(Error):
+  pass
+
 
 class IndentList(list):
 
@@ -363,6 +366,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
       MixedAddrBookTypesError: Global and Zone address books in the same policy
       ConflictingApplicationSetsError: When two duplicate named terms have
                                        conflicting application entries
+      SRXTooManyCountersError: More than 256 terms with counters found
     """
     current_date = datetime.datetime.utcnow().date()
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
@@ -406,6 +410,15 @@ class JuniperSRX(aclgenerator.ACLGenerator):
             raise UnsupportedFilterError('Term %s has either source-zone or '
                                          'destination-zone which can only be '
                                          'used with global policy' % term.name)
+
+      num_counters = 0
+      for term in terms:
+        if term.counter:
+          num_counters += 1
+      if num_counters > 256:
+        raise SRXTooManyCountersError(
+            f'The policy has {num_counters} terms with counters, limit is 256.'
+        )
 
       # variables used to collect target-options and set defaults
       filter_type = ''
