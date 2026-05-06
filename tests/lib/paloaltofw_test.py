@@ -497,6 +497,7 @@ SUPPORTED_TOKENS = frozenset({
     'source_address_exclude',
     'source_port',
     'stateless_reply',
+    'target_resources',
     'timeout',
     'pan_application',
     'translated',
