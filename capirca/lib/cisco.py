@@ -61,6 +61,34 @@ class ExtendedACLTermError(Error):
   """Raised when there is a problem in an extended access list."""
 
 
+class Sequence:
+  """A sequence number tracker."""
+
+  def __init__(self, enable_sequence_numbers):
+    self._number = 10
+    self._enable_sequence_numbers = enable_sequence_numbers
+
+  def NextPrefix(self, is_ipv6, indent=True):
+    """Returns the next sequence prefix or an empty string if none is needed.
+
+    Args:
+      is_ipv6: bool, True if the ACL is IPv6.
+      indent: bool, True if the output should be indented.
+
+    Returns:
+      A string containing the sequence prefix.
+    """
+    if not self._enable_sequence_numbers:
+      return ''
+    indentation = ' ' if indent else ''
+    if is_ipv6:
+      ret = f'{indentation}sequence {self._number}'
+    else:
+      ret = f'{indentation}{self._number}'
+    self._number += 10
+    return ret
+
+
 class TermStandard:
   """A single standard ACL Term."""
 
@@ -72,6 +100,7 @@ class TermStandard:
     self.logstring = ''
     self.dscpstring = ''
     self.verbose = verbose
+    self.sequencer = Sequence(enable_sequence_numbers=False)
     # sanity checking for standard acls
     if self.term.protocol:
       raise StandardAclTermError(
@@ -160,21 +189,24 @@ class TermStandard:
                                                      self.dscpstring))
     else:
       if self.verbose:
-        ret_str.append(' remark ' + self.term.name)
+        seq_prefix = self.sequencer.NextPrefix(is_ipv6=False)
+        ret_str.append('%s remark %s' % (seq_prefix, self.term.name))
         comments = aclgenerator.WrapWords(self.term.comment,
                                           _COMMENT_MAX_WIDTH)
         if comments and comments[0]:
           for comment in comments:
-            ret_str.append(' remark ' + str(comment))
+            seq_prefix = self.sequencer.NextPrefix(is_ipv6=False)
+            ret_str.append('%s remark %s' % (seq_prefix, comment))
 
       action = _ACTION_TABLE.get(str(self.term.action[0]))
       if v4_addresses:
         for addr in v4_addresses:
+          seq_prefix = self.sequencer.NextPrefix(is_ipv6=False)
           if addr.prefixlen == 32:
-            ret_str.append(' %s host %s%s%s' % (action,
-                                                addr.network_address,
-                                                self.logstring,
-                                                self.dscpstring))
+            ret_str.append('%s %s host %s%s%s' % (seq_prefix, action,
+                                                  addr.network_address,
+                                                  self.logstring,
+                                                  self.dscpstring))
           elif self.platform == 'arista':
             ret_str.append(' %s %s/%s%s%s' % (action,
                                               addr.network_address,
@@ -182,16 +214,17 @@ class TermStandard:
                                               self.logstring,
                                               self.dscpstring))
           else:
-            ret_str.append(' %s %s %s%s%s' % (action,
-                                              addr.network_address,
-                                              addr.hostmask,
-                                              self.logstring,
-                                              self.dscpstring))
+            ret_str.append('%s %s %s %s%s%s' % (seq_prefix, action,
+                                                addr.network_address,
+                                                addr.hostmask,
+                                                self.logstring,
+                                                self.dscpstring))
       else:
-        ret_str.append(' %s %s%s%s' % (action,
-                                       'any',
-                                       self.logstring,
-                                       self.dscpstring))
+        seq_prefix = self.sequencer.NextPrefix(is_ipv6=False)
+        ret_str.append('%s %s %s%s%s' % (seq_prefix, action,
+                                         'any',
+                                         self.logstring,
+                                         self.dscpstring))
 
     return '\n'.join(ret_str)
 
@@ -460,6 +493,7 @@ class Term(aclgenerator.Term):
     self.term_remark = term_remark
     self.platform = platform
     self.verbose = verbose
+    self.sequencer = Sequence(enable_sequence_numbers=False)
     # Our caller should have already verified the address family.
     assert af in (4, 6)
     self.af = af
@@ -491,13 +525,17 @@ class Term(aclgenerator.Term):
           af=self.text_af))
       return ''
     if self.verbose:
+      seq_prefix = self.sequencer.NextPrefix(is_ipv6=self.af == 6)
       if self.term_remark:
-        ret_str.append(' remark ' + self.term.name)
+        ret_str.append('%s remark %s' % (seq_prefix, self.term.name))
       if self.term.owner:
         self.term.comment.append('Owner: %s' % self.term.owner)
       for comment in self.term.comment:
         for line in comment.split('\n'):
-          ret_str.append(' remark ' + str(line)[:100].rstrip())
+          seq_prefix = self.sequencer.NextPrefix(is_ipv6=self.af == 6)
+          ret_str.append(
+              '%s remark %s' % (seq_prefix, str(line)[:100].rstrip())
+          )
 
     # Term verbatim output - this will skip over normal term creation
     # code by returning early.  Warnings provided in policy.py.
@@ -669,8 +707,11 @@ class Term(aclgenerator.Term):
                   proto = 'icmp' if proto == 'icmpv6' else proto
               for icmp_type in icmp_types:
                 for icmp_code in icmp_codes:
+                  sequence = self.sequencer.NextPrefix(
+                      is_ipv6=self.af == 6, indent=False
+                  )
                   ret_str.extend(
-                      self._TermletToStr(action, proto, saddr,
+                      self._TermletToStr(sequence, action, proto, saddr,
                                          self._FormatPort(sport, proto), daddr,
                                          self._FormatPort(dport, proto),
                                          icmp_type, icmp_code, opts))
@@ -746,11 +787,12 @@ class Term(aclgenerator.Term):
       sane_options.remove('established')
     return sane_options
 
-  def _TermletToStr(self, action, proto, saddr, sport, daddr, dport,
+  def _TermletToStr(self, sequence, action, proto, saddr, sport, daddr, dport,
                     icmp_type, icmp_code, option):
     """Take the various compenents and turn them into a cisco acl line.
 
     Args:
+      sequence: str, sequence number
       action: str, action
       proto: str or int, protocol
       saddr: str, source address
@@ -770,8 +812,8 @@ class Term(aclgenerator.Term):
     # str(icmp_type) is needed to ensure 0 maps to '0' instead of FALSE
     icmp_type = str(icmp_type)
     icmp_code = str(icmp_code)
-    all_elements = [action, str(proto), saddr, sport, daddr, dport, icmp_type,
-                    icmp_code, ' '.join(option)]
+    all_elements = [sequence, action, str(proto), saddr, sport, daddr, dport,
+                    icmp_type, icmp_code, ' '.join(option)]
     non_empty_elements = [x for x in all_elements if x]
     return [' ' + ' '.join(non_empty_elements)]
 
@@ -965,6 +1007,12 @@ class Cisco(aclgenerator.ACLGenerator):
       if 'configure_replace_compatible' in filter_options:
         return True
     return False
+
+  def _IsEnableSequenceNumbers(self, filter_options) -> bool:
+    return (
+        filter_options is not None
+        and 'enable_sequence_numbers' in filter_options
+    )
 
   def _TranslatePolicy(self, pol, exp_info):
     self.cisco_policies = []
@@ -1358,15 +1406,21 @@ class Cisco(aclgenerator.ACLGenerator):
     target.append(filter_cmd)
     return target
 
-  def _RepositoryTagsHelper(self, target=None, filter_type='', filter_name=''):
+  def _RepositoryTagsHelper(
+      self, target=None, filter_type='', filter_name='', sequencer=None
+      ):
     if target is None:
       target = []
+    if sequencer is None:
+      sequencer = Sequence(False)
     if filter_type == 'standard' and filter_name.isdigit():
       target.extend(aclgenerator.AddRepositoryTags(
           'access-list %s remark ' % filter_name, date=False, revision=False))
     else:
-      target.extend(aclgenerator.AddRepositoryTags(
-          ' remark ', date=False, revision=False))
+      for tag in aclgenerator.AddRepositoryTags(' remark ', date=False,
+                                                revision=False):
+        seq_prefix = sequencer.NextPrefix(is_ipv6=filter_type == 'inet6')
+        target.append('%s%s' % (seq_prefix, tag))
     return target
 
   def __str__(self):
@@ -1379,7 +1433,9 @@ class Cisco(aclgenerator.ACLGenerator):
         ) in self.cisco_policies:
       configure_replace_compatible = self._IsConfigureReplaceCompatible(
           filter_options)
+      enable_sequence_numbers = self._IsEnableSequenceNumbers(filter_options)
       for filter_type in filter_list:
+        sequencer = Sequence(enable_sequence_numbers)
         target.extend(self._AppendTargetByFilterType(
             filter_name, filter_type, configure_replace_compatible))
         if filter_type == 'object-group' or filter_type == 'object-group-inet6':
@@ -1389,7 +1445,8 @@ class Cisco(aclgenerator.ACLGenerator):
         # remove/re-create of the filter, otherwise config mode doesn't
         # know where to place these remarks in the configuration.
         if self.verbose:
-          target = self._RepositoryTagsHelper(target, filter_type, filter_name)
+          target = self._RepositoryTagsHelper(target, filter_type, filter_name,
+                                              sequencer)
 
           # add a header comment if one exists
 
@@ -1400,10 +1457,14 @@ class Cisco(aclgenerator.ACLGenerator):
                   filter_name.isdigit()):
                 target.append('access-list %s remark %s' % (filter_name, line))
               else:
-                target.append(' remark %s' % line)
+                seq_prefix = sequencer.NextPrefix(
+                    is_ipv6=filter_type == 'inet6'
+                    )
+                target.append('%s remark %s' % (seq_prefix, line))
 
         # now add the terms
         for term in terms:
+          term.sequencer = sequencer
           term_str = str(term)
           if term_str:
             target.append(term_str)

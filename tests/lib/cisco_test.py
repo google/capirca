@@ -16,6 +16,7 @@
 
 import datetime
 import re
+import textwrap
 from unittest import mock
 
 from absl.testing import absltest
@@ -150,6 +151,18 @@ GOOD_CONFIGURE_REPLACE_COMPATIBLE_HEADER = """
 header {
   comment:: "this is a configure_replace_compatible test acl"
   target:: cisco configure_replace_compatible_acl mixed configure_replace_compatible
+}
+"""
+GOOD_ENABLE_SEQUENCE_NUMBERS_HEADER_MIXED = """
+header {
+  comment:: "this is an enable_sequence_numbers test acl"
+  target:: cisco enable_sequence_numbers_acl mixed enable_sequence_numbers
+}
+"""
+GOOD_ENABLE_SEQUENCE_NUMBERS_HEADER_STANDARD = """
+header {
+  comment:: "this is an enable_sequence_numbers test acl"
+  target:: cisco enable_sequence_numbers_acl standard enable_sequence_numbers
 }
 """
 GOOD_STANDARD_TERM_1 = """
@@ -1209,6 +1222,102 @@ class CiscoTest(absltest.TestCase):
     self.assertIn('permit tcp net-group NET6', acl_text)
     self.assertIn('4000::', acl_text)
     self.assertNotIn('NET4', acl_text)
+
+  def testSequenceNumbersMixed(self):
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IP('10.0.0.0/8'),
+        nacaddr.IP('192.168.0.0/16'),
+        nacaddr.IP('2001:4860:8000::/48'),
+        nacaddr.IP('2001:4860:8002::/48'),
+    ]
+    pol = policy.ParsePolicy(
+        GOOD_ENABLE_SEQUENCE_NUMBERS_HEADER_MIXED
+        + GOOD_TERM_1
+        + GOOD_TERM_8
+        + GOOD_TERM_11,
+        self.naming
+    )
+    acl = cisco.Cisco(pol, EXP_INFO)
+    aclout = str(acl)
+    self.assertMultiLineEqual(
+        textwrap.dedent("""\
+        ! $Id:$
+        ! $Date:$
+        ! $Revision:$
+        no ip access-list extended enable_sequence_numbers_acl
+        ip access-list extended enable_sequence_numbers_acl
+         10 remark $Id:$
+         20 remark this is an enable_sequence_numbers test acl
+
+
+         30 remark good-term-1
+         40 permit icmp any any
+
+
+         50 remark good-term
+         60 permit tcp any 10.0.0.0 0.255.255.255
+         70 permit tcp any 192.168.0.0 0.0.255.255
+
+        exit
+
+        no ipv6 access-list ipv6-enable_sequence_numbers_acl
+        ipv6 access-list ipv6-enable_sequence_numbers_acl
+         sequence 10 remark $Id:$
+         sequence 20 remark this is an enable_sequence_numbers test acl
+
+
+         sequence 30 remark good-term
+         sequence 40 permit tcp any 2001:4860:8000::/48
+         sequence 50 permit tcp any 2001:4860:8002::/48
+
+
+         sequence 60 remark good-term-11
+         sequence 70 permit 58 any any 1
+         sequence 80 permit 58 any any 3
+         sequence 90 permit 58 any any 129
+
+        exit
+        """),
+        aclout,
+        '[%s]' % aclout,
+        )
+
+  def testSequenceNumbersStandard(self):
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IP('10.0.0.0/8'),
+        nacaddr.IP('192.168.0.0/16'),
+        nacaddr.IP('2001:4860:8000::/48'),
+        nacaddr.IP('2001:4860:8002::/48'),
+    ]
+    pol = policy.ParsePolicy(
+        GOOD_ENABLE_SEQUENCE_NUMBERS_HEADER_STANDARD
+        + GOOD_STANDARD_TERM_1
+        + GOOD_STANDARD_TERM_2,
+        self.naming
+    )
+    acl = cisco.Cisco(pol, EXP_INFO)
+    aclout = str(acl)
+    self.assertMultiLineEqual(
+        textwrap.dedent("""\
+        ! $Id:$
+        ! $Date:$
+        ! $Revision:$
+        no ip access-list standard enable_sequence_numbers_acl
+        ip access-list standard enable_sequence_numbers_acl
+         10 remark $Id:$
+         20 remark this is an enable_sequence_numbers test acl
+         30 remark standard-term-1
+         40 permit 10.0.0.0 0.255.255.255
+         50 permit 192.168.0.0 0.0.255.255
+         60 remark standard-term-2
+         70 permit 10.0.0.0 0.255.255.255
+         80 permit 192.168.0.0 0.0.255.255
+
+        exit
+        """),
+        aclout,
+        '[%s]' % aclout,
+        )
 
 
 if __name__ == '__main__':

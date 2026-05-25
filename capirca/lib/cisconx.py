@@ -38,7 +38,13 @@ class CiscoNX(cisco.Cisco):
   # Protocols should be emitted as they were in the policy (names).
   _PROTO_INT = False
 
-  def _RepositoryTagsHelper(self, target=None, filter_type='', filter_name=''):
+  def _RepositoryTagsHelper(self, target=None, filter_type='', filter_name='',
+                            enable_sequence_numbers=False):
+    # enable_sequence_numbers is included to satisfy the signature for
+    # cisco.Cisco._RepositoryTagsHelper().
+    # This is not currently required for the cisconx module.
+    del enable_sequence_numbers
+
     if target is None:
       target = []
     target.extend(aclgenerator.AddRepositoryTags(
