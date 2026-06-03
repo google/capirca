@@ -1473,8 +1473,7 @@ class Cisco(aclgenerator.ACLGenerator):
         target = [str(obj_target)] + target
       # ensure that the header is always first
       target = target_header + target
-      if not configure_replace_compatible:
-        target += ['', 'exit', '']
+      target += ['', ''] if configure_replace_compatible else ['', 'exit', '']
     if self.remove_duplicate_network_objectgroups:
       return self._remove_duplicate_objects('\n'.join(target)) + '\n'
     return '\n'.join(target)

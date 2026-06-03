@@ -1319,6 +1319,48 @@ class CiscoTest(absltest.TestCase):
         '[%s]' % aclout,
         )
 
+  def testLastNewLine(self):
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IP('10.0.0.0/8'),
+        nacaddr.IP('2001:4860:8000::/48'),
+    ]
+    pol = policy.ParsePolicy(
+        GOOD_CONFIGURE_REPLACE_COMPATIBLE_HEADER
+        + GOOD_TERM_1
+        + GOOD_TERM_11,
+        self.naming
+    )
+    acl = cisco.Cisco(pol, EXP_INFO)
+    aclout = str(acl)
+    self.assertMultiLineEqual(
+        textwrap.dedent("""\
+        ! $Id:$
+        ! $Date:$
+        ! $Revision:$
+        ip access-list extended configure_replace_compatible_acl
+         remark $Id:$
+         remark this is a configure_replace_compatible test acl
+
+
+         remark good-term-1
+         permit icmp any any
+
+
+        ipv6 access-list ipv6-configure_replace_compatible_acl
+         remark $Id:$
+         remark this is a configure_replace_compatible test acl
+
+
+         remark good-term-11
+         permit 58 any any 1
+         permit 58 any any 3
+         permit 58 any any 129
+
+        """),
+        aclout,
+        f'[{aclout}]',
+        )
+
 
 if __name__ == '__main__':
   absltest.main()
