@@ -494,6 +494,7 @@ class Term(aclgenerator.Term):
     self.platform = platform
     self.verbose = verbose
     self.sequencer = Sequence(enable_sequence_numbers=False)
+    self.configure_replace_compatible = False
     # Our caller should have already verified the address family.
     assert af in (4, 6)
     self.af = af
@@ -738,7 +739,11 @@ class Term(aclgenerator.Term):
                                                     ipaddress.IPv6Network):
       addr = cast(self.IPV6_ADDRESS, addr)
       if addr.num_addresses > 1:
+        if self.platform == 'cisco' and self.configure_replace_compatible:
+          return addr.with_prefixlen.upper()
         return addr.with_prefixlen
+      if self.platform == 'cisco' and self.configure_replace_compatible:
+        return 'host %s' % (addr.network_address.upper())
       return 'host %s' % (addr.network_address)
     # DSMO enabled
     if isinstance(addr, summarizer.DSMNet):
@@ -1465,6 +1470,7 @@ class Cisco(aclgenerator.ACLGenerator):
         # now add the terms
         for term in terms:
           term.sequencer = sequencer
+          term.configure_replace_compatible = configure_replace_compatible
           term_str = str(term)
           if term_str:
             target.append(term_str)

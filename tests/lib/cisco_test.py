@@ -1361,6 +1361,42 @@ class CiscoTest(absltest.TestCase):
         f'[{aclout}]',
         )
 
+  def testUpperCaseIPv6(self):
+    self.naming.GetNetAddr.return_value = [
+        nacaddr.IP('2001:4860:abcd::/48'),
+        nacaddr.IP('2001:4860:efab::/48'),
+    ]
+    pol = policy.ParsePolicy(
+        GOOD_CONFIGURE_REPLACE_COMPATIBLE_HEADER
+        + GOOD_TERM_8,
+        self.naming
+    )
+    acl = cisco.Cisco(pol, EXP_INFO)
+    aclout = str(acl)
+    self.assertMultiLineEqual(
+        textwrap.dedent("""\
+        ! $Id:$
+        ! $Date:$
+        ! $Revision:$
+        ip access-list extended configure_replace_compatible_acl
+         remark $Id:$
+         remark this is a configure_replace_compatible test acl
+
+
+        ipv6 access-list ipv6-configure_replace_compatible_acl
+         remark $Id:$
+         remark this is a configure_replace_compatible test acl
+
+
+         remark good-term
+         permit tcp any 2001:4860:ABCD::/48
+         permit tcp any 2001:4860:EFAB::/48
+
+         """),
+        aclout,
+        f'[{aclout}]',
+        )
+
 
 if __name__ == '__main__':
   absltest.main()
