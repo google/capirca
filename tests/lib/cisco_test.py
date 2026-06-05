@@ -1365,6 +1365,7 @@ class CiscoTest(absltest.TestCase):
     self.naming.GetNetAddr.return_value = [
         nacaddr.IP('2001:4860:abcd::/48'),
         nacaddr.IP('2001:4860:efab::/48'),
+        nacaddr.IP('2001:4860:8000:abcd::1/128'),
     ]
     pol = policy.ParsePolicy(
         GOOD_CONFIGURE_REPLACE_COMPATIBLE_HEADER
@@ -1389,6 +1390,7 @@ class CiscoTest(absltest.TestCase):
 
 
          remark good-term
+         permit tcp any host 2001:4860:8000:ABCD::1
          permit tcp any 2001:4860:ABCD::/48
          permit tcp any 2001:4860:EFAB::/48
 

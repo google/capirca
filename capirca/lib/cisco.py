@@ -743,7 +743,7 @@ class Term(aclgenerator.Term):
           return addr.with_prefixlen.upper()
         return addr.with_prefixlen
       if self.platform == 'cisco' and self.configure_replace_compatible:
-        return 'host %s' % (addr.network_address.upper())
+        return f'host {str(addr.network_address).upper()}'
       return 'host %s' % (addr.network_address)
     # DSMO enabled
     if isinstance(addr, summarizer.DSMNet):
