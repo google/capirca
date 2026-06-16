@@ -474,6 +474,270 @@ class PortMap:
       return port_num
 
 
+class IOSXEMap:
+  """Map protocol numbers, port numbers and ICMP types/codes to names.
+
+  IOS-XE has specific sets of protocols, ports, ICMP types and codes that it
+  represents with specific names in the running-config. The rest is represented
+  with numbers.
+  """
+
+  # Protocol names for IPv4 and IPv6.
+  # This is a complete list of strings that can be used to specify protocols by
+  # name. If a protocol is specified by one of these numbers, the number ends up
+  # in the running-config automatically replaced by IOS-XE with the
+  # corresponding name.
+  # The string values are taken from IOS-XE CLI (the list of available options
+  # when configuring an ACL). They slightly differ from
+  # https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
+  _PROTO_NAMES: dict[int, dict[int, str]] = {
+      # IPv4 protocols.
+      4: {
+          1: 'icmp',
+          2: 'igmp',
+          6: 'tcp',
+          17: 'udp',
+          47: 'gre',
+          50: 'esp',
+          51: 'ahp',
+          88: 'eigrp',
+          89: 'ospf',
+          94: 'nos',
+          103: 'pim',
+          108: 'pcp',
+      },
+      # IPv6 protocols.
+      6: {
+          0: 'hbh',
+          6: 'tcp',
+          17: 'udp',
+          50: 'esp',
+          51: 'ahp',
+          58: 'icmp',
+          108: 'pcp',
+          132: 'sctp',
+      }
+  }
+  # Service names for TCP and UDP port numbers.
+  # This is a complete list of strings that can be used to specify service names
+  # by name. If a service name is specified by one of these numbers, the number
+  # ends up in the running-config automatically replaced by IOS-XE with the
+  # corresponding name.
+  # The string values are taken from IOS-XE CLI (the list of available options
+  # when configuring an ACL). They slightly differ from
+  # https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml
+  _PORT_NAMES: dict[str, dict[int, str]] = {
+      'tcp': {
+          179: 'bgp',
+          19: 'chargen',
+          514: 'cmd',
+          13: 'daytime',
+          9: 'discard',
+          53: 'domain',
+          7: 'echo',
+          512: 'exec',
+          79: 'finger',
+          21: 'ftp',
+          20: 'ftp-data',
+          70: 'gopher',
+          101: 'hostname',
+          113: 'ident',
+          194: 'irc',
+          543: 'klogin',
+          544: 'kshell',
+          513: 'login',
+          515: 'lpd',
+          135: 'msrpc',
+          119: 'nntp',
+          15001: 'onep-plain',
+          15002: 'onep-tls',
+          496: 'pim-auto-rp',
+          109: 'pop2',
+          110: 'pop3',
+          25: 'smtp',
+          111: 'sunrpc',
+          49: 'tacacs',
+          517: 'talk',
+          23: 'telnet',
+          37: 'time',
+          540: 'uucp',
+          43: 'whois',
+          80: 'www',
+      },
+      'udp': {
+          512: 'biff',
+          68: 'bootpc',
+          67: 'bootps',
+          9: 'discard',
+          195: 'dnsix',
+          53: 'domain',
+          7: 'echo',
+          500: 'isakmp',
+          434: 'mobile-ip',
+          42: 'nameserver',
+          138: 'netbios-dgm',
+          137: 'netbios-ns',
+          139: 'netbios-ss',
+          4500: 'non500-isakmp',
+          123: 'ntp',
+          496: 'pim-auto-rp',
+          520: 'rip',
+          521: 'ripv6',
+          161: 'snmp',
+          162: 'snmptrap',
+          111: 'sunrpc',
+          514: 'syslog',
+          49: 'tacacs',
+          517: 'talk',
+          69: 'tftp',
+          37: 'time',
+          513: 'who',
+          177: 'xdmcp',
+      }
+  }
+  # ICMP and ICMPv6 type/code names.
+  # This is a complete list of strings that can be used to specify ICMP types
+  # and type+code combinations by name. If an ICMP type or a type+code
+  # combination is specified by one of these numbers (or a pair of numbers),
+  # the number(s) end(s) up in the running-config automatically replaced by
+  # IOS-XE with the corresponding name.
+  # An ICMP type can be accompanied by an additional code, or not, depending on
+  # the type.
+  # Example: "permit icmp any any 3" becomes "permit icmp any any unreachable",
+  # "permit icmp any any 3 0" becomes "permit icmp any any net-unreachable".
+  # The string values are taken from IOS-XE CLI (the list of available options
+  # when configuring an ACL). Not all codes and types from
+  # https://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml and
+  # https://www.iana.org/assignments/icmpv6-parameters/icmpv6-parameters.xhtml
+  # have corresponding names in IOS-XE.
+  _ICMP_TYPE_CODE_NAMES: dict[int, dict[tuple[str, str], str]] = {
+      # ICMP (IPv4)
+      4: {
+          ('0', ''): 'echo-reply',
+          ('3', ''): 'unreachable',
+          ('3', '0'): 'net-unreachable',
+          ('3', '1'): 'host-unreachable',
+          ('3', '2'): 'protocol-unreachable',
+          ('3', '3'): 'port-unreachable',
+          ('3', '4'): 'packet-too-big',
+          ('3', '5'): 'source-route-failed',
+          ('3', '6'): 'network-unknown',
+          ('3', '7'): 'host-unknown',
+          ('3', '8'): 'host-isolated',
+          ('3', '9'): 'dod-net-prohibited',
+          ('3', '10'): 'dod-host-prohibited',
+          ('3', '11'): 'net-tos-unreachable',
+          ('3', '12'): 'host-tos-unreachable',
+          ('3', '13'): 'administratively-prohibited',
+          ('3', '14'): 'host-precedence-unreachable',
+          ('3', '15'): 'precedence-unreachable',
+          ('4', ''): 'source-quench',
+          ('5', ''): 'redirect',
+          ('5', '0'): 'net-redirect',
+          ('5', '1'): 'host-redirect',
+          ('5', '2'): 'net-tos-redirect',
+          ('5', '3'): 'host-tos-redirect',
+          ('6', ''): 'alternate-address',
+          ('8', ''): 'echo',
+          ('9', ''): 'router-advertisement',
+          ('10', ''): 'router-solicitation',
+          ('11', ''): 'time-exceeded',
+          ('11', '0'): 'ttl-exceeded',
+          ('11', '1'): 'reassembly-timeout',
+          ('12', ''): 'parameter-problem',
+          ('12', '0'): 'general-parameter-problem',
+          ('12', '1'): 'option-missing',
+          ('12', '2'): 'no-room-for-option',
+          ('13', ''): 'timestamp-request',
+          ('14', ''): 'timestamp-reply',
+          ('15', ''): 'information-request',
+          ('16', ''): 'information-reply',
+          ('17', ''): 'mask-request',
+          ('18', ''): 'mask-reply',
+          ('30', ''): 'traceroute',
+          ('31', ''): 'conversion-error',
+          ('32', ''): 'mobile-redirect',
+      },
+      # ICMPv6
+      6: {
+          ('1', ''): 'unreachable',
+          ('2', ''): 'packet-too-big',
+          ('3', ''): 'time-exceeded',
+          ('4', ''): 'parameter-problem',
+          ('128', ''): 'echo-request',
+          ('129', ''): 'echo-reply',
+          ('130', ''): 'mld-query',
+          ('131', ''): 'mld-report',
+          ('132', ''): 'mld-reduction',
+          ('133', ''): 'router-solicitation',
+          ('134', ''): 'router-advertisement',
+          ('135', ''): 'nd-ns',
+          ('136', ''): 'nd-na',
+          ('137', ''): 'redirect',
+          ('138', ''): 'router-renumbering',
+          ('143', ''): 'mld-v2-report',
+          ('144', ''): 'dhaad-request',
+          ('145', ''): 'dhaad-reply',
+          ('146', ''): 'mpd-solicitation',
+          ('147', ''): 'mpd-advertisement',
+      }
+  }
+
+  @staticmethod
+  def GetProtocolName(proto, af: int):
+    """Converts a protocol number to a name or returns the unchanged value.
+
+    Args:
+      proto: string or int representing proto (tcp, udp, 50, etc).
+      af: integer representing the address family (4 or 6).
+
+    Returns:
+      A name of the protocol or the unchanged provided value.
+    """
+    try:
+      proto_name = IOSXEMap._PROTO_NAMES[af][proto]
+      return proto_name
+    except KeyError:
+      return proto
+
+  @staticmethod
+  def GetPortName(port, proto: str):
+    """Converts a port number to a name or returns the unchanged value.
+
+    Args:
+      port: integer representing the port number.
+      proto: string representing the proto (tcp, udp).
+
+    Returns:
+      A name of the port or the unchanged provided value.
+    """
+    try:
+      port_name = IOSXEMap._PORT_NAMES[proto][port]
+      return port_name
+    except KeyError:
+      return port
+
+  @staticmethod
+  def GetIcmpTypeCodeName(icmp_type: str, icmp_code: str, af: int):
+    """Converts an ICMP type/code numbers to a name or returns the unchanged values.
+
+    Args:
+      icmp_type: string representing the ICMP type.
+      icmp_code: string representing the ICMP code.
+      af: integer representing the address family (4 or 6).
+
+    Returns:
+      A name of the ICMP type/code or the unchanged provided values.
+    """
+    try:
+      icmp_type_code_name = IOSXEMap._ICMP_TYPE_CODE_NAMES[af][
+          (icmp_type, icmp_code)
+      ]
+      return [icmp_type_code_name]
+    except KeyError:
+      return [icmp_type, icmp_code]
+
+
 class Term(aclgenerator.Term):
   """A single ACL Term."""
   ALLOWED_PROTO_STRINGS = ['eigrp', 'gre', 'icmp', 'igmp', 'igrp', 'ip',
@@ -712,10 +976,19 @@ class Term(aclgenerator.Term):
                       is_ipv6=self.af == 6, indent=False
                   )
                   ret_str.extend(
-                      self._TermletToStr(sequence, action, proto, saddr,
-                                         self._FormatPort(sport, proto), daddr,
-                                         self._FormatPort(dport, proto),
-                                         icmp_type, icmp_code, opts))
+                      self._TermletToStr(
+                          sequence,
+                          action,
+                          self._FormatProto(proto, self.af),
+                          saddr,
+                          self._FormatPort(sport, proto),
+                          daddr,
+                          self._FormatPort(dport, proto),
+                          icmp_type,
+                          icmp_code,
+                          opts,
+                      )
+                  )
 
     return '\n'.join(ret_str)
 
@@ -767,10 +1040,41 @@ class Term(aclgenerator.Term):
     if self.platform == 'arista':
       port0 = PortMap.GetProtocol(port0, proto, self.platform)
       port1 = PortMap.GetProtocol(port1, proto, self.platform)
+    elif self.platform == 'cisco' and self.configure_replace_compatible:
+      port0 = IOSXEMap.GetPortName(port0, proto)
+      port1 = IOSXEMap.GetPortName(port1, proto)
 
     if port[0] != port[1]:
       return 'range %s %s' % (port0, port1)
     return 'eq %s' % (port0)
+
+  def _FormatProto(self, proto, af):
+    """Returns a formatted proto string.
+
+    Args:
+      proto: int representing the protocol
+      af: int representing the address family (4 or 6).
+
+    Returns:
+      A string suitable for the ACL.
+    """
+    if self.platform == 'cisco' and self.configure_replace_compatible:
+      return IOSXEMap.GetProtocolName(proto, af)
+    return proto
+
+  def _FormatIcmpTypeCode(self, icmp_type: str, icmp_code: str):
+    """Returns a formatted name string for the ICMP type and code.
+
+    Args:
+      icmp_type: string, the ICMP type.
+      icmp_code: string, the ICMP code.
+
+    Returns:
+      A string suitable for the ACL.
+    """
+    if self.platform == 'cisco' and self.configure_replace_compatible:
+      return IOSXEMap.GetIcmpTypeCodeName(icmp_type, icmp_code, self.af)
+    return [icmp_type, icmp_code]
 
   def _FixOptions(self, proto, option):
     """Returns a set of options suitable for the given protocol.
@@ -814,11 +1118,12 @@ class Term(aclgenerator.Term):
     Raises:
       UnsupportedCiscoAccessListError: When unknown icmp-types specified
     """
+    all_elements = [sequence, action, str(proto), saddr, sport, daddr, dport]
     # str(icmp_type) is needed to ensure 0 maps to '0' instead of FALSE
-    icmp_type = str(icmp_type)
-    icmp_code = str(icmp_code)
-    all_elements = [sequence, action, str(proto), saddr, sport, daddr, dport,
-                    icmp_type, icmp_code, ' '.join(option)]
+    all_elements.extend(
+        self._FormatIcmpTypeCode(str(icmp_type), str(icmp_code))
+    )
+    all_elements.append(' '.join(option))
     non_empty_elements = [x for x in all_elements if x]
     return [' ' + ' '.join(non_empty_elements)]
 

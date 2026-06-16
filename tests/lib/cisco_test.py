@@ -165,6 +165,12 @@ header {
   target:: cisco enable_sequence_numbers_acl standard enable_sequence_numbers
 }
 """
+GOOD_PORT_NAMES_HEADER = """
+header {
+  comment:: "this is a port_names test acl"
+  target:: cisco port_names_acl extended configure_replace_compatible
+}
+"""
 GOOD_STANDARD_TERM_1 = """
 term standard-term-1 {
   address:: SOME_HOST
@@ -390,6 +396,76 @@ term good_term_24 {
 LONG_COMMENT_TERM = """
 term long-comment-term {
   comment:: "%s "
+  action:: accept
+}
+"""
+GOOD_TERM_25_PROTOCOLS_IPV4 = """
+term good_term_25 {
+  protocol:: ah esp eigrp ggp gre icmp igmp ipcomp nos ospf pim tcp udp
+  action:: accept
+}
+"""
+GOOD_TERM_26_PROTOCOLS_IPV6 = """
+term good_term_26 {
+  protocol:: ah esp ggp hopopt icmpv6 ipcomp ospf sctp tcp udp
+  action:: accept
+}
+"""
+GOOD_TERM_27_TCP_PORTS = """
+term good_term_27 {
+  protocol:: tcp
+  destination-port:: SOME_PORTS
+  action:: accept
+}
+"""
+GOOD_TERM_28_UDP_PORTS = """
+term good_term_28 {
+  protocol:: udp
+  destination-port:: SOME_PORTS
+  action:: accept
+}
+"""
+GOOD_TERM_29_ICMP_IPV4 = """
+term good_term_icmp_types {
+  protocol:: icmp
+  icmp-type:: echo-reply unreachable source-quench redirect alternate-address echo-request router-advertisement router-solicitation time-exceeded parameter-problem timestamp-request timestamp-reply information-request information-reply mask-request mask-reply traceroute conversion-error mobile-redirect
+  action:: accept
+}
+term good_term_unreachable_codes {
+  protocol:: icmp
+  icmp-type:: unreachable
+  icmp-code:: 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+  action:: accept
+}
+term good_term_redirect_codes {
+  protocol:: icmp
+  icmp-type:: redirect
+  icmp-code:: 0 1 2 3
+  action:: accept
+}
+term good_term_time-exceeded_codes {
+  protocol:: icmp
+  icmp-type:: time-exceeded
+  icmp-code:: 0 1
+  action:: accept
+}
+term good_term_parameter-problem_codes {
+  protocol:: icmp
+  icmp-type:: parameter-problem
+  icmp-code:: 0 1 2
+  action:: accept
+}
+term good_term_router-advertisement_codes {
+  protocol:: icmp
+  icmp-type:: router-advertisement
+  icmp-code:: 0 16
+  action:: accept
+}
+"""
+GOOD_TERM_30_ICMP_IPV6 = """
+term good_term_30 {
+  protocol:: icmpv6
+  icmp-type:: destination-unreachable packet-too-big time-exceeded parameter-problem echo-request echo-reply multicast-listener-query multicast-listener-report multicast-listener-done router-solicit router-advertisement neighbor-solicit neighbor-advertisement redirect-message router-renumbering icmp-node-information-query icmp-node-information-response inverse-neighbor-discovery-solicitation inverse-neighbor-discovery-advertisement version-2-multicast-listener-report home-agent-address-discovery-request home-agent-address-discovery-reply mobile-prefix-solicitation mobile-prefix-advertisement certification-path-solicitation certification-path-advertisement multicast-router-advertisement multicast-router-solicitation multicast-router-termination
   action:: accept
 }
 """
@@ -1353,9 +1429,9 @@ class CiscoTest(absltest.TestCase):
 
 
          remark good-term-11
-         permit 58 any any 1
-         permit 58 any any 3
-         permit 58 any any 129
+         permit icmp any any unreachable
+         permit icmp any any time-exceeded
+         permit icmp any any echo-reply
 
         """),
         aclout,
@@ -1394,6 +1470,421 @@ class CiscoTest(absltest.TestCase):
          permit tcp any host 2001:4860:8000:ABCD::1
          permit tcp any 2001:4860:ABCD::/48
          permit tcp any 2001:4860:EFAB::/48
+
+         """),
+        aclout,
+        f'[{aclout}]',
+        )
+
+  def testProtocolNames(self):
+    pol = policy.ParsePolicy(
+        GOOD_CONFIGURE_REPLACE_COMPATIBLE_HEADER
+        + GOOD_TERM_25_PROTOCOLS_IPV4
+        + GOOD_TERM_26_PROTOCOLS_IPV6,
+        self.naming
+    )
+    acl = cisco.Cisco(pol, EXP_INFO)
+    aclout = str(acl)
+    self.assertMultiLineEqual(
+        textwrap.dedent("""\
+        ! $Id:$
+        ! $Date:$
+        ! $Revision:$
+        ip access-list extended configure_replace_compatible_acl
+         remark $Id:$
+         remark this is a configure_replace_compatible test acl
+
+
+         remark good_term_25
+         permit ahp any any
+         permit esp any any
+         permit eigrp any any
+         permit 3 any any
+         permit gre any any
+         permit icmp any any
+         permit igmp any any
+         permit pcp any any
+         permit nos any any
+         permit ospf any any
+         permit pim any any
+         permit tcp any any
+         permit udp any any
+
+
+        ipv6 access-list ipv6-configure_replace_compatible_acl
+         remark $Id:$
+         remark this is a configure_replace_compatible test acl
+
+
+         remark good_term_26
+         permit ahp any any
+         permit esp any any
+         permit 3 any any
+         permit hbh any any
+         permit icmp any any
+         permit pcp any any
+         permit 89 any any
+         permit sctp any any
+         permit tcp any any
+         permit udp any any
+
+         """),
+        aclout,
+        f'[{aclout}]',
+    )
+
+  def testPortNamesTCP(self):
+    self.naming.GetServiceByProto.return_value = [
+        '1',  # A port name without a name.
+        '7',
+        '9',
+        '13',
+        '19',
+        '20',
+        '23',
+        '25',
+        '43',
+        '49',
+        '53',
+        '70',
+        '79',
+        '80',
+        '101',
+        '109',
+        '110',
+        '113',
+        '119',
+        '135',
+        '179',
+        '194',
+        '496',
+        '512',
+        '513',
+        '515',
+        '517',
+        '540',
+        '543',
+        '544',
+        '15001',
+        '15002',
+    ]
+    pol = policy.ParsePolicy(
+        GOOD_PORT_NAMES_HEADER + GOOD_TERM_27_TCP_PORTS,
+        self.naming,
+    )
+    acl = cisco.Cisco(pol, EXP_INFO)
+    aclout = str(acl)
+    self.assertMultiLineEqual(
+        textwrap.dedent("""\
+        ! $Id:$
+        ! $Date:$
+        ! $Revision:$
+        ip access-list extended port_names_acl
+         remark $Id:$
+         remark this is a port_names test acl
+
+
+         remark good_term_27
+         permit tcp any any eq 1
+         permit tcp any any eq echo
+         permit tcp any any eq discard
+         permit tcp any any eq daytime
+         permit tcp any any eq chargen
+         permit tcp any any eq ftp-data
+         permit tcp any any eq telnet
+         permit tcp any any eq smtp
+         permit tcp any any eq whois
+         permit tcp any any eq tacacs
+         permit tcp any any eq domain
+         permit tcp any any eq gopher
+         permit tcp any any eq finger
+         permit tcp any any eq www
+         permit tcp any any eq hostname
+         permit tcp any any eq pop2
+         permit tcp any any eq pop3
+         permit tcp any any eq ident
+         permit tcp any any eq nntp
+         permit tcp any any eq msrpc
+         permit tcp any any eq bgp
+         permit tcp any any eq irc
+         permit tcp any any eq pim-auto-rp
+         permit tcp any any eq exec
+         permit tcp any any eq login
+         permit tcp any any eq lpd
+         permit tcp any any eq talk
+         permit tcp any any eq uucp
+         permit tcp any any eq klogin
+         permit tcp any any eq kshell
+         permit tcp any any eq onep-plain
+         permit tcp any any eq onep-tls
+
+         """),
+        aclout,
+        f'[{aclout}]',
+        )
+
+    # The rest of the ports that would have created range statements
+    # if included in the previous list.
+    self.naming.GetServiceByProto.return_value = [
+        '21',
+        '111',
+        '514',
+    ]
+    pol = policy.ParsePolicy(
+        GOOD_PORT_NAMES_HEADER + GOOD_TERM_27_TCP_PORTS,
+        self.naming,
+    )
+    acl = cisco.Cisco(pol, EXP_INFO)
+    aclout = str(acl)
+    self.assertMultiLineEqual(
+        textwrap.dedent("""\
+        ! $Id:$
+        ! $Date:$
+        ! $Revision:$
+        ip access-list extended port_names_acl
+         remark $Id:$
+         remark this is a port_names test acl
+
+
+         remark good_term_27
+         permit tcp any any eq ftp
+         permit tcp any any eq sunrpc
+         permit tcp any any eq cmd
+
+         """),
+        aclout,
+        f'[{aclout}]',
+        )
+
+  def testPortNamesUDP(self):
+    self.naming.GetServiceByProto.return_value = [
+        '1',
+        '7',
+        '9',
+        '37',
+        '42',
+        '49',
+        '53',
+        '67',
+        '68',
+        '111',
+        '123',
+        '137',
+        '138',
+        '161',
+        '162',
+        '177',
+        '195',
+        '434',
+        '496',
+        '500',
+        '512',
+        '513',
+        '517',
+        '520',
+        '521',
+        '4500',
+    ]
+    pol = policy.ParsePolicy(
+        GOOD_PORT_NAMES_HEADER + GOOD_TERM_28_UDP_PORTS,
+        self.naming,
+    )
+    acl = cisco.Cisco(pol, EXP_INFO)
+    aclout = str(acl)
+    self.assertMultiLineEqual(
+        textwrap.dedent("""\
+        ! $Id:$
+        ! $Date:$
+        ! $Revision:$
+        ip access-list extended port_names_acl
+         remark $Id:$
+         remark this is a port_names test acl
+
+
+         remark good_term_28
+         permit udp any any eq 1
+         permit udp any any eq echo
+         permit udp any any eq discard
+         permit udp any any eq time
+         permit udp any any eq nameserver
+         permit udp any any eq tacacs
+         permit udp any any eq domain
+         permit udp any any eq bootps
+         permit udp any any eq bootpc
+         permit udp any any eq sunrpc
+         permit udp any any eq ntp
+         permit udp any any eq netbios-ns
+         permit udp any any eq netbios-dgm
+         permit udp any any eq snmp
+         permit udp any any eq snmptrap
+         permit udp any any eq xdmcp
+         permit udp any any eq dnsix
+         permit udp any any eq mobile-ip
+         permit udp any any eq pim-auto-rp
+         permit udp any any eq isakmp
+         permit udp any any eq biff
+         permit udp any any eq who
+         permit udp any any eq talk
+         permit udp any any eq rip
+         permit udp any any eq ripv6
+         permit udp any any eq non500-isakmp
+
+         """),
+        aclout,
+        f'[{aclout}]',
+        )
+
+    # The rest of the ports that would have created range statements
+    # if included in the previous list.
+    self.naming.GetServiceByProto.return_value = [
+        '69',
+        '139',
+        '514',
+    ]
+    pol = policy.ParsePolicy(
+        GOOD_PORT_NAMES_HEADER + GOOD_TERM_28_UDP_PORTS,
+        self.naming,
+    )
+    acl = cisco.Cisco(pol, EXP_INFO)
+    aclout = str(acl)
+    self.assertMultiLineEqual(
+        textwrap.dedent("""\
+        ! $Id:$
+        ! $Date:$
+        ! $Revision:$
+        ip access-list extended port_names_acl
+         remark $Id:$
+         remark this is a port_names test acl
+
+
+         remark good_term_28
+         permit udp any any eq tftp
+         permit udp any any eq netbios-ss
+         permit udp any any eq syslog
+
+         """),
+        aclout,
+        f'[{aclout}]',
+        )
+
+  def testIcmpTypeCodeNames(self):
+    pol = policy.ParsePolicy(
+        GOOD_CONFIGURE_REPLACE_COMPATIBLE_HEADER
+        + GOOD_TERM_29_ICMP_IPV4
+        + GOOD_TERM_30_ICMP_IPV6,
+        self.naming,
+    )
+    acl = cisco.Cisco(pol, EXP_INFO)
+    aclout = str(acl)
+    self.assertMultiLineEqual(
+        textwrap.dedent("""\
+        ! $Id:$
+        ! $Date:$
+        ! $Revision:$
+        ip access-list extended configure_replace_compatible_acl
+         remark $Id:$
+         remark this is a configure_replace_compatible test acl
+
+
+         remark good_term_icmp_types
+         permit icmp any any echo-reply
+         permit icmp any any unreachable
+         permit icmp any any source-quench
+         permit icmp any any redirect
+         permit icmp any any alternate-address
+         permit icmp any any echo
+         permit icmp any any router-advertisement
+         permit icmp any any router-solicitation
+         permit icmp any any time-exceeded
+         permit icmp any any parameter-problem
+         permit icmp any any timestamp-request
+         permit icmp any any timestamp-reply
+         permit icmp any any information-request
+         permit icmp any any information-reply
+         permit icmp any any mask-request
+         permit icmp any any mask-reply
+         permit icmp any any traceroute
+         permit icmp any any conversion-error
+         permit icmp any any mobile-redirect
+
+
+         remark good_term_unreachable_codes
+         permit icmp any any net-unreachable
+         permit icmp any any host-unreachable
+         permit icmp any any protocol-unreachable
+         permit icmp any any port-unreachable
+         permit icmp any any packet-too-big
+         permit icmp any any source-route-failed
+         permit icmp any any network-unknown
+         permit icmp any any host-unknown
+         permit icmp any any host-isolated
+         permit icmp any any dod-net-prohibited
+         permit icmp any any dod-host-prohibited
+         permit icmp any any net-tos-unreachable
+         permit icmp any any host-tos-unreachable
+         permit icmp any any administratively-prohibited
+         permit icmp any any host-precedence-unreachable
+         permit icmp any any precedence-unreachable
+
+
+         remark good_term_redirect_codes
+         permit icmp any any net-redirect
+         permit icmp any any host-redirect
+         permit icmp any any net-tos-redirect
+         permit icmp any any host-tos-redirect
+
+
+         remark good_term_time-exceeded_codes
+         permit icmp any any ttl-exceeded
+         permit icmp any any reassembly-timeout
+
+
+         remark good_term_parameter-problem_codes
+         permit icmp any any general-parameter-problem
+         permit icmp any any option-missing
+         permit icmp any any no-room-for-option
+
+
+         remark good_term_router-advertisement_codes
+         permit icmp any any 9 0
+         permit icmp any any 9 16
+
+
+        ipv6 access-list ipv6-configure_replace_compatible_acl
+         remark $Id:$
+         remark this is a configure_replace_compatible test acl
+
+
+         remark good_term_30
+         permit icmp any any unreachable
+         permit icmp any any packet-too-big
+         permit icmp any any time-exceeded
+         permit icmp any any parameter-problem
+         permit icmp any any echo-request
+         permit icmp any any echo-reply
+         permit icmp any any mld-query
+         permit icmp any any mld-report
+         permit icmp any any mld-reduction
+         permit icmp any any router-solicitation
+         permit icmp any any router-advertisement
+         permit icmp any any nd-ns
+         permit icmp any any nd-na
+         permit icmp any any redirect
+         permit icmp any any router-renumbering
+         permit icmp any any 139
+         permit icmp any any 140
+         permit icmp any any 141
+         permit icmp any any 142
+         permit icmp any any mld-v2-report
+         permit icmp any any dhaad-request
+         permit icmp any any dhaad-reply
+         permit icmp any any mpd-solicitation
+         permit icmp any any mpd-advertisement
+         permit icmp any any 148
+         permit icmp any any 149
+         permit icmp any any 151
+         permit icmp any any 152
+         permit icmp any any 153
 
          """),
         aclout,
