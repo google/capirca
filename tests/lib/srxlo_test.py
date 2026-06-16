@@ -169,6 +169,7 @@ SUPPORTED_SUB_TOKENS = {
         'time-exceeded',
         'timestamp-reply',
         'timestamp-request',
+        'traceroute',
         'unreachable',
         'version-2-multicast-listener-report',
     },

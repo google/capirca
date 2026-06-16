@@ -395,6 +395,7 @@ class Term:
           'information-reply': 16,
           'mask-request': 17,
           'mask-reply': 18,
+          'traceroute': 30,
           'conversion-error': 31,
           'mobile-redirect': 32,
       },

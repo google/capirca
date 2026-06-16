@@ -228,6 +228,7 @@ token_name    | definition
         *   information-reply
         *   mask-request
         *   mask-reply
+        *   traceroute
         *   conversion-error
         *   mobile-redirect
         *   IPv6:
