@@ -292,7 +292,7 @@ class FortigateTest(unittest.TestCase):
     ip_term = self.fmt.format(TERM_TEMPLATE,
                               remove_fields=('dest_port', 'src_port'))
     custom_port_term = self.fmt.format(TERM_TEMPLATE, src_port='WHOIS')
-    #print("\icmp_term=========\n", icmp_term)
+    # print("\icmp_term=========\n", icmp_term)
 
     dest_only_acl = fortigate.Fortigate(policy.ParsePolicy(
         GOOD_HEADER + dest_only_term,
@@ -342,7 +342,7 @@ class FortigateTest(unittest.TestCase):
     no_interfaces_term = self.fmt.format(TERM_TEMPLATE,
                                          remove_fields=('src_interface',
                                                         'dest_interface'))
-    #print("no_interfaces_term=", no_interfaces_term)
+    # print("no_interfaces_term=", no_interfaces_term)
     src_only_int_term = self.fmt.format(TERM_TEMPLATE,
                                         src_interface='wan1',
                                         remove_fields=('dest_interface',))
@@ -418,6 +418,22 @@ class FortigateTest(unittest.TestCase):
         expiration_config_sig in str(expiration_acl)
         and expiration_sig in str(expiration_acl),
         '[%s]' % str(expiration_acl))
+
+  def testEstablished(self):
+    """Tests that established terms are skipped."""
+    established_term = self.fmt.format(
+        TERM_TEMPLATE,
+        add_fields={'option': 'established', 'comment': '"test established"'},
+    )
+
+    established_acl = fortigate.Fortigate(
+        policy.ParsePolicy(GOOD_HEADER + established_term, self.naming),
+        EXP_INFO,
+    )
+
+    self.assertNotIn(
+        'test established', str(established_acl), '[%s]' % str(established_acl)
+    )
 
   def testApplication_ID(self):
     """

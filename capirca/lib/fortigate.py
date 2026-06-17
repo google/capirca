@@ -764,12 +764,12 @@ class Fortigate(aclgenerator.ACLGenerator):
                          'icmp_code',
                          'fortigate_application_id'}
 
-    supported_sub_tokens.update({'option': {'tcp-established'},
-                                 # Warning, some of these are mapped
-                                 # differently. See _ACTION_TABLE
-                                 'action': {'accept', 'deny',
-                                            'next', 'reject',
-                                            'reject-with-tcp-rst'}})
+    supported_sub_tokens.update({
+        'option': {'established', 'tcp-established'},
+        # Warning, some of these are mapped
+        # differently. See _ACTION_TABLE
+        'action': {'accept', 'deny', 'next', 'reject', 'reject-with-tcp-rst'},
+    })
 
     return supported_tokens, supported_sub_tokens
 
@@ -840,6 +840,12 @@ class Fortigate(aclgenerator.ACLGenerator):
               'term and will not be rendered. FortiGates are stateful',
               term.name,
               filter_name)
+          continue
+        if set(['established', 'tcp-established']).intersection(term.option):
+          logging.debug(
+              'Skipping established term %s because FortiGate is stateful.',
+              term.name,
+          )
           continue
         if term.expiration:
           if term.expiration <= exp_info_date:
