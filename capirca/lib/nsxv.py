@@ -343,7 +343,7 @@ class Term(aclgenerator.Term):
           services.append(self._ServiceToString(proto,
                                                 source_port,
                                                 destination_port,
-                                                icmp_types))
+                                                icmp_types))  # pyrefly: ignore[unbound-name]
       services.append('</services>')
 
     service = ''
@@ -650,4 +650,4 @@ class Nsxv(aclgenerator.ACLGenerator):
 
       target_as_xml = xml.dom.minidom.parseString(''.join(target))
     # TODO(robankeny) utf encoding with refactoring after migration to py3
-    return target_as_xml.toprettyxml(indent='  ')
+    return target_as_xml.toprettyxml(indent='  ')  # pyrefly: ignore[unbound-name]

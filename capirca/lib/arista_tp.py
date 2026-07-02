@@ -217,7 +217,7 @@ class Term(aclgenerator.Term):
 
     term_block.append([
         TERM_INDENT,
-        "match %s %s" % (self.term.name, family_keywords["addr_fam"]), False
+        "match %s %s" % (self.term.name, family_keywords["addr_fam"]), False  # pyrefly: ignore[unsupported-operation]
     ])
 
     term_af = self.AF_MAP.get(self.term_type)

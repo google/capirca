@@ -209,7 +209,7 @@ class Term(aclgenerator.Term):
           if peer_selector['ipBlock'].get('except') is None:
             peer_selector['ipBlock']['except'] = []
 
-          peer_selector['ipBlock']['except'].append(str(exclude))
+          peer_selector['ipBlock']['except'].append(str(exclude))  # pyrefly: ignore[missing-attribute]
         peer_selectors.append(peer_selector)
       peer_selector_key = 'from'
     else:
@@ -219,7 +219,7 @@ class Term(aclgenerator.Term):
           if peer_selector['ipBlock'].get('except') is None:
             peer_selector['ipBlock']['except'] = []
 
-          peer_selector['ipBlock']['except'].append(str(exclude))
+          peer_selector['ipBlock']['except'].append(str(exclude))  # pyrefly: ignore[missing-attribute]
         peer_selectors.append(peer_selector)
       peer_selector_key = 'to'
 
@@ -350,7 +350,7 @@ class K8s(aclgenerator.ACLGenerator):
           total_rule_count += 1
           self.network_policies.append(term_dict)
 
-    logging.info('Total rule count of policy %s is: %d', filter_name,
+    logging.info('Total rule count of policy %s is: %d', filter_name,  # pyrefly: ignore[unbound-name]
                  total_rule_count)
 
   def __str__(self):

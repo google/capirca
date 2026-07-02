@@ -722,7 +722,7 @@ class PolicyParser:
   def ParseTopLevel(self, line):
     """Parse a line not nested within a block."""
     if line == '':  # pylint: disable=g-explicit-bool-comparison
-      self.policy.AddMember(BlankLine())
+      self.policy.AddMember(BlankLine())  # pyrefly: ignore[missing-attribute]
       return
     if line.startswith('#'):
       if line.startswith('#include '):
@@ -742,7 +742,7 @@ class PolicyParser:
     """Parse a line with a line level comment."""
     if self.block_in_progress:
       raise ValueError('Found comment line in block: %s' % line)
-    self.policy.AddMember(CommentLine(line))
+    self.policy.AddMember(CommentLine(line))  # pyrefly: ignore[missing-attribute]
 
   def ParseIncludeLine(self, line):
     """Parse an #include line refering to another file."""
@@ -754,7 +754,7 @@ class PolicyParser:
     inc_ref = line_parts[1]
     if '#' in inc_ref:
       inc_ref, _ = inc_ref.split('#', 1)
-    self.policy.AddMember(Include(inc_ref))
+    self.policy.AddMember(Include(inc_ref))  # pyrefly: ignore[missing-attribute]
 
   def ParseHeaderLine(self, line):
     """Parse a line beginning a header block."""
@@ -786,7 +786,7 @@ class PolicyParser:
       self.ParseField(line)
       return
     if line.startswith('}'):
-      self.policy.AddMember(self.block_in_progress)
+      self.policy.AddMember(self.block_in_progress)  # pyrefly: ignore[missing-attribute]
       self.block_in_progress = None
       return
     if self.block_in_progress is not None:
@@ -799,4 +799,4 @@ class PolicyParser:
     f_type = field_map.get(name)
     if not f_type:
       raise ValueError('Invalid field line: %s' % line)
-    self.block_in_progress.AddField(f_type(value))
+    self.block_in_progress.AddField(f_type(value))  # pyrefly: ignore[missing-attribute]

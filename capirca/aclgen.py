@@ -143,7 +143,7 @@ def SkipLines(text, skip_line_func=False):
   """
   if not skip_line_func:
     return text
-  return [x for x in text if not skip_line_func(x)]
+  return [x for x in text if not skip_line_func(x)]  # pyrefly: ignore[not-callable]
 
 
 def RenderFile(base_directory: str, input_file: pathlib.Path,

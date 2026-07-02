@@ -196,7 +196,7 @@ class Term(aclgenerator.Term):
 
       # VPN target can be only specified when ACTION is accept
       if str(action) == 'accept' and self.term.vpn:
-        ret_str.IndentAppend(5, self.ACTIONS.get(
+        ret_str.IndentAppend(5, self.ACTIONS.get(  # pyrefly: ignore[unsupported-operation]
             str(action)) + ' {')
         ret_str.IndentAppend(6, 'tunnel {')
         ret_str.IndentAppend(7, 'ipsec-vpn %s;' % self.term.vpn[0])
@@ -206,7 +206,7 @@ class Term(aclgenerator.Term):
         ret_str.IndentAppend(6, '}')
         ret_str.IndentAppend(5, '}')
       else:
-        ret_str.IndentAppend(5, self.ACTIONS.get(str(action)) + ';')
+        ret_str.IndentAppend(5, self.ACTIONS.get(str(action)) + ';')  # pyrefly: ignore[unsupported-operation]
 
       # DSCP SET
       if self.term.dscp_set:

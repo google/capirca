@@ -269,12 +269,12 @@ class Term(aclgenerator.Term):
         elif opt.startswith('established'):
           if self.term.protocol == ['tcp']:
             if 'tcp-established;' not in from_str:
-              from_str.append(family_keywords['tcp-est'] + ';')
+              from_str.append(family_keywords['tcp-est'] + ';')  # pyrefly: ignore[unsupported-operation]
 
         # if tcp-established specified, but more than just tcp is included
         # in the protocols, raise an error
         elif opt.startswith('tcp-established'):
-          flag = family_keywords['tcp-est'] + ';'
+          flag = family_keywords['tcp-est'] + ';'  # pyrefly: ignore[unsupported-operation]
           if self.term.protocol == ['tcp']:
             if flag not in from_str:
               from_str.append(flag)
@@ -347,7 +347,7 @@ class Term(aclgenerator.Term):
         address = summarizer.Summarize(address)
 
       if address:
-        config.Append('%s {' % family_keywords['addr'])
+        config.Append('%s {' % family_keywords['addr'])  # pyrefly: ignore[unsupported-operation]
         for addr in address:
           for comment in self._Comment(addr):
             config.Append('%s' % comment)
@@ -373,7 +373,7 @@ class Term(aclgenerator.Term):
         src_addr, src_addr_ex = self._MinimizePrefixes(src_addr, src_addr_ex)
 
       if src_addr:
-        config.Append('%s {' % family_keywords['saddr'])
+        config.Append('%s {' % family_keywords['saddr'])  # pyrefly: ignore[unsupported-operation]
         for addr in src_addr:
           for comment in self._Comment(addr):
             config.Append('%s' % comment)
@@ -407,7 +407,7 @@ class Term(aclgenerator.Term):
         dst_addr, dst_addr_ex = self._MinimizePrefixes(dst_addr, dst_addr_ex)
 
       if dst_addr:
-        config.Append('%s {' % family_keywords['daddr'])
+        config.Append('%s {' % family_keywords['daddr'])  # pyrefly: ignore[unsupported-operation]
         for addr in dst_addr:
           for comment in self._Comment(addr):
             config.Append('%s' % comment)
@@ -507,7 +507,7 @@ class Term(aclgenerator.Term):
         if 'icmpv6' in self.term.protocol:
           loc = self.term.protocol.index('icmpv6')
           self.term.protocol[loc] = 'icmp6'
-        config.Append(family_keywords['protocol'] + ' ' +
+        config.Append(family_keywords['protocol'] + ' ' +  # pyrefly: ignore[unsupported-operation]
                       self._Group(self.term.protocol))
 
       # protocol
@@ -516,7 +516,7 @@ class Term(aclgenerator.Term):
         if 'icmpv6' in self.term.protocol_except:
           loc = self.term.protocol_except.index('icmpv6')
           self.term.protocol_except[loc] = 'icmp6'
-        config.Append(family_keywords['protocol-except'] + ' ' +
+        config.Append(family_keywords['protocol-except'] + ' ' +  # pyrefly: ignore[unsupported-operation]
                       self._Group(self.term.protocol_except))
 
       if self.term.traffic_type:
@@ -686,7 +686,7 @@ class Term(aclgenerator.Term):
       # If there is a routing-instance defined, skip reject/accept/etc actions.
       if not self.term.routing_instance:
         for action in self.term.action:
-          config.Append(self.ACTIONS.get(action) + ';')
+          config.Append(self.ACTIONS.get(action) + ';')  # pyrefly: ignore[unsupported-operation]
 
       # DSCP SET
       if self.term.dscp_set:

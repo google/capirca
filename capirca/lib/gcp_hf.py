@@ -298,11 +298,11 @@ class Term(gcp.Term):
       for daddr_chunk in destination_address_chunks:
         rule = copy.deepcopy(term_dict)
         if self.api_version == 'ga':
-          rule['match'][dest_ip_range] = [
+          rule['match'][dest_ip_range] = [  # pyrefly: ignore[unsupported-operation]
               daddr.with_prefixlen for daddr in daddr_chunk
           ]
         else:
-          rule['match']['config'][dest_ip_range] = [
+          rule['match']['config'][dest_ip_range] = [  # pyrefly: ignore[bad-index]
               daddr.with_prefixlen for daddr in daddr_chunk
           ]
         rule['priority'] = priority_index
@@ -345,11 +345,11 @@ class Term(gcp.Term):
       for saddr_chunk in source_address_chunks:
         rule = copy.deepcopy(term_dict)
         if self.api_version == 'ga':
-          rule['match'][src_ip_range] = [
+          rule['match'][src_ip_range] = [  # pyrefly: ignore[unsupported-operation]
               saddr.with_prefixlen for saddr in saddr_chunk
           ]
         else:
-          rule['match']['config'][src_ip_range] = [
+          rule['match']['config'][src_ip_range] = [  # pyrefly: ignore[bad-index]
               saddr.with_prefixlen for saddr in saddr_chunk
           ]
         rule['priority'] = priority_index
@@ -511,7 +511,7 @@ class HierarchicalFirewall(gcp.GCP):
 
       # If compute api_version is beta, set type to FIREWALL
       if api_version == 'beta':
-        policy['type'] = 'FIREWALL'
+        policy['type'] = 'FIREWALL'  # pyrefly: ignore[unsupported-operation]
 
       # Handle mixed for each indvidual term as inet and inet6.
       # inet/inet6 are treated the same.
@@ -571,7 +571,7 @@ class HierarchicalFirewall(gcp.GCP):
       raise ExceededCostError(
           'Policy cost (%d) for %s reached the '
           'maximum (%d)' %
-          (total_cost, policy[display_name], policies_max_cost))
+          (total_cost, policy[display_name], policies_max_cost))  # pyrefly: ignore[unbound-name]
 
     self.policies.append(policy)
 
@@ -581,7 +581,7 @@ class HierarchicalFirewall(gcp.GCP):
 
     if total_cost > 0:
       logging.info('Policy %s quota cost: %d',
-                   policy[display_name], total_cost)
+                   policy[display_name], total_cost)  # pyrefly: ignore[unbound-name]
 
 
 def GetRuleTupleCount(dict_term: Dict[str, Any], api_version):

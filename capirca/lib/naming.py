@@ -133,7 +133,7 @@ class Naming:
                               re.IGNORECASE | re.DOTALL)
     self.token_re = re.compile(r'(^[-_A-Z0-9]+$)', re.IGNORECASE)
     if naming_file and naming_type:
-      filename = os.path.sep.join([naming_dir, naming_file])
+      filename = os.path.sep.join([naming_dir, naming_file])  # pyrefly: ignore[no-matching-overload]
       with open(filename, 'r') as file_handle:
         self._ParseFile(file_handle, naming_type)
     elif naming_dir:

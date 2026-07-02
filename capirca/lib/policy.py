@@ -908,7 +908,7 @@ class Term:
     if self.timeout:
       ret_str.append('  timeout: %s' % self.timeout)
     if self.vpn:
-      vpn_name, pair_policy = self.vpn
+      vpn_name, pair_policy = self.vpn  # pyrefly: ignore[not-iterable]
       if pair_policy:
         ret_str.append(
             '  vpn: name = %s, pair_policy = %s' % (vpn_name, pair_policy)

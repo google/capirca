@@ -153,7 +153,7 @@ class Term(aclgenerator.Term):
       str_tok.append(dst_addr_token)
 
       str_tok.append(dst_port)
-      str_tok.append(self._ACTIONS.get(self.term.action[0]))
+      str_tok.append(self._ACTIONS.get(self.term.action[0]))  # pyrefly: ignore[bad-argument-type]
       ret_str.append(' '.join(t for t in str_tok if t))
 
     self.netdestinations = netdestinations

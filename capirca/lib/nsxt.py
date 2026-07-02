@@ -122,7 +122,7 @@ class ServiceEntries:
       services = []
       for icmp_type in self.icmp_types:
         new_service = service.copy()
-        new_service['icmp_type'] = icmp_type
+        new_service['icmp_type'] = icmp_type  # pyrefly: ignore[unsupported-operation]
         services.append(new_service)
       return services
 
@@ -142,13 +142,13 @@ class ServiceEntries:
 
       if self.source_ports:
         source_ports = [format_port_range(p) for p in self.source_ports]
-        service['source_ports'] = source_ports
+        service['source_ports'] = source_ports  # pyrefly: ignore[bad-assignment]
 
       if self.destination_ports:
         destination_ports = [
             format_port_range(p) for p in self.destination_ports
         ]
-        service['destination_ports'] = destination_ports
+        service['destination_ports'] = destination_ports  # pyrefly: ignore[bad-assignment]
       return [service]
     else:
       return []
@@ -384,7 +384,7 @@ class Term(aclgenerator.Term):
       protocol = [self.PROTO_MAP.get(p) for p in self.term.protocol]
       for proto in protocol:
         if proto != 'any':
-          service = ServiceEntries(proto, self.term.source_port,
+          service = ServiceEntries(proto, self.term.source_port,  # pyrefly: ignore[bad-argument-type]
                                    self.term.destination_port, icmp_types)
           services.extend(service.get())
       rule['service_entries'] = services

@@ -113,7 +113,7 @@ class IPv4(ipaddress.IPv4Network):
     else:
       self.text = comment
 
-  def supernet(self, prefixlen_diff=1):
+  def supernet(self, prefixlen_diff=1):  # pyrefly: ignore[bad-override]
     """Override ipaddress.IPv4 supernet so we can maintain comments.
 
     See ipaddress.IPv4.Supernet for complete documentation.
@@ -178,7 +178,7 @@ class IPv6(ipaddress.IPv6Network):
     result.parent_token = self.parent_token
     return result
 
-  def supernet(self, prefixlen_diff=1):
+  def supernet(self, prefixlen_diff=1):  # pyrefly: ignore[bad-override]
     """Override ipaddress.IPv6Network supernet so we can maintain comments.
 
     See ipaddress.IPv6Network.Supernet for complete documentation.

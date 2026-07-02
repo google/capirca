@@ -1110,7 +1110,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
             log = etree.SubElement(entry, "log-end")
             log.text = "yes"
 
-    if no_addr_obj:
+    if no_addr_obj:  # pyrefly: ignore[unbound-name]
       address_book_groups_dict = {}
       address_book_keys = {}
 

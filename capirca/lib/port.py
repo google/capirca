@@ -105,7 +105,7 @@ class PPP:
   def __lt__(self, other):
     if self.is_single_port:
       try:
-        return int(self.port) < int(other.port)
+        return int(self.port) < int(other.port)  # pyrefly: ignore[bad-argument-type]
       except:
         return False
     else:
@@ -114,7 +114,7 @@ class PPP:
   def __gt__(self, other):
     if self.is_single_port:
       try:
-        return int(self.port) > int(other.port)
+        return int(self.port) > int(other.port)  # pyrefly: ignore[bad-argument-type]
       except:
         return False
     else:
@@ -123,7 +123,7 @@ class PPP:
   def __le__(self, other):
     if self.is_single_port:
       try:
-        return int(self.port) <= int(other.port)
+        return int(self.port) <= int(other.port)  # pyrefly: ignore[bad-argument-type]
       except:
         return False
     else:
@@ -132,7 +132,7 @@ class PPP:
   def __ge__(self, other):
     if self.is_single_port:
       try:
-        return int(self.port) >= int(other.port)
+        return int(self.port) >= int(other.port)  # pyrefly: ignore[bad-argument-type]
       except:
         return False
     else:
@@ -141,7 +141,7 @@ class PPP:
   def __eq__(self, other):
     if self.is_single_port:
       try:
-        return (int(self.port) == int(other.port) and
+        return (int(self.port) == int(other.port) and  # pyrefly: ignore[bad-argument-type]
                 self.protocol == other.protocol)
       except:
         return False

@@ -116,7 +116,7 @@ class Term(aclgenerator.Term):
         # TODO: do we need to handle a case when the proto is a number?
         rule_dict['IP_PROTOCOL'] = str(self.PROTO_MAP[proto])
       if proto == 'tcp' and tcp_flags:
-        rule_dict['TCP_FLAGS'] = tcp_flags
+        rule_dict['TCP_FLAGS'] = tcp_flags  # pyrefly: ignore[bad-assignment]
       for icmp_type in icmp_types:
         if icmp_type is not None:
           rule_dict[icmp_type_key] = str(icmp_type)

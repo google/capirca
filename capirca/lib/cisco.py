@@ -766,7 +766,7 @@ class Term(aclgenerator.Term):
       self.text_af = 'inet'
     else:
       self.text_af = 'inet6'
-    self.ALLOWED_PROTO_STRINGS.extend([self.PROTO_MAP.get(x)
+    self.ALLOWED_PROTO_STRINGS.extend([self.PROTO_MAP.get(x)  # pyrefly: ignore[bad-argument-type]
                                        for x in self.ALWAYS_PROTO_NUM])
 
   def __str__(self):
@@ -978,7 +978,7 @@ class Term(aclgenerator.Term):
                   ret_str.extend(
                       self._TermletToStr(
                           sequence,
-                          action,
+                          action,  # pyrefly: ignore[unbound-name]
                           self._FormatProto(proto, self.af),
                           saddr,
                           self._FormatPort(sport, proto),

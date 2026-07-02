@@ -581,7 +581,7 @@ class GCE(gcp.GCP):
                   'Attribute count (%d) for %s exceeded the maximum (%d)' %
                   (total_attribute_count, filter_name, max_attribute_count))
             self.gce_policies.append(rules)
-    logging.info('Total rule count of policy %s is: %d', filter_name,
+    logging.info('Total rule count of policy %s is: %d', filter_name,  # pyrefly: ignore[unbound-name]
                  total_rule_count)
     logging.info('Total attribute count of policy %s is: %d', filter_name,
                  total_attribute_count)

@@ -334,7 +334,7 @@ class ObjectsContainer():
 
     if address_exclude_v6:
       raise FortiGateValueError(
-          'Exclude IPv6 address is unsupported: {}'.join([f'{x.with_prefix_len}' for x in address_exclude_v6]))
+          'Exclude IPv6 address is unsupported: {}'.join([f'{x.with_prefix_len}' for x in address_exclude_v6]))  # pyrefly: ignore[missing-attribute]
 
     addr_names = []
     if address_v4 or address_exclude_v4:

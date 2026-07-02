@@ -198,7 +198,7 @@ class Term(cisco.Term):
 
     return '\n'.join(ret_str)
 
-  def _TermletToStr(self, filter_name, action, proto, saddr, sport, daddr,
+  def _TermletToStr(self, filter_name, action, proto, saddr, sport, daddr,  # pyrefly: ignore[bad-override]
                     dport, icmp_type, option):
     """Take the various compenents and turn them into a cisco acl line.
 

@@ -300,7 +300,7 @@ class Term(juniper.Term):
       ret_str.Append('then {')
       # ACTION
       for action in self.term.action:
-        ret_str.Append(self._ACTIONS.get(str(action)) + ';')
+        ret_str.Append(self._ACTIONS.get(str(action)) + ';')  # pyrefly: ignore[unsupported-operation]
       if self.term.logging and 'disable' not in [
           x.value for x in self.term.logging
       ]:

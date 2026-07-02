@@ -599,7 +599,7 @@ class TerraformGCE(gcp.GCP):
                   (total_attribute_count, filter_name, max_attribute_count))
             self.terraform_resources['google_compute_firewall'].append(rules)
             priority_counter += len(rules)
-    logging.info('Total rule count of policy %s is: %d', filter_name,
+    logging.info('Total rule count of policy %s is: %d', filter_name,  # pyrefly: ignore[unbound-name]
                  total_rule_count)
     logging.info('Total attribute count of policy %s is: %d', filter_name,
                  total_attribute_count)
