@@ -2344,6 +2344,7 @@ def p_term_spec(p):
   | term_spec protocol_spec
   | term_spec qos_spec
   | term_spec pan_application_spec
+  | term_spec fortigate_application_id_spec
   | term_spec routinginstance_spec
   | term_spec source_service_accounts_spec
   | term_spec term_zone_spec
