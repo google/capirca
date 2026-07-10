@@ -267,11 +267,12 @@ class ObjectsContainer():
     """
     port_range = ''
     if len(port) == 1:
-        port_range = str(port[0])
+      port_range = str(port[0])
     elif len(port) > 1:
-        port_range = str(port[0])
-        if port[0] != port[1]:
-            port_range = str(min(port[0], port[1])) + '-' + str(max(port[0], port[1]))
+      port_range = str(port[0])
+      if port[0] != port[1]:
+        min_p, max_p = min(port[0], port[1]), max(port[0], port[1])
+        port_range = f'{min_p}-{max_p}'
 
     return port_range
 
@@ -334,7 +335,9 @@ class ObjectsContainer():
 
     if address_exclude_v6:
       raise FortiGateValueError(
-          'Exclude IPv6 address is unsupported: {}'.join([f'{x.with_prefix_len}' for x in address_exclude_v6]))  # pyrefly: ignore[missing-attribute]
+          'Exclude IPv6 address is unsupported:'
+          f' {", ".join(address_exclude_v6)}'
+      )
 
     addr_names = []
     if address_v4 or address_exclude_v4:

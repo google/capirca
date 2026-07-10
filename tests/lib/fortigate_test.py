@@ -125,7 +125,8 @@ class FortigateTest(unittest.TestCase):
       hosts = {
           'SOME_HOST': [nacaddr.IP('10.0.0.0/8')],
           'SOME_HOST2': [nacaddr.IP('20.0.0.0/8')],
-          'SOME_HOST6': [nacaddr.IP('fec0::/10')]
+          'SOME_HOST6': [nacaddr.IP('fec0::/10')],
+          'SOME_EXCLUDE6': [nacaddr.IP('fec0:1::/32')],
       }
       return hosts[host]
 
@@ -522,6 +523,25 @@ class FortigateTest(unittest.TestCase):
     self.assertRaises(fortigate.FortiGateValueError,
                       port_map.get_protocol,
                       'bad_proto', 22)
+
+  def testAddressExcludeV6Error(self):
+    """Tests that FortiGateValueError is raised for IPv6 address excludes."""
+    term = textwrap.dedent("""\
+        term test-v6-exclude {
+          source-address:: SOME_HOST6
+          destination-address:: SOME_HOST6
+          destination-exclude:: SOME_EXCLUDE6
+          action:: accept
+        }
+        """)
+    parsed_policy = policy.ParsePolicy(GOOD_HEADER + term, self.naming)
+    acl = fortigate.Fortigate(parsed_policy, EXP_INFO)
+    with self.assertRaises(fortigate.FortiGateValueError) as cm:
+      # str(acl) triggers policy rendering.
+      _ = str(acl)
+    self.assertIn(
+        'Exclude IPv6 address is unsupported: fec0:1::/32', str(cm.exception)
+    )
 
 
 if __name__ == '__main__':
