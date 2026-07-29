@@ -543,6 +543,63 @@ class FortigateTest(unittest.TestCase):
         'Exclude IPv6 address is unsupported: fec0:1::/32', str(cm.exception)
     )
 
+  def testFromZoneToZoneUniqueTermPrefixes(self):
+    """Tests that unique-term-prefixes prepends a zone hash digest to term name and caps length at 35."""
+    header = textwrap.dedent("""\
+        header {
+          target:: fortigate from-zone TRUST to-zone UNTRUST unique-term-prefixes
+        }
+        """)
+    term = textwrap.dedent("""\
+        term test-zones {
+          action:: accept
+        }
+        """)
+    parsed_policy = policy.ParsePolicy(header + term, self.naming)
+    acl = fortigate.Fortigate(parsed_policy, EXP_INFO)
+    output = str(acl)
+    expected_hash = acl.HexDigest('TRUSTUNTRUST', 16)
+    self.assertIn(f'set name {expected_hash}-test-zones', output)
+
+  def testFromZoneToZonePreserves24CharTermName(self):
+    """Tests that a 24-character term name is preserved without truncation when unique-term-prefixes is used."""
+    header = textwrap.dedent("""\
+        header {
+          target:: fortigate from-zone TRUST to-zone UNTRUST unique-term-prefixes
+        }
+        """)
+    term_name = 'twenty-four-char-term-nm'
+    self.assertEqual(len(term_name), 24)
+    term = textwrap.dedent(f"""\
+        term {term_name} {{
+          action:: accept
+        }}
+        """)
+    parsed_policy = policy.ParsePolicy(header + term, self.naming)
+    acl = fortigate.Fortigate(parsed_policy, EXP_INFO)
+    output = str(acl)
+    expected_hash = acl.HexDigest('TRUSTUNTRUST', 10)
+    expected_full_name = f'{expected_hash}-{term_name}'
+    self.assertEqual(len(expected_full_name), 35)
+    self.assertTrue(expected_full_name.endswith(term_name))
+    self.assertIn(f'set name {expected_full_name}', output)
+
+  def testUniqueTermPrefixesWithoutZonesRaisesError(self):
+    """Tests that unique-term-prefixes without from-zone and to-zone raises FilterError."""
+    header = textwrap.dedent("""\
+        header {
+          target:: fortigate unique-term-prefixes
+        }
+        """)
+    term = textwrap.dedent("""\
+        term test-term {
+          action:: accept
+        }
+        """)
+    parsed_policy = policy.ParsePolicy(header + term, self.naming)
+    with self.assertRaises(fortigate.FilterError):
+      _ = str(fortigate.Fortigate(parsed_policy, EXP_INFO))
+
 
 if __name__ == '__main__':
   absltest.main()

@@ -484,12 +484,22 @@ class Term(aclgenerator.Term):
   _NGFW_MODE = 'profile-based'
   CURRENT_ID = 0
 
-  def __init__(self, term, object_container, platform, verbose=True):
+  def __init__(
+      self,
+      term,
+      object_container,
+      platform,
+      verbose=True,
+      from_zone='',
+      to_zone='',
+  ):
     super().__init__(term)
     self._term = term
     self._obj_container = object_container
     self.platform = platform
     self._term.verbose = verbose
+    self.from_zone = from_zone
+    self.to_zone = to_zone
 
     self.id_ = type(self).CURRENT_ID
     if type(self).CURRENT_ID > 0:
@@ -684,11 +694,14 @@ class Term(aclgenerator.Term):
     if self._term.comment and self._term.verbose:
        lines += [f'{_SP * 2} set comments "{self._obj_container.fix_comment_length((" ").join(self._term.comment))}"']
     # fortigate local-in policy exception
-    if self.platform == "fortigatelocalin":
-      lines += [f"{_SP * 2} set intf {self._term.destination_interface or 'any'}"]
+    if self.platform == 'fortigatelocalin':
+      dst_intf = self._term.destination_interface or 'any'
+      lines += [f'{_SP * 2} set intf {dst_intf}']
     else:
-      lines += [f"{_SP * 2} set srcintf {self._term.source_interface or 'any'}"]
-      lines += [f"{_SP * 2} set dstintf {self._term.destination_interface or 'any'}"]
+      src_intf = self._term.source_interface or 'any'
+      dst_intf = self._term.destination_interface or 'any'
+      lines += [f'{_SP * 2} set srcintf {src_intf}']
+      lines += [f'{_SP * 2} set dstintf {dst_intf}']
     exist_src6 = False
     exist_dst6 = False
     if isinstance(dest_addresses, list):
@@ -745,10 +758,14 @@ class Fortigate(aclgenerator.ACLGenerator):
   _PLATFORM = 'fortigate'
   _NGFW_MODE = 'profile-based'
   _DEFAULT_PROTOCOL = 'ALL'
+  _TERM_MAX_LENGTH = 35
+  _TERM_PREFIX_LENGTH = 16
   SUFFIX = '.fcl'
 
   def __init__(self, *args, **kwargs):
     self._obj_container = ObjectsContainer()
+    self.from_zone = ''
+    self.to_zone = ''
     super().__init__(*args, **kwargs)
 
   def _BuildTokens(self):
@@ -801,6 +818,32 @@ class Fortigate(aclgenerator.ACLGenerator):
 
       self._obj_container.verbose = verbose
 
+      # from_zone and to_zone are used solely for calculating unique term
+      # prefixes when unique-term-prefixes is enabled. They do not alter
+      # generated rules, set srcintf/dstintf, or affect firewall rule behavior.
+      self.from_zone = ''
+      self.to_zone = ''
+      if 'from-zone' in filter_options and 'to-zone' in filter_options:
+        from_idx = filter_options.index('from-zone')
+        to_idx = filter_options.index('to-zone')
+        self.from_zone = filter_options[from_idx + 1]
+        self.to_zone = filter_options[to_idx + 1]
+        if from_idx < to_idx:
+          del filter_options[to_idx:to_idx + 2]
+          del filter_options[from_idx:from_idx + 2]
+        else:
+          del filter_options[from_idx:from_idx + 2]
+          del filter_options[to_idx:to_idx + 2]
+
+      unique_term_prefixes = False
+      if 'unique-term-prefixes' in filter_options:
+        unique_term_prefixes = True
+        filter_options.remove('unique-term-prefixes')
+        if not self.from_zone or not self.to_zone:
+          raise FilterError(
+              'unique-term-prefixes requires from-zone and to-zone to be set.'
+          )
+
       my_filter = {}
       if len(filter_options) == 1:
         my_filter[filter_options[0]] = ''
@@ -834,7 +877,12 @@ class Fortigate(aclgenerator.ACLGenerator):
       Term._NGFW_MODE = self.ngfw_mode
 
       for term in terms:
-        term.name = self.FixTermLength(term.name)
+        if unique_term_prefixes and self.from_zone and self.to_zone:
+          avail_prefix_len = self._TERM_MAX_LENGTH - 1 - len(term.name)
+          prefix_len = max(4, min(self._TERM_PREFIX_LENGTH, avail_prefix_len))
+          prefix = self.HexDigest(self.from_zone + self.to_zone, prefix_len)
+          term.name = f'{prefix}-{term.name}'
+        term.name = self.FixTermLength(term.name, truncate=True)
 
         filter_name = header.FilterName(self._PLATFORM)
         if term.stateless_reply:
@@ -866,7 +914,14 @@ class Fortigate(aclgenerator.ACLGenerator):
           raise FortiGateDuplicateTermError(f"You have a duplicate term: {term.name}")
         term_dup_check.add(term.name)
 
-        new_term = Term(term, self._obj_container, self._PLATFORM, verbose)
+        new_term = Term(
+            term,
+            self._obj_container,
+            self._PLATFORM,
+            verbose,
+            from_zone=self.from_zone,
+            to_zone=self.to_zone,
+        )
 
         self.fortigate_policies += [(header, term.name, new_term)]
 
