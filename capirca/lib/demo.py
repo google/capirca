@@ -127,7 +127,7 @@ class Term(aclgenerator.Term):
     # ACTION
     for action in self.term.action:
       ret_str.append(' ')
-      ret_str.append(' ' * 8 + 'Action: '
+      ret_str.append(' ' * 8 + 'Action: '  # pyrefly: ignore[unsupported-operation]
                      + self._ACTIONS.get(str(action))+' all traffic')
     return '\n '.join(ret_str)
 

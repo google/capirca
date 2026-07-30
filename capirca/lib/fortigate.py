@@ -552,7 +552,7 @@ class Term(aclgenerator.Term):
 
         icmp_service_grp = set()
         icmp_service_name = ''
-        for icmp_type in sorted(
+        for icmp_type in sorted(  # pyrefly: ignore[no-matching-overload]
             icmp_type_dict, key=icmp_type_dict.get):
           if self._term.icmp_code:
             for each_code in sorted(self._term.icmp_code):
