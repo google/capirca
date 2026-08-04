@@ -186,6 +186,11 @@ class Term(gcp.Term):
     if target_resources:  # Only set when non-empty.
       term_dict['targetResources'] = target_resources
 
+    if self.term.destination_secure_tag:
+      term_dict['targetSecureTags'] = [
+          {'name': tag} for tag in self.term.destination_secure_tag
+      ]
+
     term_dict['enableLogging'] = self._GetLoggingSetting()
 
     # This combo provides ability to identify the rule.
@@ -251,6 +256,11 @@ class Term(gcp.Term):
     # https://cloud.google.com/compute/docs/reference/rest/beta/organizationSecurityPolicies/addRule
     if self.api_version == 'beta':
       term_dict['match']['versionedExpr'] = 'FIREWALL'
+
+    if self.term.source_secure_tag:
+      term_dict['match']['srcSecureTags'] = [
+          {'name': tag} for tag in self.term.source_secure_tag
+      ]
 
     ip_version = self.AF_MAP[self.address_family]
     if ip_version == 4:
@@ -387,6 +397,7 @@ class HierarchicalFirewall(gcp.GCP):
     supported_tokens |= {
         'destination_tag', 'expiration', 'source_tag', 'translated',
         'target_resources', 'logging', 'source_prefix', 'destination_prefix',
+        'source_secure_tag', 'destination_secure_tag',
     }
 
     supported_tokens -= {

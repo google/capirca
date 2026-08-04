@@ -519,6 +519,8 @@ class Term:
     # gce specific
     self.source_tag = []
     self.destination_tag = []
+    self.source_secure_tag = []
+    self.destination_secure_tag = []
     self.priority = None
     self.source_service_accounts = []
     self.target_service_accounts = []
@@ -1330,6 +1332,10 @@ class Term:
           self.source_tag.append(x.value)
         elif x.var_type is VarType.DTAG:
           self.destination_tag.append(x.value)
+        elif x.var_type is VarType.SOURCE_SECURE_TAGS:
+          self.source_secure_tag.append(x.value)
+        elif x.var_type is VarType.DESTINATION_SECURE_TAGS:
+          self.destination_secure_tag.append(x.value)
         elif x.var_type is VarType.FLEXIBLE_MATCH_RANGE:
           self.flexible_match_range.append(x.value)
         elif x.var_type is VarType.TARGET_RESOURCES:
@@ -1830,6 +1836,8 @@ class VarType:
   POLICE_PPS = 75
   FORTIGATE_APPLICATION_ID = 76
   DESTINATION_SELF = 77
+  SOURCE_SECURE_TAGS = 78
+  DESTINATION_SECURE_TAGS = 79
 
   def __init__(self, var_type, value):
     self.var_type = var_type
@@ -2064,6 +2072,8 @@ tokens = (
     'SPORT',
     'SZONE',
     'STAG',
+    'SOURCE_SECURE_TAGS',
+    'DESTINATION_SECURE_TAGS',
     'STRING',
     'TARGET',
     'TARGET_RESOURCES',
@@ -2102,6 +2112,7 @@ reserved = {
     'destination-port': 'DPORT',
     'destination-self': 'DESTINATION_SELF',
     'destination-tag': 'DTAG',
+    'destination-secure-tag': 'DESTINATION_SECURE_TAGS',
     'destination-zone': 'DZONE',
     'dscp-except': 'DSCP_EXCEPT',
     'dscp-match': 'DSCP_MATCH',
@@ -2155,6 +2166,7 @@ reserved = {
     'source-prefix-except': 'ESPFX',
     'source-port': 'SPORT',
     'source-tag': 'STAG',
+    'source-secure-tag': 'SOURCE_SECURE_TAGS',
     'source-zone': 'SZONE',
     'target': 'TARGET',
     'target-resources': 'TARGET_RESOURCES',
@@ -2657,10 +2669,16 @@ def p_tag_list_spec(p):
   """tag_list_spec : DTAG ':' ':' one_or_more_strings
 
   | STAG ':' ':' one_or_more_strings
+  | DESTINATION_SECURE_TAGS ':' ':' one_or_more_strings
+  | SOURCE_SECURE_TAGS ':' ':' one_or_more_strings
   """
   p[0] = []
   for tag in p[4]:
-    if p[1].find('source-tag') >= 0:
+    if p[1].find('source-secure-tag') >= 0:
+      p[0].append(VarType(VarType.SOURCE_SECURE_TAGS, tag))
+    elif p[1].find('destination-secure-tag') >= 0:
+      p[0].append(VarType(VarType.DESTINATION_SECURE_TAGS, tag))
+    elif p[1].find('source-tag') >= 0:
       p[0].append(VarType(VarType.STAG, tag))
     elif p[1].find('destination-tag') >= 0:
       p[0].append(VarType(VarType.DTAG, tag))

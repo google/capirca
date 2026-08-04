@@ -1,6 +1,7 @@
 """Tests for google3.third_party.py.capirca.lib.gcp_hf.py."""
 
 import json
+import textwrap
 from unittest import mock
 from absl.testing import absltest
 
@@ -2667,6 +2668,8 @@ SUPPORTED_TOKENS = frozenset({
     'source_port',
     'source_prefix',
     'source_tag',
+    'source_secure_tag',
+    'destination_secure_tag',
     'stateless_reply',
     'target_resources',
     'translated',
@@ -3604,10 +3607,33 @@ class GcpHfTest(parameterized.TestCase):
                   "iplist-search-engines-crawlers",
               ],
           },
-      }, 4)
+      }, 4),
   )
   def testGAGetRuleTupleCount(self, dict_term, expected):
     self.assertEqual(gcp_hf.GetRuleTupleCount(dict_term, 'ga'), expected)
+
+  def testSecureTags(self):
+    """Verifies that secure-tag term fields are make it into generated JSON."""
+    pol = policy.ParsePolicy(
+        HEADER_NO_OPTIONS
+        + textwrap.dedent("""
+            term test-secure-tags {
+              action:: accept
+              source-secure-tag:: tagValues/1234567890
+              destination-secure-tag:: tagValues/0987654321
+            }
+            """),
+        self.naming,
+    )
+    hf = gcp_hf.HierarchicalFirewall(pol, 2)
+    res = json.loads(str(hf))
+    rule = res[0]['rules'][0]
+    self.assertEqual(
+        rule['targetSecureTags'], [{'name': 'tagValues/0987654321'}]
+    )
+    self.assertEqual(
+        rule['match']['srcSecureTags'], [{'name': 'tagValues/1234567890'}]
+    )
 
 
 if __name__ == '__main__':
