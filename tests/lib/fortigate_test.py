@@ -600,6 +600,73 @@ class FortigateTest(unittest.TestCase):
     with self.assertRaises(fortigate.FilterError):
       _ = str(fortigate.Fortigate(parsed_policy, EXP_INFO))
 
+  def testProtocolNumberServices(self):
+    """Tests protocol-number based services are rendered correctly."""
+    protocols_to_test = [
+        ('hopopt', 0),
+        ('igmp', 2),
+        ('ipip', 4),
+        ('gre', 47),
+        ('esp', 50),
+        ('ah', 51),
+        ('ospf', 89),
+    ]
+    for proto_name, proto_num in protocols_to_test:
+      term = textwrap.dedent(f"""\
+          term test-proto-{proto_name} {{
+            protocol:: {proto_name}
+            action:: accept
+          }}
+          """)
+      parsed_policy = policy.ParsePolicy(GOOD_HEADER + term, self.naming)
+      acl = fortigate.Fortigate(parsed_policy, EXP_INFO)
+      output = str(acl)
+
+      expected_service_config = textwrap.dedent(f"""\
+          config firewall service custom
+              edit test-proto-{proto_name}-proto{proto_num}
+                   set comment 
+                  set protocol IP
+                  set protocol-number {proto_num}
+              next
+          """)
+      expected_policy_service = (
+          f"set service 'test-proto-{proto_name}-proto{proto_num}'"
+      )
+
+      self.assertIn(
+          expected_service_config,
+          output,
+          f'Expected service custom block not found for {proto_name} (proto'
+          f' {proto_num}) in output:\n{output}',
+      )
+      self.assertIn(
+          expected_policy_service,
+          output,
+          f'Expected policy service line not found for {proto_name} in'
+          f' output:\n{output}',
+      )
+
+  def testMultipleProtocolsWithProtocolNumber(self):
+    """Tests that multiple protocols render correctly with protocol numbers."""
+    term = textwrap.dedent("""\
+        term test-multi-proto {
+          protocol:: hopopt esp
+          action:: accept
+        }
+        """)
+    parsed_policy = policy.ParsePolicy(GOOD_HEADER + term, self.naming)
+    acl = fortigate.Fortigate(parsed_policy, EXP_INFO)
+    output = str(acl)
+
+    self.assertIn('edit test-multi-proto-proto0', output)
+    self.assertIn('edit test-multi-proto-proto50', output)
+    self.assertIn(
+        "set service 'test-multi-proto-proto0 test-multi-proto-proto50'",
+        output,
+    )
+
 
 if __name__ == '__main__':
   absltest.main()
+

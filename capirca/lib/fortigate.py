@@ -414,6 +414,16 @@ class ObjectsContainer():
 
     return service_name
 
+  def add_protocol_number_service(self, term_name, protocol_number):
+    """Add a protocol-number based service to services store."""
+    service_name = f'{term_name}-proto{protocol_number}'
+    if service_name not in self._dict_services:
+      self._dict_services[service_name] = [
+          'set protocol IP',
+          f'set protocol-number {protocol_number}',
+      ]
+    return service_name
+
   def add_icmp_to_fw_services(
       self,
       protocol,
@@ -508,14 +518,17 @@ class Term(aclgenerator.Term):
   def _get_services_name(self, protocols, destination_ports, source_ports):
     """Get the service name, if not exist create it.
 
-  Args:
-    protocols: list of protocols
-    destination_ports: list of destination ports
-    source_ports: list of source ports
+    Args:
+      protocols: list of protocols
+      destination_ports: list of destination ports
+      source_ports: list of source ports
 
-  Returns:
-    string (all services separated by spaces).
-  """
+    Returns:
+      string (all services separated by spaces).
+
+    Raises:
+      FortiGateValueError: If an unsupported protocol is encountered.
+    """
 
     ports = set()
     # fortigate does not allow empty destination_ports
@@ -573,7 +586,7 @@ class Term(aclgenerator.Term):
         else:
           service = icmp_service_name
         services.add(service)
-      else:
+      elif protocol in {'tcp', 'udp', 'sctp'}:
         for port in ports:
           service = self._obj_container.get_defined_service(protocol, port)
           if service:
@@ -587,6 +600,21 @@ class Term(aclgenerator.Term):
             if protocol not in portranges:
               portranges[protocol] = set()
             portranges[protocol].add(port)
+      else:
+        proto_num = None
+        if isinstance(protocol, int):
+          proto_num = protocol
+        elif str(protocol).isdigit():
+          proto_num = int(protocol)
+        elif protocol in aclgenerator.Term.PROTO_MAP:
+          proto_num = aclgenerator.Term.PROTO_MAP[protocol]
+
+        if proto_num is not None and proto_num >= 0:
+          service = self._obj_container.add_protocol_number_service(
+              self._term.name, proto_num)
+          services.add(service)
+        else:
+          raise FortiGateValueError(f'Unsupported protocol: {protocol}')
 
     if portranges:
       service = self._obj_container.add_service_to_fw_services(
