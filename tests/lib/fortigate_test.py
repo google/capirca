@@ -524,8 +524,8 @@ class FortigateTest(unittest.TestCase):
                       port_map.get_protocol,
                       'bad_proto', 22)
 
-  def testAddressExcludeV6Error(self):
-    """Tests that FortiGateValueError is raised for IPv6 address excludes."""
+  def testAddressExcludeV6(self):
+    """Tests that IPv6 address excludes are rendered correctly in addrgrp6."""
     term = textwrap.dedent("""\
         term test-v6-exclude {
           source-address:: SOME_HOST6
@@ -536,12 +536,13 @@ class FortigateTest(unittest.TestCase):
         """)
     parsed_policy = policy.ParsePolicy(GOOD_HEADER + term, self.naming)
     acl = fortigate.Fortigate(parsed_policy, EXP_INFO)
-    with self.assertRaises(fortigate.FortiGateValueError) as cm:
-      # str(acl) triggers policy rendering.
-      _ = str(acl)
-    self.assertIn(
-        'Exclude IPv6 address is unsupported: fec0:1::/32', str(cm.exception)
-    )
+    output = str(acl)
+    self.assertIn('config firewall addrgrp6', output)
+    self.assertIn('edit "test-v6-exclude-dstgrp6"', output)
+    self.assertIn('set member "fec0::/10"', output)
+    self.assertIn('set exclude enable', output)
+    self.assertIn('set exclude-member "fec0:1::/32"', output)
+    self.assertIn("set dstaddr6 'test-v6-exclude-dstgrp6'", output)
 
   def testFromZoneToZoneUniqueTermPrefixes(self):
     """Tests that unique-term-prefixes prepends a zone hash digest to term name and caps length at 35."""

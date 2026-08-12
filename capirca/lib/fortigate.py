@@ -333,21 +333,15 @@ class ObjectsContainer():
     address_exclude_v6 = [x.with_prefixlen for x in address_exclude if
                           isinstance(x, nacaddr.IPv6)]
 
-    if address_exclude_v6:
-      raise FortiGateValueError(
-          'Exclude IPv6 address is unsupported:'
-          f' {", ".join(address_exclude_v6)}'
-      )
-
     addr_names = []
     if address_v4 or address_exclude_v4:
       addr_name = self.generate_address_or_addrgrp(
           addrgrp_name, address_v4, address_exclude_v4, 4)
       addr_names += [(4, addr_name)]
 
-    if address_v6:
+    if address_v6 or address_exclude_v6:
       addr_name6 = self.generate_address_or_addrgrp(
-          addrgrp_name + '6', address_v6, None, 6)
+          addrgrp_name + '6', address_v6, address_exclude_v6, 6)
       addr_names += [(6, addr_name6)]
 
     return addr_names or 'all'
