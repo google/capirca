@@ -42,7 +42,7 @@ def IP(ip, comment='', token='', strict=True):
     imprecise_ip = ip
   else:
     imprecise_ip = ipaddress.ip_network(ip, strict=strict)
-  if imprecise_ip.version == 4:
+  if imprecise_ip.version == 4:  # pyrefly: ignore[missing-attribute]
     return IPv4(ip, comment, token, strict=strict)
   elif imprecise_ip.version == 6:
     return IPv6(ip, comment, token, strict=strict)

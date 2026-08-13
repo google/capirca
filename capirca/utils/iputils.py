@@ -35,7 +35,7 @@ def exclude_address(
   if not isinstance(exclude_net, ipaddress._BaseNetwork):  # pylint disable=protected-access
     raise TypeError('%s is not a network object' % exclude_net)
 
-  if not base_net.version == exclude_net.version:
+  if not base_net.version == exclude_net.version:  # pyrefly: ignore[missing-attribute]
     raise TypeError(
       '%s and %s are not of the same version' % (base_net, exclude_net)
     )
