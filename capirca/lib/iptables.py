@@ -118,9 +118,21 @@ class Term(aclgenerator.Term):
 
     ret_str = []
 
-    # Don't render icmpv6 protocol terms under inet, or icmp under inet6
-    if ((self.af == 'inet6' and 'icmp' in self.term.protocol) or
-        (self.af == 'inet' and 'icmpv6' in self.term.protocol)):
+    # Determine the protocols to render for this address family.
+    if self.term.protocol:
+      protocol = self.term.protocol
+    else:
+      protocol = ['all']
+
+    # Don't render icmpv6 protocol terms under inet, or icmp under inet6.
+    # A term may specify both (e.g. 'protocol:: icmp icmpv6'); in that case
+    # render only the protocols matching this address family, skipping the
+    # term entirely only when none remain.
+    if self.af == 'inet':
+      protocol = [p for p in protocol if p != 'icmpv6']
+    elif self.af == 'inet6':
+      protocol = [p for p in protocol if p != 'icmp']
+    if not protocol:
       logging.debug(self.NO_AF_LOG_PROTO.substitute(
           term=self.term.name,
           proto=', '.join(self.term.protocol),
@@ -180,11 +192,7 @@ class Term(aclgenerator.Term):
       return ('# skipped %s due to source or destination prefix rule' %
               self.term.name)
 
-    # protocol
-    if self.term.protocol:
-      protocol = self.term.protocol
-    else:
-      protocol = ['all']
+    # protocol was determined above; skip 'hopopt' in IPv4 context.
     if 'hopopt' in protocol and self.af == 'inet':
       logging.warning('Term %s is using hopopt in IPv4 context.',
                       self.term_name)
