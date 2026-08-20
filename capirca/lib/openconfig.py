@@ -66,6 +66,7 @@ class Term(aclgenerator.Term):
     super().__init__(term)
     self.term = term
     self.inet_version = inet_version
+    self.prefix_sets = {}
 
     # Combine (flatten) addresses with their exclusions into a resulting
     # flattened_saddr, flattened_daddr, flattened_addr.
@@ -126,15 +127,54 @@ class Term(aclgenerator.Term):
     if not protos:
       protos = ['none']
 
+    s_prefix_set_name = None
+    if len(saddrs) > 1:
+      if (
+          all(getattr(s, 'parent_token', None) for s in saddrs)
+          and len({s.parent_token for s in saddrs}) == 1
+      ):
+        s_prefix_set_name = saddrs[0].parent_token
+      else:
+        s_prefix_set_name = f'{self.term.name}_src'
+      self.prefix_sets[s_prefix_set_name] = {
+          'af': term_af,
+          'prefixes': [str(s) for s in saddrs],
+      }
+
+    d_prefix_set_name = None
+    if len(daddrs) > 1:
+      if (
+          all(getattr(d, 'parent_token', None) for d in daddrs)
+          and len({d.parent_token for d in daddrs}) == 1
+      ):
+        d_prefix_set_name = daddrs[0].parent_token
+      else:
+        d_prefix_set_name = f'{self.term.name}_dst'
+      self.prefix_sets[d_prefix_set_name] = {
+          'af': term_af,
+          'prefixes': [str(d) for d in daddrs],
+      }
+
+    saddr_list = [None] if s_prefix_set_name else saddrs
+    daddr_list = [None] if d_prefix_set_name else daddrs
+
     ace_dict = copy.deepcopy(term_dict)
     # Source Addresses
-    for saddr in saddrs:
-      if saddr != 'any':
+    for saddr in saddr_list:
+      if s_prefix_set_name:
+        ace_dict[family]['config']['source-address-prefix-set'] = (
+            s_prefix_set_name
+        )
+      elif saddr and saddr != 'any':
         ace_dict[family]['config']['source-address'] = str(saddr)
 
       # Destination Addresses
-      for daddr in daddrs:
-        if daddr != 'any':
+      for daddr in daddr_list:
+        if d_prefix_set_name:
+          ace_dict[family]['config']['destination-address-prefix-set'] = (
+              d_prefix_set_name
+          )
+        elif daddr and daddr != 'any':
           ace_dict[family]['config']['destination-address'] = str(daddr)
 
         # Source Port
@@ -234,6 +274,7 @@ class OpenConfig(aclgenerator.ACLGenerator):
 
   def _TranslatePolicy(self, pol, exp_info):
     acl_sets = []
+    defined_sets = RecursiveDict()
     sequence_id = 0
 
     current_date = datetime.datetime.now(datetime.UTC).date()
@@ -310,6 +351,26 @@ class OpenConfig(aclgenerator.ACLGenerator):
             rule['config']['sequence-id'] = sequence_id
             oc_policies.append(rule)
 
+          for set_name, set_info in t.prefix_sets.items():
+            if set_info['af'] == 4:
+              af_key = 'ipv4-prefix-sets'
+              set_key = 'ipv4-prefix-set'
+            else:
+              af_key = 'ipv6-prefix-sets'
+              set_key = 'ipv6-prefix-set'
+
+            existing_sets = defined_sets[af_key][set_key]
+            if not isinstance(existing_sets, list):
+              defined_sets[af_key][set_key] = []
+            if not any(
+                ps['name'] == set_name for ps in defined_sets[af_key][set_key]
+            ):
+              ps_entry = RecursiveDict()
+              ps_entry['name'] = set_name
+              ps_entry['config']['name'] = set_name
+              ps_entry['config']['prefix'] = set_info['prefixes']
+              defined_sets[af_key][set_key].append(ps_entry)
+
         acl_set['acl-entries']['acl-entry'] = oc_policies
         acl_sets.append(acl_set)
 
@@ -318,7 +379,14 @@ class OpenConfig(aclgenerator.ACLGenerator):
             filter_name,
             len(oc_policies),
         )
-    self.acl_data = {'acl-sets': {'acl-set': acl_sets}}
+
+    if defined_sets:
+      self.acl_data = {
+          'defined-sets': defined_sets,
+          'acl-sets': {'acl-set': acl_sets},
+      }
+    else:
+      self.acl_data = {'acl-sets': {'acl-set': acl_sets}}
 
   def __str__(self):
     out = '%s\n\n' % (

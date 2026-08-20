@@ -791,7 +791,265 @@ class OpenConfigTest(absltest.TestCase):
 
     self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
 
+  def testMultiSaddr(self):
+    multiple_ips = [
+        nacaddr.IP('10.2.3.4/32', token='CORP_EXTERNAL'),
+        nacaddr.IP('10.2.3.6/32', token='CORP_EXTERNAL'),
+    ]
+    self.naming.GetNetAddr.return_value = multiple_ips
+
+    acl = openconfig.OpenConfig(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_SADDR, self.naming), EXP_INFO
+    )
+    expected = {
+        'defined-sets': {
+            'ipv4-prefix-sets': {
+                'ipv4-prefix-set': [{
+                    'name': 'CORP_EXTERNAL',
+                    'config': {
+                        'name': 'CORP_EXTERNAL',
+                        'prefix': ['10.2.3.4/32', '10.2.3.6/32'],
+                    },
+                }]
+            }
+        },
+        'acl-sets': {
+            'acl-set': [{
+                'name': 'test-filter',
+                'type': 'ACL_IPV4',
+                'config': {'name': 'test-filter', 'type': 'ACL_IPV4'},
+                'acl-entries': {
+                    'acl-entry': [{
+                        'sequence-id': 1,
+                        'config': {
+                            'sequence-id': 1,
+                            'description': (
+                                '[good-term-1]: Allow source address.'
+                            ),
+                        },
+                        'actions': {'config': {'forwarding-action': 'ACCEPT'}},
+                        'ipv4': {
+                            'config': {
+                                'source-address-prefix-set': 'CORP_EXTERNAL'
+                            }
+                        },
+                    }]
+                },
+            }]
+        },
+    }
+    self.assertEqual(expected, json.loads(str(acl)))
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+
+  def testMultiDaddr(self):
+    multiple_ips = [
+        nacaddr.IP('10.2.3.4/32', token='CORP_EXTERNAL'),
+        nacaddr.IP('10.2.3.6/32', token='CORP_EXTERNAL'),
+    ]
+    self.naming.GetNetAddr.return_value = multiple_ips
+
+    acl = openconfig.OpenConfig(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_DADDR, self.naming), EXP_INFO
+    )
+    expected = {
+        'defined-sets': {
+            'ipv4-prefix-sets': {
+                'ipv4-prefix-set': [{
+                    'name': 'CORP_EXTERNAL',
+                    'config': {
+                        'name': 'CORP_EXTERNAL',
+                        'prefix': ['10.2.3.4/32', '10.2.3.6/32'],
+                    },
+                }]
+            }
+        },
+        'acl-sets': {
+            'acl-set': [{
+                'name': 'test-filter',
+                'type': 'ACL_IPV4',
+                'config': {'name': 'test-filter', 'type': 'ACL_IPV4'},
+                'acl-entries': {
+                    'acl-entry': [{
+                        'sequence-id': 1,
+                        'config': {
+                            'sequence-id': 1,
+                            'description': (
+                                '[good-term-1]: Allow destination address.'
+                            ),
+                        },
+                        'actions': {'config': {'forwarding-action': 'ACCEPT'}},
+                        'ipv4': {
+                            'config': {
+                                'destination-address-prefix-set': (
+                                    'CORP_EXTERNAL'
+                                )
+                            }
+                        },
+                    }]
+                },
+            }]
+        },
+    }
+    self.assertEqual(expected, json.loads(str(acl)))
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+
+  def testMultiV6Saddr(self):
+    multiple_ips_v6 = [
+        nacaddr.IP('2001:4860:8000::5/128', token='CORP_EXTERNAL_V6'),
+        nacaddr.IP('2001:4860:8000::6/128', token='CORP_EXTERNAL_V6'),
+    ]
+    self.naming.GetNetAddr.return_value = multiple_ips_v6
+
+    acl = openconfig.OpenConfig(
+        policy.ParsePolicy(GOOD_HEADER_INET6 + GOOD_SADDR, self.naming),
+        EXP_INFO,
+    )
+    expected = {
+        'defined-sets': {
+            'ipv6-prefix-sets': {
+                'ipv6-prefix-set': [{
+                    'name': 'CORP_EXTERNAL_V6',
+                    'config': {
+                        'name': 'CORP_EXTERNAL_V6',
+                        'prefix': [
+                            '2001:4860:8000::5/128',
+                            '2001:4860:8000::6/128',
+                        ],
+                    },
+                }]
+            }
+        },
+        'acl-sets': {
+            'acl-set': [{
+                'name': 'test-v6-filter',
+                'type': 'ACL_IPV6',
+                'config': {'name': 'test-v6-filter', 'type': 'ACL_IPV6'},
+                'acl-entries': {
+                    'acl-entry': [{
+                        'sequence-id': 1,
+                        'config': {
+                            'sequence-id': 1,
+                            'description': (
+                                '[good-term-1]: Allow source address.'
+                            ),
+                        },
+                        'actions': {'config': {'forwarding-action': 'ACCEPT'}},
+                        'ipv6': {
+                            'config': {
+                                'source-address-prefix-set': 'CORP_EXTERNAL_V6'
+                            }
+                        },
+                    }]
+                },
+            }]
+        },
+    }
+    self.assertEqual(expected, json.loads(str(acl)))
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+
+  def testFallbackSaddr(self):
+    fallback_ips = [
+        nacaddr.IP('10.2.3.4/32', token='TOKEN1'),
+        nacaddr.IP('10.2.3.6/32', token='TOKEN2'),
+    ]
+    self.naming.GetNetAddr.return_value = fallback_ips
+
+    acl = openconfig.OpenConfig(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_SADDR, self.naming), EXP_INFO
+    )
+    expected = {
+        'defined-sets': {
+            'ipv4-prefix-sets': {
+                'ipv4-prefix-set': [{
+                    'name': 'good-term-1_src',
+                    'config': {
+                        'name': 'good-term-1_src',
+                        'prefix': ['10.2.3.4/32', '10.2.3.6/32'],
+                    },
+                }]
+            }
+        },
+        'acl-sets': {
+            'acl-set': [{
+                'name': 'test-filter',
+                'type': 'ACL_IPV4',
+                'config': {'name': 'test-filter', 'type': 'ACL_IPV4'},
+                'acl-entries': {
+                    'acl-entry': [{
+                        'sequence-id': 1,
+                        'config': {
+                            'sequence-id': 1,
+                            'description': (
+                                '[good-term-1]: Allow source address.'
+                            ),
+                        },
+                        'actions': {'config': {'forwarding-action': 'ACCEPT'}},
+                        'ipv4': {
+                            'config': {
+                                'source-address-prefix-set': 'good-term-1_src'
+                            }
+                        },
+                    }]
+                },
+            }]
+        },
+    }
+    self.assertEqual(expected, json.loads(str(acl)))
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
+
+  def testFallbackDaddr(self):
+    fallback_ips = [
+        nacaddr.IP('10.2.3.4/32', token='TOKEN1'),
+        nacaddr.IP('10.2.3.6/32', token='TOKEN2'),
+    ]
+    self.naming.GetNetAddr.return_value = fallback_ips
+
+    acl = openconfig.OpenConfig(
+        policy.ParsePolicy(GOOD_HEADER + GOOD_DADDR, self.naming), EXP_INFO
+    )
+    expected = {
+        'defined-sets': {
+            'ipv4-prefix-sets': {
+                'ipv4-prefix-set': [{
+                    'name': 'good-term-1_dst',
+                    'config': {
+                        'name': 'good-term-1_dst',
+                        'prefix': ['10.2.3.4/32', '10.2.3.6/32'],
+                    },
+                }]
+            }
+        },
+        'acl-sets': {
+            'acl-set': [{
+                'name': 'test-filter',
+                'type': 'ACL_IPV4',
+                'config': {'name': 'test-filter', 'type': 'ACL_IPV4'},
+                'acl-entries': {
+                    'acl-entry': [{
+                        'sequence-id': 1,
+                        'config': {
+                            'sequence-id': 1,
+                            'description': (
+                                '[good-term-1]: Allow destination address.'
+                            ),
+                        },
+                        'actions': {'config': {'forwarding-action': 'ACCEPT'}},
+                        'ipv4': {
+                            'config': {
+                                'destination-address-prefix-set': (
+                                    'good-term-1_dst'
+                                )
+                            }
+                        },
+                    }]
+                },
+            }]
+        },
+    }
+    self.assertEqual(expected, json.loads(str(acl)))
+    self.naming.GetNetAddr.assert_called_once_with('CORP_EXTERNAL')
 
 
 if __name__ == '__main__':
   absltest.main()
+
