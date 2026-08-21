@@ -235,6 +235,13 @@ term good_term_13 {
 }
 """
 
+ICMP_AND_ICMPV6_TERM = """
+term permit-icmp {
+  protocol:: icmp icmpv6
+  action:: accept
+}
+"""
+
 HOPOPT_TERM = """
 term hopopt-term {
   protocol:: hopopt
@@ -1178,6 +1185,24 @@ class AclCheckTest(absltest.TestCase):
         'Term good-term-1 will not be rendered,'
         ' as it has icmp match specified but '
         'the ACL is of inet6 address family.')
+
+  def testIcmpAndIcmpv6Protocol(self):
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + ICMP_AND_ICMPV6_TERM, self.naming)
+    acl = iptables.Iptables(pol, EXP_INFO)
+    result = str(acl)
+    self.assertIn('-p icmp', result,
+                  'icmp protocol should be rendered for inet.')
+    self.assertNotIn('ipv6-icmp', result,
+                     'icmpv6 protocol should not be rendered for inet.')
+
+  def testIcmpAndIcmpv6ProtocolInet6(self):
+    pol = policy.ParsePolicy(IPV6_HEADER_1 + ICMP_AND_ICMPV6_TERM, self.naming)
+    acl = iptables.Iptables(pol, EXP_INFO)
+    result = str(acl)
+    self.assertIn('-p ipv6-icmp', result,
+                  'icmpv6 protocol should be rendered for inet6.')
+    self.assertNotIn('-p icmp', result,
+                     'icmp protocol should not be rendered for inet6.')
 
   def testOwner(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + GOOD_TERM_10, self.naming)
