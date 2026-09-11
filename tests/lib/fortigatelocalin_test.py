@@ -328,7 +328,6 @@ class FortigateLocalInTest(unittest.TestCase):
     custom_port_sig = textwrap.dedent("""\
         config firewall service custom
             edit good-term-2-svc
-                 set comment 
                 set tcp-portrange 80:43
             next
         """)
@@ -418,9 +417,9 @@ class FortigateLocalInTest(unittest.TestCase):
     expiration_sig = 'set schedule 2099/12/31_00:00'
     expiration_config_sig = textwrap.dedent("""\
         config firewall schedule onetime
-             edit 2099/12/31_00:00
-                 set end 00:00 2099/12/31
-        next
+            edit 2099/12/31_00:00
+                set end 00:00 2099/12/31
+            next
         end
         """)
 

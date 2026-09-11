@@ -218,16 +218,17 @@ class ObjectsContainer():
     """
     addr_name = addr.with_prefixlen
     address = []
-    address += [f'{_SP} edit "{addr_name}"']
+    address += [f'{_SP}edit "{addr_name}"']
     if verbose:
       addr_comment = _DEFAULT_COMMENT
       if len(addr.text):
-        addr_comment += " (" + addr.text + ")"
-      address += [f'{_SP * 2} set comment "{self.fix_comment_length(addr_comment)}"']
+        addr_comment += ' (' + addr.text + ')'
+      comment_str = self.fix_comment_length(addr_comment)
+      address += [f'{_SP * 2}set comment "{comment_str}"']
     if not isinstance(addr, nacaddr.IPv6):
-      address += [f'{_SP * 2} set subnet {addr_name}']
+      address += [f'{_SP * 2}set subnet {addr_name}']
     if isinstance(addr, nacaddr.IPv6):
-      address += [f'{_SP * 2} set ip6 {addr_name}']
+      address += [f'{_SP * 2}set ip6 {addr_name}']
     address += [_SP + 'next']
 
     return address
@@ -239,18 +240,19 @@ class ObjectsContainer():
       if addrgrp_item[0] == ip_v:
         address = addrgrp_item[1]
         exclude_address = addrgrp_item[2]
-        addrgrps += [f'{_SP} edit "{addrgrp_name}"']
+        addrgrps += [f'{_SP}edit "{addrgrp_name}"']
         if self.verbose:
-          addrgrps += [f'{_SP * 2} set comment "{_DEFAULT_COMMENT}"']
+          addrgrps += [f'{_SP * 2}set comment "{_DEFAULT_COMMENT}"']
         if address:
           quoted_members = ('"' + v + '"' for v in address)
-          addrgrps += [f'{_SP * 2} set member {" ".join(quoted_members)}']
+          addrgrps += [f'{_SP * 2}set member {" ".join(quoted_members)}']
         else:
           addrgrps += [_SP * 2 + 'set member "all"']
         if exclude_address:
           addrgrps += [_SP * 2 + 'set exclude enable']
           quoted_excludes = ('"' + v + '"' for v in exclude_address)
-          addrgrps += [f'{_SP * 2} set exclude-member {" ".join(quoted_excludes)}']
+          exclude_members = ' '.join(quoted_excludes)
+          addrgrps += [f'{_SP * 2}set exclude-member {exclude_members}']
         addrgrps += [_SP + 'next']
 
     return addrgrps
@@ -281,8 +283,8 @@ class ObjectsContainer():
     fw_services = []
     for service_name in sorted(self._dict_services.keys()):
       fw_services += [_SP + 'edit ' + service_name]
-      if self.verbose:
-        fw_services += [f'{_SP * 2} set comment {_DEFAULT_COMMENT}']
+      if self.verbose and _DEFAULT_COMMENT:
+        fw_services += [f'{_SP * 2}set comment "{_DEFAULT_COMMENT}"']
       for service_item in self._dict_services[service_name]:
         fw_services += [_SP * 2 + service_item]
       fw_services += [_SP + 'next']
@@ -293,9 +295,9 @@ class ObjectsContainer():
     """Returns the collected service groups."""
     svcgrps = []
     for svcgrp, value in self._dict_svcgrps.items():
-      svcgrps += [f'{_SP} edit {svcgrp}']
-      if self.verbose:
-        svcgrps += [f'{_SP * 2} set comment {_DEFAULT_COMMENT}']
+      svcgrps += [f'{_SP}edit {svcgrp}']
+      if self.verbose and _DEFAULT_COMMENT:
+        svcgrps += [f'{_SP * 2}set comment "{_DEFAULT_COMMENT}"']
       svcgrps += [_SP * 2 + value]
       svcgrps += [_SP + 'next']
 
@@ -305,9 +307,9 @@ class ObjectsContainer():
     """Returns the collected schedules."""
     schedules = []
     for schedule_name, schedule_date in self._dict_schedules.items():
-      schedules.extend([f'{_SP} edit {schedule_name}',
-                        f'{_SP * 2} set end {schedule_date}',
-                        'next'])
+      schedules.extend([f'{_SP}edit {schedule_name}',
+                        f'{_SP * 2}set end {schedule_date}',
+                        f'{_SP}next'])
     return schedules
 
   def process_action_setting(self, action):
@@ -478,7 +480,8 @@ class ObjectsContainer():
     """Return a comment which is equal or shorter than _COMMENT_MAX_LENGTH.
        _COMMENT_MAX_LENGTH truncated as necessary.
     """
-    return comment[:_COMMENT_MAX_LENGTH]
+    clean_comment = comment.replace('"', "'").strip()
+    return clean_comment[:_COMMENT_MAX_LENGTH]
 
 
 class Term(aclgenerator.Term):
@@ -707,60 +710,71 @@ class Term(aclgenerator.Term):
       schedule_name = self._obj_container.add_expiration_to_fw_schedules(
           schedule_date)
 
-    lines += [f"{_SP * 2} set name {self._term.name}"]
+    lines += [f'{_SP * 2}set name {self._term.name}']
     # Owner (implement as comment)
     if not self._term.comment:
       self._term.comment = [_DEFAULT_COMMENT]
     if self._term.owner:
-      self._term.comment += [f"Owner: {self._term.owner}"]
+      self._term.comment += [f'Owner: {self._term.owner}']
     if self._term.comment and self._term.verbose:
-       lines += [f'{_SP * 2} set comments "{self._obj_container.fix_comment_length((" ").join(self._term.comment))}"']
+      clean_comment = self._obj_container.fix_comment_length(
+          ' '.join(self._term.comment)
+      )
+      lines += [f'{_SP * 2}set comments "{clean_comment}"']
     # fortigate local-in policy exception
     if self.platform == 'fortigatelocalin':
       dst_intf = self._term.destination_interface or 'any'
-      lines += [f'{_SP * 2} set intf {dst_intf}']
+      lines += [f'{_SP * 2}set intf {dst_intf}']
     else:
       src_intf = self._term.source_interface or 'any'
       dst_intf = self._term.destination_interface or 'any'
-      lines += [f'{_SP * 2} set srcintf {src_intf}']
-      lines += [f'{_SP * 2} set dstintf {dst_intf}']
+      lines += [f'{_SP * 2}set srcintf {src_intf}']
+      lines += [f'{_SP * 2}set dstintf {dst_intf}']
     exist_src6 = False
     exist_dst6 = False
     if isinstance(dest_addresses, list):
       for (ip_v, addr_name) in dest_addresses:
-        lines += [f"{_SP * 2} set {('dstaddr' if ip_v == 4 else 'dstaddr6')} '{addr_name}'"]
+        addr_cmd = 'dstaddr' if ip_v == 4 else 'dstaddr6'
+        lines += [f"{_SP * 2}set {addr_cmd} '{addr_name}'"]
         if ip_v == 6:
           exist_dst6 = True
     else:
-      lines += [f"{_SP * 2} set dstaddr '{dest_addresses}'"]
+      lines += [f"{_SP * 2}set dstaddr '{dest_addresses}'"]
     if isinstance(src_addresses, list):
       for (ip_v, addr_name) in src_addresses:
-        lines += [f"{_SP * 2} set {('srcaddr' if ip_v == 4 else 'srcaddr6')} '{addr_name}'"]
+        addr_cmd = 'srcaddr' if ip_v == 4 else 'srcaddr6'
+        lines += [f"{_SP * 2}set {addr_cmd} '{addr_name}'"]
         if ip_v == 6:
           exist_src6 = True
     else:
-      lines += [f"{_SP * 2} set srcaddr '{src_addresses}'"]
+      lines += [f"{_SP * 2}set srcaddr '{src_addresses}'"]
     if exist_src6 and not exist_dst6:
       lines += [_SP * 2 + 'set dstaddr6 "all"']
     elif not exist_src6 and exist_dst6:
       lines += [_SP * 2 + 'set srcaddr6 "all"']
 
-    lines += [f"{_SP * 2} set action {action if action == 'accept' else 'deny'}"]
+    action_str = action if action == 'accept' else 'deny'
+    lines += [f'{_SP * 2}set action {action_str}']
     if action == 'reject':
       lines += [_SP * 2 + 'set send-deny-packet enable']
 
     if services:
       if self._NGFW_MODE == 'policy-based':
         lines += [_SP * 2 + 'set enforce-default-app-port disable']
-      lines += [f"{_SP * 2} set service '{services}'"]
+      lines += [f"{_SP * 2}set service '{services}'"]
     else:
       if self._NGFW_MODE == 'policy-based':
         lines += [_SP * 2 + 'set enforce-default-app-port enable']
 
-    if self._NGFW_MODE == 'policy-based' and self._term.fortigate_application_id:
-      lines  += [f"{_SP * 2} set application {' '.join(str(v) for v in sorted(self._term.fortigate_application_id))}"]
+    if (self._NGFW_MODE == 'policy-based'
+        and self._term.fortigate_application_id):
+      app_ids = ' '.join(
+          str(v) for v in sorted(self._term.fortigate_application_id)
+      )
+      lines += [f'{_SP * 2}set application {app_ids}']
 
-    lines  += [f"{_SP * 2} set schedule {schedule_name if schedule_name else 'always'}"]
+    schedule_val = schedule_name if schedule_name else 'always'
+    lines += [f'{_SP * 2}set schedule {schedule_val}']
 
     if self._term.logging:
       if self._term.logging == 'log-both':

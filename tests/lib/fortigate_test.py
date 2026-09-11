@@ -258,6 +258,28 @@ class FortigateTest(unittest.TestCase):
     src_sig_v6 = "set srcaddr6 'fec0::/10'"
     dest_sig_v6 = "set dstaddr6 'fec0::/10'"
 
+    expected_addr_config = textwrap.dedent("""\
+        config firewall address
+            edit "10.0.0.0/8"
+                set comment ""
+                set subnet 10.0.0.0/8
+            next
+            edit "20.0.0.0/8"
+                set comment ""
+                set subnet 20.0.0.0/8
+            next
+        end""")
+    self.assertIn(expected_addr_config, str(diff_addr_acl))
+
+    expected_addr6_config = textwrap.dedent("""\
+        config firewall address6
+            edit "fec0::/10"
+                set comment ""
+                set ip6 fec0::/10
+            next
+        end""")
+    self.assertIn(expected_addr6_config, str(same_addr6_acl))
+
     self.assertTrue(
         src_sig in str(diff_addr_acl) and dest_sig in str(diff_addr_acl),
         '[%s]' % str(diff_addr_acl))
@@ -326,7 +348,6 @@ class FortigateTest(unittest.TestCase):
     custom_port_sig = textwrap.dedent("""\
         config firewall service custom
             edit good-term-2-svc
-                 set comment 
                 set tcp-portrange 80:43
             next
         """)
@@ -376,10 +397,10 @@ class FortigateTest(unittest.TestCase):
         policy.ParsePolicy(GOOD_HEADER + both_interfaces_term,
                            self.naming), EXP_INFO)
 
-    no_interfaces_sig = 'set srcintf any\n         set dstintf any'
-    src_int_only_sig = 'set srcintf wan1\n         set dstintf any'
-    dest_int_only_sig = 'set srcintf any\n         set dstintf wan2'
-    both_interfaces_sig = 'set srcintf wan1\n         set dstintf wan2'
+    no_interfaces_sig = 'set srcintf any\n        set dstintf any'
+    src_int_only_sig = 'set srcintf wan1\n        set dstintf any'
+    dest_int_only_sig = 'set srcintf any\n        set dstintf wan2'
+    both_interfaces_sig = 'set srcintf wan1\n        set dstintf wan2'
 
     self.assertIn(
         no_interfaces_sig, str(no_interfaces_acl),
@@ -416,9 +437,9 @@ class FortigateTest(unittest.TestCase):
     expiration_sig = 'set schedule 2099/12/31_00:00'
     expiration_config_sig = textwrap.dedent("""\
         config firewall schedule onetime
-             edit 2099/12/31_00:00
-                 set end 00:00 2099/12/31
-        next
+            edit 2099/12/31_00:00
+                set end 00:00 2099/12/31
+            next
         end
         """)
 
@@ -626,7 +647,6 @@ class FortigateTest(unittest.TestCase):
       expected_service_config = textwrap.dedent(f"""\
           config firewall service custom
               edit test-proto-{proto_name}-proto{proto_num}
-                   set comment 
                   set protocol IP
                   set protocol-number {proto_num}
               next
@@ -666,6 +686,64 @@ class FortigateTest(unittest.TestCase):
         "set service 'test-multi-proto-proto0 test-multi-proto-proto50'",
         output,
     )
+
+  def testCommentSanitization(self):
+    """Tests that double quotes are sanitized and multiline strings preserved."""
+    term = textwrap.dedent("""\
+        term test-comment-sanitization {
+          protocol:: tcp
+          action:: accept
+          comment:: "Line 1 of comment
+Line 2 with multiline"
+        }
+        """)
+    parsed_policy = policy.ParsePolicy(GOOD_HEADER + term, self.naming)
+    parsed_policy.filters[0][1][0].comment.append('Line 3 with "quotes"')
+    acl = fortigate.Fortigate(parsed_policy, EXP_INFO)
+    output = str(acl)
+
+    expected_comment_line = (
+        'set comments "Line 1 of comment\n'
+        'Line 2 with multiline '
+        'Line 3 with \'quotes\'"'
+    )
+    self.assertIn(expected_comment_line, output)
+
+  def testAddressWithComment(self):
+    """Tests address object with comment."""
+    self.naming.GetNetAddr.side_effect = lambda host: [
+        nacaddr.IP('10.0.0.0/8', comment='internal network')
+    ]
+    term = self.fmt.format(
+        TERM_TEMPLATE, src_addr='SOME_HOST', remove_fields=('dest_addr',)
+    )
+    acl = fortigate.Fortigate(
+        policy.ParsePolicy(GOOD_HEADER + term, self.naming), EXP_INFO
+    )
+    expected_addr_config = textwrap.dedent("""\
+        config firewall address
+            edit "10.0.0.0/8"
+                set comment "(internal network)"
+                set subnet 10.0.0.0/8
+            next
+        end""")
+    self.assertIn(expected_addr_config, str(acl))
+
+  def testServicesAndGroupsWithDefaultComment(self):
+    """Tests services and service groups when _DEFAULT_COMMENT is set."""
+    with mock.patch.object(fortigate, '_DEFAULT_COMMENT', 'default-comment'):
+      term = self.fmt.format(
+          TERM_TEMPLATE,
+          protocol='icmp',
+          add_fields={'icmp-type': 'echo-request echo-reply'},
+          remove_fields=('src_addr', 'dest_addr', 'dest_port', 'src_port'),
+      )
+      acl = fortigate.Fortigate(
+          policy.ParsePolicy(GOOD_HEADER + term, self.naming), EXP_INFO
+      )
+      output = str(acl)
+      self.assertIn('config firewall service group', output)
+      self.assertIn('set comment "default-comment"', output)
 
 
 if __name__ == '__main__':
