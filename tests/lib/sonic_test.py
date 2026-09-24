@@ -160,6 +160,45 @@ class SonicTest(parameterized.TestCase):
 
     self.assertEqual(expected, json.loads(str(acl)))
 
+  def testMultiSrcIPv4WithExcludeSrc(self):
+    def fake_get_net_addr(name):
+      if name == "CORP_EXTERNAL":
+        return [
+            nacaddr.IP("10.2.3.0/24"),
+            nacaddr.IP("4.4.4.0/24"),
+        ]
+      if name == "RFC1918":
+        return [
+            nacaddr.IP("10.0.0.0/8"),
+        ]
+      return []
+
+    self.mock_naming_get_net_addr.side_effect = fake_get_net_addr
+    pol = """
+    term good-term-1 {
+      source-address:: CORP_EXTERNAL
+      source-exclude:: RFC1918
+      action:: accept
+    }
+    """
+    expected = json.loads("""
+    {
+      "ACL_RULE": {
+        "MyPolicyName|RULE_10": {
+          "PRIORITY": "65526",
+          "PACKET_ACTION": "FORWARD",
+          "SRC_IP": "4.4.4.0/24"
+        }
+      }
+    }
+    """)
+
+    acl = sonic.Sonic(
+        policy.ParsePolicy(GOOD_HEADER + pol, self.naming), self.exp_info
+    )
+
+    self.assertEqual(expected, json.loads(str(acl)))
+
   def testMultiSrcMultiDstIPv4(self):
     self.mock_naming_get_net_addr.return_value = [
         nacaddr.IP("10.2.3.4/32"),
@@ -204,6 +243,275 @@ class SonicTest(parameterized.TestCase):
     """
     acl = sonic.Sonic(
         policy.ParsePolicy(GOOD_HEADER + pol, self.naming), self.exp_info)
+
+    self.assertEqual(expected, json.loads(str(acl)))
+
+  def testMultiSrcMultiDstIPv4WithExcludeDst(self):
+    def fake_get_net_addr(name):
+      if name == "CORP_EXTERNAL":
+        return [
+            nacaddr.IP("10.2.3.0/24"),
+            nacaddr.IP("4.4.4.0/24"),
+        ]
+      if name == "RFC1918":
+        return [
+            nacaddr.IP("10.0.0.0/8"),
+        ]
+      return []
+
+    self.mock_naming_get_net_addr.side_effect = fake_get_net_addr
+    pol = """
+    term good-term-1 {
+      source-address:: CORP_EXTERNAL
+      destination-address:: CORP_EXTERNAL
+      destination-exclude:: RFC1918
+      action:: accept
+    }
+    """
+    expected = json.loads("""
+    {
+      "ACL_RULE": {
+        "MyPolicyName|RULE_10": {
+          "SRC_IP": "4.4.4.0/24",
+          "DST_IP": "4.4.4.0/24",
+          "PRIORITY": "65526",
+          "PACKET_ACTION": "FORWARD"
+        },
+        "MyPolicyName|RULE_20": {
+          "SRC_IP": "10.2.3.0/24",
+          "DST_IP": "4.4.4.0/24",
+          "PRIORITY": "65516",
+          "PACKET_ACTION": "FORWARD"
+        }
+      }
+    }
+    """)
+
+    acl = sonic.Sonic(
+        policy.ParsePolicy(GOOD_HEADER + pol, self.naming), self.exp_info
+    )
+
+    self.assertEqual(expected, json.loads(str(acl)))
+
+  def testMultiSrcMultiDstIPv4WithExcludeSrcDst(self):
+    def fake_get_net_addr(name):
+      if name == "CORP_EXTERNAL":
+        return [
+            nacaddr.IP("10.2.3.0/24"),
+            nacaddr.IP("4.4.4.0/24"),
+        ]
+      if name == "RFC1918":
+        return [
+            nacaddr.IP("10.0.0.0/8"),
+        ]
+      return []
+
+    self.mock_naming_get_net_addr.side_effect = fake_get_net_addr
+    pol = """
+    term good-term-1 {
+      source-address:: CORP_EXTERNAL
+      source-exclude:: RFC1918
+      destination-address:: CORP_EXTERNAL
+      destination-exclude:: RFC1918
+      action:: accept
+    }
+    """
+    expected = json.loads("""
+    {
+      "ACL_RULE": {
+        "MyPolicyName|RULE_10": {
+          "DST_IP": "4.4.4.0/24",
+          "PRIORITY": "65526",
+          "PACKET_ACTION": "FORWARD",
+          "SRC_IP": "4.4.4.0/24"
+        }
+      }
+    }
+    """)
+
+    acl = sonic.Sonic(
+        policy.ParsePolicy(GOOD_HEADER + pol, self.naming), self.exp_info
+    )
+
+    self.assertEqual(expected, json.loads(str(acl)))
+
+  def testHaystackIsBrokenUpByNeedle(self):
+    # Confirm all parts of 10.0.0.0/24 except excluded 10.0.0.64/26 are allowed
+    # in resulting ACL.
+    def fake_get_net_addr(name):
+      if name == "HAYSTACK":
+        return [
+            nacaddr.IP("10.0.0.0/24"),
+            nacaddr.IP("4.4.4.0/24"),
+        ]
+      if name == "NEEDLE":
+        return [
+            # This is second quarter of 10.0.0.0/24 in the HAYSTACK
+            nacaddr.IP("10.0.0.64/26"),
+        ]
+      return []
+
+    self.mock_naming_get_net_addr.side_effect = fake_get_net_addr
+    pol = """
+    term good-term-1 {
+      source-address:: HAYSTACK
+      source-exclude:: NEEDLE
+      action:: accept
+    }
+    """
+    expected = json.loads("""
+    {
+      "ACL_RULE": {
+        "MyPolicyName|RULE_10": {
+          "PRIORITY": "65526",
+          "PACKET_ACTION": "FORWARD",
+          "SRC_IP": "4.4.4.0/24"
+        },
+        "MyPolicyName|RULE_20": {
+          "PRIORITY": "65516",
+          "PACKET_ACTION": "FORWARD",
+          "SRC_IP": "10.0.0.0/26"
+        },
+        "MyPolicyName|RULE_30": {
+          "PRIORITY": "65506",
+          "PACKET_ACTION": "FORWARD",
+          "SRC_IP": "10.0.0.128/25"
+        }
+      }
+    }
+    """)
+
+    acl = sonic.Sonic(
+        policy.ParsePolicy(GOOD_HEADER + pol, self.naming), self.exp_info
+    )
+
+    self.assertEqual(expected, json.loads(str(acl)))
+
+  def testCompleteSrcExclusion(self):
+    # Complete source exclusion should result in an empty ACL (no rules).
+    def fake_get_net_addr(name):
+      if name == "TEST_RANGE":
+        return [
+            nacaddr.IP("4.4.4.0/24"),
+        ]
+      return []
+
+    self.mock_naming_get_net_addr.side_effect = fake_get_net_addr
+    pol = """
+    term good-term-1 {
+      source-address:: TEST_RANGE
+      source-exclude:: TEST_RANGE
+      action:: accept
+    }
+    """
+    expected = json.loads("""
+    {
+      "ACL_RULE": {}
+    }
+    """)
+
+    acl = sonic.Sonic(
+        policy.ParsePolicy(GOOD_HEADER + pol, self.naming), self.exp_info
+    )
+
+    self.assertEqual(expected, json.loads(str(acl)))
+
+  def testCompleteDstExclusion(self):
+    # Complete destination exclusion should result in an empty ACL (no rules).
+    def fake_get_net_addr(name):
+      if name == "TEST_RANGE":
+        return [
+            nacaddr.IP("4.4.4.0/24"),
+        ]
+      return []
+
+    self.mock_naming_get_net_addr.side_effect = fake_get_net_addr
+    pol = """
+    term good-term-1 {
+      destination-address:: TEST_RANGE
+      destination-exclude:: TEST_RANGE
+      action:: accept
+    }
+    """
+    expected = json.loads("""
+    {
+      "ACL_RULE": {}
+    }
+    """)
+
+    acl = sonic.Sonic(
+        policy.ParsePolicy(GOOD_HEADER + pol, self.naming), self.exp_info
+    )
+
+    self.assertEqual(expected, json.loads(str(acl)))
+
+  def testCompleteSrcExclusionWithDst(self):
+    # Complete source exclusion should result in an empty ACL (no rules)
+    # despite non-excluded destination address.
+    def fake_get_net_addr(name):
+      if name == "FAKE_SRC_RANGE":
+        return [
+            nacaddr.IP("4.4.4.0/24"),
+        ]
+      if name == "FAKE_DST_RANGE":
+        return [
+            nacaddr.IP("5.5.5.0/24"),
+        ]
+      return []
+
+    self.mock_naming_get_net_addr.side_effect = fake_get_net_addr
+    pol = """
+    term good-term-1 {
+      source-address:: FAKE_SRC_RANGE
+      source-exclude:: FAKE_SRC_RANGE
+      destination-address:: FAKE_DST_RANGE
+      action:: accept
+    }
+    """
+    expected = json.loads("""
+    {
+      "ACL_RULE": {}
+    }
+    """)
+
+    acl = sonic.Sonic(
+        policy.ParsePolicy(GOOD_HEADER + pol, self.naming), self.exp_info
+    )
+
+    self.assertEqual(expected, json.loads(str(acl)))
+
+  def testCompleteDstExclusionWithSrc(self):
+    # Complete destination exclusion should result in an empty ACL (no rules)
+    # despite non-excluded source address.
+    def fake_get_net_addr(name):
+      if name == "FAKE_SRC_RANGE":
+        return [
+            nacaddr.IP("4.4.4.0/24"),
+        ]
+      if name == "FAKE_DST_RANGE":
+        return [
+            nacaddr.IP("5.5.5.0/24"),
+        ]
+      return []
+
+    self.mock_naming_get_net_addr.side_effect = fake_get_net_addr
+    pol = """
+    term good-term-1 {
+      source-address:: FAKE_SRC_RANGE
+      destination-address:: FAKE_DST_RANGE
+      destination-exclude:: FAKE_DST_RANGE
+      action:: accept
+    }
+    """
+    expected = json.loads("""
+    {
+      "ACL_RULE": {}
+    }
+    """)
+
+    acl = sonic.Sonic(
+        policy.ParsePolicy(GOOD_HEADER + pol, self.naming), self.exp_info
+    )
 
     self.assertEqual(expected, json.loads(str(acl)))
 

@@ -38,11 +38,27 @@ class Term(aclgenerator.Term):
     self.inet_version = inet_version
     self.af = self.AF_MAP.get(self.inet_version)
     self.platform = platform
-    # Combine (flatten) addresses with their exclusions into a resulting
-    # flattened_saddr, flattened_daddr, flattened_addr.
+    self.force_empty_term = False
+    had_source_address = bool(self.term.source_address)
+    had_destination_address = bool(self.term.destination_address)
+    # Combine (flatten) addresses with their exclusions.
     self.term.FlattenAll()
+    if had_source_address and not bool(self.term.source_address):
+      logging.warning(
+          'Source address was removed during flattening for term %s',
+          self.term,
+      )
+      self.force_empty_term = True
+    if had_destination_address and not bool(self.term.destination_address):
+      logging.warning(
+          'Destination address was removed during flattening for term %s',
+          self.term,
+      )
+      self.force_empty_term = True
 
   def ConvertToDict(self):
+    if self.force_empty_term:
+      return []
     if not self.term.action:
       logging.info('Skipping term with empty action %s', self.term)
       return []
@@ -96,15 +112,15 @@ class Term(aclgenerator.Term):
       dst_ip_key = 'DST_IPV6'
       icmp_type_key = 'ICMPV6_TYPE'
 
-    if not self._HasBothAddressFamiliesIPs('flattened_saddr'):
+    if not self._HasBothAddressFamiliesIPs('source_address'):
       return []
-    saddrs = self.term.GetAddressOfVersion('flattened_saddr', self.af)
+    saddrs = self.term.GetAddressOfVersion('source_address', self.af)
     if not saddrs:
       saddrs = [None]
 
-    if not self._HasBothAddressFamiliesIPs('flattened_daddr'):
+    if not self._HasBothAddressFamiliesIPs('destination_address'):
       return []
-    daddrs = self.term.GetAddressOfVersion('flattened_daddr', self.af)
+    daddrs = self.term.GetAddressOfVersion('destination_address', self.af)
     if not daddrs:
       daddrs = [None]
     rules = []
@@ -145,7 +161,7 @@ class Term(aclgenerator.Term):
     """Checks if requested src/dst IPs of of matching term af exist.
 
     Args:
-      address_type: Could be either flattened_saddr or flattened_daddr. Str.
+      address_type: Could be either source_address or destination_address. Str.
 
     Returns:
       True if address_type of matching term af exists or False otherwise.
@@ -153,7 +169,7 @@ class Term(aclgenerator.Term):
     Raises:
       Error: if unsupported address_type is passed.
     """
-    if address_type not in ['flattened_saddr', 'flattened_daddr']:
+    if address_type not in ['source_address', 'destination_address']:
       raise Error(f'_HasBothAddressFamiliesIPs does not support {address_type}')
     addrs_af4 = self.term.GetAddressOfVersion(address_type, 4)
     addrs_af6 = self.term.GetAddressOfVersion(address_type, 6)
@@ -192,8 +208,10 @@ class Sonic(aclgenerator.ACLGenerator):
 
     # Remove unsupported things.
     unsupported_tokens = {
-        'verbatim', 'stateless_reply', 'platform_exclude', 'platform',
-        'source_address_exclude', 'destination_address_exclude'
+        'verbatim',
+        'stateless_reply',
+        'platform_exclude',
+        'platform',
     }
     supported_tokens -= unsupported_tokens
 
