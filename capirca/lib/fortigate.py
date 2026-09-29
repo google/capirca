@@ -910,6 +910,15 @@ class Fortigate(aclgenerator.ACLGenerator):
           raise FilterError(
               'FortiGate only support from-id and ngfw-mode filter')
 
+      if (
+          'from-id' not in my_filter
+          and unique_term_prefixes
+          and self.from_zone
+          and self.to_zone
+      ):
+        zone_hash = int(self.HexDigest(self.from_zone + self.to_zone, 8), 16)
+        Term.CURRENT_ID = ((zone_hash % 200000) + 1) * 10000
+
       Term._NGFW_MODE = self.ngfw_mode
 
       for term in terms:
@@ -963,14 +972,12 @@ class Fortigate(aclgenerator.ACLGenerator):
 
   def _get_fw_policies(self):
     target_policies = []
-    policy_id = 0
     for (_, _, term) in self.fortigate_policies:
       term_str = str(term)
       if term_str != '':
-        target_policies += [_SP + f'edit {policy_id}']
+        target_policies += [_SP + f'edit {term.id_}']
         target_policies += [term_str]
         target_policies += [_SP + 'next']
-        policy_id += 1
 
     return target_policies
 

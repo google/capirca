@@ -152,7 +152,7 @@ class FortigateTest(unittest.TestCase):
     acl = fortigate.Fortigate(policy.ParsePolicy(GOOD_HEADER + term,
                                                  self.naming), EXP_INFO)
 
-    expected_sig = 'edit 0'
+    expected_sig = 'edit 2'
 
     get_net_calls = [mock.call('SOME_HOST')] * 2
     get_server_by_proto_calls = [mock.call('HTTP', 'tcp')] * 2
@@ -745,7 +745,89 @@ Line 2 with multiline"
       self.assertIn('config firewall service group', output)
       self.assertIn('set comment "default-comment"', output)
 
+  def testFromIdSequential(self):
+    """Tests that explicit from-id increments sequentially across multiple terms."""
+    terms = textwrap.dedent("""\
+        term term-1 {
+          protocol:: tcp
+          action:: accept
+        }
+        term term-2 {
+          protocol:: udp
+          action:: accept
+        }
+        """)
+    acl = fortigate.Fortigate(
+        policy.ParsePolicy(GOOD_HEADER + terms, self.naming), EXP_INFO
+    )
+    output = str(acl)
+    self.assertIn('    edit 2\n        set name term-1', output)
+    self.assertIn('    edit 3\n        set name term-2', output)
+
+  def testDefaultFromIdAutoAssign(self):
+    """Tests that omitting from-id renders edit 0 for every term (auto-assign)."""
+    terms = textwrap.dedent("""\
+        term term-1 {
+          protocol:: tcp
+          action:: accept
+        }
+        term term-2 {
+          protocol:: udp
+          action:: accept
+        }
+        """)
+    acl = fortigate.Fortigate(
+        policy.ParsePolicy(GOOD_HEADER_1 + terms, self.naming), EXP_INFO
+    )
+    output = str(acl)
+    self.assertIn('    edit 0\n        set name term-1', output)
+    self.assertIn('    edit 0\n        set name term-2', output)
+    self.assertNotIn('    edit 1\n', output)
+
+  def testUniqueTermPrefixesDerivesUniquePolicyIds(self):
+    """Tests that unique-term-prefixes derives deterministic non-zero policy IDs."""
+    header_a = textwrap.dedent("""\
+        header {
+          target:: fortigate from-zone TRUST to-zone UNTRUST unique-term-prefixes
+        }
+        """)
+    header_b = textwrap.dedent("""\
+        header {
+          target:: fortigate from-zone UNTRUST to-zone TRUST unique-term-prefixes
+        }
+        """)
+    terms = textwrap.dedent("""\
+        term term-1 {
+          protocol:: tcp
+          action:: accept
+        }
+        term term-2 {
+          protocol:: udp
+          action:: accept
+        }
+        """)
+    acl_a1 = fortigate.Fortigate(
+        policy.ParsePolicy(header_a + terms, self.naming), EXP_INFO
+    )
+    acl_a2 = fortigate.Fortigate(
+        policy.ParsePolicy(header_a + terms, self.naming), EXP_INFO
+    )
+    acl_b = fortigate.Fortigate(
+        policy.ParsePolicy(header_b + terms, self.naming), EXP_INFO
+    )
+
+    edit_id_pattern = re.compile(r'^\s+edit (\d+)$', re.M)
+    ids_a1 = [int(x) for x in edit_id_pattern.findall(str(acl_a1))]
+    ids_a2 = [int(x) for x in edit_id_pattern.findall(str(acl_a2))]
+    ids_b = [int(x) for x in edit_id_pattern.findall(str(acl_b))]
+
+    self.assertEqual(ids_a1, ids_a2)
+    self.assertEqual(ids_a1, [ids_a1[0], ids_a1[0] + 1])
+    self.assertEqual(ids_b, [ids_b[0], ids_b[0] + 1])
+    self.assertGreater(ids_a1[0], 0)
+    self.assertGreater(ids_b[0], 0)
+    self.assertTrue(set(ids_a1).isdisjoint(set(ids_b)))
+
 
 if __name__ == '__main__':
   absltest.main()
-

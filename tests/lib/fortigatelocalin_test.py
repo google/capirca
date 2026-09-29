@@ -152,7 +152,7 @@ class FortigateLocalInTest(unittest.TestCase):
     acl = fortigatelocalin.FortigateLocalIn(policy.ParsePolicy(GOOD_HEADER + term,
                                                  self.naming), EXP_INFO)
 
-    expected_sig = 'edit 0'
+    expected_sig = 'edit 2'
 
     get_net_calls = [mock.call('SOME_HOST')] * 2
     get_server_by_proto_calls = [mock.call('HTTP', 'tcp')] * 2
