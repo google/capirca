@@ -828,6 +828,63 @@ Line 2 with multiline"
     self.assertGreater(ids_b[0], 0)
     self.assertTrue(set(ids_a1).isdisjoint(set(ids_b)))
 
+  def testFromIdWithNgfwModeAndZones(self):
+    """Tests from-id with ngfw-mode, zones, and unique-term-prefixes."""
+    header = textwrap.dedent("""\
+        header {
+          target:: fortigate from-zone TRUST to-zone UNTRUST unique-term-prefixes from-id 100 ngfw-mode profile-based
+        }
+        """)
+    terms = textwrap.dedent("""\
+        term term-1 {
+          protocol:: tcp
+          action:: accept
+        }
+        term term-2 {
+          protocol:: udp
+          action:: accept
+        }
+        """)
+    acl = fortigate.Fortigate(
+        policy.ParsePolicy(header + terms, self.naming), EXP_INFO
+    )
+    output = str(acl)
+    self.assertIn('    edit 100\n', output)
+    self.assertIn('    edit 101\n', output)
+
+  def testDuplicateFilterArguments(self):
+    """Tests duplicate filter keys or incomplete zones raise FilterError."""
+    term = self.fmt.format(TERM_TEMPLATE)
+    for target_line in (
+        'target:: fortigate from-id 100 from-id 200',
+        'target:: fortigate from-zone TRUST',
+        'target:: fortigate to-zone UNTRUST',
+    ):
+      header = f'header {{\n  {target_line}\n}}\n'
+      with self.subTest(target_line=target_line):
+        self.assertRaises(
+            fortigate.FilterError,
+            fortigate.Fortigate,
+            policy.ParsePolicy(header + term, self.naming),
+            EXP_INFO,
+        )
+
+  def testAddressFamilyOptionRaisesFilterError(self):
+    """Tests that address-family tokens (inet/inet6/mixed) are rejected."""
+    term = self.fmt.format(TERM_TEMPLATE)
+    header = textwrap.dedent("""\
+        header {
+          target:: fortigate ngfw-mode profile-based mixed
+        }
+        """)
+    self.assertRaisesRegex(
+        fortigate.FilterError,
+        'key-value pairs',
+        fortigate.Fortigate,
+        policy.ParsePolicy(header + term, self.naming),
+        EXP_INFO,
+    )
+
 
 if __name__ == '__main__':
   absltest.main()

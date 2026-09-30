@@ -854,43 +854,33 @@ class Fortigate(aclgenerator.ACLGenerator):
 
       self._obj_container.verbose = verbose
 
+      unique_term_prefixes = False
+      if 'unique-term-prefixes' in filter_options:
+        unique_term_prefixes = True
+        filter_options.remove('unique-term-prefixes')
+
+      # The above processing handles filter options that take no argument.
+      # Next we focus on the options that do take an argument, and start by
+      # associating each option with its argument.
+      if len(filter_options) % 2 != 0:
+        raise FilterError(
+            'FortiGate filter options with arguments must be key-value pairs'
+        )
+      my_filter = {}
+      for filter_key, filter_val in zip(
+          filter_options[::2], filter_options[1::2]
+      ):
+        if filter_key in my_filter:
+          raise FilterError(
+              'Fortigate filter arguments are duplicated: ' + filter_key
+          )
+        my_filter[filter_key] = filter_val
+
       # from_zone and to_zone are used solely for calculating unique term
       # prefixes when unique-term-prefixes is enabled. They do not alter
       # generated rules, set srcintf/dstintf, or affect firewall rule behavior.
       self.from_zone = ''
       self.to_zone = ''
-      if 'from-zone' in filter_options and 'to-zone' in filter_options:
-        from_idx = filter_options.index('from-zone')
-        to_idx = filter_options.index('to-zone')
-        self.from_zone = filter_options[from_idx + 1]
-        self.to_zone = filter_options[to_idx + 1]
-        if from_idx < to_idx:
-          del filter_options[to_idx:to_idx + 2]
-          del filter_options[from_idx:from_idx + 2]
-        else:
-          del filter_options[from_idx:from_idx + 2]
-          del filter_options[to_idx:to_idx + 2]
-
-      unique_term_prefixes = False
-      if 'unique-term-prefixes' in filter_options:
-        unique_term_prefixes = True
-        filter_options.remove('unique-term-prefixes')
-        if not self.from_zone or not self.to_zone:
-          raise FilterError(
-              'unique-term-prefixes requires from-zone and to-zone to be set.'
-          )
-
-      my_filter = {}
-      if len(filter_options) == 1:
-        my_filter[filter_options[0]] = ''
-      if len(filter_options) > 1:
-        my_filter[filter_options[0]] = filter_options[1]
-      if len(filter_options) > 3:
-        for key in filter_options:
-          if key == my_filter[2]:
-            raise FilterError('Fortigate filter arguments are duplicated: ' + key)
-        my_filter[filter_options[2]] = filter_options[3]
-
       # default from-id is 0
       Term.CURRENT_ID = 0
       # default ngfw_mode = profile-based
@@ -906,9 +896,22 @@ class Fortigate(aclgenerator.ACLGenerator):
           if filter_val not in ['profile-based', 'policy-based']:
             raise FilterError('FortiGate ngfw-mode only supports profile-based or policy-based')
           self.ngfw_mode = filter_val
+        elif filter_key == 'from-zone':
+          self.from_zone = filter_val
+        elif filter_key == 'to-zone':
+          self.to_zone = filter_val
         else:
           raise FilterError(
-              'FortiGate only support from-id and ngfw-mode filter')
+              'FortiGate only supports from-id, ngfw-mode, from-zone, and'
+              ' to-zone filters'
+          )
+
+      if bool(self.from_zone) != bool(self.to_zone):
+        raise FilterError('from-zone and to-zone must both be set.')
+      if unique_term_prefixes and (not self.from_zone or not self.to_zone):
+        raise FilterError(
+            'unique-term-prefixes requires from-zone and to-zone to be set.'
+        )
 
       if (
           'from-id' not in my_filter
