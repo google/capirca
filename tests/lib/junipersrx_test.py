@@ -946,7 +946,8 @@ class JuniperSRXTest(absltest.TestCase):
 
   @mock.patch.object(junipersrx.logging, 'info')
   def testExpiringTerm(self, mock_info):
-    exp_date = datetime.date.today() + datetime.timedelta(weeks=EXP_INFO)
+    current_date = datetime.datetime.now(datetime.timezone.utc).date()
+    exp_date = current_date + datetime.timedelta(weeks=EXP_INFO)
     _ = junipersrx.JuniperSRX(policy.ParsePolicy(GOOD_HEADER + EXPIRING_TERM %
                                                  exp_date.strftime('%Y-%m-%d'),
                                                  self.naming), EXP_INFO)
