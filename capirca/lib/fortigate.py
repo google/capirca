@@ -726,8 +726,10 @@ class Term(aclgenerator.Term):
       dst_intf = self._term.destination_interface or 'any'
       lines += [f'{_SP * 2}set intf {dst_intf}']
     else:
-      src_intf = self._term.source_interface or 'any'
-      dst_intf = self._term.destination_interface or 'any'
+      # Explicit term interfaces take precedence; otherwise scope the rule to
+      # the header's zone pair.
+      src_intf = self._term.source_interface or self.from_zone or 'any'
+      dst_intf = self._term.destination_interface or self.to_zone or 'any'
       lines += [f'{_SP * 2}set srcintf {src_intf}']
       lines += [f'{_SP * 2}set dstintf {dst_intf}']
     exist_src6 = False
@@ -876,9 +878,10 @@ class Fortigate(aclgenerator.ACLGenerator):
           )
         my_filter[filter_key] = filter_val
 
-      # from_zone and to_zone are used solely for calculating unique term
-      # prefixes when unique-term-prefixes is enabled. They do not alter
-      # generated rules, set srcintf/dstintf, or affect firewall rule behavior.
+      # from_zone and to_zone scope each rule via srcintf/dstintf (unless the
+      # term sets source_interface/destination_interface) and, when
+      # unique-term-prefixes is enabled, seed unique term prefixes and policy
+      # IDs.
       self.from_zone = ''
       self.to_zone = ''
       # default from-id is 0

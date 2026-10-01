@@ -885,6 +885,50 @@ Line 2 with multiline"
         EXP_INFO,
     )
 
+  def testZonesScopeSrcintfAndDstintf(self):
+    """Tests that from-zone and to-zone set srcintf and dstintf."""
+    header = textwrap.dedent("""\
+        header {
+          target:: fortigate from-zone CORP2ALL to-zone EXTERNAL
+        }
+        """)
+    terms = textwrap.dedent("""\
+        term zone-scoped {
+          protocol:: tcp
+          action:: accept
+        }
+        term term-override {
+          source-interface:: port1
+          destination-interface:: port2
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    acl = fortigate.Fortigate(
+        policy.ParsePolicy(header + terms, self.naming), EXP_INFO
+    )
+    output = str(acl)
+    expected_zone_scoped = textwrap.indent(
+        textwrap.dedent("""\
+            set name zone-scoped
+            set comments ""
+            set srcintf CORP2ALL
+            set dstintf EXTERNAL
+            """),
+        ' ' * 8,
+    )
+    expected_term_override = textwrap.indent(
+        textwrap.dedent("""\
+            set name term-override
+            set comments ""
+            set srcintf port1
+            set dstintf port2
+            """),
+        ' ' * 8,
+    )
+    self.assertIn(expected_zone_scoped, output)
+    self.assertIn(expected_term_override, output)
+
 
 if __name__ == '__main__':
   absltest.main()
