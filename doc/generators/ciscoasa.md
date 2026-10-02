@@ -2,8 +2,15 @@
 
 The ciscoasa header designation has the following format:
 ```
-target:: ciscoasa [filter name]
+target:: ciscoasa [filter name] [inet|inet6]
 ```
+
+The address family defaults to `inet` (IPv4). Use `inet6` to render IPv6
+addresses and ICMPv6 terms, for example `target:: ciscoasa inbound-v6 inet6`.
+IPv6 output uses ASA 9.0 or later extended ACL syntax, with `any6` for
+unspecified addresses and `icmp6` for the `icmpv6` protocol. The default IPv4
+output is unchanged.
+
 ## Term Format
 * _action::_ The action to take when matched. See Actions section for valid options.
 * _comment::_ A text comment enclosed in double-quotes.  The comment can extend over multiple lines if desired, until a closing quote is encountered.
