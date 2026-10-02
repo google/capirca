@@ -33,7 +33,7 @@ high-level policy files to facilitate the development and manipulation of
 network access control lists (ACLs) for various platforms. It was developed by
 Google for internal use, and is now open source.
 
-Capirca consist of `capirca` Python package and the `capirca` tool.
+Capirca consists of the `capirca` Python package and the `aclgen` command-line tool.
 
 The typical usage workflow consists of the following steps:
 
@@ -41,7 +41,7 @@ The typical usage workflow consists of the following steps:
 1.  Create a **access control policy** defining the desired state of access
     control and referencing the **object definitions** together with desired
     firewall platforms
-1.  Generate ACL configurations by running `capirca` command referencing the
+1.  Generate ACL configurations by running the `aclgen` command referencing the
     access control policy and the object definitions. The command triggers a
     **generator** for each of the firewall platforms.
 
@@ -580,7 +580,7 @@ python3 setup.py install --user
 Typically, when provided `--user` argument, the installer creates the following
 files, where `3.8` is Python version and `2.0.0` is the version of `capirca`:
 
-*   `~/.local/bin/capirca`
+*   `~/.local/bin/aclgen`
 *   `~/.local/lib/python3.8/site-packages/capirca-2.0.0-py3.8.egg`
 
 If necessary, remove build files:
@@ -597,7 +597,7 @@ iptables, and other firewall platforms.
 ```
 
 The generation of sample output while in the `capirca`'s source code directory
-does not require command line parameters, because `capirca` inherits default
+does not require command line parameters, because `aclgen` inherits default
 settings from the following configuration (see `capirca/utils/config.py`).
 
 ```json
@@ -637,12 +637,12 @@ pip install capirca --user
 
 ### Basic Usage
 
-There are a number of command-line arguments that can be used with `capirca`.
+There are a number of command-line arguments that can be used with `aclgen`.
 
 ```
-$ ~/.local/bin/capirca --helpfull
+$ ~/.local/bin/aclgen --helpfull
 
-       USAGE: capirca [flags]
+       USAGE: aclgen [flags]
 flags:
 
 absl.app:
@@ -691,7 +691,7 @@ absl.logging:
     (default: '-1')
     (an integer)
 
-capirca.capirca:
+capirca.aclgen:
   --base_directory: The base directory to look for acls; typically where you'd find ./corp and ./prod
     (default: './policies')
   --config_file: A yaml file with the configuration options for capirca;
@@ -759,7 +759,7 @@ exp_info: 2
 
 ### Python Package
 
-The `capirca` tool uses `capirca` Python package.
+The `aclgen` tool uses the `capirca` Python package.
 
 Therefore, there is a way to access `capirca` programmatically.
 
