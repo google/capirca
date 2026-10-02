@@ -169,14 +169,14 @@ class Naming:
     # convert string to nacaddr, if arg is ipaddr then convert str() to nacaddr
     if (not isinstance(query, nacaddr.IPv4) and
        not isinstance(query, nacaddr.IPv6)):
-      if query[:1].isdigit():
+      if query[:1].isdigit() or ':' in query:
         query = nacaddr.IP(query)
     # Get parent token for an IP
     if isinstance(query, nacaddr.IPv4) or isinstance(query, nacaddr.IPv6):
       for token in self.networks:
         for item in self.networks[token].items:
           item = item.split('#')[0].strip()
-          if not item[:1].isdigit():
+          if not item[:1].isdigit() and ':' not in item:
             continue
           try:
             supernet = nacaddr.IP(item, strict=False)

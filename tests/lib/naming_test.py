@@ -145,6 +145,27 @@ class NamingUnitTest(absltest.TestCase):
     self.assertListEqual(self.defs.GetIpParents('10.11.12.13/32'),
                          ['BING', 'NET1', 'NET2'])
 
+  def testGetIpParentsMixedAddressFamilies(self):
+    defs = naming.Naming(None)
+    defs.ParseNetworkList([
+        'V4 = 192.0.2.0/24',
+        'GLOBAL = 2001:db8::/32',
+        'LOCAL = fd00::/8',
+        'LOOPBACK = ::1/128',
+        'PARENT = GLOBAL LOCAL LOOPBACK',
+    ])
+    for query, expected in [
+        ('192.0.2.1', ['V4']),
+        ('2001:db8::1', ['GLOBAL', 'PARENT']),
+        ('fd00::1', ['LOCAL', 'PARENT']),
+        ('::1', ['LOOPBACK', 'PARENT']),
+        ('fe80::1', []),
+    ]:
+      for value in (query, nacaddr.IP(query)):
+        with self.subTest(query=value):
+          self.assertEqual(defs.GetIpParents(value), expected)
+    self.assertEqual(defs.GetIpParents('LOCAL'), ['PARENT'])
+
   def testUndefinedTokenNesting(self):
     bad_servicedata = ['FOO = 7/tcp BAR']
     bad_networkdata = ['NETGROUP = 10.0.0.0/8 FOOBAR']
