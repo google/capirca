@@ -75,7 +75,7 @@ class IPv4(ipaddress.IPv4Network):
     # Using a tuple of IP integer/prefixlength is significantly faster than
     # using the BaseNetwork object for recreating the IP network
     if isinstance(ip_string, ipaddress._BaseNetwork):  # pylint disable=protected-access
-      ip = (ip_string.network_address._ip, ip_string.prefixlen)  # pylint disable=protected-access # pytype: disable=attribute-error
+      ip = (ip_string.network_address._ip, ip_string.prefixlen)  # pylint disable=protected-access
     else:
       ip = ip_string
     super().__init__(ip, strict)
@@ -154,7 +154,7 @@ class IPv6(ipaddress.IPv6Network):
     # Using a tuple of IP integer/prefixlength is significantly faster than
     # using the BaseNetwork object for recreating the IP network
     if isinstance(ip_string, ipaddress._BaseNetwork):  # pylint disable=protected-access
-      ip = (ip_string.network_address._ip, ip_string.prefixlen)  # pylint disable=protected-access # pytype: disable=attribute-error
+      ip = (ip_string.network_address._ip, ip_string.prefixlen)  # pylint disable=protected-access
     else:
       ip = ip_string
     super().__init__(ip, strict)

@@ -40,13 +40,13 @@ def exclude_address(
       '%s and %s are not of the same version' % (base_net, exclude_net)
     )
 
-  if not exclude_net.subnet_of(base_net): # pytype: disable=attribute-error
+  if not exclude_net.subnet_of(base_net):
     raise ValueError()
   if exclude_net == base_net:
     return
 
-  include_range = base_net.network_address._ip, base_net.broadcast_address._ip  # pylint disable=protected-access # pytype: disable=attribute-error
-  exclude_range = exclude_net.network_address._ip, exclude_net.broadcast_address._ip  # pylint disable=protected-access # pytype: disable=attribute-error
+  include_range = base_net.network_address._ip, base_net.broadcast_address._ip  # pylint disable=protected-access
+  exclude_range = exclude_net.network_address._ip, exclude_net.broadcast_address._ip  # pylint disable=protected-access
   address_class = base_net.network_address.__class__  # pylint disable=protected-access
   if include_range[0] == exclude_range[0]:
     result_start = address_class(exclude_range[1] + 1)
