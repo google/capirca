@@ -236,7 +236,7 @@ class Rule:
       # Add certain protocol names as application in the application list
       # if missing.
       for proto_name in term.protocol:
-        if (proto_name in ["igmp", "sctp", "gre"] and
+        if (proto_name == "igmp" and
             proto_name not in options["application"]):
           options["application"].append(proto_name)
         elif proto_name in ("ah", "esp"):
@@ -269,6 +269,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       "esp",
   ]
   _MAX_RULE_DESCRIPTION_LENGTH = 1024
+  _CUSTOM_IP_PROTOCOLS = {"gre": 47, "sctp": 132}
   _MAX_TAG_COMMENTS_LENGTH = 1023
   _TAG_NAME_FORMAT = "{from_zone}_{to_zone}_policy-comment-{num}"
   _MAX_RULE_SRC_DST_MEMBERS = 65535
@@ -667,6 +668,30 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
               "Palo Alto Firewall filter must have ICMP or ICMPv6 protocol " +
               "specified when using icmp_type keyword")
 
+        for proto_name in term.protocol:
+          if proto_name not in self._CUSTOM_IP_PROTOCOLS:
+            continue
+          if term.source_port or term.destination_port:
+            raise UnsupportedFilterError(
+                f"Term {term.name} specifies ports with {proto_name}; "
+                "Palo Alto services only support TCP and UDP ports")
+          app_name = f"ip-protocol-{proto_name}"
+          if app_name not in self.application_refs:
+            self.application_refs[app_name] = {
+                "category": "networking",
+                "subcategory": "ip-protocol",
+                "technology": "network-protocol",
+                "description": app_name,
+                "default": {
+                    "ident-by-ip-protocol": str(
+                        self._CUSTOM_IP_PROTOCOLS[proto_name]),
+                },
+                "risk": "5",
+            }
+            self.applications.append(app_name)
+          if app_name not in term.pan_application:
+            term.pan_application.append(app_name)
+
         for icmp_version in ["icmp", "icmpv6"]:
           if ("icmp" not in term.protocol and "icmpv6" not in term.protocol):
             # the protocol is not ICMP or ICMPv6
@@ -911,6 +936,8 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
             ]:
               icmp_type_props = etree.SubElement(default_props, prop)
               etree.SubElement(icmp_type_props, "type").text = app[k][prop]
+            elif prop == "ident-by-ip-protocol":
+              etree.SubElement(default_props, prop).text = app[k][prop]
             else:
               pass
     vsys_entry.append(app_entries)
