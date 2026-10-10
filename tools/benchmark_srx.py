@@ -55,13 +55,15 @@ def render(root, policies, optimize):
     aclgen.WriteFiles(writes)
     seconds = time.perf_counter() - start
     digest = hashlib.sha256()
+    files = 0
     for path in sorted(output.rglob('*')):
       if path.is_file():
+        files += 1
         digest.update(str(path.relative_to(output)).encode())
         digest.update(b'\0')
         digest.update(path.read_bytes())
     return {'seconds': seconds, 'sha256': digest.hexdigest(),
-            'files': len(writes)}
+            'files': files, 'writes': len(writes)}
 
 
 def render_cli(root, policy_paths, optimize):
