@@ -32,12 +32,16 @@ jobs:
         include:
           - os: ubuntu-latest
             python: '3.9'
+            tests: tests/lib/junipersrx_test.py tests/lib/srx_native_test.py
           - os: ubuntu-latest
             python: '3.14'
+            tests: tests
           - os: macos-latest
             python: '3.14'
+            tests: tests
           - os: windows-latest
             python: '3.14'
+            tests: tests
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -49,7 +53,9 @@ jobs:
       - run: python -m pip install -e . -r requirements.txt pytest ./native
       - run: cargo fmt --manifest-path native/Cargo.toml --check
       - run: cargo clippy --locked --manifest-path native/Cargo.toml --all-targets -- -D warnings
-      - run: python -m pytest -q
-      - run: python tools/benchmark_srx.py --rounds 1 --output benchmark.json
+      # Upstream OpenConfig uses datetime.UTC, which requires Python 3.11.
+      - run: python -m pytest -q ${{ matrix.tests }}
+      - if: matrix.python != '3.9'
+        run: python tools/benchmark_srx.py --rounds 1 --output benchmark.json
       - run: python -m pip uninstall -y capirca-native
-      - run: python -m pytest -q
+      - run: python -m pytest -q ${{ matrix.tests }}

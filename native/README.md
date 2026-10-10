@@ -4,6 +4,8 @@ The optional Rust extension batches the subnet checks used to construct Juniper
 SRX address books. Capirca uses it when installed and otherwise uses its existing
 Python implementation.
 
+[Benchmark results and reproduction commands](./benchmarks/README.md).
+
 ## Installation
 
 Building the extension requires Python 3.9 or later and Rust 1.83 or later:
@@ -19,6 +21,9 @@ again:
 ```sh
 python -m pip uninstall capirca-native
 ```
+
+CI runs the SRX tests on Python 3.9 and the full project suite on Python 3.14
+across Linux, macOS, and Windows.
 
 ## Behavior
 
