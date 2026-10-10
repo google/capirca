@@ -282,8 +282,14 @@ class Term(aclgenerator.Term):
             raise TcpEstablishedWithNonTcpError(
                 'tcp-established can only be used with tcp protocol in term %s'
                 % self.term.name)
+        elif opt.startswith('fin'):
+          from_str.append('tcp-flags "fin";')
+        elif opt.startswith('psh'):
+          from_str.append('tcp-flags "psh";')
         elif opt.startswith('rst'):
           from_str.append('tcp-flags "rst";')
+        elif opt.startswith('urg'):
+          from_str.append('tcp-flags "urg";')
         elif opt.startswith('initial') and 'tcp' in self.term.protocol:
           from_str.append('tcp-initial;')
         elif opt.startswith('first-fragment'):
