@@ -4,15 +4,19 @@ on:
   push:
     paths:
       - native/**
-      - capirca/lib/junipersrx.py
-      - tests/lib/srx_native_test.py
+      - capirca/**
+      - tests/**
+      - requirements.txt
+      - setup.py
       - tools/benchmark_srx.py
       - .github/workflows/native.yml
   pull_request:
     paths:
       - native/**
-      - capirca/lib/junipersrx.py
-      - tests/lib/srx_native_test.py
+      - capirca/**
+      - tests/**
+      - requirements.txt
+      - setup.py
       - tools/benchmark_srx.py
       - .github/workflows/native.yml
 

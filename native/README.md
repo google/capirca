@@ -57,4 +57,5 @@ the large SRX sample.
 Pass `--baseline /path/to/unmodified/capirca` to compare separate CLI processes
 against an upstream source tree instead. This mode includes imports, process
 startup, and the multiprocessing manager, and verifies that both trees contain
-identical fixture files.
+identical fixture files. Both subprocesses use `PYTHONHASHSEED=0` because the
+Arista generator emits counters in set iteration order.

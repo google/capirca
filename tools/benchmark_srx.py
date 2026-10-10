@@ -76,6 +76,7 @@ def render_cli(root, policy_paths, optimize):
       command.append('--optimize')
     environment = os.environ.copy()
     environment['PYTHONPATH'] = str(root)
+    environment['PYTHONHASHSEED'] = '0'
     start = time.perf_counter()
     subprocess.run(command, cwd=root, env=environment, check=True,
                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -125,6 +126,7 @@ def main():
              'platform': platform.platform(),
              'optimize': not args.no_optimize,
              'cli': bool(args.baseline),
+             'hash_seed': '0' if args.baseline else os.environ.get('PYTHONHASHSEED'),
              'workers': 1, 'runs': [], 'summary': {},
              'inputs': {str(path.relative_to(root)): hashlib.sha256(
                  path.read_bytes()).hexdigest()
