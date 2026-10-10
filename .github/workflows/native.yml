@@ -1,0 +1,51 @@
+name: Native SRX address book
+
+on:
+  push:
+    paths:
+      - native/**
+      - capirca/lib/junipersrx.py
+      - tests/lib/srx_native_test.py
+      - tools/benchmark_srx.py
+      - .github/workflows/native.yml
+  pull_request:
+    paths:
+      - native/**
+      - capirca/lib/junipersrx.py
+      - tests/lib/srx_native_test.py
+      - tools/benchmark_srx.py
+      - .github/workflows/native.yml
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.8'
+          - os: ubuntu-latest
+            python: '3.14'
+          - os: macos-latest
+            python: '3.14'
+          - os: windows-latest
+            python: '3.14'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+      - run: rustup default stable
+      - run: python -m pip install -e . -r requirements.txt pytest ./native
+      - run: cargo fmt --manifest-path native/Cargo.toml --check
+      - run: cargo clippy --locked --manifest-path native/Cargo.toml --all-targets -- -D warnings
+      - run: python -m pytest -q
+      - run: python tools/benchmark_srx.py --rounds 1 --output benchmark.json
+      - run: python -m pip uninstall -y capirca-native
+      - run: python -m pytest -q
