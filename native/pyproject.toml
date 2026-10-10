@@ -6,7 +6,7 @@ build-backend = "maturin"
 name = "capirca-native"
 version = "0.1.0"
 description = "Native address-book operations for Capirca"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = "Apache-2.0"
 
 [tool.maturin]

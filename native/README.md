@@ -6,7 +6,7 @@ Python implementation.
 
 ## Installation
 
-Building the extension requires Python 3.8 or later and Rust 1.83 or later:
+Building the extension requires Python 3.9 or later and Rust 1.83 or later:
 
 ```sh
 python -m pip install ./native
