@@ -45,7 +45,10 @@ setuptools.setup(
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
+        'Programming Language :: Python :: 3.14',
         'Topic :: Security',
         'Topic :: System :: Networking :: Firewalls',
     ],
@@ -56,5 +59,5 @@ setuptools.setup(
         'six',
         'PyYAML',
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.11',
 )

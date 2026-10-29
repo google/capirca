@@ -9,17 +9,12 @@ on:
 
 jobs:
   build:
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: true
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9]
-        include:
-          - os-version: ubuntu-latest
-          - python-version: 3.6
-            os-version: ubuntu-20.04
-    runs-on: ${{ matrix.os-version }}
-
+        python-version: ['3.11', '3.12', '3.13', '3.14']
 
     steps:
     - name: Checkout branch with changes
@@ -34,7 +29,7 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '14'
+        node-version: '22'
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
@@ -86,15 +81,17 @@ jobs:
     - name: Compare output files between the branches
       run: |
         mkdir -p artifacts-diff
-        sudo npm install -g diff2html diff2html-cli
+        npm install -g diff2html diff2html-cli
         diff2html --version
         diff -qr current/output master/output > \
-          ./artifacts-diff/policy_output.diff | true
-        cat ./artifacts-diff/policy_output.diff | grep Files | grep differ \
-          | cut -d" " -f2 | cut -d "/" -f3 > ./artifacts-diff/files.list
-        while read p; do diff -u master/output/$p current/output/$p | \
-          diff2html -i stdin --file ./artifacts-diff/$p.html | \
-          true; done < ./artifacts-diff/files.list
+          ./artifacts-diff/policy_output.diff || true
+        (grep '^Files .* differ$' ./artifacts-diff/policy_output.diff \
+          | cut -d" " -f2 | cut -d "/" -f3 || true) > ./artifacts-diff/files.list
+        while read p; do
+          [ -z "$p" ] && continue
+          (diff -u "master/output/$p" "current/output/$p" || true) | \
+            diff2html -i stdin --file "./artifacts-diff/$p.html"
+        done < ./artifacts-diff/files.list
         sed -i '/Diff to HTML by/d' ./artifacts-diff/*
     - name: Upload generated policies
       uses: actions/upload-artifact@v4
@@ -104,5 +101,5 @@ jobs:
     - name: Upload policy differences
       uses: actions/upload-artifact@v4
       with:
-        name: capirca_output_policy_diff
+        name: capirca_output_policy_diff_${{ matrix.python-version }}
         path: ./artifacts-diff

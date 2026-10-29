@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python-version: [3.8, 3.9]
+        python-version: ['3.11', '3.12', '3.13', '3.14']
 
     steps:
     - uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
           ${{ runner.os }}-${{ matrix.python-version}}-pip-
           ${{ runner.os }}-${{ matrix.python-version}}-
     - name: Add msbuild to PATH
-      uses: microsoft/setup-msbuild@v1.3.3
+      uses: microsoft/setup-msbuild@v2
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip

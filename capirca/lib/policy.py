@@ -2978,7 +2978,6 @@ def p_strings_or_ints(p):
 
 def p_error(p):
   """."""
-  global parser
   next_token = parser.token()
   if next_token is None:
     use_token = 'EOF'
@@ -3153,7 +3152,6 @@ def ParsePolicy(
     lexer = lex.lex()
 
     preprocessed_data = '\n'.join(_Preprocess(data, base_dir=base_dir))
-    global parser
     policy = parser.parse(preprocessed_data, lexer=lexer)
     policy.filename = filename
     return policy
