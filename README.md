@@ -889,9 +889,9 @@ When using `docker`, mount your working directory to the `/data` directory of
 the container and pass command-line arguments in the following way.
 
 ```bash
-docker run -v "${PWD}:/data" docker.pkg.github.com/google/capirca/capirca:latest
-docker run -v "${PWD}:/data" docker.pkg.github.com/google/capirca/capirca:latest --helpfull
-docker run -v "${PWD}:/data" docker.pkg.github.com/google/capirca/capirca:latest --config_file /data/path/to/config
+docker run -v "${PWD}:/data" ghcr.io/google/capirca/capirca:latest
+docker run -v "${PWD}:/data" ghcr.io/google/capirca/capirca:latest --helpfull
+docker run -v "${PWD}:/data" ghcr.io/google/capirca/capirca:latest --config_file /data/path/to/config
 ```
 
 [Back to Top](#table-of-contents)
