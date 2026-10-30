@@ -1901,5 +1901,189 @@ term rule-1 {
     x = paloalto.config.findall(PATH_RULES + "/entry[@name='rule-1']/")
     self.assertFalse(x, output)
 
+  def testAddressGroupsSortedAlphabeticallyAcrossZones(self):
+    definitions = naming.Naming()
+    definitions._ParseLine('GRP_Z = 198.51.100.0/24', 'networks')
+    definitions._ParseLine('GRP_A = 192.0.2.0/24', 'networks')
+    definitions._ParseLine('GRP_M = 10.10.0.0/16', 'networks')
+    pol_text = """
+header {
+  target:: paloalto from-zone trust to-zone untrust
+}
+term allow-z-to-a {
+  source-address:: GRP_Z
+  destination-address:: GRP_A
+  protocol:: tcp
+  action:: accept
+}
+header {
+  target:: paloalto from-zone dmz to-zone untrust
+}
+term allow-m-to-z {
+  source-address:: GRP_M
+  destination-address:: GRP_Z
+  protocol:: tcp
+  action:: accept
+}
+"""
+    pol = policy.ParsePolicy(pol_text, definitions)
+
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+
+    group_names = [
+        entry.attrib['name']
+        for entry in paloalto.config.findall(PATH_ADDRESS_GROUP + '/entry')
+    ]
+    self.assertEqual(group_names, ['GRP_A', 'GRP_M', 'GRP_Z'], output)
+
+  def testSharedAddressGroupAcrossZonesDeduplicatesMembers(self):
+    definitions = naming.Naming()
+    definitions._ParseLine(
+        'GRP_Z = 198.51.100.0/25 198.51.100.128/26', 'networks'
+    )
+    pol_text = """
+header {
+  target:: paloalto from-zone trust to-zone untrust
+}
+term allow-from-trust {
+  source-address:: GRP_Z
+  protocol:: tcp
+  action:: accept
+}
+header {
+  target:: paloalto from-zone dmz to-zone untrust
+}
+term allow-from-dmz {
+  source-address:: GRP_Z
+  protocol:: tcp
+  action:: accept
+}
+"""
+    pol = policy.ParsePolicy(pol_text, definitions)
+
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+
+    grp_z_members = [
+        member.text
+        for member in paloalto.config.findall(
+            PATH_ADDRESS_GROUP + "/entry[@name='GRP_Z']/static/member"
+        )
+    ]
+    self.assertEqual(grp_z_members, ['GRP_Z_0', 'GRP_Z_1'], output)
+
+  def testAddressBookRetainsSupernetAcrossZones(self):
+    # Given GRP_SHARED collapses with GRP_ADJACENT into 10.10.0.0/24 in dmz,
+    # while remaining the narrower 10.10.0.0/25 subnet in trust.
+    definitions = naming.Naming()
+    definitions._ParseLine('GRP_SHARED = 10.10.0.0/25', 'networks')
+    definitions._ParseLine('GRP_ADJACENT = 10.10.0.128/25', 'networks')
+    pol_text = """
+header {
+  target:: paloalto from-zone dmz to-zone untrust
+}
+term allow-collapsed {
+  source-address:: GRP_SHARED GRP_ADJACENT
+  protocol:: tcp
+  action:: accept
+}
+header {
+  target:: paloalto from-zone trust to-zone untrust
+}
+term allow-narrow {
+  source-address:: GRP_SHARED
+  protocol:: tcp
+  action:: accept
+}
+"""
+    pol = policy.ParsePolicy(pol_text, definitions)
+
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+
+    shared_ip = paloalto.config.findtext(
+        PATH_ADDRESSES + "/entry[@name='GRP_SHARED_0']/ip-netmask"
+    )
+    self.assertEqual(shared_ip, '10.10.0.0/24', output)
+
+  def testNoAddrObjExpandsAddressGroupInlineInRule(self):
+    definitions = naming.Naming()
+    definitions._ParseLine(
+        'GRP_Z = 198.51.100.0/25 198.51.100.128/26', 'networks'
+    )
+    pol_text = """
+header {
+  target:: paloalto from-zone trust to-zone untrust inet no-addr-obj
+}
+term allow-from-z {
+  source-address:: GRP_Z
+  protocol:: tcp
+  action:: accept
+}
+"""
+    pol = policy.ParsePolicy(pol_text, definitions)
+
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+
+    src_members = [
+        member.text
+        for member in paloalto.config.findall(
+            PATH_RULES + "/entry[@name='allow-from-z']/source/member"
+        )
+    ]
+    self.assertEqual(
+        src_members, ['198.51.100.0/25', '198.51.100.128/26'], output
+    )
+
+  def testNoAddrObjOmitsAddressBookEntries(self):
+    definitions = naming.Naming()
+    definitions._ParseLine('GRP_Z = 198.51.100.0/24', 'networks')
+    pol_text = """
+header {
+  target:: paloalto from-zone trust to-zone untrust inet no-addr-obj
+}
+term allow-from-z {
+  source-address:: GRP_Z
+  protocol:: tcp
+  action:: accept
+}
+"""
+    pol = policy.ParsePolicy(pol_text, definitions)
+
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+
+    self.assertEmpty(
+        paloalto.config.findall(PATH_ADDRESS_GROUP + '/entry'), output
+    )
+    self.assertEmpty(
+        paloalto.config.findall(PATH_ADDRESSES + '/entry'), output
+    )
+
+  def testAnyToAnyMixedPolicyOmitsAddressBookEntries(self):
+    pol_text = """
+header {
+  target:: paloalto from-zone trust to-zone untrust mixed
+}
+term allow-any {
+  protocol:: tcp
+  action:: accept
+}
+"""
+    pol = policy.ParsePolicy(pol_text, self.naming)
+
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+
+    self.assertEmpty(
+        paloalto.config.findall(PATH_ADDRESS_GROUP + '/entry'), output
+    )
+    self.assertEmpty(
+        paloalto.config.findall(PATH_ADDRESSES + '/entry'), output
+    )
+
+
 if __name__ == '__main__':
   absltest.main()

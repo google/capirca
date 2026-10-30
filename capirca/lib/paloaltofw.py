@@ -13,7 +13,6 @@
 # limitations under the License.
 """Palo Alto Firewall generator."""
 
-import collections
 import copy
 import datetime
 import logging
@@ -314,7 +313,7 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
 
   def __init__(self, pol, exp_info):
     self.pafw_policies = []
-    self.addressbook = collections.OrderedDict()
+    self.addressbook = {}
     self.applications = []
     self.application_refs = {}
     self.application_groups = []
@@ -791,11 +790,11 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
       address: a naming library address object
     """
     if zone not in self.addressbook:
-      self.addressbook[zone] = collections.OrderedDict()
+      self.addressbook[zone] = {}
     if address.parent_token not in self.addressbook[zone]:
       # Store addresses as keys to enable quick lookups.
       # key: address, value: name
-      self.addressbook[zone][address.parent_token] = collections.OrderedDict()
+      self.addressbook[zone][address.parent_token] = {}
     name = address.parent_token
     if address in self.addressbook[zone][name]:
       return
@@ -855,25 +854,20 @@ class PaloAltoFW(aclgenerator.ACLGenerator):
     address_book_names_dict = {}
     address_book_groups_dict = {}
     for zone in self.addressbook:
-      # building individual addresses dictionary
+      # building individual addresses and address-group dictionaries
       groups = sorted(self.addressbook[zone])
       for group in groups:
+        group_names = []
         for address, name in self.addressbook[zone][group].items():
+          group_names.append(name)
           if name in address_book_names_dict:
             if address_book_names_dict[name].supernet_of(address):
               continue
           address_book_names_dict[name] = address
+        address_book_groups_dict[group] = group_names
 
-        # building individual address-group dictionary
-        for nested_group in groups:
-          group_names = []
-          for address, name in self.addressbook[zone][nested_group].items():
-            group_names.append(name)
-          address_book_groups_dict[nested_group] = group_names
-
-      # sort address books and address sets
-      address_book_groups_dict = collections.OrderedDict(
-          sorted(address_book_groups_dict.items()))
+    # sort address books and address sets
+    address_book_groups_dict = dict(sorted(address_book_groups_dict.items()))
 
     address_book_keys = sorted(
         list(address_book_names_dict.keys()), key=self._SortAddressBookNumCheck)
