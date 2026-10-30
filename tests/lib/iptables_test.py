@@ -596,6 +596,46 @@ class AclCheckTest(absltest.TestCase):
     self.assertRaises(iptables.UnsupportedTargetOptionError,
                       iptables.Iptables, pol, EXP_INFO)
 
+  def test_mixed_icmp_protocols(self):
+    """Keep same-family ICMP and unrelated protocols in a mixed term."""
+    for family, expected, excluded in (
+        ('inet', '-p icmp ', '-p ipv6-icmp '),
+        ('inet6', '-p ipv6-icmp ', '-p icmp ')):
+      for extra_protocol in ('', ' tcp'):
+        with self.subTest(family=family, extra_protocol=extra_protocol):
+          pol = policy.ParsePolicy('''
+header {
+  target:: iptables INPUT DROP %s
+}
+term mixed-icmp {
+  protocol:: icmp icmpv6%s
+  action:: accept
+}
+''' % (family, extra_protocol), self.naming)
+          acl = iptables.Iptables(pol, EXP_INFO)
+          result = str(acl)
+          self.assertIn(expected, result)
+          self.assertNotIn(excluded, result)
+          if extra_protocol:
+            self.assertIn('-p tcp ', result)
+
+  def test_mixed_icmp_types(self):
+    """Resolve ICMP types using the protocol for the target family."""
+    for family, expected in (
+        ('inet', '--icmp-type 8'), ('inet6', '--icmpv6-type 128')):
+      with self.subTest(family=family):
+        pol = policy.ParsePolicy('''
+header {
+  target:: iptables INPUT DROP %s
+}
+term mixed-icmp {
+  protocol:: icmp icmpv6
+  icmp-type:: echo-request
+  action:: accept
+}
+''' % family, self.naming)
+        self.assertIn(expected, str(iptables.Iptables(pol, EXP_INFO)))
+
   def testGoodPolicy(self):
     acl = iptables.Iptables(policy.ParsePolicy(GOOD_HEADER_2 + GOOD_TERM_1,
                                                self.naming), EXP_INFO)

@@ -118,9 +118,11 @@ class Term(aclgenerator.Term):
 
     ret_str = []
 
-    # Don't render icmpv6 protocol terms under inet, or icmp under inet6
-    if ((self.af == 'inet6' and 'icmp' in self.term.protocol) or
-        (self.af == 'inet' and 'icmpv6' in self.term.protocol)):
+    # Keep protocols valid for this family without changing the shared term.
+    excluded_protocol = 'icmp' if self.af == 'inet6' else 'icmpv6'
+    protocol = [proto for proto in self.term.protocol
+                if proto != excluded_protocol]
+    if self.term.protocol and not protocol:
       logging.debug(self.NO_AF_LOG_PROTO.substitute(
           term=self.term.name,
           proto=', '.join(self.term.protocol),
@@ -181,9 +183,7 @@ class Term(aclgenerator.Term):
               self.term.name)
 
     # protocol
-    if self.term.protocol:
-      protocol = self.term.protocol
-    else:
+    if not protocol:
       protocol = ['all']
     if 'hopopt' in protocol and self.af == 'inet':
       logging.warning('Term %s is using hopopt in IPv4 context.',
