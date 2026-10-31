@@ -698,7 +698,10 @@ class IOSXEMap:
       proto_name = IOSXEMap._PROTO_NAMES[af][proto]
       return proto_name
     except KeyError:
-      return proto
+      try:
+        return IOSXEMap._PROTO_NAMES[af][int(proto)]
+      except (KeyError, ValueError):
+        return proto
 
   @staticmethod
   def GetPortName(port, proto: str):
@@ -766,8 +769,10 @@ class Term(aclgenerator.Term):
       self.text_af = 'inet'
     else:
       self.text_af = 'inet6'
+    self.ALLOWED_PROTO_STRINGS = list(self.ALLOWED_PROTO_STRINGS)
     self.ALLOWED_PROTO_STRINGS.extend([self.PROTO_MAP.get(x)  # pyrefly: ignore[bad-argument-type]
-                                       for x in self.ALWAYS_PROTO_NUM])
+                                       for x in self.ALWAYS_PROTO_NUM
+                                       if self.PROTO_MAP.get(x) not in self.ALLOWED_PROTO_STRINGS])
 
   def __str__(self):
     # Verify platform specific terms. Skip whole term if platform does not
@@ -822,7 +827,7 @@ class Term(aclgenerator.Term):
       protocol = ['hbh']
     elif self.proto_int:
       protocol = [proto if proto in self.ALLOWED_PROTO_STRINGS
-                  else self.PROTO_MAP.get(proto)
+                  else self.PROTO_MAP.get(proto, proto)
                   for proto in self.term.protocol]
     else:
       protocol = self.term.protocol
@@ -1225,7 +1230,7 @@ class ObjectGroupTerm(Term):
 
     else:
       protocol = [proto if proto in self.ALLOWED_PROTO_STRINGS
-                  else self.PROTO_MAP.get(proto)
+                  else self.PROTO_MAP.get(proto, proto)
                   for proto in self.term.protocol]
 
     # addresses
