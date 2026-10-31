@@ -39,6 +39,16 @@ target:: paloalto from-zone [zone name] to-zone [zone name] [address family] [ad
 * _timeout::_ specify application timeout. (default 60)
 
 ## Sub Tokens
+### GRE and SCTP
+
+GRE and SCTP are matched using generated `ip-protocol-gre` and
+`ip-protocol-sctp` custom applications with IP protocol numbers 47 and 132.
+These match the network protocol rather than the built-in Layer 7 App-ID.
+When combined with TCP or UDP, the generator emits separate rules for the
+TCP/UDP services and the IP protocol applications. GRE/SCTP terms with source
+or destination ports are rejected because PAN-OS service objects support only
+TCP and UDP ports.
+
 ### Actions
 * _accept_
 * _count_

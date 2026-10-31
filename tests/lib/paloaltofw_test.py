@@ -973,7 +973,90 @@ term rule-1 {
     self.assertIsNotNone(x, output)
     self.assertEqual(len(x), 1, output)
     self.assertEqual(x[0].tag, 'member', output)
-    self.assertEqual(x[0].text, 'gre', output)
+    self.assertEqual(x[0].text, 'ip-protocol-gre', output)
+
+  def test_custom_ip_protocols(self):
+    """Match GRE and SCTP by protocol number in each address family."""
+    for proto, number in [('gre', '47'), ('sctp', '132')]:
+      for header in [GOOD_HEADER_1, GOOD_HEADER_INET6, GOOD_HEADER_MIXED]:
+        with self.subTest(proto=proto, header=header):
+          term = f'''
+term ip-protocol {{
+  protocol:: {proto}
+  action:: accept
+}}
+'''
+          pol = policy.ParsePolicy(header + term, self.naming)
+          paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+          output = str(paloalto)
+          app_name = 'ip-protocol-' + proto
+          app = paloalto.config.find(
+              f".//application/entry[@name='{app_name}']")
+          self.assertIsNotNone(app, output)
+          self.assertEqual(app.findtext('default/ident-by-ip-protocol'), number)
+          self.assertEqual(paloalto.config.findtext(
+              PATH_RULES + "/entry[@name='ip-protocol']/application/member"),
+                           app_name)
+          self.assertEqual(paloalto.config.findtext(
+              PATH_RULES + "/entry[@name='ip-protocol']/service/member"),
+                           'application-default')
+
+  def test_mixed_custom_ip_protocols(self):
+    """Separate TCP/UDP services from GRE/SCTP applications."""
+    term = '''
+term mixed-protocols {
+  protocol:: tcp udp gre sctp
+  action:: accept
+}
+'''
+    pol = policy.ParsePolicy(GOOD_HEADER_MIXED + term, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    services_rule = paloalto.config.find(
+        PATH_RULES + "/entry[@name='mixed-protocols-1']")
+    protocols_rule = paloalto.config.find(
+        PATH_RULES + "/entry[@name='mixed-protocols-2']")
+    self.assertEqual(services_rule.findtext('application/member'),
+                     'any', output)
+    self.assertCountEqual(
+        [x.text for x in services_rule.findall('service/member')],
+        ['any-tcp', 'any-udp'])
+    self.assertEqual(protocols_rule.findtext('service/member'),
+                     'application-default', output)
+    self.assertCountEqual(
+        [x.text for x in protocols_rule.findall('application/member')],
+        ['ip-protocol-gre', 'ip-protocol-sctp'])
+
+  def test_custom_ip_protocol_shared_across_policies(self):
+    """Emit a shared protocol application only once."""
+    term = '''
+term gre-protocol {
+  protocol:: gre
+  action:: accept
+}
+'''
+    pol = policy.ParsePolicy(
+        GOOD_HEADER_1 + term + GOOD_HEADER_2 + term, self.naming)
+    paloalto = paloaltofw.PaloAltoFW(pol, EXP_INFO)
+    output = str(paloalto)
+    self.assertLen(paloalto.config.findall(
+        ".//application/entry[@name='ip-protocol-gre']"), 1, output)
+    self.assertLen(paloalto.config.findall(
+        PATH_RULES + "/entry[@name='gre-protocol']/application/member"),
+                   2, output)
+
+  def test_custom_ip_protocol_with_ports_rejected(self):
+    """Do not broaden unsupported SCTP port restrictions to all ports."""
+    self.naming.GetServiceByProto.return_value = ['25']
+    pol = policy.ParsePolicy(GOOD_HEADER_1 + '''
+term sctp-ports {
+  protocol:: sctp
+  destination-port:: SMTP
+  action:: accept
+}
+''', self.naming)
+    with self.assertRaises(paloaltofw.UnsupportedFilterError):
+      paloaltofw.PaloAltoFW(pol, EXP_INFO)
 
   def testAhProtoTerm(self):
     pol = policy.ParsePolicy(GOOD_HEADER_1 + AH_PROTO_TERM, self.naming)
@@ -1509,7 +1592,7 @@ term rule-1 {
                                 "/entry[@name='rule-1-2']/application/member")
     self.assertTrue(len(x) > 0, output)
     applications = {elem.text for elem in x}
-    self.assertEqual({"icmp", "gre"}, applications, output)
+    self.assertEqual({"icmp", "ip-protocol-gre"}, applications, output)
 
   def testSrcAnyDstAnyAddressFamily(self):
     POL = """
