@@ -38,14 +38,19 @@ def IP(ip, comment='', token='', strict=True):
   Raises:
     ValueError: if the string passed isn't either a v4 or a v6 address.
   """
-  if isinstance(ip, ipaddress._BaseNetwork):  # pylint disable=protected-access
-    imprecise_ip = ip
-  else:
-    imprecise_ip = ipaddress.ip_network(ip, strict=strict)
-  if imprecise_ip.version == 4:  # pyrefly: ignore[missing-attribute]
+  if isinstance(ip, str):
+    if ':' in ip:
+      return IPv6(ip, comment, token, strict=strict)
     return IPv4(ip, comment, token, strict=strict)
-  elif imprecise_ip.version == 6:
+  if isinstance(ip, ipaddress.IPv4Network):
+    return IPv4(ip, comment, token, strict=strict)
+  if isinstance(ip, ipaddress.IPv6Network):
     return IPv6(ip, comment, token, strict=strict)
+  imprecise_ip = ipaddress.ip_network(ip, strict=strict)
+  if isinstance(imprecise_ip, ipaddress.IPv4Network):
+    return IPv4(imprecise_ip, comment, token, strict=strict)
+  if isinstance(imprecise_ip, ipaddress.IPv6Network):
+    return IPv6(imprecise_ip, comment, token, strict=strict)
   raise ValueError('Provided IP string "%s" is not a valid v4 or v6 address'
                    % ip)
 

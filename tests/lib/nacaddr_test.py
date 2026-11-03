@@ -14,6 +14,8 @@
 
 """Unittest for nacaddr.py module."""
 
+import ipaddress
+
 from absl.testing import absltest
 
 from capirca.lib import nacaddr
@@ -273,6 +275,80 @@ class NacaddrUnitTest(absltest.TestCase):
     for addresses, complement_addresses, result in test_data:
       self.assertEqual(nacaddr.CollapseAddrList(addresses,
                                                 complement_addresses), result)
+
+  def testIPMetadataIsolation(self):
+    v4 = nacaddr.IP('192.0.2.0/24', comment='net-a', token='TOK_A')
+    v4_other = nacaddr.IP('192.0.2.0/24', comment='net-b', token='TOK_B')
+    v6 = nacaddr.IP('2001:db8::/32', comment='v6-a', token='TOK_V6_A')
+    v6_other = nacaddr.IP('2001:db8::/32', comment='v6-b', token='TOK_V6_B')
+
+    v4.AddComment('extra')
+    v4.parent_token = 'PARENT_A'
+    v6.AddComment('v6-extra')
+    v6.parent_token = 'PARENT_V6_A'
+
+    self.assertIsInstance(v4, nacaddr.IPv4)
+    self.assertIsNot(v4, v4_other)
+    self.assertEqual(str(v4), '192.0.2.0/24')
+    self.assertEqual(v4.text, 'net-a, extra')
+    self.assertEqual(v4.token, 'TOK_A')
+    self.assertEqual(v4.parent_token, 'PARENT_A')
+    self.assertEqual(v4_other.text, 'net-b')
+    self.assertEqual(v4_other.token, 'TOK_B')
+    self.assertEqual(v4_other.parent_token, 'TOK_B')
+    self.assertIsInstance(v6, nacaddr.IPv6)
+    self.assertIsNot(v6, v6_other)
+    self.assertEqual(str(v6), '2001:db8::/32')
+    self.assertEqual(v6.text, 'v6-a, v6-extra')
+    self.assertEqual(v6.token, 'TOK_V6_A')
+    self.assertEqual(v6.parent_token, 'PARENT_V6_A')
+    self.assertEqual(v6_other.text, 'v6-b')
+    self.assertEqual(v6_other.token, 'TOK_V6_B')
+    self.assertEqual(v6_other.parent_token, 'TOK_V6_B')
+
+  def testIPStrictMode(self):
+    v4_non_strict = nacaddr.IP('192.0.2.5/24', strict=False)
+    v6_non_strict = nacaddr.IP('2001:db8::1/32', strict=False)
+
+    self.assertEqual(v4_non_strict, nacaddr.IPv4('192.0.2.0/24'))
+    self.assertEqual(v6_non_strict, nacaddr.IPv6('2001:db8::/32'))
+    with self.assertRaises(ValueError):
+      nacaddr.IP('192.0.2.5/24', strict=True)
+    with self.assertRaises(ValueError):
+      nacaddr.IP('2001:db8::1/32', strict=True)
+
+  def testIPNetmaskAndSpecialFormats(self):
+    v4_netmask = nacaddr.IP('192.0.2.0/255.255.255.0')
+    v4_mapped = nacaddr.IP('::ffff:192.0.2.1/128')
+    scoped_eth0 = nacaddr.IP('fe80::%eth0/64')
+    scoped_eth1 = nacaddr.IP('fe80::%eth1/64')
+
+    self.assertEqual(v4_netmask, nacaddr.IPv4('192.0.2.0/24'))
+    self.assertIsInstance(v4_mapped, nacaddr.IPv6)
+    self.assertEqual(scoped_eth0.network_address.scope_id, 'eth0')
+    self.assertEqual(scoped_eth1.network_address.scope_id, 'eth1')
+
+  def testIPNonStringInputs(self):
+    v4_net = nacaddr.IP(
+        ipaddress.IPv4Network('198.51.100.0/24'), token='NET_OBJ')
+    v6_net = nacaddr.IP(
+        ipaddress.IPv6Network('2001:db8:1::/48'), token='V6_OBJ')
+    v4_addr = nacaddr.IP(ipaddress.IPv4Address('203.0.113.7'))
+    v6_addr = nacaddr.IP(ipaddress.IPv6Address('2001:db8::7'))
+
+    self.assertEqual(v4_net, nacaddr.IPv4('198.51.100.0/24'))
+    self.assertEqual(v4_net.token, 'NET_OBJ')
+    self.assertEqual(v6_net, nacaddr.IPv6('2001:db8:1::/48'))
+    self.assertEqual(v6_net.token, 'V6_OBJ')
+    self.assertEqual(v4_addr, nacaddr.IPv4('203.0.113.7/32'))
+    self.assertEqual(v6_addr, nacaddr.IPv6('2001:db8::7/128'))
+
+  def testIPInvalidInputsRaiseValueError(self):
+    for invalid in ('', 'NOT_AN_IP', '999.999.999.999', '10.0.0.0/33',
+                    'foo:bar', '2001:db8::gggg/32', '::1/129'):
+      with self.subTest(invalid=invalid):
+        with self.assertRaises(ValueError):
+          nacaddr.IP(invalid)
 
 
 if __name__ == '__main__':
