@@ -929,6 +929,207 @@ Line 2 with multiline"
     self.assertIn(expected_zone_scoped, output)
     self.assertIn(expected_term_override, output)
 
+  def _render_with_maximum(self, terms, maximum):
+    """Renders terms with maximum-address-group-members set to maximum."""
+    header = textwrap.dedent(f"""\
+        header {{
+          target:: fortigate from-id 2 maximum-address-group-members {maximum}
+        }}
+        """)
+    return str(
+        fortigate.Fortigate(
+            policy.ParsePolicy(header + terms, self.naming), EXP_INFO
+        )
+    )
+
+  def testAddressGroupOverMaximumIsSplit(self):
+    """Tests that a group over the maximum becomes several groups."""
+    self.naming.GetNetAddr.side_effect = lambda host: [
+        nacaddr.IP('10.0.0.0/24'),
+        nacaddr.IP('10.0.2.0/24'),
+        nacaddr.IP('10.0.4.0/24'),
+    ]
+    term = textwrap.dedent("""\
+        term big {
+          source-address:: BIG
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    output = self._render_with_maximum(term, 2)
+    expected_addrgrps = textwrap.dedent("""\
+        config firewall addrgrp
+            edit "big-srcgrp-1"
+                set comment ""
+                set member "10.0.0.0/24" "10.0.2.0/24"
+            next
+            edit "big-srcgrp-2"
+                set comment ""
+                set member "10.0.4.0/24"
+            next
+        end
+        """)
+    self.assertIn(expected_addrgrps, output)
+    self.assertIn("set srcaddr 'big-srcgrp-1' 'big-srcgrp-2'\n", output)
+    self.assertNotIn('"big-srcgrp"', output)
+
+  def testAddressGroupAtMaximumIsNotSplit(self):
+    """Tests that a group with exactly the maximum stays one group."""
+    self.naming.GetNetAddr.side_effect = lambda host: [
+        nacaddr.IP('10.0.0.0/24'),
+        nacaddr.IP('10.0.2.0/24'),
+    ]
+    term = textwrap.dedent("""\
+        term two {
+          source-address:: TWO
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    output = self._render_with_maximum(term, 2)
+    self.assertIn('set member "10.0.0.0/24" "10.0.2.0/24"\n', output)
+    self.assertIn("set srcaddr 'two-srcgrp'\n", output)
+    self.assertNotIn('two-srcgrp-1', output)
+
+  def testAddressGroupIsNotSplitWithoutMaximum(self):
+    """Tests that without the option a group keeps all of its members."""
+    self.naming.GetNetAddr.side_effect = lambda host: [
+        nacaddr.IP('10.0.0.0/24'),
+        nacaddr.IP('10.0.2.0/24'),
+        nacaddr.IP('10.0.4.0/24'),
+    ]
+    term = textwrap.dedent("""\
+        term big {
+          source-address:: BIG
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    acl = fortigate.Fortigate(
+        policy.ParsePolicy(GOOD_HEADER + term, self.naming), EXP_INFO
+    )
+    output = str(acl)
+    self.assertIn(
+        'set member "10.0.0.0/24" "10.0.2.0/24" "10.0.4.0/24"\n', output
+    )
+    self.assertIn("set srcaddr 'big-srcgrp'\n", output)
+    self.assertNotIn('big-srcgrp-1', output)
+
+  def testIPv6AddressGroupOverMaximumIsSplit(self):
+    """Tests that an IPv6 group over the maximum is split the same way."""
+    hosts = {
+        'BIG6': [
+            nacaddr.IP('2001:db8:0::/48'),
+            nacaddr.IP('2001:db8:2::/48'),
+            nacaddr.IP('2001:db8:4::/48'),
+        ],
+        'DST6': [nacaddr.IP('2001:db8:ff::/48')],
+    }
+    self.naming.GetNetAddr.side_effect = lambda host: hosts[host]
+    term = textwrap.dedent("""\
+        term big6 {
+          source-address:: BIG6
+          destination-address:: DST6
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    output = self._render_with_maximum(term, 2)
+    expected_addrgrps = textwrap.dedent("""\
+        config firewall addrgrp6
+            edit "big6-srcgrp6-1"
+                set comment ""
+                set member "2001:db8::/48" "2001:db8:2::/48"
+            next
+            edit "big6-srcgrp6-2"
+                set comment ""
+                set member "2001:db8:4::/48"
+            next
+        end
+        """)
+    self.assertIn(expected_addrgrps, output)
+    self.assertIn("set srcaddr6 'big6-srcgrp6-1' 'big6-srcgrp6-2'\n", output)
+
+  def testSplitAddressGroupKeepsExcludes(self):
+    """Tests that every group split from a group excludes the whole list."""
+    hosts = {
+        'BIG': [
+            nacaddr.IP('10.0.0.0/24'),
+            nacaddr.IP('10.0.2.0/24'),
+            nacaddr.IP('10.0.4.0/24'),
+        ],
+        'EXCLUDED': [nacaddr.IP('10.0.2.128/25')],
+    }
+    self.naming.GetNetAddr.side_effect = lambda host: hosts[host]
+    term = textwrap.dedent("""\
+        term big {
+          source-address:: BIG
+          source-exclude:: EXCLUDED
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    output = self._render_with_maximum(term, 2)
+    expected_addrgrps = textwrap.dedent("""\
+        config firewall addrgrp
+            edit "big-srcgrp-1"
+                set comment ""
+                set member "10.0.0.0/24" "10.0.2.0/24"
+                set exclude enable
+                set exclude-member "10.0.2.128/25"
+            next
+            edit "big-srcgrp-2"
+                set comment ""
+                set member "10.0.4.0/24"
+                set exclude enable
+                set exclude-member "10.0.2.128/25"
+            next
+        end
+        """)
+    self.assertIn(expected_addrgrps, output)
+
+  def testExcludesOverMaximumRaise(self):
+    """Tests that more excludes than the maximum is an error."""
+    hosts = {
+        'WIDE': [nacaddr.IP('10.0.0.0/16')],
+        'EXCLUDED': [
+            nacaddr.IP('10.0.1.0/24'),
+            nacaddr.IP('10.0.3.0/24'),
+            nacaddr.IP('10.0.5.0/24'),
+        ],
+    }
+    self.naming.GetNetAddr.side_effect = lambda host: hosts[host]
+    term = textwrap.dedent("""\
+        term wide {
+          source-address:: WIDE
+          source-exclude:: EXCLUDED
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    with self.assertRaisesRegex(
+        fortigate.FortiGateValueError, 'wide-srcgrp excludes 3 addresses'
+    ):
+      self._render_with_maximum(term, 2)
+
+  def testBadMaximumAddressGroupMembersRaises(self):
+    """Tests that the maximum must be a whole number of 1 or more."""
+    term = self.fmt.format(TERM_TEMPLATE)
+    # '\u00b2' (superscript two) is a digit to str.isdigit() but not to int().
+    for value in ('0', 'many', '\u00b2'):
+      with self.subTest(value=value):
+        with self.assertRaisesRegex(
+            fortigate.FilterError, 'maximum-address-group-members'
+        ):
+          self._render_with_maximum(term, value)
+
+  def testNoAddressesAndNoExcludesIsAll(self):
+    """Tests that a side with no addresses and no excludes is 'all'."""
+    container = fortigate.ObjectsContainer()
+    self.assertEqual(
+        container.generate_address_or_addrgrp('t-srcgrp', [], [], 4, 2),
+        ['all'],
+    )
 
 if __name__ == '__main__':
   absltest.main()

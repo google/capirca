@@ -324,7 +324,8 @@ class ObjectsContainer():
       self,
       addrgrp_name,
       address,
-      address_exclude):
+      address_exclude,
+      max_members=0):
     """Add address and exclude to address group store."""
     address_v4 = [x.with_prefixlen for x in address if
                   not isinstance(x, nacaddr.IPv6)]
@@ -337,14 +338,14 @@ class ObjectsContainer():
 
     addr_names = []
     if address_v4 or address_exclude_v4:
-      addr_name = self.generate_address_or_addrgrp(
-          addrgrp_name, address_v4, address_exclude_v4, 4)
-      addr_names += [(4, addr_name)]
+      names = self.generate_address_or_addrgrp(
+          addrgrp_name, address_v4, address_exclude_v4, 4, max_members)
+      addr_names += [(4, names)]
 
     if address_v6 or address_exclude_v6:
-      addr_name6 = self.generate_address_or_addrgrp(
-          addrgrp_name + '6', address_v6, address_exclude_v6, 6)
-      addr_names += [(6, addr_name6)]
+      names6 = self.generate_address_or_addrgrp(
+          addrgrp_name + '6', address_v6, address_exclude_v6, 6, max_members)
+      addr_names += [(6, names6)]
 
     return addr_names or 'all'
 
@@ -353,31 +354,60 @@ class ObjectsContainer():
       addrgrp_name,
       address,
       address_exclude,
-      ip_v):
-    """
-    Generates an address or address group.
+      ip_v,
+      max_members=0):
+    """Generates an address or address groups.
+
+    If max_members is set, a group with more members is split into groups
+    named <addrgrp_name>-1, <addrgrp_name>-2, ... of at most max_members
+    members each. Every one of them excludes the whole address_exclude list.
 
     Args:
-        addrgrp_name: a string. name of address group
-        address: a string. ipv4 or ipv6 address
-        address_exclude: a string. ipv4 or ipv6 address
-        ip_v: an integer. 4 or 6 for ipVersion
+      addrgrp_name: a string. name of address group
+      address: a string. ipv4 or ipv6 address
+      address_exclude: a string. ipv4 or ipv6 address
+      ip_v: an integer. 4 or 6 for ipVersion
+      max_members: an integer. Most members of one address group, or 0 for no
+        limit.
 
-    Returns: string
+    Returns:
+      A list of strings: the names the policy refers to.
 
+    Raises:
+      FortiGateValueError: address_exclude has more than max_members
+        addresses.
     """
     if not address and not address_exclude:
-      return 'all'
+      return ['all']
 
     if not address_exclude:
       if len(address) == 1:
-        return address[0]
+        return [address[0]]
 
-    if addrgrp_name not in self._dict_addrgrps:
-      self._dict_addrgrps[addrgrp_name] = [
-          ip_v, address, address_exclude]
+    # The maximum also applies to the excluded addresses, counted separately
+    # from the members. Excluded addresses cannot be split up, since they must
+    # be excluded in every split address group, so more excluded addresses
+    # than the maximum is an error.
+    if max_members and len(address_exclude) > max_members:
+      raise FortiGateValueError(
+          f'Address group {addrgrp_name} excludes {len(address_exclude)} '
+          f'addresses, more than maximum-address-group-members '
+          f'({max_members}).')
 
-    return addrgrp_name
+    if not max_members or len(address) <= max_members:
+      groups = {addrgrp_name: address}
+    else:
+      starts = range(0, len(address), max_members)
+      groups = {
+          f'{addrgrp_name}-{i}': address[start:start + max_members]
+          for i, start in enumerate(starts, start=1)
+      }
+
+    for name, members in groups.items():
+      if name not in self._dict_addrgrps:
+        self._dict_addrgrps[name] = [ip_v, members, address_exclude]
+
+    return list(groups)
 
   def get_defined_service(self, protocol, port):
     """return service if find service in defined map."""
@@ -499,6 +529,7 @@ class Term(aclgenerator.Term):
       verbose=True,
       from_zone='',
       to_zone='',
+      maximum_address_group_members=0,
   ):
     super().__init__(term)
     self._term = term
@@ -507,6 +538,7 @@ class Term(aclgenerator.Term):
     self._term.verbose = verbose
     self.from_zone = from_zone
     self.to_zone = to_zone
+    self.maximum_address_group_members = maximum_address_group_members
 
     self.id_ = type(self).CURRENT_ID
     if type(self).CURRENT_ID > 0:
@@ -692,11 +724,13 @@ class Term(aclgenerator.Term):
     dest_addresses = self._obj_container.add_address_to_fw_addrgrps(
         self._term.name + '-dstgrp',
         self._term.destination_address,
-        self._term.destination_address_exclude)
+        self._term.destination_address_exclude,
+        self.maximum_address_group_members)
     src_addresses = self._obj_container.add_address_to_fw_addrgrps(
         self._term.name + '-srcgrp',
         self._term.source_address,
-        self._term.source_address_exclude)
+        self._term.source_address_exclude,
+        self.maximum_address_group_members)
 
     services = self._get_services_name(
         sorted(
@@ -735,17 +769,19 @@ class Term(aclgenerator.Term):
     exist_src6 = False
     exist_dst6 = False
     if isinstance(dest_addresses, list):
-      for (ip_v, addr_name) in dest_addresses:
+      for (ip_v, addr_names) in dest_addresses:
         addr_cmd = 'dstaddr' if ip_v == 4 else 'dstaddr6'
-        lines += [f"{_SP * 2}set {addr_cmd} '{addr_name}'"]
+        members = ' '.join(f"'{name}'" for name in addr_names)
+        lines += [f'{_SP * 2}set {addr_cmd} {members}']
         if ip_v == 6:
           exist_dst6 = True
     else:
       lines += [f"{_SP * 2}set dstaddr '{dest_addresses}'"]
     if isinstance(src_addresses, list):
-      for (ip_v, addr_name) in src_addresses:
+      for (ip_v, addr_names) in src_addresses:
         addr_cmd = 'srcaddr' if ip_v == 4 else 'srcaddr6'
-        lines += [f"{_SP * 2}set {addr_cmd} '{addr_name}'"]
+        members = ' '.join(f"'{name}'" for name in addr_names)
+        lines += [f'{_SP * 2}set {addr_cmd} {members}']
         if ip_v == 6:
           exist_src6 = True
     else:
@@ -847,6 +883,9 @@ class Fortigate(aclgenerator.ACLGenerator):
       #   target:: fortigate from-id n
       # target:: fortigate from-id n ngfw-mode profile-based |
       # policy-based
+      # maximum-address-group-members n: address groups with more than n
+      # members are split into groups of at most n members. Use it for
+      # FortiGates that limit the size of an address group.
       filter_options = header.FilterOptions(self._PLATFORM)
 
       verbose = True
@@ -888,6 +927,8 @@ class Fortigate(aclgenerator.ACLGenerator):
       Term.CURRENT_ID = 0
       # default ngfw_mode = profile-based
       self.ngfw_mode = 'profile-based'
+      # default: no limit on the members of an address group
+      maximum_address_group_members = 0
       for filter_key, filter_val in my_filter.items():
         if filter_key == 'from-id':
           from_id = int(filter_val)
@@ -903,10 +944,18 @@ class Fortigate(aclgenerator.ACLGenerator):
           self.from_zone = filter_val
         elif filter_key == 'to-zone':
           self.to_zone = filter_val
+        elif filter_key == 'maximum-address-group-members':
+          # isdigit() alone also accepts digits like '²', which int() rejects.
+          is_number = filter_val.isascii() and filter_val.isdigit()
+          if not is_number or int(filter_val) < 1:
+            raise FilterError(
+                'FortiGate maximum-address-group-members must be a whole '
+                'number of 1 or more')
+          maximum_address_group_members = int(filter_val)
         else:
           raise FilterError(
-              'FortiGate only supports from-id, ngfw-mode, from-zone, and'
-              ' to-zone filters'
+              'FortiGate only supports from-id, ngfw-mode, from-zone, to-zone'
+              ' and maximum-address-group-members filters'
           )
 
       if bool(self.from_zone) != bool(self.to_zone):
@@ -972,6 +1021,7 @@ class Fortigate(aclgenerator.ACLGenerator):
             verbose,
             from_zone=self.from_zone,
             to_zone=self.to_zone,
+            maximum_address_group_members=maximum_address_group_members,
         )
 
         self.fortigate_policies += [(header, term.name, new_term)]
