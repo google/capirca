@@ -262,11 +262,11 @@ class FortigateTest(unittest.TestCase):
         config firewall address
             edit "10.0.0.0/8"
                 set comment ""
-                set subnet 10.0.0.0/8
+                set subnet 10.0.0.0 255.0.0.0
             next
             edit "20.0.0.0/8"
                 set comment ""
-                set subnet 20.0.0.0/8
+                set subnet 20.0.0.0 255.0.0.0
             next
         end""")
     self.assertIn(expected_addr_config, str(diff_addr_acl))
@@ -724,7 +724,37 @@ Line 2 with multiline"
         config firewall address
             edit "10.0.0.0/8"
                 set comment "(internal network)"
-                set subnet 10.0.0.0/8
+                set subnet 10.0.0.0 255.0.0.0
+            next
+        end""")
+    self.assertIn(expected_addr_config, str(acl))
+
+  def testAddressSubnetUsesNetmask(self):
+    """Tests that IPv4 address objects are rendered as address and netmask."""
+    self.naming.GetNetAddr.side_effect = lambda host: [
+        nacaddr.IP('10.1.2.64/26'),
+        nacaddr.IP('10.1.3.4/32'),
+        nacaddr.IP('172.16.0.0/12'),
+    ]
+    term = self.fmt.format(
+        TERM_TEMPLATE, src_addr='SOME_HOST', remove_fields=('dest_addr',)
+    )
+    acl = fortigate.Fortigate(
+        policy.ParsePolicy(GOOD_HEADER + term, self.naming), EXP_INFO
+    )
+    expected_addr_config = textwrap.dedent("""\
+        config firewall address
+            edit "10.1.2.64/26"
+                set comment ""
+                set subnet 10.1.2.64 255.255.255.192
+            next
+            edit "10.1.3.4/32"
+                set comment ""
+                set subnet 10.1.3.4 255.255.255.255
+            next
+            edit "172.16.0.0/12"
+                set comment ""
+                set subnet 172.16.0.0 255.240.0.0
             next
         end""")
     self.assertIn(expected_addr_config, str(acl))

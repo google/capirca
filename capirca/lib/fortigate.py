@@ -225,8 +225,13 @@ class ObjectsContainer():
         addr_comment += ' (' + addr.text + ')'
       comment_str = self.fix_comment_length(addr_comment)
       address += [f'{_SP * 2}set comment "{comment_str}"']
-    if not isinstance(addr, nacaddr.IPv6):
-      address += [f'{_SP * 2}set subnet {addr_name}']
+    if isinstance(addr, nacaddr.IPv4):
+      # FortiOS stores an IPv4 subnet as "<address> <netmask>", converting
+      # "<address>/<prefix length>" input to that form. Render it the same way
+      # so that the configuration matches what the device shows.
+      address += [
+          f'{_SP * 2}set subnet {addr.network_address} {addr.netmask}'
+      ]
     if isinstance(addr, nacaddr.IPv6):
       address += [f'{_SP * 2}set ip6 {addr_name}']
     address += [_SP + 'next']
