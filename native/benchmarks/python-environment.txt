@@ -1,0 +1,9 @@
+absl-py==2.5.1
+ply==3.11
+PyYAML==6.0.3
+six==1.17.0
+typing_extensions==4.16.0
+mock==5.2.0
+pytest==9.1.1
+maturin==1.15.0
+flake8==7.4.1
