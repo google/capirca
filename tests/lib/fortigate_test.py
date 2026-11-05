@@ -1161,5 +1161,253 @@ Line 2 with multiline"
         ['all'],
     )
 
+  def _render(self, terms, optimize=True):
+    """Renders terms under GOOD_HEADER and returns the configuration."""
+    acl = fortigate.Fortigate(
+        policy.ParsePolicy(GOOD_HEADER + terms, self.naming, optimize),
+        EXP_INFO,
+    )
+    return str(acl)
+
+  def testUnrestrictedTermMatchesBothFamilies(self):
+    """Tests that a term with no addresses gets 'all' for IPv4 and IPv6."""
+    term = textwrap.dedent("""\
+        term unrestricted {
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    expected = textwrap.indent(
+        textwrap.dedent("""\
+            set srcintf any
+            set dstintf any
+            set dstaddr 'all'
+            set dstaddr6 'all'
+            set srcaddr 'all'
+            set srcaddr6 'all'
+            set action accept
+            """),
+        ' ' * 8,
+    )
+    self.assertIn(expected, self._render(term))
+
+  def testAddressesRenderedPerFamily(self):
+    """Tests that source and destination get objects in each family."""
+    term = textwrap.dedent("""\
+        term dual-stack {
+          source-address:: SOME_HOST SOME_HOST6
+          destination-address:: SOME_HOST2 SOME_HOST6
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    expected = textwrap.indent(
+        textwrap.dedent("""\
+            set dstaddr '20.0.0.0/8'
+            set dstaddr6 'fec0::/10'
+            set srcaddr '10.0.0.0/8'
+            set srcaddr6 'fec0::/10'
+            set action accept
+            """),
+        ' ' * 8,
+    )
+    self.assertIn(expected, self._render(term))
+
+  def testNoSourceAddressesAndIPv4OnlyDestination(self):
+    """Tests that only IPv4 is rendered for an IPv4-only destination."""
+    term = textwrap.dedent("""\
+        term any-to-v4 {
+          destination-address:: SOME_HOST
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    expected = textwrap.indent(
+        textwrap.dedent("""\
+            set dstaddr '10.0.0.0/8'
+            set srcaddr 'all'
+            set action accept
+            """),
+        ' ' * 8,
+    )
+    output = self._render(term)
+    self.assertIn(expected, output)
+    self.assertNotIn('addr6', output)
+
+  def testNoSourceAddressesAndIPv6OnlyDestination(self):
+    """Tests that only IPv6 is rendered for an IPv6-only destination."""
+    term = textwrap.dedent("""\
+        term any-to-v6 {
+          destination-address:: SOME_HOST6
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    expected = textwrap.indent(
+        textwrap.dedent("""\
+            set dstaddr6 'fec0::/10'
+            set srcaddr6 'all'
+            set action accept
+            """),
+        ' ' * 8,
+    )
+    output = self._render(term)
+    self.assertIn(expected, output)
+    self.assertNotIn("set dstaddr '", output)
+    self.assertNotIn("set srcaddr '", output)
+
+  def testFamilyMissingFromDestinationIsNotRendered(self):
+    """Tests that a family the destination lacks is not rendered."""
+    term = textwrap.dedent("""\
+        term dual-to-v4 {
+          source-address:: SOME_HOST SOME_HOST6
+          destination-address:: SOME_HOST2
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    expected = textwrap.indent(
+        textwrap.dedent("""\
+            set dstaddr '20.0.0.0/8'
+            set srcaddr '10.0.0.0/8'
+            set action accept
+            """),
+        ' ' * 8,
+    )
+    output = self._render(term)
+    self.assertIn(expected, output)
+    # Neither the policy nor the address objects mention the dropped family.
+    self.assertNotIn('addr6', output)
+    self.assertNotIn('fec0::/10', output)
+
+  def testSourceExcludeWithoutSourceAddresses(self):
+    """Tests a source exclude without source addresses.
+
+    The excluded family becomes an address group of 'all' minus the exclude;
+    the other family stays 'all'.
+    """
+    term = textwrap.dedent("""\
+        term any-but-some-host {
+          source-exclude:: SOME_HOST
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    expected_addrgrp = textwrap.dedent("""\
+        config firewall addrgrp
+            edit "any-but-some-host-srcgrp"
+                set comment ""
+                set member "all"
+                set exclude enable
+                set exclude-member "10.0.0.0/8"
+            next
+        end
+        """)
+    expected_policy = textwrap.indent(
+        textwrap.dedent("""\
+            set dstaddr 'all'
+            set dstaddr6 'all'
+            set srcaddr 'any-but-some-host-srcgrp'
+            set srcaddr6 'all'
+            set action accept
+            """),
+        ' ' * 8,
+    )
+    output = self._render(term)
+    self.assertIn(expected_addrgrp, output)
+    self.assertIn(expected_policy, output)
+
+  def testExcludeRemovingFamilyDropsIt(self):
+    """Tests that a family fully excluded from the source is not rendered."""
+    term = textwrap.dedent("""\
+        term v6-excluded {
+          source-address:: SOME_HOST SOME_HOST6
+          source-exclude:: SOME_HOST6
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    expected = textwrap.indent(
+        textwrap.dedent("""\
+            set dstaddr 'all'
+            set srcaddr '10.0.0.0/8'
+            set action accept
+            """),
+        ' ' * 8,
+    )
+    # Capirca's address collapsing cannot handle dual-stack addresses with an
+    # exclude (it compares netmasks across families), so skip it here.
+    output = self._render(term, optimize=False)
+    self.assertIn(expected, output)
+    self.assertNotIn('addr6', output)
+    self.assertNotIn('fec0::/10', output)
+
+  def testExcludeOfMissingFamilyIsIgnored(self):
+    """Tests that an exclude in a family without addresses is ignored.
+
+    An IPv4-only source with an IPv6 exclude stays IPv4-only: the exclude must
+    not turn into an IPv6 'all minus exclude' source group with an IPv6 'all'
+    destination.
+    """
+    term = textwrap.dedent("""\
+        term v4-with-v6-exclude {
+          source-address:: SOME_HOST
+          source-exclude:: SOME_EXCLUDE6
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    expected = textwrap.indent(
+        textwrap.dedent("""\
+            set dstaddr 'all'
+            set srcaddr '10.0.0.0/8'
+            set action accept
+            """),
+        ' ' * 8,
+    )
+    output = self._render(term)
+    self.assertIn(expected, output)
+    self.assertNotIn('addr6', output)
+    self.assertNotIn('fec0:1::/32', output)
+
+  def testTermWithoutCommonFamilyIsSkipped(self):
+    """Tests that a term with no family in common is skipped, with a warning.
+
+    The skipped term keeps its policy ID so the following IDs do not shift,
+    and it leaves no addresses, services, schedules or system settings behind.
+    """
+    terms = textwrap.dedent("""\
+        term v4-to-v6 {
+          source-address:: SOME_HOST
+          destination-address:: SOME_HOST6
+          destination-port:: WHOIS
+          protocol:: tcp
+          expiration:: 2099-12-31
+          action:: reject
+        }
+        term rendered {
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    acl = fortigate.Fortigate(
+        policy.ParsePolicy(GOOD_HEADER + terms, self.naming), EXP_INFO
+    )
+    with self.assertLogs(level='WARNING') as log:
+      output = str(acl)
+    self.assertEqual(len(log.output), 1, log.output)
+    self.assertIn('Term v4-to-v6 will not be rendered', log.output[0])
+    expected = textwrap.dedent("""\
+        config firewall policy
+            edit 3
+                set name rendered
+        """)
+    self.assertIn(expected, output)
+    self.assertNotIn('v4-to-v6', output)
+    self.assertNotIn('config sys setting', output)
+    self.assertNotIn('config firewall address', output)
+    self.assertNotIn('config firewall service custom', output)
+    self.assertNotIn('config firewall schedule onetime', output)
+
 if __name__ == '__main__':
   absltest.main()

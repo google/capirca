@@ -325,35 +325,6 @@ class ObjectsContainer():
 
     return action
 
-  def add_address_to_fw_addrgrps(
-      self,
-      addrgrp_name,
-      address,
-      address_exclude,
-      max_members=0):
-    """Add address and exclude to address group store."""
-    address_v4 = [x.with_prefixlen for x in address if
-                  not isinstance(x, nacaddr.IPv6)]
-    address_v6 = [x.with_prefixlen for x in address if
-                  isinstance(x, nacaddr.IPv6)]
-    address_exclude_v4 = [x.with_prefixlen for x in address_exclude if
-                          not isinstance(x, nacaddr.IPv6)]
-    address_exclude_v6 = [x.with_prefixlen for x in address_exclude if
-                          isinstance(x, nacaddr.IPv6)]
-
-    addr_names = []
-    if address_v4 or address_exclude_v4:
-      names = self.generate_address_or_addrgrp(
-          addrgrp_name, address_v4, address_exclude_v4, 4, max_members)
-      addr_names += [(4, names)]
-
-    if address_v6 or address_exclude_v6:
-      names6 = self.generate_address_or_addrgrp(
-          addrgrp_name + '6', address_v6, address_exclude_v6, 6, max_members)
-      addr_names += [(6, names6)]
-
-    return addr_names or 'all'
-
   def generate_address_or_addrgrp(
       self,
       addrgrp_name,
@@ -519,6 +490,30 @@ class ObjectsContainer():
     return clean_comment[:_COMMENT_MAX_LENGTH]
 
 
+def _address_families(addresses, excludes):
+  """Returns the address families in addresses after subtracting excludes.
+
+  If addresses is empty even before excludes are considered, returns both 4
+  and 6: no addresses means any address.
+
+  Args:
+    addresses: list of nacaddr addresses.
+    excludes: list of nacaddr addresses to subtract from addresses.
+
+  Returns:
+    A set of IP versions: 4, 6, both or neither.
+  """
+  if not addresses:
+    return {4, 6}
+  return {
+      ip_v for ip_v in (4, 6)
+      if nacaddr.AddressListExclude(
+          [a for a in addresses if a.version == ip_v],
+          [a for a in excludes if a.version == ip_v],
+          collapse_addrs=False)
+  }
+
+
 class Term(aclgenerator.Term):
   """Single Firewall Policy."""
 
@@ -664,6 +659,60 @@ class Term(aclgenerator.Term):
         if addr:
           self._obj_container._dict_addresses.add(addr)
 
+  def _get_direction_address_lines(
+      self, families, addr_field, group_name, addresses, excludes):
+    """Returns the policy lines for the source or the destination addresses.
+
+    Adds one line per family: addr_field, with a 6 suffix for IPv6, set to the
+    address object or address groups for the addresses of that family, which
+    this registers in the object container, or to 'all' if there are neither
+    addresses nor excludes of that family.
+
+    Args:
+      families: set of IP versions (4 and/or 6) to render.
+      addr_field: 'srcaddr' or 'dstaddr'.
+      group_name: name of the address group; the IPv6 one gets a 6 suffix.
+      addresses: list of nacaddr addresses.
+      excludes: list of nacaddr addresses excluded from addresses.
+
+    Returns:
+      A list of policy lines.
+    """
+    lines = []
+    for ip_v in sorted(families):
+      suffix = '' if ip_v == 4 else '6'
+      addresses_v = [a for a in addresses if a.version == ip_v]
+      excludes_v = [a for a in excludes if a.version == ip_v]
+      self._generate_address_names(addresses_v, excludes_v)
+      # ['all'] if there are neither addresses nor excludes of this family.
+      names = self._obj_container.generate_address_or_addrgrp(
+          group_name + suffix,
+          [a.with_prefixlen for a in addresses_v],
+          [a.with_prefixlen for a in excludes_v],
+          ip_v,
+          self.maximum_address_group_members)
+      members = ' '.join(f"'{name}'" for name in names)
+      lines += [f'{_SP * 2}set {addr_field}{suffix} {members}']
+    return lines
+
+  def _get_address_lines(self, families):
+    """Returns the dstaddr and srcaddr lines of the policy for families."""
+    dst_lines = self._get_direction_address_lines(
+        families,
+        'dstaddr',
+        self._term.name + '-dstgrp',
+        self._term.destination_address,
+        self._term.destination_address_exclude,
+    )
+    src_lines = self._get_direction_address_lines(
+        families,
+        'srcaddr',
+        self._term.name + '-srcgrp',
+        self._term.source_address,
+        self._term.source_address_exclude,
+    )
+    return dst_lines + src_lines
+
   def _process_verbatim_term(self):
     """Process verbatim term output"""
     # If Term includes verbatim token only
@@ -715,39 +764,8 @@ class Term(aclgenerator.Term):
       return self._process_verbatim_term()
 
     # Not support next action, skip this term
-    action = self._obj_container.process_action_setting(
-        self._term.action[0])
-    if action == 'next':
+    if self._term.action[0] == 'next':
       return ''
-
-    self._generate_address_names(
-        self._term.destination_address,
-        self._term.source_address,
-        self._term.destination_address_exclude,
-        self._term.source_address_exclude)
-
-    dest_addresses = self._obj_container.add_address_to_fw_addrgrps(
-        self._term.name + '-dstgrp',
-        self._term.destination_address,
-        self._term.destination_address_exclude,
-        self.maximum_address_group_members)
-    src_addresses = self._obj_container.add_address_to_fw_addrgrps(
-        self._term.name + '-srcgrp',
-        self._term.source_address,
-        self._term.source_address_exclude,
-        self.maximum_address_group_members)
-
-    services = self._get_services_name(
-        sorted(
-            self._term.protocol),
-        self._term.destination_port,
-        self._term.source_port)
-
-    schedule_name = None
-    if self._term.expiration:
-      schedule_date = self._convert_date(self._term.expiration)
-      schedule_name = self._obj_container.add_expiration_to_fw_schedules(
-          schedule_date)
 
     lines += [f'{_SP * 2}set name {self._term.name}']
     # Owner (implement as comment)
@@ -771,36 +789,38 @@ class Term(aclgenerator.Term):
       dst_intf = self._term.destination_interface or self.to_zone or 'any'
       lines += [f'{_SP * 2}set srcintf {src_intf}']
       lines += [f'{_SP * 2}set dstintf {dst_intf}']
-    exist_src6 = False
-    exist_dst6 = False
-    if isinstance(dest_addresses, list):
-      for (ip_v, addr_names) in dest_addresses:
-        addr_cmd = 'dstaddr' if ip_v == 4 else 'dstaddr6'
-        members = ' '.join(f"'{name}'" for name in addr_names)
-        lines += [f'{_SP * 2}set {addr_cmd} {members}']
-        if ip_v == 6:
-          exist_dst6 = True
-    else:
-      lines += [f"{_SP * 2}set dstaddr '{dest_addresses}'"]
-    if isinstance(src_addresses, list):
-      for (ip_v, addr_names) in src_addresses:
-        addr_cmd = 'srcaddr' if ip_v == 4 else 'srcaddr6'
-        members = ' '.join(f"'{name}'" for name in addr_names)
-        lines += [f'{_SP * 2}set {addr_cmd} {members}']
-        if ip_v == 6:
-          exist_src6 = True
-    else:
-      lines += [f"{_SP * 2}set srcaddr '{src_addresses}'"]
-    if exist_src6 and not exist_dst6:
-      lines += [_SP * 2 + 'set dstaddr6 "all"']
-    elif not exist_src6 and exist_dst6:
-      lines += [_SP * 2 + 'set srcaddr6 "all"']
 
+    # Emit a srcaddr and a dstaddr line for each address family that both the
+    # source and the destination addresses have (see _address_families).
+    # Leave out a family that either one lacks, even if only because of
+    # excludes: an IPv4 source cannot talk to an IPv6 destination anyway.
+    families = _address_families(
+        self._term.source_address,
+        self._term.source_address_exclude,
+    ) & _address_families(
+        self._term.destination_address,
+        self._term.destination_address_exclude,
+    )
+    if not families:
+      logging.warning(
+          'WARNING: Term %s will not be rendered, as its source and '
+          'destination addresses have no address family in common.',
+          self._term.name)
+      return ''
+    lines += self._get_address_lines(families)
+
+    action = self._obj_container.process_action_setting(
+        self._term.action[0])
     action_str = action if action == 'accept' else 'deny'
     lines += [f'{_SP * 2}set action {action_str}']
     if action == 'reject':
       lines += [_SP * 2 + 'set send-deny-packet enable']
 
+    services = self._get_services_name(
+        sorted(self._term.protocol),
+        self._term.destination_port,
+        self._term.source_port,
+    )
     if services:
       if self._NGFW_MODE == 'policy-based':
         lines += [_SP * 2 + 'set enforce-default-app-port disable']
@@ -816,7 +836,11 @@ class Term(aclgenerator.Term):
       )
       lines += [f'{_SP * 2}set application {app_ids}']
 
-    schedule_val = schedule_name if schedule_name else 'always'
+    schedule_val = 'always'
+    if self._term.expiration:
+      schedule_date = self._convert_date(self._term.expiration)
+      schedule_val = self._obj_container.add_expiration_to_fw_schedules(
+          schedule_date)
     lines += [f'{_SP * 2}set schedule {schedule_val}']
 
     if self._term.logging:
