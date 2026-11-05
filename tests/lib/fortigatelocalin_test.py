@@ -514,6 +514,36 @@ class FortigateLocalInTest(unittest.TestCase):
         fortigate.FortiGateValueError, port_map.get_protocol, 'bad_proto', 22
     )
 
+  def testPlatformKeywordsUseTheLocalInPlatformName(self):
+    """Tests that platform keywords are matched against fortigatelocalin.
+
+    A term whose platform list names only fortigate is skipped here, as the
+    keyword check in ACLGenerator.__init__ already treated it; a term that
+    names fortigatelocalin is rendered.
+    """
+    terms = textwrap.dedent("""\
+        term fortigate-only {
+          platform:: fortigate
+          protocol:: tcp
+          action:: accept
+        }
+        term local-in {
+          platform:: fortigate fortigatelocalin
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    acl = fortigatelocalin.FortigateLocalIn(
+        policy.ParsePolicy(GOOD_HEADER + terms, self.naming), EXP_INFO)
+    output = str(acl)
+    expected = textwrap.dedent("""\
+        config firewall local-in-policy
+            edit 2
+                set name local-in
+        """)
+    self.assertIn(expected, output)
+    self.assertNotIn('fortigate-only', output)
+
 
 if __name__ == '__main__':
   absltest.main()

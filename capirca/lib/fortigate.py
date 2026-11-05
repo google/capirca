@@ -1006,6 +1006,13 @@ class Fortigate(aclgenerator.ACLGenerator):
       Term._NGFW_MODE = self.ngfw_mode
 
       for term in terms:
+        # Skip terms that are not active on this platform, as
+        # ACLGenerator.__init__ does. It does not check their keywords, so
+        # rendering them could silently ignore unsupported keywords.
+        if term.platform and self._PLATFORM not in term.platform:
+          continue
+        if self._PLATFORM in term.platform_exclude:
+          continue
         if unique_term_prefixes and self.from_zone and self.to_zone:
           avail_prefix_len = self._TERM_MAX_LENGTH - 1 - len(term.name)
           prefix_len = max(4, min(self._TERM_PREFIX_LENGTH, avail_prefix_len))

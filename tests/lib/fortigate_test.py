@@ -1409,5 +1409,74 @@ Line 2 with multiline"
     self.assertNotIn('config firewall service custom', output)
     self.assertNotIn('config firewall schedule onetime', output)
 
+  def testTermForOtherPlatformIsNotRendered(self):
+    """Tests that a term whose platform list omits fortigate is skipped.
+
+    The term uses protocol-except, which this generator does not support.
+    Keywords are only checked on terms active on the platform, so rendering the
+    term would ignore protocol-except and deny all services. The skipped term
+    consumes no policy ID, like stateless reply, established and expired terms.
+    """
+    terms = textwrap.dedent("""\
+        term juniper-only {
+          platform:: juniper
+          protocol-except:: tcp udp icmpv6
+          action:: reject
+        }
+        term rendered {
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    output = self._render(terms)
+    expected = textwrap.dedent("""\
+        config firewall policy
+            edit 2
+                set name rendered
+        """)
+    self.assertIn(expected, output)
+    self.assertNotIn('juniper-only', output)
+    self.assertNotIn('set action deny', output)
+
+  def testPlatformExcludedTermIsNotRendered(self):
+    """Tests that a term with platform-exclude fortigate is skipped."""
+    terms = textwrap.dedent("""\
+        term not-on-fortigate {
+          platform-exclude:: fortigate
+          protocol:: tcp
+          action:: accept
+        }
+        term rendered {
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    output = self._render(terms)
+    expected = textwrap.dedent("""\
+        config firewall policy
+            edit 2
+                set name rendered
+        """)
+    self.assertIn(expected, output)
+    self.assertNotIn('not-on-fortigate', output)
+
+  def testTermActiveOnFortigateIsRendered(self):
+    """Tests that a term whose platform keywords allow fortigate is rendered."""
+    term = textwrap.dedent("""\
+        term on-fortigate {
+          platform:: juniper fortigate
+          platform-exclude:: paloalto
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    output = self._render(term)
+    expected = textwrap.dedent("""\
+        config firewall policy
+            edit 2
+                set name on-fortigate
+        """)
+    self.assertIn(expected, output)
+
 if __name__ == '__main__':
   absltest.main()
