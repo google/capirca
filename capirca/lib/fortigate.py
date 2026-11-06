@@ -519,7 +519,6 @@ class Term(aclgenerator.Term):
 
   _PLATFORM = 'fortigate'
   _NGFW_MODE = 'profile-based'
-  CURRENT_ID = 0
 
   def __init__(
       self,
@@ -530,6 +529,7 @@ class Term(aclgenerator.Term):
       from_zone='',
       to_zone='',
       maximum_address_group_members=0,
+      policy_id=0,
   ):
     super().__init__(term)
     self._term = term
@@ -540,9 +540,7 @@ class Term(aclgenerator.Term):
     self.to_zone = to_zone
     self.maximum_address_group_members = maximum_address_group_members
 
-    self.id_ = type(self).CURRENT_ID
-    if type(self).CURRENT_ID > 0:
-      type(self).CURRENT_ID += 1
+    self.id_ = policy_id
 
   def _get_services_name(self, protocols, destination_ports, source_ports):
     """Get the service name, if not exist create it.
@@ -952,8 +950,10 @@ class Fortigate(aclgenerator.ACLGenerator):
       # IDs.
       self.from_zone = ''
       self.to_zone = ''
+      # The next policy ID is local to this translation, because several
+      # policies can be translated at the same time in one process.
       # default from-id is 0
-      Term.CURRENT_ID = 0
+      next_policy_id = 0
       # default ngfw_mode = profile-based
       self.ngfw_mode = 'profile-based'
       # default: no limit on the members of an address group
@@ -964,7 +964,7 @@ class Fortigate(aclgenerator.ACLGenerator):
           if from_id < 1:
             raise FilterError(
                 'FortiGate from-id must be more than zero')
-          Term.CURRENT_ID = int(from_id)
+          next_policy_id = from_id
         elif filter_key == 'ngfw-mode':
           if filter_val not in ['profile-based', 'policy-based']:
             raise FilterError('FortiGate ngfw-mode only supports profile-based or policy-based')
@@ -1001,7 +1001,7 @@ class Fortigate(aclgenerator.ACLGenerator):
           and self.to_zone
       ):
         zone_hash = int(self.HexDigest(self.from_zone + self.to_zone, 8), 16)
-        Term.CURRENT_ID = ((zone_hash % 200000) + 1) * 10000
+        next_policy_id = ((zone_hash % 200000) + 1) * 10000
 
       Term._NGFW_MODE = self.ngfw_mode
 
@@ -1058,7 +1058,11 @@ class Fortigate(aclgenerator.ACLGenerator):
             from_zone=self.from_zone,
             to_zone=self.to_zone,
             maximum_address_group_members=maximum_address_group_members,
+            policy_id=next_policy_id,
         )
+        # ID 0 means auto-assign, so it is not incremented.
+        if next_policy_id > 0:
+          next_policy_id += 1
 
         self.fortigate_policies += [(header, term.name, new_term)]
 

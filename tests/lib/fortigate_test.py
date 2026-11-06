@@ -882,6 +882,55 @@ Line 2 with multiline"
     self.assertIn('    edit 100\n', output)
     self.assertIn('    edit 101\n', output)
 
+  def testPolicyIdsUnchangedByPolicyTranslatedMidway(self):
+    """Tests that translating another policy midway keeps this policy's IDs.
+
+    Several policies can be translated at the same time in one process, so
+    another policy can be translated while this one is between two terms.
+    """
+    terms = textwrap.dedent("""\
+        term term-1 {
+          protocol:: tcp
+          action:: accept
+        }
+        term term-2 {
+          protocol:: udp
+          action:: accept
+        }
+        """)
+    other_policy = policy.ParsePolicy(
+        textwrap.dedent("""\
+            header {
+              target:: fortigate from-id 500
+            }
+            term other-term {
+              protocol:: tcp
+              action:: accept
+            }
+            """),
+        self.naming,
+    )
+    init_term = fortigate.Term.__init__
+
+    def init_term_then_translate_other_policy_after_term_1(
+        fortigate_term, policy_term, *args, **kwargs
+    ):
+      init_term(fortigate_term, policy_term, *args, **kwargs)
+      if policy_term.name == 'term-1':
+        fortigate.Fortigate(other_policy, EXP_INFO)
+
+    with mock.patch.object(
+        fortigate.Term,
+        '__init__',
+        init_term_then_translate_other_policy_after_term_1,
+    ):
+      acl = fortigate.Fortigate(
+          policy.ParsePolicy(GOOD_HEADER + terms, self.naming), EXP_INFO
+      )
+    output = str(acl)
+    self.assertIn('    edit 2\n        set name term-1', output)
+    self.assertIn('    edit 3\n        set name term-2', output)
+
   def testDuplicateFilterArguments(self):
     """Tests duplicate filter keys or incomplete zones raise FilterError."""
     term = self.fmt.format(TERM_TEMPLATE)
