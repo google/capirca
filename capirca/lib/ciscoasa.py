@@ -274,8 +274,15 @@ class Term(cisco.Term):
 
     ret_lines = []
 
-    # str(icmp_type) is needed to ensure 0 maps to '0' instead of FALSE
-    icmp_type = str(cisco.PortMap.GetProtocol(icmp_type, 'icmp'))
+    # IPv4 ICMP names have different meanings from the IPv6 type numbers.
+    if self.af == 4:
+      icmp_type = cisco.PortMap.GetProtocol(icmp_type, 'icmp')
+    icmp_type = str(icmp_type)
+
+    if self.af == 6:
+      saddr = 'any6' if saddr == 'any' else saddr
+      daddr = 'any6' if daddr == 'any' else daddr
+      proto = 'icmp6' if proto == 'icmpv6' else proto
 
     ret_lines.append('access-list %s extended  %s %s %s %s %s %s %s %s' %
                      (filter_name, action, proto, saddr,
@@ -320,6 +327,12 @@ class CiscoASA(aclgenerator.ACLGenerator):
 
     for header, terms in self.policy.filters:
       filter_name = header.FilterName('ciscoasa')
+      filter_options = header.FilterOptions('ciscoasa')[1:]
+      if filter_options not in ([], ['inet'], ['inet6']):
+        raise UnsupportedCiscoAccessListError(
+            'Expected an optional inet or inet6 address family, '
+            f'got {filter_options}')
+      af = 6 if filter_options == ['inet6'] else 4
 
       new_terms = []
       # now add the terms
@@ -333,7 +346,7 @@ class CiscoASA(aclgenerator.ACLGenerator):
                             'will not be rendered.', term.name, filter_name)
             continue
 
-        new_terms.append(str(Term(term, filter_name)))
+        new_terms.append(str(Term(term, filter_name, af=af)))
 
       self.ciscoasa_policies.append((header, filter_name, new_terms))
 
