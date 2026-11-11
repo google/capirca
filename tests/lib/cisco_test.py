@@ -469,6 +469,12 @@ term good_term_30 {
   action:: accept
 }
 """
+GOOD_TERM_31_NUMERIC_PROTO = """
+term good_term_31_numeric_proto {
+  protocol:: 50
+  action:: accept
+}
+"""
 
 SUPPORTED_TOKENS = {
     'action',
@@ -1891,6 +1897,54 @@ class CiscoTest(absltest.TestCase):
         aclout,
         f'[{aclout}]',
         )
+
+
+  def testNumericProtocol(self):
+    pol = policy.ParsePolicy(
+        GOOD_HEADER + GOOD_TERM_31_NUMERIC_PROTO, self.naming
+    )
+    acl = cisco.Cisco(pol, EXP_INFO)
+    self.assertIn('permit 50 any any', str(acl))
+    self.assertNotIn('None', str(acl))
+
+  def testNumericProtocolObjectGroup(self):
+    pol = policy.ParsePolicy(
+        GOOD_OBJGRP_HEADER_1 + GOOD_TERM_31_NUMERIC_PROTO, self.naming
+    )
+    acl = cisco.Cisco(pol, EXP_INFO)
+    self.assertIn('permit 50 any any', str(acl))
+    self.assertNotIn('None', str(acl))
+
+  def testNumericProtocolInet6(self):
+    header = """
+header {
+  target:: cisco test-filter inet6
+}
+"""
+    pol = policy.ParsePolicy(header + GOOD_TERM_31_NUMERIC_PROTO, self.naming)
+    acl = cisco.Cisco(pol, EXP_INFO)
+    self.assertIn('permit 50 any any', str(acl))
+    self.assertNotIn('None', str(acl))
+
+  def testNumericProtocolConfigureReplaceCompatible(self):
+    header = """
+header {
+  target:: cisco test-filter extended configure_replace_compatible
+}
+"""
+    pol = policy.ParsePolicy(header + GOOD_TERM_31_NUMERIC_PROTO, self.naming)
+    acl = cisco.Cisco(pol, EXP_INFO)
+    self.assertIn('permit esp any any', str(acl))
+    self.assertNotIn('None', str(acl))
+
+  def testAllowedProtoStringsNotMutated(self):
+    before = list(cisco.Term.ALLOWED_PROTO_STRINGS)
+    pol = policy.ParsePolicy(
+        GOOD_HEADER + GOOD_TERM_31_NUMERIC_PROTO, self.naming
+    )
+    _ = cisco.Cisco(pol, EXP_INFO)
+    _ = cisco.Cisco(pol, EXP_INFO)
+    self.assertEqual(before, cisco.Term.ALLOWED_PROTO_STRINGS)
 
 
 if __name__ == '__main__':
