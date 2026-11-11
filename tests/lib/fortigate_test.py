@@ -1527,5 +1527,14 @@ Line 2 with multiline"
         """)
     self.assertIn(expected, output)
 
+  def testTermWithNoProtocolsMatchesAllServices(self):
+    """Tests that a term with no protocols gets the service 'ALL'."""
+    term = textwrap.dedent("""\
+        term no-protocols {
+          action:: accept
+        }
+        """)
+    self.assertIn("set service 'ALL'\n", self._render(term))
+
 if __name__ == '__main__':
   absltest.main()
