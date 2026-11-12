@@ -199,7 +199,7 @@ class FortigateLocalInTest(unittest.TestCase):
     accept_sig = 'set action accept'
     deny_sig = 'set action deny'
     reject_sig = 'set send-deny-packet enable'
-    reject_sys_sig = ('config sys setting\n' +
+    reject_sys_sig = ('config system settings\n' +
                       _SP + 'set deny-tcp-with-icmp enable\n' +
                       'end\n')
 

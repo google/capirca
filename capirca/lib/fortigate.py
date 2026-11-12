@@ -1083,7 +1083,7 @@ class Fortigate(aclgenerator.ACLGenerator):
   def __str__(self):
     fw_policies = self._get_fw_policies()
 
-    start_sys_settings = ['config sys setting']
+    start_sys_settings = ['config system settings']
     start_addresses_v4 = ['config firewall address']
     start_addresses_v6 = ['config firewall address6']
     start_addrgrps_v4 = ['config firewall addrgrp']

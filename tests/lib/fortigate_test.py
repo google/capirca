@@ -197,7 +197,7 @@ class FortigateTest(unittest.TestCase):
     accept_sig = 'set action accept'
     deny_sig = 'set action deny'
     reject_sig = 'set send-deny-packet enable'
-    reject_sys_sig = ('config sys setting\n' +
+    reject_sys_sig = ('config system settings\n' +
                       _SP + 'set deny-tcp-with-icmp enable\n' +
                       'end\n')
 
@@ -1453,7 +1453,7 @@ Line 2 with multiline"
         """)
     self.assertIn(expected, output)
     self.assertNotIn('v4-to-v6', output)
-    self.assertNotIn('config sys setting', output)
+    self.assertNotIn('config system settings', output)
     self.assertNotIn('config firewall address', output)
     self.assertNotIn('config firewall service custom', output)
     self.assertNotIn('config firewall schedule onetime', output)
