@@ -551,7 +551,7 @@ class Term(aclgenerator.Term):
       source_ports: list of source ports
 
     Returns:
-      string (all services separated by spaces).
+      A sorted list of service names, or ['ALL'] if there are none.
 
     Raises:
       FortiGateValueError: If an unsupported protocol is encountered.
@@ -648,7 +648,8 @@ class Term(aclgenerator.Term):
           self._term.name, portranges)
       services.add(service)
 
-    return ' '.join(sorted(services)) or 'ALL'
+    # icmp and icmpv6 without icmp types add an empty name; leave it out.
+    return sorted(name for name in services if name) or ['ALL']
 
   def _generate_address_names(self, *addresses):
     """Generate the addresses names (object-network names)."""
@@ -822,7 +823,9 @@ class Term(aclgenerator.Term):
     if services:
       if self._NGFW_MODE == 'policy-based':
         lines += [_SP * 2 + 'set enforce-default-app-port disable']
-      lines += [f"{_SP * 2}set service '{services}'"]
+      # Each service is a separate quoted value: set service 'HTTP' 'HTTPS'.
+      quoted_services = ' '.join(f"'{name}'" for name in services)
+      lines += [f'{_SP * 2}set service {quoted_services}']
     else:
       if self._NGFW_MODE == 'policy-based':
         lines += [_SP * 2 + 'set enforce-default-app-port enable']

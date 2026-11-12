@@ -321,7 +321,7 @@ class FortigateLocalInTest(unittest.TestCase):
     )
 
     dest_only_sig = "set service 'HTTP'\n"
-    diff_sig = "set service 'HTTP HTTPS'\n"
+    diff_sig = "set service 'HTTP' 'HTTPS'\n"
     dup_sig = "set service 'good-term-2-svc'\n"
     icmp_sig = "set service 'icmp-type-echo-request'\n"
     ip_sig = "set service 'ALL_TCP'\n"

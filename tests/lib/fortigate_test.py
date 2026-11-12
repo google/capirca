@@ -341,7 +341,7 @@ class FortigateTest(unittest.TestCase):
     )
 
     dest_only_sig = "set service 'HTTP'\n"
-    diff_sig = "set service 'HTTP HTTPS'\n"
+    diff_sig = "set service 'HTTP' 'HTTPS'\n"
     dup_sig = "set service 'good-term-2-svc'\n"
     icmp_sig = "set service 'icmp-type-echo-request'\n"
     ip_sig = "set service 'ALL_TCP'\n"
@@ -683,7 +683,7 @@ class FortigateTest(unittest.TestCase):
     self.assertIn('edit test-multi-proto-proto0', output)
     self.assertIn('edit test-multi-proto-proto50', output)
     self.assertIn(
-        "set service 'test-multi-proto-proto0 test-multi-proto-proto50'",
+        "set service 'test-multi-proto-proto0' 'test-multi-proto-proto50'",
         output,
     )
 
