@@ -1273,8 +1273,16 @@ class ObjectGroupTerm(Term):
     else:
       dport = ''
 
-    return (' %s %s %s%s %s%s' % (
-        action, proto, saddr, sport, daddr, dport)).rstrip()
+    options = []
+    if proto in ('tcp', self.PROTO_MAP['tcp']) and (
+        'established' in self.term.option or
+        'tcp-established' in self.term.option):
+      options.append('established')
+    if self.term.logging:
+      options.append('log')
+
+    return (f' {action} {proto} {saddr}{sport} {daddr}{dport} '
+            f'{" ".join(options)}').rstrip()
 
 
 class Cisco(aclgenerator.ACLGenerator):
