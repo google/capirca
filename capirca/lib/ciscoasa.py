@@ -15,6 +15,7 @@
 
 """Cisco ASA renderer."""
 
+import copy
 import datetime
 import ipaddress
 import logging
@@ -59,12 +60,13 @@ class NoCiscoPolicyError(Error):
 class Term(cisco.Term):
   """A single ACL Term."""
 
-  def __init__(self, term, filter_name, af=4):
+  def __init__(self, term, filter_name, af=4, mixed=False):
     self.term = term
     self.filter_name = filter_name
     self.options = []
     assert af in (4, 6)
     self.af = af
+    self.mixed = mixed
 
   def __str__(self):
     # Verify platform specific terms. Skip whole term if platform does not
@@ -283,6 +285,9 @@ class Term(cisco.Term):
       saddr = 'any6' if saddr == 'any' else saddr
       daddr = 'any6' if daddr == 'any' else daddr
       proto = 'icmp6' if proto == 'icmpv6' else proto
+    elif self.mixed:
+      saddr = 'any4' if saddr == 'any' else saddr
+      daddr = 'any4' if daddr == 'any' else daddr
 
     ret_lines.append('access-list %s extended  %s %s %s %s %s %s %s %s' %
                      (filter_name, action, proto, saddr,
@@ -328,11 +333,12 @@ class CiscoASA(aclgenerator.ACLGenerator):
     for header, terms in self.policy.filters:
       filter_name = header.FilterName('ciscoasa')
       filter_options = header.FilterOptions('ciscoasa')[1:]
-      if filter_options not in ([], ['inet'], ['inet6']):
+      if filter_options not in ([], ['inet'], ['inet6'], ['mixed']):
         raise UnsupportedCiscoAccessListError(
-            'Expected an optional inet or inet6 address family, '
+            'Expected an optional inet, inet6 or mixed address family, '
             f'got {filter_options}')
       af = 6 if filter_options == ['inet6'] else 4
+      mixed = filter_options == ['mixed']
 
       new_terms = []
       # now add the terms
@@ -346,7 +352,13 @@ class CiscoASA(aclgenerator.ACLGenerator):
                             'will not be rendered.', term.name, filter_name)
             continue
 
-        new_terms.append(str(Term(term, filter_name, af=af)))
+        # Keep both families of a term before the next term in the same ACL.
+        # Verbatim text is already complete and must only be emitted once.
+        families = (4, 6) if mixed and not term.verbatim else (af,)
+        for family in families:
+          rendered_term = copy.deepcopy(term) if mixed else term
+          new_terms.append(str(Term(rendered_term, filter_name, af=family,
+                                    mixed=mixed)))
 
       self.ciscoasa_policies.append((header, filter_name, new_terms))
 

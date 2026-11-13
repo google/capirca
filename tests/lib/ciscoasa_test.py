@@ -234,6 +234,70 @@ term ipv4 {
           ciscoasa.CiscoASA(policy.ParsePolicy(text + GOOD_TERM_1,
                                               self.naming), EXP_INFO)
 
+  def test_mixed_addresses_and_rule_order(self):
+    """Keep both families of each term ahead of the following term."""
+    self.naming.GetNetAddr.return_value = [nacaddr.IP('192.0.2.0/24'),
+                                          nacaddr.IP('2001:db8::/64')]
+    text = GOOD_HEADER.replace('test-filter', 'test-filter mixed') + """
+term allow-source {
+  action:: accept
+  protocol:: tcp
+  source-address:: SOURCE
+}
+term deny-rest {
+  action:: deny
+}
+"""
+    rendered = str(ciscoasa.CiscoASA(
+        policy.ParsePolicy(text, self.naming), EXP_INFO))
+    lines = [line for line in rendered.splitlines() if ' extended ' in line]
+    self.assertEqual(lines, [
+        'access-list test-filter extended permit tcp '
+        '192.0.2.0 255.255.255.0 any4',
+        'access-list test-filter extended permit tcp 2001:db8::/64 any6',
+        'access-list test-filter extended deny ip any4 any4',
+        'access-list test-filter extended deny ip any6 any6',
+    ])
+    self.assertEqual(rendered.count('clear configure access-list'), 1)
+
+  def test_mixed_icmp(self):
+    """Render each ICMP protocol only for its matching address family."""
+    text = GOOD_HEADER.replace('test-filter', 'test-filter mixed') + """
+term ping4 {
+  action:: accept
+  protocol:: icmp
+  icmp-type:: echo-request
+}
+term ping6 {
+  action:: accept
+  protocol:: icmpv6
+  icmp-type:: echo-request
+}
+"""
+    rendered = str(ciscoasa.CiscoASA(
+        policy.ParsePolicy(text, self.naming), EXP_INFO))
+    lines = [line for line in rendered.splitlines() if ' extended ' in line]
+    self.assertEqual(lines, [
+        'access-list test-filter extended permit icmp any4 any4 echo',
+        'access-list test-filter extended permit icmp6 any6 any6 128',
+    ])
+
+  def test_mixed_verbatim_once_and_owner_not_mutated(self):
+    """Do not duplicate verbatim rules or mutate shared owner comments."""
+    text = GOOD_HEADER.replace('test-filter', 'test-filter mixed')
+    text += GOOD_TERM_1 + """
+term owned {
+  owner:: network-team
+  action:: accept
+  protocol:: tcp
+}
+"""
+    pol = policy.ParsePolicy(text, self.naming)
+    rendered = str(ciscoasa.CiscoASA(pol, EXP_INFO))
+    self.assertEqual(rendered.count('mary had a little lamb'), 1)
+    self.assertEqual(rendered.count('Owner: network-team'), 2)
+    self.assertNotIn('Owner: network-team', pol.filters[0][1][-1].comment)
+
 
 if __name__ == '__main__':
   absltest.main()
