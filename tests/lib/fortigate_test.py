@@ -948,17 +948,17 @@ Line 2 with multiline"
             EXP_INFO,
         )
 
-  def testAddressFamilyOptionRaisesFilterError(self):
-    """Tests that address-family tokens (inet/inet6/mixed) are rejected."""
+  def testMoreThanOneAddressFamilyRaisesFilterError(self):
+    """Tests that a filter takes at most one of inet, inet6 and mixed."""
     term = self.fmt.format(TERM_TEMPLATE)
     header = textwrap.dedent("""\
         header {
-          target:: fortigate ngfw-mode profile-based mixed
+          target:: fortigate ngfw-mode profile-based inet mixed
         }
         """)
     self.assertRaisesRegex(
         fortigate.FilterError,
-        'key-value pairs',
+        'at most one address family',
         fortigate.Fortigate,
         policy.ParsePolicy(header + term, self.naming),
         EXP_INFO,
@@ -1457,6 +1457,150 @@ Line 2 with multiline"
     self.assertNotIn('config firewall address', output)
     self.assertNotIn('config firewall service custom', output)
     self.assertNotIn('config firewall schedule onetime', output)
+
+  def _render_target(self, target, terms):
+    """Returns the configuration for terms under a header with target."""
+    header = f'header {{\n  target:: {target}\n}}\n'
+    acl = fortigate.Fortigate(
+        policy.ParsePolicy(header + terms, self.naming), EXP_INFO
+    )
+    return str(acl)
+
+  def testInetRendersOnlyIPv4ForUnrestrictedTerm(self):
+    """Tests that inet gives a term without addresses only IPv4 'all'."""
+    term = textwrap.dedent("""\
+        term unrestricted {
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    expected = textwrap.indent(
+        textwrap.dedent("""\
+            set dstaddr 'all'
+            set srcaddr 'all'
+            set action accept
+            """),
+        ' ' * 8,
+    )
+    output = self._render_target('fortigate from-id 2 inet', term)
+    self.assertIn(expected, output)
+    self.assertNotIn('addr6', output)
+
+  def testInetLeavesOutIPv6Addresses(self):
+    """Tests that inet renders only the IPv4 addresses of a dual-stack term."""
+    term = textwrap.dedent("""\
+        term dual-stack {
+          source-address:: SOME_HOST SOME_HOST6
+          destination-address:: SOME_HOST2 SOME_HOST6
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    expected = textwrap.indent(
+        textwrap.dedent("""\
+            set dstaddr '20.0.0.0/8'
+            set srcaddr '10.0.0.0/8'
+            set action accept
+            """),
+        ' ' * 8,
+    )
+    output = self._render_target('fortigate from-id 2 inet', term)
+    self.assertIn(expected, output)
+    self.assertNotIn('fec0::/10', output)
+
+  def testInetSkipsTermWithOnlyIPv6Destination(self):
+    """Tests that inet skips a term whose destination is only IPv6.
+
+    Like a term without a family in common, the skipped term keeps its policy
+    ID, so the following IDs do not shift.
+    """
+    terms = textwrap.dedent("""\
+        term any-to-v6 {
+          destination-address:: SOME_HOST6
+          protocol:: tcp
+          action:: accept
+        }
+        term rendered {
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    with self.assertLogs(level='WARNING') as log:
+      output = self._render_target('fortigate from-id 2 inet', terms)
+    self.assertEqual(len(log.output), 1, log.output)
+    self.assertIn('Term any-to-v6 will not be rendered', log.output[0])
+    self.assertIn('    edit 3\n        set name rendered\n', output)
+    self.assertNotIn('any-to-v6', output)
+
+  def testInetSkipsIcmpv6Term(self):
+    """Tests that inet skips a term with protocol icmpv6."""
+    term = textwrap.dedent("""\
+        term accept-icmpv6 {
+          protocol:: icmpv6
+          action:: accept
+        }
+        """)
+    with self.assertLogs(level='WARNING') as log:
+      output = self._render_target('fortigate from-id 2 inet', term)
+    self.assertEqual(len(log.output), 1, log.output)
+    self.assertIn('Term accept-icmpv6 will not be rendered', log.output[0])
+    self.assertNotIn('accept-icmpv6', output)
+
+  def testInet6RendersOnlyIPv6ForUnrestrictedTerm(self):
+    """Tests that inet6 gives a term without addresses only IPv6 'all'."""
+    term = textwrap.dedent("""\
+        term unrestricted {
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    expected = textwrap.indent(
+        textwrap.dedent("""\
+            set dstaddr6 'all'
+            set srcaddr6 'all'
+            set action accept
+            """),
+        ' ' * 8,
+    )
+    output = self._render_target('fortigate from-id 2 inet6', term)
+    self.assertIn(expected, output)
+    self.assertNotIn("set dstaddr '", output)
+    self.assertNotIn("set srcaddr '", output)
+
+  def testInet6SkipsIcmpTerm(self):
+    """Tests that inet6 skips a term with protocol icmp."""
+    term = textwrap.dedent("""\
+        term accept-icmp {
+          protocol:: icmp
+          action:: accept
+        }
+        """)
+    with self.assertLogs(level='WARNING') as log:
+      output = self._render_target('fortigate from-id 2 inet6', term)
+    self.assertEqual(len(log.output), 1, log.output)
+    self.assertIn('Term accept-icmp will not be rendered', log.output[0])
+    self.assertNotIn('accept-icmp', output)
+
+  def testMixedRendersBothFamilies(self):
+    """Tests that mixed, like no address family, renders IPv4 and IPv6."""
+    term = textwrap.dedent("""\
+        term unrestricted {
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    expected = textwrap.indent(
+        textwrap.dedent("""\
+            set dstaddr 'all'
+            set dstaddr6 'all'
+            set srcaddr 'all'
+            set srcaddr6 'all'
+            set action accept
+            """),
+        ' ' * 8,
+    )
+    output = self._render_target('fortigate from-id 2 mixed', term)
+    self.assertIn(expected, output)
 
   def testTermForOtherPlatformIsNotRendered(self):
     """Tests that a term whose platform list omits fortigate is skipped.

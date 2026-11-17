@@ -538,6 +538,14 @@ class ObjectsContainer():
     return clean_comment[:_COMMENT_MAX_LENGTH]
 
 
+# IP versions covered by each address family filter option.
+_FILTER_ADDRESS_FAMILIES = {
+    'inet': frozenset({4}),
+    'inet6': frozenset({6}),
+    'mixed': frozenset({4, 6}),
+}
+
+
 def _address_families(addresses, excludes):
   """Returns the address families in addresses after subtracting excludes.
 
@@ -599,6 +607,7 @@ class Term(aclgenerator.Term):
       verbose=True,
       from_zone='',
       to_zone='',
+      address_families=_FILTER_ADDRESS_FAMILIES['mixed'],
       maximum_address_group_members=0,
       nat64=False,
       policy_id=0,
@@ -610,6 +619,7 @@ class Term(aclgenerator.Term):
     self._term.verbose = verbose
     self.from_zone = from_zone
     self.to_zone = to_zone
+    self.address_families = address_families
     self.maximum_address_group_members = maximum_address_group_members
     self.nat64 = nat64
 
@@ -880,6 +890,19 @@ class Term(aclgenerator.Term):
       lines += [f'{_SP * 2}set srcintf {src_intf}']
       lines += [f'{_SP * 2}set dstintf {dst_intf}']
 
+    # ICMPv6 is only IPv6 and ICMP only IPv4, so a filter of the other address
+    # family leaves the term out.
+    if 'icmpv6' in self._term.protocol and 6 not in self.address_families:
+      logging.warning(
+          'WARNING: Term %s will not be rendered, as it has protocol icmpv6 '
+          'and the filter is inet.', self._term.name)
+      return ''
+    if 'icmp' in self._term.protocol and 4 not in self.address_families:
+      logging.warning(
+          'WARNING: Term %s will not be rendered, as it has protocol icmp '
+          'and the filter is inet6.', self._term.name)
+      return ''
+
     # Emit a srcaddr and a dstaddr line for each address family that both the
     # source and the destination addresses have (see _address_families).
     # Leave out a family that either one lacks, even if only because of
@@ -896,6 +919,13 @@ class Term(aclgenerator.Term):
           'WARNING: Term %s will not be rendered, as its source and '
           'destination addresses have no address family in common.',
           self._term.name)
+      return ''
+    # An inet or inet6 filter also leaves out the other family.
+    families &= self.address_families
+    if not families:
+      logging.warning(
+          'WARNING: Term %s will not be rendered, as its addresses are not '
+          'of the address family of the filter.', self._term.name)
       return ''
     lines += self._get_address_lines(families)
 
@@ -1034,6 +1064,22 @@ class Fortigate(aclgenerator.ACLGenerator):
         nat64 = True
         filter_options.remove('nat64')
 
+      # inet, inet6 or mixed: the address families the policies cover. mixed,
+      # the default, renders each family that a term's source and
+      # destination addresses have in common.
+      address_family_options = [
+          option for option in filter_options
+          if option in _FILTER_ADDRESS_FAMILIES
+      ]
+      if len(address_family_options) > 1:
+        raise FilterError(
+            'FortiGate takes at most one address family: inet, inet6 or '
+            'mixed')
+      address_family = 'mixed'
+      if address_family_options:
+        address_family = address_family_options[0]
+        filter_options.remove(address_family)
+
       # The above processing handles filter options that take no argument.
       # Next we focus on the options that do take an argument, and start by
       # associating each option with its argument.
@@ -1164,6 +1210,7 @@ class Fortigate(aclgenerator.ACLGenerator):
             verbose,
             from_zone=self.from_zone,
             to_zone=self.to_zone,
+            address_families=_FILTER_ADDRESS_FAMILIES[address_family],
             maximum_address_group_members=maximum_address_group_members,
             nat64=nat64,
             policy_id=next_policy_id,
