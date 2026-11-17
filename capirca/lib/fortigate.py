@@ -41,6 +41,8 @@ _SUPPORT_VERBATIM_TERM = False
 _COMMENT_MAX_LENGTH = 1024
 # Well-known prefix of the IPv6 addresses that NAT64 translates (RFC 6052).
 _NAT64_PREFIX = nacaddr.IP('64:ff9b::/96')
+# FortiOS rejects a custom service with more port ranges than this.
+_MAX_SERVICE_PORT_RANGES = 16
 
 
 class Error(Exception):
@@ -167,6 +169,24 @@ class FortigatePortMap():
     else:
       raise FortiGateFindServiceError(
           f'service not found from {protocol} protocol and {port} port')
+
+
+def _portrange_lines(protocol_ranges):
+  """Returns the set <protocol>-portrange lines of a custom service.
+
+  Args:
+    protocol_ranges: list of (protocol, port range) pairs, sorted by protocol.
+
+  Returns:
+    A list of lines, one per protocol.
+  """
+  ranges_by_protocol = {}
+  for protocol, port_range in protocol_ranges:
+    ranges_by_protocol.setdefault(protocol, []).append(port_range)
+  return [
+      f'set {protocol.lower()}-portrange {" ".join(port_ranges)}'
+      for protocol, port_ranges in ranges_by_protocol.items()
+  ]
 
 
 class ObjectsContainer():
@@ -398,7 +418,20 @@ class ObjectsContainer():
     return None
 
   def add_service_to_fw_services(self, term_name, protocol_ports):
-    """Add service to services store."""
+    """Adds custom services for the port ranges of a term.
+
+    A term with more than _MAX_SERVICE_PORT_RANGES port ranges, counting all
+    protocols together, gets services named <term_name>-svc-1,
+    <term_name>-svc-2, ... of at most _MAX_SERVICE_PORT_RANGES port ranges
+    each.
+
+    Args:
+      term_name: a string. name of the term.
+      protocol_ports: a dict. port ranges of the term, by protocol.
+
+    Returns:
+      A list of strings: the names the policy refers to.
+    """
     protocols = set()
     portranges = set()
     for protocol, portrange in protocol_ports.items():
@@ -407,16 +440,29 @@ class ObjectsContainer():
         portranges.add(str(range1))
 
     service_name = term_name + "-svc"
-    if service_name not in self._dict_services:
-      protocol_set = set()
-      for protocol, port_ranges in protocol_ports.items():
-        portrange_str = ' '.join(str(v) for v in sorted(port_ranges))
-        protocol_set.add(
-            f'set {protocol.lower()}-portrange {portrange_str}')
+    protocol_ranges = []
+    for protocol in sorted(protocol_ports):
+      for port_range in sorted(protocol_ports[protocol]):
+        protocol_ranges.append((protocol, str(port_range)))
+    # A custom service holds only port ranges, and each port range carries its
+    # own source ports (destination:source), so a split service needs nothing
+    # copied from the others. A setting added to custom services later must
+    # go into every split service, or the spillover services would miss it.
+    if len(protocol_ranges) <= _MAX_SERVICE_PORT_RANGES:
+      services = {service_name: protocol_ranges}
+    else:
+      starts = range(0, len(protocol_ranges), _MAX_SERVICE_PORT_RANGES)
+      services = {
+          f'{service_name}-{i}':
+              protocol_ranges[start:start + _MAX_SERVICE_PORT_RANGES]
+          for i, start in enumerate(starts, start=1)
+      }
 
-      self._dict_services[service_name] = sorted(protocol_set)
+    for name, ranges in services.items():
+      if name not in self._dict_services:
+        self._dict_services[name] = _portrange_lines(ranges)
 
-    return service_name
+    return list(services)
 
   def add_protocol_number_service(self, term_name, protocol_number):
     """Add a protocol-number based service to services store."""
@@ -671,9 +717,8 @@ class Term(aclgenerator.Term):
           raise FortiGateValueError(f'Unsupported protocol: {protocol}')
 
     if portranges:
-      service = self._obj_container.add_service_to_fw_services(
-          self._term.name, portranges)
-      services.add(service)
+      services.update(self._obj_container.add_service_to_fw_services(
+          self._term.name, portranges))
 
     # icmp and icmpv6 without icmp types add an empty name; leave it out.
     return sorted(name for name in services if name) or ['ALL']

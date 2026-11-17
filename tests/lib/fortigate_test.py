@@ -1725,5 +1725,128 @@ Line 2 with multiline"
     self.assertNotIn(
         'set nat64', self._render_nat64(term, target='fortigate from-id 2'))
 
+  def testServiceOverMaximumPortRangesIsSplit(self):
+    """Tests that a service over 16 port ranges becomes several services."""
+    self.naming.GetServiceByProto.side_effect = lambda service, protocol: [
+        '3000', '3002', '3004', '3006', '3008', '3010', '3012', '3014',
+        '3016', '3018', '3020', '3022', '3024', '3026', '3028', '3030',
+        '3032',
+    ]
+    term = textwrap.dedent("""\
+        term many-ports {
+          destination-port:: MANY
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    output = self._render(term)
+    expected_services = (
+        '    edit many-ports-svc-1\n'
+        '        set tcp-portrange 3000 3002 3004 3006 3008 3010 3012 3014'
+        ' 3016 3018 3020 3022 3024 3026 3028 3030\n'
+        '    next\n'
+        '    edit many-ports-svc-2\n'
+        '        set tcp-portrange 3032\n'
+        '    next\n'
+    )
+    self.assertIn(expected_services, output)
+    self.assertIn(
+        "set service 'many-ports-svc-1' 'many-ports-svc-2'\n", output
+    )
+    self.assertNotIn('edit many-ports-svc\n', output)
+
+  def testServiceAtMaximumPortRangesIsNotSplit(self):
+    """Tests that a service with exactly 16 port ranges stays one service."""
+    self.naming.GetServiceByProto.side_effect = lambda service, protocol: [
+        '3000', '3002', '3004', '3006', '3008', '3010', '3012', '3014',
+        '3016', '3018', '3020', '3022', '3024', '3026', '3028', '3030',
+    ]
+    term = textwrap.dedent("""\
+        term sixteen-ports {
+          destination-port:: SIXTEEN
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    output = self._render(term)
+    self.assertIn(
+        'set tcp-portrange 3000 3002 3004 3006 3008 3010 3012 3014 3016 3018'
+        ' 3020 3022 3024 3026 3028 3030\n',
+        output,
+    )
+    self.assertIn("set service 'sixteen-ports-svc'\n", output)
+    self.assertNotIn('sixteen-ports-svc-1', output)
+
+  def testPortRangesOfAllProtocolsCountTowardsMaximum(self):
+    """Tests that tcp and udp port ranges together count towards the 16."""
+    self.naming.GetServiceByProto.side_effect = lambda service, protocol: [
+        '3000', '3002', '3004', '3006', '3008', '3010', '3012', '3014',
+        '3016',
+    ]
+    term = textwrap.dedent("""\
+        term tcp-and-udp {
+          destination-port:: NINE
+          protocol:: tcp udp
+          action:: accept
+        }
+        """)
+    output = self._render(term)
+    expected_services = (
+        '    edit tcp-and-udp-svc-1\n'
+        '        set tcp-portrange'
+        ' 3000 3002 3004 3006 3008 3010 3012 3014 3016\n'
+        '        set udp-portrange 3000 3002 3004 3006 3008 3010 3012\n'
+        '    next\n'
+        '    edit tcp-and-udp-svc-2\n'
+        '        set udp-portrange 3014 3016\n'
+        '    next\n'
+    )
+    self.assertIn(expected_services, output)
+    self.assertIn(
+        "set service 'tcp-and-udp-svc-1' 'tcp-and-udp-svc-2'\n", output
+    )
+
+  def testSpilloverServiceKeepsSourcePorts(self):
+    """Tests that the spillover service keeps the source ports of its ranges.
+
+    This is the spillover check: a limit that reached only the first split
+    service would let the spillover service, many-ports-from-ssh-svc-2, match
+    port 3032 from any source port. The source ports are part of each port
+    range (destination:source), so they move with the range into whichever
+    service it lands in.
+    """
+    ports = {
+        'MANY': [
+            '3000', '3002', '3004', '3006', '3008', '3010', '3012', '3014',
+            '3016', '3018', '3020', '3022', '3024', '3026', '3028', '3030',
+            '3032',
+        ],
+        'SSH': ['22'],
+    }
+    self.naming.GetServiceByProto.side_effect = (
+        lambda service, protocol: ports[service]
+    )
+    term = textwrap.dedent("""\
+        term many-ports-from-ssh {
+          destination-port:: MANY
+          source-port:: SSH
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    output = self._render(term)
+    expected_services = (
+        '    edit many-ports-from-ssh-svc-1\n'
+        '        set tcp-portrange 3000:22 3002:22 3004:22 3006:22 3008:22'
+        ' 3010:22 3012:22 3014:22 3016:22 3018:22 3020:22 3022:22 3024:22'
+        ' 3026:22 3028:22 3030:22\n'
+        '    next\n'
+        # The spillover service still allows port 3032 only from port 22.
+        '    edit many-ports-from-ssh-svc-2\n'
+        '        set tcp-portrange 3032:22\n'
+        '    next\n'
+    )
+    self.assertIn(expected_services, output)
+
 if __name__ == '__main__':
   absltest.main()
