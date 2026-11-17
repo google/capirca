@@ -664,7 +664,11 @@ class Term(aclgenerator.Term):
     services = set()
     portranges = {}
     for protocol in protocols:
-      if protocol in {'icmp', 'icmpv6'}:
+      if protocol in {'icmp', 'icmpv6'} and not self._term.icmp_type:
+        # Without icmp types, the term matches all ICMP or ICMPv6 messages,
+        # which are the predefined services ALL_ICMP and ALL_ICMP6.
+        services.add(FortigatePortMap.get_protocol(protocol))
+      elif protocol in {'icmp', 'icmpv6'}:
         ip_v = 4 if protocol == 'icmp' else 6
         icmp_type_dict = {}
         for icmp_type in self._term.icmp_type:
@@ -730,8 +734,7 @@ class Term(aclgenerator.Term):
       services.update(self._obj_container.add_service_to_fw_services(
           self._term.name, portranges))
 
-    # icmp and icmpv6 without icmp types add an empty name; leave it out.
-    return sorted(name for name in services if name) or ['ALL']
+    return sorted(services) or ['ALL']
 
   def _generate_address_names(self, *addresses):
     """Generate the addresses names (object-network names)."""

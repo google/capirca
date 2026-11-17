@@ -775,6 +775,36 @@ Line 2 with multiline"
       self.assertIn('config firewall service group', output)
       self.assertIn('set comment "default-comment"', output)
 
+  def testIcmpWithoutIcmpTypesMatchesAllIcmp(self):
+    """Tests that icmp without icmp types gets the service ALL_ICMP."""
+    term = textwrap.dedent("""\
+        term all-icmp {
+          protocol:: icmp
+          action:: accept
+        }
+        """)
+    self.assertIn("set service 'ALL_ICMP'\n", self._render(term))
+
+  def testIcmpv6WithoutIcmpTypesMatchesAllIcmp6(self):
+    """Tests that icmpv6 without icmp types gets the service ALL_ICMP6."""
+    term = textwrap.dedent("""\
+        term all-icmpv6 {
+          protocol:: icmpv6
+          action:: accept
+        }
+        """)
+    self.assertIn("set service 'ALL_ICMP6'\n", self._render(term))
+
+  def testIcmpWithoutIcmpTypesIsKeptWithOtherProtocols(self):
+    """Tests that icmp without icmp types is not dropped next to tcp."""
+    term = textwrap.dedent("""\
+        term icmp-and-tcp {
+          protocol:: icmp tcp
+          action:: accept
+        }
+        """)
+    self.assertIn("set service 'ALL_ICMP' 'ALL_TCP'\n", self._render(term))
+
   def testFromIdSequential(self):
     """Tests that explicit from-id increments sequentially across multiple terms."""
     terms = textwrap.dedent("""\
