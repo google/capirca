@@ -39,6 +39,8 @@ _SP = '    '
 _DEFAULT_COMMENT = ''
 _SUPPORT_VERBATIM_TERM = False
 _COMMENT_MAX_LENGTH = 1024
+# Well-known prefix of the IPv6 addresses that NAT64 translates (RFC 6052).
+_NAT64_PREFIX = nacaddr.IP('64:ff9b::/96')
 
 
 class Error(Exception):
@@ -514,6 +516,29 @@ def _address_families(addresses, excludes):
   }
 
 
+def _overlaps_nat64_prefix(addresses, excludes):
+  """Returns whether the IPv6 addresses minus excludes overlap 64:ff9b::/96.
+
+  If addresses is empty even before excludes are considered, it means any
+  address.
+
+  Args:
+    addresses: list of nacaddr addresses.
+    excludes: list of nacaddr addresses to subtract from addresses.
+
+  Returns:
+    True if an IPv6 address that is left overlaps the NAT64 prefix.
+  """
+  addresses_v6 = [a for a in addresses if a.version == 6]
+  if not addresses:
+    addresses_v6 = [nacaddr.IP('::/0')]
+  remaining = nacaddr.AddressListExclude(
+      addresses_v6,
+      [a for a in excludes if a.version == 6],
+      collapse_addrs=False)
+  return any(a.overlaps(_NAT64_PREFIX) for a in remaining)
+
+
 class Term(aclgenerator.Term):
   """Single Firewall Policy."""
 
@@ -529,6 +554,7 @@ class Term(aclgenerator.Term):
       from_zone='',
       to_zone='',
       maximum_address_group_members=0,
+      nat64=False,
       policy_id=0,
   ):
     super().__init__(term)
@@ -539,6 +565,7 @@ class Term(aclgenerator.Term):
     self.from_zone = from_zone
     self.to_zone = to_zone
     self.maximum_address_group_members = maximum_address_group_members
+    self.nat64 = nat64
 
     self.id_ = policy_id
 
@@ -754,6 +781,25 @@ class Term(aclgenerator.Term):
     except ValueError as e:
       raise FortiGateScheduleDateError('Expiration is invalid datetime format.') from e
 
+  def _enables_nat64(self, action, families):
+    """Returns whether the policy gets "set nat64 enable".
+
+    With central NAT, FortiGate translates a NAT64 session only if it matches
+    an accept policy that enables NAT64. So with the nat64 option, accept
+    policies enable it if their IPv6 destination addresses can include a NAT64
+    address.
+
+    Args:
+      action: the action of the policy, as process_action_setting returns it.
+      families: set of IP versions (4 and/or 6) the policy renders.
+    """
+    if not self.nat64 or action != 'accept' or 6 not in families:
+      return False
+    return _overlaps_nat64_prefix(
+        self._term.destination_address,
+        self._term.destination_address_exclude,
+    )
+
   def __str__(self):
     lines = []
 
@@ -814,6 +860,8 @@ class Term(aclgenerator.Term):
     lines += [f'{_SP * 2}set action {action_str}']
     if action == 'reject':
       lines += [_SP * 2 + 'set send-deny-packet enable']
+    if self._enables_nat64(action, families):
+      lines += [_SP * 2 + 'set nat64 enable']
 
     services = self._get_services_name(
         sorted(self._term.protocol),
@@ -916,6 +964,9 @@ class Fortigate(aclgenerator.ACLGenerator):
       # maximum-address-group-members n: address groups with more than n
       # members are split into groups of at most n members. Use it for
       # FortiGates that limit the size of an address group.
+      # nat64: accept policies whose IPv6 destination addresses overlap
+      # 64:ff9b::/96 get "set nat64 enable". Use it for zone pairs that carry
+      # NAT64 traffic through central NAT. fortigatelocalin does not take it.
       filter_options = header.FilterOptions(self._PLATFORM)
 
       verbose = True
@@ -929,6 +980,14 @@ class Fortigate(aclgenerator.ACLGenerator):
       if 'unique-term-prefixes' in filter_options:
         unique_term_prefixes = True
         filter_options.remove('unique-term-prefixes')
+
+      nat64 = False
+      if 'nat64' in filter_options:
+        if self._PLATFORM == 'fortigatelocalin':
+          raise FilterError(
+              'fortigatelocalin does not support the nat64 filter option')
+        nat64 = True
+        filter_options.remove('nat64')
 
       # The above processing handles filter options that take no argument.
       # Next we focus on the options that do take an argument, and start by
@@ -1061,6 +1120,7 @@ class Fortigate(aclgenerator.ACLGenerator):
             from_zone=self.from_zone,
             to_zone=self.to_zone,
             maximum_address_group_members=maximum_address_group_members,
+            nat64=nat64,
             policy_id=next_policy_id,
         )
         # ID 0 means auto-assign, so it is not incremented.

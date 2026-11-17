@@ -544,6 +544,23 @@ class FortigateLocalInTest(unittest.TestCase):
     self.assertIn(expected, output)
     self.assertNotIn('fortigate-only', output)
 
+  def testNat64OptionRaises(self):
+    """Tests that the nat64 option is rejected for local-in policies."""
+    header = textwrap.dedent("""\
+        header {
+          target:: fortigatelocalin from-id 2 nat64
+        }
+        """)
+    term = textwrap.dedent("""\
+        term local-in {
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    with self.assertRaisesRegex(fortigate.FilterError, 'nat64'):
+      fortigatelocalin.FortigateLocalIn(
+          policy.ParsePolicy(header + term, self.naming), EXP_INFO)
+
 
 if __name__ == '__main__':
   absltest.main()

@@ -1536,5 +1536,194 @@ Line 2 with multiline"
         """)
     self.assertIn("set service 'ALL'\n", self._render(term))
 
+  def _render_nat64(self, terms, target='fortigate from-id 2 nat64'):
+    """Renders terms that use the NAT64 test addresses under target."""
+    hosts = {
+        'GUEST': [nacaddr.IP('10.1.0.0/16')],
+        'GUEST6': [nacaddr.IP('2001:db8:1::/48')],
+        'NAT64': [nacaddr.IP('64:ff9b::/96')],
+        'NAT64_HOST': [nacaddr.IP('64:ff9b::808:808/128')],
+        'NAT64_SUPERNET': [nacaddr.IP('64::/16')],
+        'OTHER6': [nacaddr.IP('2001:db8:2::/48')],
+    }
+    self.naming.GetNetAddr.side_effect = lambda host: hosts[host]
+    header = textwrap.dedent(f"""\
+        header {{
+          target:: {target}
+        }}
+        """)
+    return str(
+        fortigate.Fortigate(
+            policy.ParsePolicy(header + terms, self.naming), EXP_INFO
+        )
+    )
+
+  def testNat64FollowsActionOfAcceptPolicyToNat64Prefix(self):
+    """Tests that an accept policy to 64:ff9b::/96 enables NAT64."""
+    term = textwrap.dedent("""\
+        term to-nat64 {
+          source-address:: GUEST6
+          destination-address:: NAT64
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    expected = textwrap.indent(
+        textwrap.dedent("""\
+            set dstaddr6 '64:ff9b::/96'
+            set srcaddr6 '2001:db8:1::/48'
+            set action accept
+            set nat64 enable
+            set service 'ALL_TCP'
+            """),
+        ' ' * 8,
+    )
+    self.assertIn(expected, self._render_nat64(term))
+
+  def testNat64EnabledOnTermWithoutAddresses(self):
+    """Tests that a term with no addresses, like an allow-all, enables NAT64."""
+    term = textwrap.dedent("""\
+        term allow-all {
+          action:: accept
+        }
+        """)
+    expected = textwrap.indent(
+        textwrap.dedent("""\
+            set dstaddr 'all'
+            set dstaddr6 'all'
+            set srcaddr 'all'
+            set srcaddr6 'all'
+            set action accept
+            set nat64 enable
+            """),
+        ' ' * 8,
+    )
+    self.assertIn(expected, self._render_nat64(term))
+
+  def testNat64EnabledForUnrestrictedDestination(self):
+    """Tests that an IPv6 source with no destination addresses enables NAT64."""
+    term = textwrap.dedent("""\
+        term to-any {
+          source-address:: GUEST6
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    self.assertIn('set nat64 enable\n', self._render_nat64(term))
+
+  def testNat64EnabledForAddressInNat64Prefix(self):
+    """Tests that one address in 64:ff9b::/96 enables NAT64."""
+    term = textwrap.dedent("""\
+        term to-nat64-host {
+          source-address:: GUEST6
+          destination-address:: NAT64_HOST
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    self.assertIn('set nat64 enable\n', self._render_nat64(term))
+
+  def testNat64EnabledForDestinationContainingNat64Prefix(self):
+    """Tests that a destination containing 64:ff9b::/96 enables NAT64."""
+    term = textwrap.dedent("""\
+        term to-supernet {
+          source-address:: GUEST6
+          destination-address:: NAT64_SUPERNET
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    self.assertIn('set nat64 enable\n', self._render_nat64(term))
+
+  def testNat64NotEnabledForOtherIPv6Destination(self):
+    """Tests that an IPv6 destination outside 64:ff9b::/96 gets no nat64."""
+    term = textwrap.dedent("""\
+        term to-other {
+          source-address:: GUEST6
+          destination-address:: OTHER6
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    self.assertNotIn('set nat64', self._render_nat64(term))
+
+  def testNat64NotEnabledForIPv4OnlyPolicy(self):
+    """Tests that a policy without IPv6 addresses gets no nat64.
+
+    The destination is unrestricted, but the IPv4 source leaves only the IPv4
+    family in the policy.
+    """
+    term = textwrap.dedent("""\
+        term from-ipv4 {
+          source-address:: GUEST
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    self.assertNotIn('set nat64', self._render_nat64(term))
+
+  def testNat64NotEnabledOnDenyPolicy(self):
+    """Tests that a deny policy to 64:ff9b::/96 gets no nat64."""
+    term = textwrap.dedent("""\
+        term deny-nat64 {
+          source-address:: GUEST6
+          destination-address:: NAT64
+          protocol:: tcp
+          action:: deny
+        }
+        """)
+    self.assertNotIn('set nat64', self._render_nat64(term))
+
+  def testNat64NotEnabledOnRejectPolicy(self):
+    """Tests that a reject policy to 64:ff9b::/96 gets no nat64."""
+    term = textwrap.dedent("""\
+        term reject-nat64 {
+          source-address:: GUEST6
+          destination-address:: NAT64
+          protocol:: tcp
+          action:: reject
+        }
+        """)
+    self.assertNotIn('set nat64', self._render_nat64(term))
+
+  def testNat64NotEnabledWhenExcludesRemoveNat64Prefix(self):
+    """Tests a destination whose excludes remove all of 64:ff9b::/96."""
+    term = textwrap.dedent("""\
+        term to-supernet-but-nat64 {
+          source-address:: GUEST6
+          destination-address:: NAT64_SUPERNET
+          destination-exclude:: NAT64
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    self.assertNotIn('set nat64', self._render_nat64(term))
+
+  def testNat64EnabledWhenExcludesLeavePartOfNat64Prefix(self):
+    """Tests a destination whose excludes leave part of 64:ff9b::/96."""
+    term = textwrap.dedent("""\
+        term to-nat64-but-host {
+          source-address:: GUEST6
+          destination-address:: NAT64
+          destination-exclude:: NAT64_HOST
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    self.assertIn('set nat64 enable\n', self._render_nat64(term))
+
+  def testNat64NotEnabledWithoutOption(self):
+    """Tests that without the nat64 option no policy enables NAT64."""
+    term = textwrap.dedent("""\
+        term to-nat64 {
+          source-address:: GUEST6
+          destination-address:: NAT64
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    self.assertNotIn(
+        'set nat64', self._render_nat64(term, target='fortigate from-id 2'))
+
 if __name__ == '__main__':
   absltest.main()
