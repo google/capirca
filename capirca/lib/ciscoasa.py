@@ -24,6 +24,7 @@ from typing import cast
 from capirca.lib import aclgenerator
 from capirca.lib import cisco
 from capirca.lib import nacaddr
+from capirca.lib import summarizer
 
 
 _ACTION_TABLE = {
@@ -59,12 +60,13 @@ class NoCiscoPolicyError(Error):
 class Term(cisco.Term):
   """A single ACL Term."""
 
-  def __init__(self, term, filter_name, af=4):
+  def __init__(self, term, filter_name, af=4, enable_dsmo=False):
     self.term = term
     self.filter_name = filter_name
     self.options = []
     assert af in (4, 6)
     self.af = af
+    self.enable_dsmo = enable_dsmo
 
   def __str__(self):
     # Verify platform specific terms. Skip whole term if platform does not
@@ -118,6 +120,8 @@ class Term(cisco.Term):
         source_address = nacaddr.ExcludeAddrs(
             source_address,
             source_address_exclude)
+      if len(source_address) > 1 and self.enable_dsmo:
+        source_address = summarizer.Summarize(source_address)
     else:
       # source address not set
       source_address = ['any']
@@ -132,6 +136,8 @@ class Term(cisco.Term):
         destination_address = nacaddr.ExcludeAddrs(
             destination_address,
             destination_address_exclude)
+      if len(destination_address) > 1 and self.enable_dsmo:
+        destination_address = summarizer.Summarize(destination_address)
     else:
       # destination address not set
       destination_address = ['any']
@@ -178,6 +184,8 @@ class Term(cisco.Term):
                   if (((isinstance(saddr, nacaddr.IPv4)) or
                        (saddr == 'any')) and
                       ((isinstance(daddr, nacaddr.IPv4)) or (daddr == 'any'))):
+                    do_output = True
+                  elif isinstance(saddr, summarizer.DSMNet) or isinstance(daddr, summarizer.DSMNet):
                     do_output = True
                 if self.af == 6:
                   if (((isinstance(saddr, nacaddr.IPv6)) or
@@ -246,6 +254,16 @@ class Term(cisco.Term):
         daddr = '%s/%s' % (daddr.network_address, daddr.prefixlen)
       else:
         daddr = 'host %s' % (daddr.network_address)
+
+    if isinstance(saddr, summarizer.DSMNet):
+      saddr = '%s %s' % summarizer.ToDottedQuad(saddr, negate=False)
+      if saddr.endswith('255.255.255.255'):
+        saddr = f'host {saddr.split()[0]}'
+
+    if isinstance(daddr, summarizer.DSMNet):
+      daddr = '%s %s' % summarizer.ToDottedQuad(daddr, negate=False)
+      if daddr.endswith('255.255.255.255'):
+        daddr = f'host {daddr.split()[0]}'
 
     # fix ports
     if not sport:
@@ -319,7 +337,8 @@ class CiscoASA(aclgenerator.ACLGenerator):
     exp_info_date = current_date + datetime.timedelta(weeks=exp_info)
 
     for header, terms in self.policy.filters:
-      filter_name = header.FilterName('ciscoasa')
+      filter_options = header.FilterOptions(self._PLATFORM)
+      filter_name = header.FilterName(self._PLATFORM)
 
       new_terms = []
       # now add the terms
@@ -333,7 +352,8 @@ class CiscoASA(aclgenerator.ACLGenerator):
                             'will not be rendered.', term.name, filter_name)
             continue
 
-        new_terms.append(str(Term(term, filter_name)))
+        enable_dsmo = len(filter_options) > 1 and 'enable_dsmo' in filter_options[1:]
+        new_terms.append(str(Term(term, filter_name, enable_dsmo=enable_dsmo)))
 
       self.ciscoasa_policies.append((header, filter_name, new_terms))
 
