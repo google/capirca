@@ -638,6 +638,10 @@ pip install capirca --user
 
 ### Basic Usage
 
+An optional [Rust extension](./native/README.md) accelerates Juniper SRX
+address-book construction. Install it separately with `pip install ./native`
+from a source checkout.
+
 There are a number of command-line arguments that can be used with `aclgen`.
 
 ```

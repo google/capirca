@@ -27,6 +27,13 @@ from capirca.lib import aclgenerator
 from capirca.lib import nacaddr
 import six
 
+try:
+  import _capirca_native
+except ModuleNotFoundError as error:
+  if error.name != '_capirca_native':
+    raise
+  _capirca_native = None
+
 
 ICMP_TERM_LIMIT = 8
 
@@ -569,8 +576,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                 'WARNING: Term %s has 0 valid source IPs, skipping.', term.name)
             continue
           term.source_address = valid_addrs
-          for addr in term.source_address:
-            self._BuildAddressBook(self.from_zone, addr)
+          self._BuildAddressBookFromList(self.from_zone, term.source_address)
 
         # Filter destination_address based on filter_type & add to address book
         if term.destination_address:
@@ -584,8 +590,7 @@ class JuniperSRX(aclgenerator.ACLGenerator):
                 term.name)
             continue
           term.destination_address = valid_addrs
-          for addr in term.destination_address:
-            self._BuildAddressBook(self.to_zone, addr)
+          self._BuildAddressBookFromList(self.to_zone, term.destination_address)
 
         new_term = Term(term, self.from_zone, self.to_zone, self.expresspath,
                         verbose)
@@ -695,6 +700,35 @@ class JuniperSRX(aclgenerator.ACLGenerator):
     if expanded_terms:
       del terms[:]
       terms.extend(expanded_terms)
+
+  def _BuildAddressBookFromList(self, zone, addresses):
+    """Insert addresses in order, retaining the selected Python objects."""
+    if _capirca_native is None:
+      for address in addresses:
+        self._BuildAddressBook(zone, address)
+      return
+
+    groups = collections.OrderedDict()
+    for address in addresses:
+      groups.setdefault(address.parent_token, []).append(address)
+    if not groups:
+      return
+    if zone not in self.addressbook:
+      self.addressbook[zone] = collections.defaultdict(list)
+    for name, incoming in groups.items():
+      current = self.addressbook[zone][name]
+      candidates = current + incoming
+      # Scoped IPv6 equality and custom subnet methods are Python contracts.
+      if any(type(ip) not in (nacaddr.IPv4, nacaddr.IPv6) or
+             getattr(ip.network_address, 'scope_id', None) is not None
+             for ip in candidates):
+        for address in incoming:
+          self._BuildAddressBook(zone, address)
+        continue
+      networks = [(ip.version, int(ip.network_address), ip.prefixlen)
+                  for ip in candidates]
+      selected = _capirca_native.address_book_indices(networks, len(current))
+      current[:] = [candidates[index] for index in selected]
 
   def _BuildAddressBook(self, zone, address):
     """Create the address book configuration entries.

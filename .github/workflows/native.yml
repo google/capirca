@@ -1,0 +1,61 @@
+name: Native SRX address book
+
+on:
+  push:
+    paths:
+      - native/**
+      - capirca/**
+      - tests/**
+      - requirements.txt
+      - setup.py
+      - tools/benchmark_srx.py
+      - .github/workflows/native.yml
+  pull_request:
+    paths:
+      - native/**
+      - capirca/**
+      - tests/**
+      - requirements.txt
+      - setup.py
+      - tools/benchmark_srx.py
+      - .github/workflows/native.yml
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.9'
+            tests: tests/lib/junipersrx_test.py tests/lib/srx_native_test.py
+          - os: ubuntu-latest
+            python: '3.14'
+            tests: tests
+          - os: macos-latest
+            python: '3.14'
+            tests: tests
+          - os: windows-latest
+            python: '3.14'
+            tests: tests
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+      - run: rustup default stable
+      - run: python -m pip install -e . -r requirements.txt pytest ./native
+      - run: cargo fmt --manifest-path native/Cargo.toml --check
+      - run: cargo clippy --locked --manifest-path native/Cargo.toml --all-targets -- -D warnings
+      # Upstream OpenConfig uses datetime.UTC, which requires Python 3.11.
+      - run: python -m pytest -q ${{ matrix.tests }}
+      - if: matrix.python != '3.9'
+        run: python tools/benchmark_srx.py --rounds 1 --output benchmark.json
+      - run: python -m pip uninstall -y capirca-native
+      - run: python -m pytest -q ${{ matrix.tests }}
