@@ -214,6 +214,18 @@ class NacaddrUnitTest(absltest.TestCase):
     self.assertListEqual(nacaddr.AddressListExclude(superset, excludes),
                          expected)
 
+  def testAddressListExcludeNoCollapseMixedFamilies(self):
+    # IPv4 and IPv6 can share a list when collapse_addrs is False too.
+    superset = [nacaddr.IPv6('2001:db8::/126'),
+                nacaddr.IPv4('10.0.0.0/24')]
+    excludes = [nacaddr.IPv6('2001:db8::/127'),
+                nacaddr.IPv4('10.0.0.0/25')]
+    expected = [nacaddr.IPv4('10.0.0.128/25'),
+                nacaddr.IPv6('2001:db8::2/127')]
+    self.assertListEqual(
+        nacaddr.AddressListExclude(superset, excludes, collapse_addrs=False),
+        expected)
+
   def testCollapseAddrListPreserveTokens(self):
     addr_list = [nacaddr.IPv4('10.0.1.7/32', token='BIZ'),
                  nacaddr.IPv4('192.168.1.10/32', token='ALSOUNDERSUPER'),

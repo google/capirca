@@ -436,8 +436,8 @@ def AddressListExclude(superset, excludes, collapse_addrs=True):
     superset = CollapseAddrList(superset)[::-1]
     excludes = CollapseAddrList(excludes)[::-1]
   else:
-    superset = sorted(superset, reverse=True)
-    excludes = sorted(excludes, reverse=True)
+    superset = sorted(superset, key=ipaddress.get_mixed_type_key, reverse=True)
+    excludes = sorted(excludes, key=ipaddress.get_mixed_type_key, reverse=True)
 
   ret_array = []
   while superset and excludes:
@@ -452,7 +452,7 @@ def AddressListExclude(superset, excludes, collapse_addrs=True):
   if collapse_addrs:
     return CollapseAddrList(ret_array + superset)
   else:
-    return sorted(set(ret_array + superset))
+    return sorted(set(ret_array + superset), key=ipaddress.get_mixed_type_key)
 
 
 ExcludeAddrs = AddressListExclude
