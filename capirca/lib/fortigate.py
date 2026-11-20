@@ -844,14 +844,19 @@ class Term(aclgenerator.Term):
 
     With central NAT, FortiGate translates a NAT64 session only if it matches
     an accept policy that enables NAT64. So with the nat64 option, accept
-    policies enable it if their IPv6 destination addresses can include a NAT64
-    address.
+    policies with IPv4 and IPv6 addresses enable it if their IPv6 destination
+    addresses can include a NAT64 address.
 
     Args:
       action: the action of the policy, as process_action_setting returns it.
       families: set of IP versions (4 and/or 6) the policy renders.
     """
-    if not self.nat64 or action != 'accept' or 6 not in families:
+    if not self.nat64 or action != 'accept':
+      return False
+    # FortiGate rejects a policy that enables NAT64 without both IPv4 and IPv6
+    # addresses ("IPv4 and IPv6 addresses must be specified when NAT64 is
+    # enable"), and that one error fails the whole config push.
+    if families != {4, 6}:
       return False
     return _overlaps_nat64_prefix(
         self._term.destination_address,
@@ -1042,9 +1047,10 @@ class Fortigate(aclgenerator.ACLGenerator):
       # maximum-address-group-members n: address groups with more than n
       # members are split into groups of at most n members. Use it for
       # FortiGates that limit the size of an address group.
-      # nat64: accept policies whose IPv6 destination addresses overlap
-      # 64:ff9b::/96 get "set nat64 enable". Use it for zone pairs that carry
-      # NAT64 traffic through central NAT. fortigatelocalin does not take it.
+      # nat64: an accept policy with IPv4 and IPv6 addresses gets "set nat64
+      # enable" if its IPv6 destination addresses overlap 64:ff9b::/96. Use it
+      # for zone pairs that carry NAT64 traffic through central NAT. It has no
+      # effect with inet or inet6. fortigatelocalin does not take it.
       filter_options = header.FilterOptions(self._PLATFORM)
 
       verbose = True

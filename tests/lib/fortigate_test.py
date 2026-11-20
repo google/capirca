@@ -1713,6 +1713,7 @@ Line 2 with multiline"
   def _render_nat64(self, terms, target='fortigate from-id 2 nat64'):
     """Renders terms that use the NAT64 test addresses under target."""
     hosts = {
+        'EXTERNAL': [nacaddr.IP('198.51.100.0/24')],
         'GUEST': [nacaddr.IP('10.1.0.0/16')],
         'GUEST6': [nacaddr.IP('2001:db8:1::/48')],
         'NAT64': [nacaddr.IP('64:ff9b::/96')],
@@ -1736,15 +1737,17 @@ Line 2 with multiline"
     """Tests that an accept policy to 64:ff9b::/96 enables NAT64."""
     term = textwrap.dedent("""\
         term to-nat64 {
-          source-address:: GUEST6
-          destination-address:: NAT64
+          source-address:: GUEST GUEST6
+          destination-address:: EXTERNAL NAT64
           protocol:: tcp
           action:: accept
         }
         """)
     expected = textwrap.indent(
         textwrap.dedent("""\
+            set dstaddr '198.51.100.0/24'
             set dstaddr6 '64:ff9b::/96'
+            set srcaddr '10.1.0.0/16'
             set srcaddr6 '2001:db8:1::/48'
             set action accept
             set nat64 enable
@@ -1775,10 +1778,10 @@ Line 2 with multiline"
     self.assertIn(expected, self._render_nat64(term))
 
   def testNat64EnabledForUnrestrictedDestination(self):
-    """Tests that an IPv6 source with no destination addresses enables NAT64."""
+    """Tests that a term with no destination addresses enables NAT64."""
     term = textwrap.dedent("""\
         term to-any {
-          source-address:: GUEST6
+          source-address:: GUEST GUEST6
           protocol:: tcp
           action:: accept
         }
@@ -1789,8 +1792,8 @@ Line 2 with multiline"
     """Tests that one address in 64:ff9b::/96 enables NAT64."""
     term = textwrap.dedent("""\
         term to-nat64-host {
-          source-address:: GUEST6
-          destination-address:: NAT64_HOST
+          source-address:: GUEST GUEST6
+          destination-address:: EXTERNAL NAT64_HOST
           protocol:: tcp
           action:: accept
         }
@@ -1801,8 +1804,8 @@ Line 2 with multiline"
     """Tests that a destination containing 64:ff9b::/96 enables NAT64."""
     term = textwrap.dedent("""\
         term to-supernet {
-          source-address:: GUEST6
-          destination-address:: NAT64_SUPERNET
+          source-address:: GUEST GUEST6
+          destination-address:: EXTERNAL NAT64_SUPERNET
           protocol:: tcp
           action:: accept
         }
@@ -1813,8 +1816,8 @@ Line 2 with multiline"
     """Tests that an IPv6 destination outside 64:ff9b::/96 gets no nat64."""
     term = textwrap.dedent("""\
         term to-other {
-          source-address:: GUEST6
-          destination-address:: OTHER6
+          source-address:: GUEST GUEST6
+          destination-address:: EXTERNAL OTHER6
           protocol:: tcp
           action:: accept
         }
@@ -1836,12 +1839,46 @@ Line 2 with multiline"
         """)
     self.assertNotIn('set nat64', self._render_nat64(term))
 
+  def testNat64NotEnabledForIPv6OnlyPolicy(self):
+    """Tests that a policy without IPv4 addresses gets no nat64.
+
+    The destination is in 64:ff9b::/96, but the IPv6 source and destination
+    addresses leave only the IPv6 family in the policy.
+    """
+    term = textwrap.dedent("""\
+        term from-ipv6 {
+          source-address:: GUEST6
+          destination-address:: NAT64
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    self.assertNotIn('set nat64', self._render_nat64(term))
+
+  def testNat64NotEnabledInInet6Filter(self):
+    """Tests that a policy in an inet6 filter gets no nat64.
+
+    The source and destination addresses have both families, but inet6 leaves
+    only the IPv6 family in the policy.
+    """
+    term = textwrap.dedent("""\
+        term to-nat64 {
+          source-address:: GUEST GUEST6
+          destination-address:: EXTERNAL NAT64
+          protocol:: tcp
+          action:: accept
+        }
+        """)
+    self.assertNotIn(
+        'set nat64',
+        self._render_nat64(term, target='fortigate from-id 2 inet6 nat64'))
+
   def testNat64NotEnabledOnDenyPolicy(self):
     """Tests that a deny policy to 64:ff9b::/96 gets no nat64."""
     term = textwrap.dedent("""\
         term deny-nat64 {
-          source-address:: GUEST6
-          destination-address:: NAT64
+          source-address:: GUEST GUEST6
+          destination-address:: EXTERNAL NAT64
           protocol:: tcp
           action:: deny
         }
@@ -1852,8 +1889,8 @@ Line 2 with multiline"
     """Tests that a reject policy to 64:ff9b::/96 gets no nat64."""
     term = textwrap.dedent("""\
         term reject-nat64 {
-          source-address:: GUEST6
-          destination-address:: NAT64
+          source-address:: GUEST GUEST6
+          destination-address:: EXTERNAL NAT64
           protocol:: tcp
           action:: reject
         }
@@ -1864,8 +1901,8 @@ Line 2 with multiline"
     """Tests a destination whose excludes remove all of 64:ff9b::/96."""
     term = textwrap.dedent("""\
         term to-supernet-but-nat64 {
-          source-address:: GUEST6
-          destination-address:: NAT64_SUPERNET
+          source-address:: GUEST GUEST6
+          destination-address:: EXTERNAL NAT64_SUPERNET
           destination-exclude:: NAT64
           protocol:: tcp
           action:: accept
@@ -1877,8 +1914,8 @@ Line 2 with multiline"
     """Tests a destination whose excludes leave part of 64:ff9b::/96."""
     term = textwrap.dedent("""\
         term to-nat64-but-host {
-          source-address:: GUEST6
-          destination-address:: NAT64
+          source-address:: GUEST GUEST6
+          destination-address:: EXTERNAL NAT64
           destination-exclude:: NAT64_HOST
           protocol:: tcp
           action:: accept
@@ -1890,8 +1927,8 @@ Line 2 with multiline"
     """Tests that without the nat64 option no policy enables NAT64."""
     term = textwrap.dedent("""\
         term to-nat64 {
-          source-address:: GUEST6
-          destination-address:: NAT64
+          source-address:: GUEST GUEST6
+          destination-address:: EXTERNAL NAT64
           protocol:: tcp
           action:: accept
         }
